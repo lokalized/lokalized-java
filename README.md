@@ -155,23 +155,23 @@ Suppose we introduce gender.  In English, gender usually does not alter verbs.  
 
 This English statement has 6 variants:
 
-* He hasn't read any books
-* He read 1 book
-* He read 2 books
-* She hasn't read any books
-* She read 1 book
-* She read 2 books
+* `He hasn't read any books`
+* `He read 1 book`
+* `He read 2 books`
+* `She hasn't read any books`
+* `She read 1 book`
+* `She read 2 books`
 
 In Russian, we have 8, and notice the `а` suffixes for the feminine gender:
 
-* Она не читала книг
-* Она прочитала 1 книгу
-* Она прочитала 2 книги
-* Она прочитала 5 книг
-* Он не читал книг
-* Он прочитал 1 книгу
-* Он прочитал 2 книги
-* Он прочитал 5 книг
+* `Она не читала книг`
+* `Она прочитала 1 книгу`
+* `Она прочитала 2 книги`
+* `Она прочитала 5 книг`
+* `Он не читал книг`
+* `Он прочитал 1 книгу`
+* `Он прочитал 2 книги`
+* `Он прочитал 5 книг`
 
 It is necessary to do more than replace "he/she", we must rewrite other words in the sentence as well.
 
