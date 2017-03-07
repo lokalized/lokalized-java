@@ -115,7 +115,6 @@ Notice that there is no logic in code for handling the different rules, regardle
         "translations" : {
           "ONE" : "книгу",
           "FEW" : "книги",
-          "MANY" : "книг",
           "OTHER" : "книг"
         }
       }
