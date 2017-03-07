@@ -81,7 +81,7 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 ##### English Translation File
 
-```js
+```json
 {
   "I read {{bookCount}} books" : {
     "translation" : "I read {{bookCount}} {{books}}",
@@ -105,7 +105,7 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 ##### Russian Translation File
 
-```js
+```json
 {
   "I read {{bookCount}} books" : {
     "translation" : "I прочитал {{bookCount}} {{books}}",
@@ -162,7 +162,7 @@ This English statement has 6 variants:
 * She read 1 book
 * She read 2 books
 
-In Russian, we have 8 to account for gender differences:
+In Russian, we have 8, and notice the `а` suffixes for the feminine gender:
 
 * Она не читала книг
 * Она прочитала 1 книгу
@@ -173,9 +173,9 @@ In Russian, we have 8 to account for gender differences:
 * Он прочитал 2 книги
 * Он прочитал 5 книг
 
-TODO: finish documentation
+It is necessary to do more than replace "he/she", we must rewrite other words in the sentence as well.
 
-```js
+```json
 {
   "{{gender}} read {{bookCount}} books" : {
     "translation" : "{{subject}} {{read}} {{bookCount}} {{books}}",
@@ -215,3 +215,5 @@ TODO: finish documentation
   }
 }
 ```
+
+#### TODO: finish documentation
