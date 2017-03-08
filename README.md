@@ -6,12 +6,14 @@ Design goals:
 
 * Complex translation rules can be expressed in a configuration file, not code
 * First-class support for gender and plural grammar rules
-* Support for multiple platforms (currently JavaScript and Java - Swift and C# ports in progress)
+* Support for multiple platforms (currently JavaScript and Java - Swift and Python ports coming soon)
 * No dependencies
 
 Design non-goals:
 
 * Support for date/time, number, percentage, and currency formatting (Java already does these well)
+
+### Why?
 
 As a developer, it is unrealistic to embed per-locale translation rules in code for every text string.
 
