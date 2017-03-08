@@ -40,7 +40,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.EQUAL_TO));
 		expectedTokens.add(new Token(TokenType.ZERO));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -52,7 +52,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.EQUAL_TO));
 		expectedTokens.add(new Token(TokenType.NUMBER, "-12.5"));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -62,34 +62,34 @@ public class ExpressionTokenizerTests {
 		List<Token> expectedTokens = new ArrayList<>();
 		expectedTokens.add(new Token(TokenType.VARIABLE, "chickenCount"));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("==");
 
 		expectedTokens = new ArrayList<>();
 		expectedTokens.add(new Token(TokenType.EQUAL_TO));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("<=");
 
 		expectedTokens = new ArrayList<>();
 		expectedTokens.add(new Token(TokenType.LESS_THAN_OR_EQUAL_TO));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("<");
 
 		expectedTokens = new ArrayList<>();
 		expectedTokens.add(new Token(TokenType.LESS_THAN));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("");
 
 		expectedTokens = new ArrayList<>();
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -115,7 +115,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.ONE));
 		expectedTokens.add(new Token(TokenType.GROUP_END));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -129,7 +129,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.LESS_THAN_OR_EQUAL_TO));
 		expectedTokens.add(new Token(TokenType.GROUP_END));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("(<===>=()))(<=(asdf<");
 
@@ -148,7 +148,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.VARIABLE, "asdf"));
 		expectedTokens.add(new Token(TokenType.LESS_THAN));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer()
 				.extractTokens("(chickenCount == ZERO && rabbitCount == ZERO) || (r||<=abbitCount >= ONE)");
@@ -173,7 +173,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.ONE));
 		expectedTokens.add(new Token(TokenType.GROUP_END));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -185,7 +185,7 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.EQUAL_TO));
 		expectedTokens.add(new Token(TokenType.VARIABLE, "example"));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 
 	@Test
@@ -196,19 +196,19 @@ public class ExpressionTokenizerTests {
 		expectedTokens.add(new Token(TokenType.EQUAL_TO));
 		expectedTokens.add(new Token(TokenType.VARIABLE, "example"));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("example");
 
 		expectedTokens = new ArrayList<>();
 		expectedTokens.add(new Token(TokenType.VARIABLE, "example"));
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 
 		tokens = new ExpressionTokenizer().extractTokens("     ");
 
 		expectedTokens = new ArrayList<>();
 
-		assertEquals(tokens, expectedTokens);
+		assertEquals(expectedTokens, tokens);
 	}
 }
