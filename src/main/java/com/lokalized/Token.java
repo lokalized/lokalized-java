@@ -20,58 +20,79 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
-import java.util.Optional;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * A localization expression token.
+ * <p>
+ * A list of tokens is the output of lexical analysis as performed by {@link ExpressionTokenizer}.
+ *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
 final class Token {
 	@Nonnull
 	private final TokenType tokenType;
-	@Nullable
+	@Nonnull
 	private final String symbol;
 
-	private Token(TokenType tokenType, String symbol) {
+	/**
+	 * Constructs a new token with the given type.
+	 *
+	 * @param tokenType what kind of token this is, not {@code null}
+	 * @throws IllegalArgumentException if the token type does not have a predefined symbol
+	 */
+	public Token(@Nonnull TokenType tokenType) {
+		requireNonNull(tokenType);
+
+		if (TokenType.getTokenTypesWithUndefinedSymbol().contains(tokenType))
+			throw new IllegalArgumentException(format("You must provide a symbol for %s.%s values.",
+					TokenType.class.getSimpleName(), tokenType.name()));
+
+		this.tokenType = tokenType;
+		this.symbol = tokenType.getSymbol().get();
+	}
+
+	/**
+	 * Constructs a new token with the given type and symbol.
+	 *
+	 * @param tokenType what kind of token this is, not {@code null}
+	 * @param symbol    the symbol for this token, not {@code null}
+	 * @throws IllegalArgumentException if the token type has a predefined symbol that does not match the provided symbol
+	 */
+	public Token(@Nonnull TokenType tokenType, @Nonnull String symbol) {
+		requireNonNull(tokenType);
 		requireNonNull(symbol);
+
+		if (TokenType.getTokenTypesWithDefinedSymbol().contains(tokenType) && !tokenType.getSymbol().get().equals(symbol))
+			throw new IllegalArgumentException(format("Provided symbol value '%s' does not match required value '%s' for %s.%s.",
+					symbol, tokenType.getSymbol().get(), TokenType.class.getSimpleName(), tokenType.name()));
 
 		this.tokenType = tokenType;
 		this.symbol = symbol;
 	}
 
-	@Nonnull
-	public static Token forTokenType(@Nonnull TokenType tokenType) {
-		requireNonNull(tokenType);
-
-		if (!tokenType.getSymbol().isPresent())
-			throw new IllegalArgumentException(format("You must provide a symbol for %s.%s values.",
-					TokenType.class.getSimpleName(), tokenType.name()));
-
-		return new Token(tokenType, null);
-	}
-
-	@Nonnull
-	public static Token forTokenTypeAndSymbol(@Nonnull TokenType tokenType, @Nonnull String symbol) {
-		requireNonNull(tokenType);
-		requireNonNull(symbol);
-
-		if (tokenType.getSymbol().isPresent())
-			throw new IllegalArgumentException(format("It is illegal to provide a value (you provided '%s') for %s.%s.",
-					symbol, tokenType.getSymbol().get(), TokenType.class.getSimpleName(), tokenType.name()));
-
-		return new Token(tokenType, symbol);
-	}
-
+	/**
+	 * Generates a representation of this token as a {@link java.lang.String}.
+	 *
+	 * @return a string representation of this token, not {@code null}
+	 */
 	@Override
+	@Nonnull
 	public String toString() {
 		return format("%s{tokenType=%s, symbol=%s}", getClass().getSimpleName(), getTokenType().name(), getSymbol());
 	}
 
+	/**
+	 * Checks if this token is equal to another token.
+	 *
+	 * @param other the object to check, {@code null} returns {@code false}
+	 * @return {@code true} if this is equal to the other token, {@code false} otherwise
+	 */
 	@Override
-	public boolean equals(Object other) {
+	public boolean equals(@Nullable Object other) {
 		if (this == other)
 			return true;
 
@@ -84,18 +105,33 @@ final class Token {
 				&& Objects.equals(getSymbol(), token.getSymbol());
 	}
 
+	/**
+	 * A hash code for this token.
+	 *
+	 * @return a suitable hash code
+	 */
 	@Override
 	public int hashCode() {
 		return Objects.hash(getTokenType(), getSymbol());
 	}
 
+	/**
+	 * Gets the type of this token.
+	 *
+	 * @return the type of this token, not {@code null}
+	 */
 	@Nonnull
 	public TokenType getTokenType() {
 		return tokenType;
 	}
 
+	/**
+	 * Gets the symbol for this token.
+	 *
+	 * @return the symbol for this token, not {@code null}
+	 */
 	@Nonnull
-	public Optional<String> getSymbol() {
-		return Optional.ofNullable(symbol);
+	public String getSymbol() {
+		return symbol;
 	}
 }

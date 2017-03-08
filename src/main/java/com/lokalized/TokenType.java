@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -52,13 +53,23 @@ enum TokenType {
 
 	@Nullable
 	private final String symbol;
-
+	@Nonnull
+	private static final Set<TokenType> TOKEN_TYPES_WITH_DEFINED_SYMBOL;
+	@Nonnull
+	private static final Set<TokenType> TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
 	@Nonnull
 	private static final Map<String, TokenType> TOKEN_TYPES_BY_SYMBOL;
 
 	static {
-		TOKEN_TYPES_BY_SYMBOL = Collections.unmodifiableMap(Arrays.asList(TokenType.values()).stream()
+		TOKEN_TYPES_WITH_DEFINED_SYMBOL = Collections.unmodifiableSet(Arrays.asList(TokenType.values()).stream()
 				.filter(tokenType -> tokenType.getSymbol().isPresent())
+				.collect(Collectors.toSet()));
+
+		TOKEN_TYPES_WITH_UNDEFINED_SYMBOL = Collections.unmodifiableSet(Arrays.asList(TokenType.values()).stream()
+				.filter(tokenType -> !tokenType.getSymbol().isPresent())
+				.collect(Collectors.toSet()));
+
+		TOKEN_TYPES_BY_SYMBOL = Collections.unmodifiableMap(TOKEN_TYPES_WITH_DEFINED_SYMBOL.stream()
 				.collect(Collectors.toMap(tokenType -> tokenType.getSymbol().get(), tokenType -> tokenType)));
 	}
 
@@ -69,6 +80,16 @@ enum TokenType {
 	@Nonnull
 	public Optional<String> getSymbol() {
 		return Optional.ofNullable(symbol);
+	}
+
+	@Nonnull
+	public static Set<TokenType> getTokenTypesWithDefinedSymbol() {
+		return TOKEN_TYPES_WITH_DEFINED_SYMBOL;
+	}
+
+	@Nonnull
+	public static Set<TokenType> getTokenTypesWithUndefinedSymbol() {
+		return TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
 	}
 
 	@Nonnull
