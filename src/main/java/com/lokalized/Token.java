@@ -41,7 +41,7 @@ final class Token {
 	/**
 	 * Constructs a new token with the given type.
 	 *
-	 * @param tokenType what kind of token this is, not {@code null}
+	 * @param tokenType what kind of token this is, not null
 	 * @throws IllegalArgumentException if the token type does not have a predefined symbol
 	 */
 	public Token(@Nonnull TokenType tokenType) {
@@ -58,8 +58,8 @@ final class Token {
 	/**
 	 * Constructs a new token with the given type and symbol.
 	 *
-	 * @param tokenType what kind of token this is, not {@code null}
-	 * @param symbol    the symbol for this token, not {@code null}
+	 * @param tokenType what kind of token this is, not null
+	 * @param symbol    the symbol for this token, not null
 	 * @throws IllegalArgumentException if the token type has a predefined symbol that does not match the provided symbol
 	 */
 	public Token(@Nonnull TokenType tokenType, @Nonnull String symbol) {
@@ -77,7 +77,7 @@ final class Token {
 	/**
 	 * Generates a representation of this token as a {@link java.lang.String}.
 	 *
-	 * @return a string representation of this token, not {@code null}
+	 * @return a string representation of this token, not null
 	 */
 	@Override
 	@Nonnull
@@ -88,8 +88,8 @@ final class Token {
 	/**
 	 * Checks if this token is equal to another token.
 	 *
-	 * @param other the object to check, {@code null} returns {@code false}
-	 * @return {@code true} if this is equal to the other token, {@code false} otherwise
+	 * @param other the object to check, null returns false
+	 * @return true if this is equal to the other token, false otherwise
 	 */
 	@Override
 	public boolean equals(@Nullable Object other) {
@@ -118,7 +118,7 @@ final class Token {
 	/**
 	 * Gets the type of this token.
 	 *
-	 * @return the type of this token, not {@code null}
+	 * @return the type of this token, not null
 	 */
 	@Nonnull
 	public TokenType getTokenType() {
@@ -128,7 +128,7 @@ final class Token {
 	/**
 	 * Gets the symbol for this token.
 	 *
-	 * @return the symbol for this token, not {@code null}
+	 * @return the symbol for this token, not null
 	 */
 	@Nonnull
 	public String getSymbol() {

@@ -30,7 +30,7 @@ public class ExpressionEvaluationException extends RuntimeException {
 	/**
 	 * Constructs a new expression evaluation exception with the specified message.
 	 *
-	 * @param message the message to use for this exception, may be {@code null}
+	 * @param message the message to use for this exception, may be null
 	 */
 	public ExpressionEvaluationException(String message) {
 		super(message);
@@ -39,8 +39,8 @@ public class ExpressionEvaluationException extends RuntimeException {
 	/**
 	 * Constructs a new expression evaluation exception with the specified message and cause.
 	 *
-	 * @param message the message to use for this exception, may be {@code null}
-	 * @param cause   the cause of the exception, may be {@code null}
+	 * @param message the message to use for this exception, may be null
+	 * @param cause   the cause of the exception, may be null
 	 */
 	public ExpressionEvaluationException(String message, Throwable cause) {
 		super(message, cause);
