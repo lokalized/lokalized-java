@@ -96,11 +96,13 @@ Notice that there is no logic in code for handling the different rules, regardle
         }
       }
     },
-    "alternatives" : {
-      "bookCount == 0" : {
-        "translation" : "I haven't read any books"
+    "alternatives" : [
+      {
+        "bookCount == 0" : {
+          "translation" : "I haven't read any books"
+        }
       }
-    }
+    ]
   }
 }
 ```
@@ -121,11 +123,13 @@ Notice that there is no logic in code for handling the different rules, regardle
         }
       }
     },
-    "alternatives" : {
-      "bookCount == 0" : {
-        "translation" : "Я не читал ни одной книги"
+    "alternatives" : [
+      {
+        "bookCount == 0" : {
+          "translation" : "Я не читал ни одной книги"
+        }
       }
-    }
+    ]
   }
 }
 ```
@@ -205,14 +209,18 @@ It is necessary to do more than replace "he/she", we must rewrite other words in
         }
       }
     },
-    "alternatives" : {
-      "bookCount == 0 && gender == MASCULINE" : {
-        "translation" : "Он не читал книг",
+    "alternatives" : [
+      {
+        "bookCount == 0 && gender == MASCULINE" : {
+          "translation" : "Он не читал книг",
+        }
       },
-      "bookCount == 0 && gender == FEMININE" : {
-        "translation" : "Она не читала книг",
+      {
+        "bookCount == 0 && gender == FEMININE" : {
+          "translation" : "Она не читала книг",
+        }
       }
-    }
+    ]
   }
 }
 ```

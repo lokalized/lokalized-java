@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public enum Plural {
+public enum Plural implements LanguageForm {
 	/**
 	 * Normally the form used with 0, if it is limited to numbers whose integer values end with 0.
 	 * <p>

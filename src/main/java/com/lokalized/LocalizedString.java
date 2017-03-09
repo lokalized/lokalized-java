@@ -17,45 +17,25 @@
 package com.lokalized;
 
 import javax.annotation.Nonnull;
-import java.util.Arrays;
-import java.util.Collections;
+import javax.annotation.concurrent.Immutable;
+import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
- * Language gender forms.
- *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public enum Gender implements LanguageForm {
-	/**
-	 * Masculine gender.
-	 */
-	MASCULINE,
-	/**
-	 * Feminine gender.
-	 */
-	FEMININE,
-	/**
-	 * Neutral/unspecified gender.
-	 */
-	NEUTER;
-
+@Immutable
+class LocalizedString {
 	@Nonnull
-	private static final Map<String, Gender> GENDERS_BY_NAME;
-
-	static {
-		GENDERS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
-				Gender.values()).collect(Collectors.toMap(gender -> gender.name(), gender -> gender)));
-	}
-
-	/**
-	 * Gets the mapping of gender names to gender values.
-	 *
-	 * @return the mapping of gender names to gender values, not null
-	 */
+	private final String key;
 	@Nonnull
-	public static Map<String, Gender> getGendersByName() {
-		return GENDERS_BY_NAME;
+	private final String translation;
+	@Nonnull
+	private final Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder;
+	@Nonnull
+	private final List<LocalizedString> alternatives;
+
+	public LocalizedString() {
+		throw new UnsupportedOperationException();
 	}
 }
