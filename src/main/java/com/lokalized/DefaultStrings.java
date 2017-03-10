@@ -21,9 +21,12 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import static java.util.Objects.requireNonNull;
 
@@ -42,6 +45,8 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	private final Locale defaultLocale;
 	@Nonnull
+	private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
+	@Nonnull
 	private final Supplier<Locale> localeSupplier;
 	@Nonnull
 	private final FailureMode failureMode;
@@ -54,11 +59,30 @@ public class DefaultStrings implements Strings {
 	 * @param failureMode    strategy for dealing with lookup failures, may be null
 	 */
 	protected DefaultStrings(@Nonnull Locale defaultLocale,
+													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
 													 @Nullable Supplier<Locale> localeSupplier,
 													 @Nullable FailureMode failureMode) {
 		requireNonNull(defaultLocale);
+		requireNonNull(localizedStringSupplier);
+
+		Map<Locale, ? extends Iterable<LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
+
+		if (suppliedLocalizedStringsByLocale == null)
+			suppliedLocalizedStringsByLocale = Collections.emptyMap();
+
+		// Defensive copy of iterator to unmodifiable set
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
+				.collect(Collectors.toMap(
+						entry -> entry.getKey(),
+						entry -> {
+							Set<LocalizedString> localizedStrings = new HashSet<>();
+							entry.getValue().forEach(localizedStrings::add);
+							return Collections.unmodifiableSet(localizedStrings);
+						}
+				));
 
 		this.defaultLocale = defaultLocale;
+		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.localeSupplier = localeSupplier == null ? () -> defaultLocale : localeSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 	}
@@ -106,6 +130,16 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	public Locale getDefaultLocale() {
 		return defaultLocale;
+	}
+
+	/**
+	 * Gets the set of localized strings for each locale.
+	 *
+	 * @return the set of localized strings for each locale, not null
+	 */
+	@Nonnull
+	public Map<Locale, Set<LocalizedString>> getLocalizedStringsByLocale() {
+		return localizedStringsByLocale;
 	}
 
 	/**
@@ -164,14 +198,19 @@ public class DefaultStrings implements Strings {
 	public static class Builder {
 		@Nonnull
 		private final Locale defaultLocale;
+		@Nonnull
+		private final Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier;
 		@Nullable
 		private Supplier<Locale> localeSupplier;
 		@Nullable
 		private FailureMode failureMode;
 
-		public Builder(@Nonnull Locale defaultLocale) {
+		public Builder(@Nonnull Locale defaultLocale, @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
 			requireNonNull(defaultLocale);
+			requireNonNull(localizedStringSupplier);
+
 			this.defaultLocale = defaultLocale;
+			this.localizedStringSupplier = localizedStringSupplier;
 		}
 
 		@Nonnull
@@ -187,7 +226,7 @@ public class DefaultStrings implements Strings {
 		}
 
 		public DefaultStrings build() {
-			return new DefaultStrings(defaultLocale, localeSupplier, failureMode);
+			return new DefaultStrings(defaultLocale, localizedStringSupplier, localeSupplier, failureMode);
 		}
 	}
 }

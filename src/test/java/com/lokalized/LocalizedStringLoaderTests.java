@@ -16,11 +16,17 @@
 
 package com.lokalized;
 
+import org.junit.Test;
+
+import javax.annotation.concurrent.ThreadSafe;
+
 /**
- * Marker interface which signifies a language type (genders, plurals).
- *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public interface LanguageForm {
-	// Marker interface
+@ThreadSafe
+public class LocalizedStringLoaderTests {
+	@Test
+	public void testClasspathLoading() throws Exception {
+		LocalizedStringLoader.loadFromClasspath("strings");
+	}
 }

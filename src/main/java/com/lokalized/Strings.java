@@ -21,7 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * A contract for localized string providers - given a key and placeholders, return a localized string.
+ * Contract for localized string providers - given a key and placeholders, return a localized string.
  * <p>
  * Format is {@code "You are missing {{requiredFieldCount}} required fields."}
  *
