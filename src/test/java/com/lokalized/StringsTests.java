@@ -20,10 +20,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.Set;
 
 /**
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -32,21 +30,15 @@ import java.util.Set;
 public class StringsTests {
 	@Test
 	public void placeholderTest() {
-		Locale russianLocale = Locale.forLanguageTag("ru");
-		String englishString = "I read {{bookCount}} books";
-		String russianString = "I прочитал 3 книги";
-
 		Strings strings = new DefaultStrings.Builder(Locale.US, () ->
-				new HashMap<Locale, Set<LocalizedString>>() {{
-					put(russianLocale, Collections.singleton(new LocalizedString(englishString, russianString)));
-				}}
+				LocalizedStringLoader.loadFromClasspath("strings")
 		).build();
 
-		String translation = strings.get(englishString, russianLocale,
+		String translation = strings.get("I read {{bookCount}} books", Locale.forLanguageTag("ru"),
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
 				}});
 
-		Assert.assertEquals(russianString, translation);
+		Assert.assertEquals("I прочитал 3 книги", translation);
 	}
 }

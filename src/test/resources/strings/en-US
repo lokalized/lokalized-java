@@ -1,1 +1,21 @@
-{}
+{
+  "I read {{bookCount}} books" : {
+    "translation" : "I read {{bookCount}} {{books}}",
+    "placeholders" : {
+      "books" : {
+        "value" : "bookCount",
+        "translations" : {
+          "ONE" : "book",
+          "OTHER" : "books"
+        }
+      }
+    },
+    "alternatives" : [
+      {
+        "bookCount == 0" : {
+          "translation" : "I haven't read any books"
+        }
+      }
+    ]
+  }
+}

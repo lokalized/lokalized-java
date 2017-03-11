@@ -24,8 +24,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -91,6 +93,51 @@ public class LocalizedString {
 			alternatives.forEach(alternativesAsList::add);
 
 		this.alternatives = Collections.unmodifiableList(alternativesAsList);
+	}
+
+	/**
+	 * Generates a {@code String} representation of this object.
+	 *
+	 * @return a string representation of this object, not null
+	 */
+	@Override
+	@Nonnull
+	public String toString() {
+		return format("%s{key=%s, translation=%s, languageFormTranslationsByPlaceholder=%s, alternatives=%s}",
+				getClass().getSimpleName(), getKey(), getTranslation(), getLanguageFormTranslationsByPlaceholder(),
+				getAlternatives());
+	}
+
+	/**
+	 * Checks if this object is equal to another one.
+	 *
+	 * @param other the object to check, null returns false
+	 * @return true if this is equal to the other object, false otherwise
+	 */
+	@Override
+	public boolean equals(@Nullable Object other) {
+		if (this == other)
+			return true;
+
+		if (other == null || !getClass().equals(other.getClass()))
+			return false;
+
+		LocalizedString localizedString = (LocalizedString) other;
+
+		return Objects.equals(getKey(), localizedString.getKey())
+				&& Objects.equals(getTranslation(), localizedString.getTranslation())
+				&& Objects.equals(getLanguageFormTranslationsByPlaceholder(), localizedString.getLanguageFormTranslationsByPlaceholder())
+				&& Objects.equals(getAlternatives(), localizedString.getAlternatives());
+	}
+
+	/**
+	 * A hash code for this object.
+	 *
+	 * @return a suitable hash code
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(getKey(), getTranslation(), getLanguageFormTranslationsByPlaceholder(), getAlternatives());
 	}
 
 	/**

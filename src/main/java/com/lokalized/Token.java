@@ -75,9 +75,9 @@ final class Token {
 	}
 
 	/**
-	 * Generates a representation of this token as a {@link java.lang.String}.
+	 * * Generates a {@code String} representation of this object.
 	 *
-	 * @return a string representation of this token, not null
+	 * @return a string representation of this object, not null
 	 */
 	@Override
 	@Nonnull
@@ -86,10 +86,10 @@ final class Token {
 	}
 
 	/**
-	 * Checks if this token is equal to another token.
+	 * Checks if this object is equal to another one.
 	 *
 	 * @param other the object to check, null returns false
-	 * @return true if this is equal to the other token, false otherwise
+	 * @return true if this is equal to the other object, false otherwise
 	 */
 	@Override
 	public boolean equals(@Nullable Object other) {
@@ -106,7 +106,7 @@ final class Token {
 	}
 
 	/**
-	 * A hash code for this token.
+	 * A hash code for this object.
 	 *
 	 * @return a suitable hash code
 	 */

@@ -1,0 +1,23 @@
+{
+  "Hello, world!" : "Приветствую, мир",
+  "I read {{bookCount}} books" : {
+    "translation" : "I прочитал {{bookCount}} {{books}}",
+    "placeholders" : {
+      "books" : {
+        "value" : "bookCount",
+        "translations" : {
+          "ONE" : "книгу",
+          "FEW" : "книги",
+          "OTHER" : "книг"
+        }
+      }
+    },
+    "alternatives" : [
+      {
+        "bookCount == 0" : {
+          "translation" : "Я не читал ни одной книги"
+        }
+      }
+    ]
+  }
+}

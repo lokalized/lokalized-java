@@ -19,20 +19,20 @@ package com.lokalized;
 import javax.annotation.concurrent.NotThreadSafe;
 
 /**
- * Exception which indicates a problem encountered while evaluating a localized string expression.
+ * Exception which indicates a problem encountered while processing a localized strings file.
  * <p>
  * This class is intended for use by a single thread.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @NotThreadSafe
-public class ExpressionEvaluationException extends RuntimeException {
+public class LocalizedStringLoadingException extends RuntimeException {
 	/**
 	 * Constructs a new exception with the specified message.
 	 *
 	 * @param message the message to use for this exception, may be null
 	 */
-	public ExpressionEvaluationException(String message) {
+	public LocalizedStringLoadingException(String message) {
 		super(message);
 	}
 
@@ -42,7 +42,7 @@ public class ExpressionEvaluationException extends RuntimeException {
 	 * @param message the message to use for this exception, may be null
 	 * @param cause   the cause of the exception, may be null
 	 */
-	public ExpressionEvaluationException(String message, Throwable cause) {
+	public LocalizedStringLoadingException(String message, Throwable cause) {
 		super(message, cause);
 	}
 }

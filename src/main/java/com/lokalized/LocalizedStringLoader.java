@@ -16,6 +16,11 @@
 
 package com.lokalized;
 
+import com.lokalized.MinimalJson.Json;
+import com.lokalized.MinimalJson.JsonObject;
+import com.lokalized.MinimalJson.JsonObject.Member;
+import com.lokalized.MinimalJson.JsonValue;
+
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
@@ -38,10 +43,12 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * A collection of utility methods for loading localized strings from a file.
+ *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
-public class LocalizedStringLoader {
+public final class LocalizedStringLoader {
 	@Nonnull
 	private static final Set<String> SUPPORTED_LANGUAGE_TAGS;
 	@Nonnull
@@ -53,31 +60,63 @@ public class LocalizedStringLoader {
 				.collect(Collectors.toSet()));
 	}
 
+	private LocalizedStringLoader() {
+		// Non-instantiable
+	}
+
+	/**
+	 * Loads all localized string files present in the specified package on the classpath.
+	 * <p>
+	 * Like any classpath references, packages are separated using the {@code /} character.
+	 * <p>
+	 * Example package names:
+	 * <ul>
+	 * <li>{@code "strings"}
+	 * <li>{@code "com/lokalized/strings"}
+	 * </ul>
+	 *
+	 * @param classpathPackage location of a package on the classpath, not null
+	 * @return per-locale sets of localized strings, not null
+	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+	 */
 	@Nonnull
-	public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull String path) throws IOException {
-		requireNonNull(path);
+	public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull String classpathPackage) {
+		requireNonNull(classpathPackage);
 
 		ClassLoader classLoader = LocalizedStringLoader.class.getClassLoader();
-		URL url = classLoader.getResource(path);
+		URL url = classLoader.getResource(classpathPackage);
 
 		if (url == null)
-			throw new IOException(format("Unable to find location '%s' on the classpath", path));
+			throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
 		return loadFromDirectory(new File(url.getFile()));
 	}
 
+	/**
+	 * Loads all localized string files present in the specified directory.
+	 *
+	 * @param directory directory in which to search for localized string files, not null
+	 * @return per-locale sets of localized strings, not null
+	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+	 */
 	@Nonnull
-	public static Map<Locale, Set<LocalizedString>> loadFromFilesystem(@Nonnull Path directory) throws IOException {
+	public static Map<Locale, Set<LocalizedString>> loadFromFilesystem(@Nonnull Path directory) {
 		requireNonNull(directory);
 		return loadFromDirectory(directory.toFile());
 	}
 
+	/**
+	 * @param directory
+	 * @return
+	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+	 */
 	@Nonnull
-	private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@Nonnull File directory) throws IOException {
+	private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@Nonnull File directory) {
 		requireNonNull(directory);
 
 		if (!directory.isDirectory())
-			throw new IOException(format("Classpath location '%s' exists but is not a directory", directory));
+			throw new LocalizedStringLoadingException(format("Classpath location '%s' exists but is not a directory",
+					directory));
 
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new HashMap<>();
 
@@ -87,9 +126,7 @@ public class LocalizedStringLoader {
 			if (SUPPORTED_LANGUAGE_TAGS.contains(languageTag)) {
 				LOGGER.fine(format("Loading localized strings file '%s'...", languageTag));
 				Locale locale = Locale.forLanguageTag(file.getName());
-
-				String localizedStringsFileContents = new String(Files.readAllBytes(file.toPath()), UTF_8);
-				localizedStringsByLocale.put(locale, parseLocalizedStringsFileContents(localizedStringsFileContents));
+				localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
 			} else {
 				LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", languageTag));
 			}
@@ -98,14 +135,110 @@ public class LocalizedStringLoader {
 		return Collections.unmodifiableMap(localizedStringsByLocale);
 	}
 
+	/**
+	 * @param file
+	 * @return
+	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+	 */
 	@Nonnull
-	private static Set<LocalizedString> parseLocalizedStringsFileContents(@Nonnull String localizedStringsFileContents) {
-		requireNonNull(localizedStringsFileContents);
+	private static Set<LocalizedString> parseLocalizedStringsFile(@Nonnull File file) {
+		requireNonNull(file);
+
+		String canonicalPath = null;
+
+		try {
+			canonicalPath = file.getCanonicalPath();
+		} catch (IOException e) {
+			throw new LocalizedStringLoadingException(
+					format("Unable to determine canonical path for localized string file %s", file), e);
+		}
+
+		if (!Files.isRegularFile(file.toPath()))
+			throw new LocalizedStringLoadingException(format("%s is not a regular file", canonicalPath));
+
+		String localizedStringsFileContents = null;
+
+		try {
+			localizedStringsFileContents = new String(Files.readAllBytes(file.toPath()), UTF_8).trim();
+		} catch (IOException e) {
+			throw new LocalizedStringLoadingException(format("Unable to load localized string file contents for %s",
+					canonicalPath), e);
+		}
+
+		if ("".equals(localizedStringsFileContents))
+			return Collections.emptySet();
 
 		Set<LocalizedString> localizedStrings = new HashSet<>();
+		JsonObject outerJsonObject = Json.parse(localizedStringsFileContents).asObject();
 
-		throw new UnsupportedOperationException();
+		for (Member member : outerJsonObject) {
+			String key = member.getName();
+			JsonValue value = member.getValue();
+			localizedStrings.add(parseLocalizedString(canonicalPath, key, value));
+		}
 
-		// return Collections.unmodifiableSet(localizedStrings);
+		return Collections.unmodifiableSet(localizedStrings);
+	}
+
+	@Nonnull
+	private static LocalizedString parseLocalizedString(@Nonnull String canonicalPath, @Nonnull String key, @Nonnull JsonValue value) {
+		requireNonNull(canonicalPath);
+		requireNonNull(key);
+		requireNonNull(value);
+
+		if (value.isString()) {
+			// Simple case - just a key and a value, no translation rules
+			//
+			// Example format:
+			//
+			// {
+			//   "Hello, world!" : "Приветствую, мир"
+			// }
+
+			String translation = value.asString();
+
+			if (translation == null)
+				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
+
+			return new LocalizedString(key, translation);
+		} else if (value.isObject()) {
+			// More complex case, there can be placeholders and alternatives.
+			//
+			// Example format:
+			//
+			// {
+			//   "I read {{bookCount}} books" : {
+			//     "translation" : "I read {{bookCount}} {{books}}",
+			//     "placeholders" : {
+			//       "books" : {
+			//         "value" : "bookCount",
+			//         "translations" : {
+			//           "ONE" : "book",
+			//           "OTHER" : "books"
+			//         }
+			//       }
+			//     },
+			//     "alternatives" : [
+			//       {
+			//         "bookCount == 0" : {
+			//           "translation" : "I haven't read any books"
+			//         }
+			//       }
+			//     ]
+			//   }
+			// }
+
+			JsonObject localizedStringObject = value.asObject();
+			String translation = localizedStringObject.getString("translation", null);
+
+			if (translation == null)
+				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
+
+			// TODO: parse placeholders and alternatives
+			return new LocalizedString(key, translation);
+		} else {
+			throw new LocalizedStringLoadingException(format("%s: either a translation string or object value is required for key '%s'",
+					canonicalPath, key));
+		}
 	}
 }

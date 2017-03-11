@@ -16,9 +16,14 @@
 
 package com.lokalized;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 /**
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -27,6 +32,17 @@ import javax.annotation.concurrent.ThreadSafe;
 public class LocalizedStringLoaderTests {
 	@Test
 	public void testClasspathLoading() throws Exception {
-		LocalizedStringLoader.loadFromClasspath("strings");
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath("strings");
+		Assert.assertEquals("Unexpected number of strings files", 2, localizedStringsByLocale.size());
+
+		for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
+			Locale locale = entry.getKey();
+			Set<LocalizedString> localizedStrings = entry.getValue();
+
+			System.out.println(locale.toLanguageTag());
+
+			for (LocalizedString localizedString : localizedStrings)
+				System.out.println(localizedString);
+		}
 	}
 }
