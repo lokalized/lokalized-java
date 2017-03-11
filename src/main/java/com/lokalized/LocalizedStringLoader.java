@@ -48,7 +48,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
 /**
- * A collection of utility methods for loading localized strings from a file.
+ * Utility methods for loading localized strings files.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -98,13 +98,24 @@ public final class LocalizedStringLoader {
 	/**
 	 * Loads all localized string files present in the specified package on the classpath.
 	 * <p>
-	 * Like any classpath references, packages are separated using the {@code /} character.
+	 * Filenames must correspond to the IETF BCP 47 language tag format.
+	 * <p>
+	 * Example filenames:
+	 * <ul>
+	 * <li>{@code en}</li>
+	 * <li>{@code es-MX}</li>
+	 * <li>{@code nan-Hant-TW}</li>
+	 * </ul>
+	 * <p>
+	 * Like any classpath reference, packages are separated using the {@code /} character.
 	 * <p>
 	 * Example package names:
 	 * <ul>
-	 * <li>{@code "strings"}
-	 * <li>{@code "com/lokalized/strings"}
+	 * <li>{@code strings}
+	 * <li>{@code com/lokalized/strings}
 	 * </ul>
+	 * <p>
+	 * Note: this implementation only scans the specified package, it does not descend into child packages.
 	 *
 	 * @param classpathPackage location of a package on the classpath, not null
 	 * @return per-locale sets of localized strings, not null
@@ -125,6 +136,17 @@ public final class LocalizedStringLoader {
 
 	/**
 	 * Loads all localized string files present in the specified directory.
+	 * <p>
+	 * Filenames must correspond to the IETF BCP 47 language tag format.
+	 * <p>
+	 * Example filenames:
+	 * <ul>
+	 * <li>{@code en}</li>
+	 * <li>{@code es-MX}</li>
+	 * <li>{@code nan-Hant-TW}</li>
+	 * </ul>
+	 * <p>
+	 * Note: this implementation only scans the specified directory, it does not descend into child directories.
 	 *
 	 * @param directory directory in which to search for localized string files, not null
 	 * @return per-locale sets of localized strings, not null
@@ -137,8 +159,10 @@ public final class LocalizedStringLoader {
 	}
 
 	/**
-	 * @param directory
-	 * @return
+	 * Loads all localized string files present in the specified directory.
+	 *
+	 * @param directory directory in which to search for localized string files, not null
+	 * @return per-locale sets of localized strings, not null
 	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
 	 */
 	@Nonnull
@@ -168,15 +192,17 @@ public final class LocalizedStringLoader {
 	}
 
 	/**
-	 * @param file
-	 * @return
-	 * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+	 * Parses out a set of localized strings from the given file.
+	 *
+	 * @param file the file to parse, not null
+	 * @return the set of localized strings contained in the file, not null
+	 * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
 	 */
 	@Nonnull
 	private static Set<LocalizedString> parseLocalizedStringsFile(@Nonnull File file) {
 		requireNonNull(file);
 
-		String canonicalPath = null;
+		String canonicalPath;
 
 		try {
 			canonicalPath = file.getCanonicalPath();
@@ -188,7 +214,7 @@ public final class LocalizedStringLoader {
 		if (!Files.isRegularFile(file.toPath()))
 			throw new LocalizedStringLoadingException(format("%s is not a regular file", canonicalPath));
 
-		String localizedStringsFileContents = null;
+		String localizedStringsFileContents;
 
 		try {
 			localizedStringsFileContents = new String(Files.readAllBytes(file.toPath()), UTF_8).trim();
@@ -217,13 +243,24 @@ public final class LocalizedStringLoader {
 		return Collections.unmodifiableSet(localizedStrings);
 	}
 
+	/**
+	 * Parses "toplevel" localized string data.
+	 * <p>
+	 * Operates recursively if alternatives are encountered.
+	 *
+	 * @param canonicalPath the unique path to the file (or URL) being parsed, used for error reporting. not null
+	 * @param key           the toplevel translation key, not null
+	 * @param jsonValue     the toplevel translation value - might be a simple string, might be a complex object. not null
+	 * @return a localized string instance, not null
+	 * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
+	 */
 	@Nonnull
-	private static LocalizedString parseLocalizedString(@Nonnull String canonicalPath, @Nonnull String key, @Nonnull JsonValue value) {
+	private static LocalizedString parseLocalizedString(@Nonnull String canonicalPath, @Nonnull String key, @Nonnull JsonValue jsonValue) {
 		requireNonNull(canonicalPath);
 		requireNonNull(key);
-		requireNonNull(value);
+		requireNonNull(jsonValue);
 
-		if (value.isString()) {
+		if (jsonValue.isString()) {
 			// Simple case - just a key and a value, no translation rules
 			//
 			// Example format:
@@ -232,13 +269,13 @@ public final class LocalizedStringLoader {
 			//   "Hello, world!" : "Приветствую, мир"
 			// }
 
-			String translation = value.asString();
+			String translation = jsonValue.asString();
 
 			if (translation == null)
 				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
 			return new LocalizedString(key, translation);
-		} else if (value.isObject()) {
+		} else if (jsonValue.isObject()) {
 			// More complex case, there can be placeholders and alternatives.
 			//
 			// Example format:
@@ -265,7 +302,7 @@ public final class LocalizedStringLoader {
 			//   }
 			// }
 
-			JsonObject localizedStringObject = value.asObject();
+			JsonObject localizedStringObject = jsonValue.asObject();
 			String translation = localizedStringObject.getString("translation", null);
 
 			if (translation == null)
