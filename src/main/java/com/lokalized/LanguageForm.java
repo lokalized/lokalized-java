@@ -19,7 +19,7 @@ package com.lokalized;
 /**
  * Marker interface which signifies a language type (genders, plurals).
  * <p>
- * Implementors must be enum types only.
+ * Implementors must be {@link Enum} types only.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
