@@ -28,13 +28,17 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -52,12 +56,38 @@ public final class LocalizedStringLoader {
 	@Nonnull
 	private static final Set<String> SUPPORTED_LANGUAGE_TAGS;
 	@Nonnull
+	private static final Map<String, LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
+	@Nonnull
 	private static final Logger LOGGER = Logger.getLogger(LocalizedStringLoader.class.getName());
 
 	static {
 		SUPPORTED_LANGUAGE_TAGS = Collections.unmodifiableSet(Arrays.stream(Locale.getAvailableLocales())
 				.map(locale -> locale.toLanguageTag())
 				.collect(Collectors.toSet()));
+
+		Set<LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
+		supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
+		supportedLanguageForms.addAll(Arrays.asList(Plural.values()));
+
+		Map<String, LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
+
+		for (LanguageForm languageForm : supportedLanguageForms) {
+			if (!languageForm.getClass().isEnum())
+				throw new IllegalArgumentException(format("The %s interface must be implemented by enum types. %s is not an enum",
+						LanguageForm.class.getSimpleName(), languageForm.getClass().getSimpleName()));
+
+			String languageFormName = ((Enum<?>) languageForm).name();
+			LanguageForm existingLanguageForm = supportedLanguageFormsByName.get(languageFormName);
+
+			if (existingLanguageForm != null)
+				throw new IllegalArgumentException(format("There is already a language form %s.%s whose name collides with %s.%s. " +
+								"Language form names must be unique", existingLanguageForm.getClass().getSimpleName(), languageFormName,
+						languageForm.getClass().getSimpleName(), languageFormName));
+
+			supportedLanguageFormsByName.put(languageFormName, languageForm);
+		}
+
+		SUPPORTED_LANGUAGE_FORMS_BY_NAME = Collections.unmodifiableMap(supportedLanguageFormsByName);
 	}
 
 	private LocalizedStringLoader() {
@@ -118,7 +148,8 @@ public final class LocalizedStringLoader {
 			throw new LocalizedStringLoadingException(format("Classpath location '%s' exists but is not a directory",
 					directory));
 
-		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new HashMap<>();
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+				new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
 
 		for (File file : directory.listFiles()) {
 			String languageTag = file.getName();
@@ -150,7 +181,7 @@ public final class LocalizedStringLoader {
 			canonicalPath = file.getCanonicalPath();
 		} catch (IOException e) {
 			throw new LocalizedStringLoadingException(
-					format("Unable to determine canonical path for localized string file %s", file), e);
+					format("Unable to determine canonical path for localized strings file %s", file), e);
 		}
 
 		if (!Files.isRegularFile(file.toPath()))
@@ -161,7 +192,7 @@ public final class LocalizedStringLoader {
 		try {
 			localizedStringsFileContents = new String(Files.readAllBytes(file.toPath()), UTF_8).trim();
 		} catch (IOException e) {
-			throw new LocalizedStringLoadingException(format("Unable to load localized string file contents for %s",
+			throw new LocalizedStringLoadingException(format("Unable to load localized strings file contents for %s",
 					canonicalPath), e);
 		}
 
@@ -169,7 +200,12 @@ public final class LocalizedStringLoader {
 			return Collections.emptySet();
 
 		Set<LocalizedString> localizedStrings = new HashSet<>();
-		JsonObject outerJsonObject = Json.parse(localizedStringsFileContents).asObject();
+		JsonValue outerJsonValue = Json.parse(localizedStringsFileContents);
+
+		if (!outerJsonValue.isObject())
+			throw new LocalizedStringLoadingException(format("%s: a localized strings file must be comprised of a single JSON object", canonicalPath));
+
+		JsonObject outerJsonObject = outerJsonValue.asObject();
 
 		for (Member member : outerJsonObject) {
 			String key = member.getName();
@@ -234,8 +270,68 @@ public final class LocalizedStringLoader {
 			if (translation == null)
 				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-			// TODO: parse placeholders and alternatives
-			return new LocalizedString(key, translation);
+			Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
+
+			JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
+
+			if (!placeholdersJsonValue.isNull()) {
+				if (!placeholdersJsonValue.isObject())
+					throw new LocalizedStringLoadingException(format("%s: the placeholders value must be an object. Key was '%s'", canonicalPath, key));
+
+				JsonObject placeholdersJsonObject = placeholdersJsonValue.asObject();
+
+				for (Member placeholderMember : placeholdersJsonObject) {
+					String placeholderKey = placeholderMember.getName();
+					JsonValue placeholderJsonValue = placeholderMember.getValue();
+
+					if (!placeholderJsonValue.isObject())
+						throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key was '%s'", canonicalPath, key));
+
+					JsonObject placeholderJsonObject = placeholderJsonValue.asObject();
+					JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
+
+					if (translationsJsonValue.isNull())
+						continue;
+
+					if (!translationsJsonValue.isObject())
+						throw new LocalizedStringLoadingException(format("%s: the placeholder translations value must be an object. Key was '%s'", canonicalPath, key));
+
+					Map<LanguageForm, String> translationsByLanguageForm = new LinkedHashMap<>();
+
+					JsonObject translationsJsonObject = translationsJsonValue.asObject();
+
+					for (Member translationMember : translationsJsonObject) {
+						String translationKey = translationMember.getName();
+						JsonValue translationJsonValue = translationMember.getValue();
+						LanguageForm languageForm = SUPPORTED_LANGUAGE_FORMS_BY_NAME.get(translationKey);
+
+						if (languageForm == null)
+							throw new LocalizedStringLoadingException(format("%s: unexpected placeholder translation language form encountered. Key was '%s'. " +
+											"You provided '%s', valid values are [%s]", canonicalPath, key, translationKey,
+									SUPPORTED_LANGUAGE_FORMS_BY_NAME.keySet().stream().collect(Collectors.joining(", "))));
+
+						if (!translationJsonValue.isString())
+							throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key was '%s'", canonicalPath, key));
+
+						translationsByLanguageForm.put(languageForm, translationJsonValue.asString());
+					}
+
+					languageFormTranslationsByPlaceholder.put(placeholderKey, translationsByLanguageForm);
+				}
+			}
+
+			List<LocalizedString> alternatives = new ArrayList<>();
+
+			JsonValue alternativesJsonValue = localizedStringObject.get("alternatives");
+
+			if (!alternativesJsonValue.isNull()) {
+				if (!alternativesJsonValue.isArray())
+					throw new LocalizedStringLoadingException(format("%s: alternatives must be an array. Key was '%s'", canonicalPath, key));
+
+				// TODO: finish parsing
+			}
+
+			return new LocalizedString(key, translation, languageFormTranslationsByPlaceholder, alternatives);
 		} else {
 			throw new LocalizedStringLoadingException(format("%s: either a translation string or object value is required for key '%s'",
 					canonicalPath, key));
