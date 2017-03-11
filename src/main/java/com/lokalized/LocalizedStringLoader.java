@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import com.lokalized.MinimalJson.Json;
+import com.lokalized.MinimalJson.JsonArray;
 import com.lokalized.MinimalJson.JsonObject;
 import com.lokalized.MinimalJson.JsonObject.Member;
 import com.lokalized.MinimalJson.JsonValue;
@@ -274,7 +275,7 @@ public final class LocalizedStringLoader {
 
 			JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
 
-			if (!placeholdersJsonValue.isNull()) {
+			if (placeholdersJsonValue != null && !placeholdersJsonValue.isNull()) {
 				if (!placeholdersJsonValue.isObject())
 					throw new LocalizedStringLoadingException(format("%s: the placeholders value must be an object. Key was '%s'", canonicalPath, key));
 
@@ -290,7 +291,7 @@ public final class LocalizedStringLoader {
 					JsonObject placeholderJsonObject = placeholderJsonValue.asObject();
 					JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
 
-					if (translationsJsonValue.isNull())
+					if (translationsJsonValue == null || translationsJsonValue.isNull())
 						continue;
 
 					if (!translationsJsonValue.isObject())
@@ -324,11 +325,27 @@ public final class LocalizedStringLoader {
 
 			JsonValue alternativesJsonValue = localizedStringObject.get("alternatives");
 
-			if (!alternativesJsonValue.isNull()) {
+			if (alternativesJsonValue != null && !alternativesJsonValue.isNull()) {
 				if (!alternativesJsonValue.isArray())
 					throw new LocalizedStringLoadingException(format("%s: alternatives must be an array. Key was '%s'", canonicalPath, key));
 
-				// TODO: finish parsing
+				JsonArray alternativesJsonArray = alternativesJsonValue.asArray();
+
+				for (JsonValue alternativeJsonValue : alternativesJsonArray) {
+					if (alternativeJsonValue == null || alternativeJsonValue.isNull())
+						continue;
+
+					JsonObject outerJsonObject = alternativeJsonValue.asObject();
+
+					if (!outerJsonObject.isObject())
+						throw new LocalizedStringLoadingException(format("%s: alternative value must be an object. Key was '%s'", canonicalPath, key));
+
+					for (Member member : outerJsonObject) {
+						String alternativeKey = member.getName();
+						JsonValue alternativeValue = member.getValue();
+						alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue));
+					}
+				}
 			}
 
 			return new LocalizedString(key, translation, languageFormTranslationsByPlaceholder, alternatives);
