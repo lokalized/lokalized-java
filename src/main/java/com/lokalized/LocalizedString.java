@@ -103,9 +103,17 @@ public class LocalizedString {
 	@Override
 	@Nonnull
 	public String toString() {
-		return format("%s{key=%s, translation=%s, languageFormTranslationsByPlaceholder=%s, alternatives=%s}",
-				getClass().getSimpleName(), getKey(), getTranslation(), getLanguageFormTranslationsByPlaceholder(),
-				getAlternatives());
+		StringBuilder stringBuilder = new StringBuilder(format("%s{key=%s, translation=%s", getClass().getSimpleName(), getKey(), getTranslation()));
+
+		if (getLanguageFormTranslationsByPlaceholder().size() > 0)
+			stringBuilder.append(format(", languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
+
+		if (getAlternatives().size() > 0)
+			stringBuilder.append(format(", alternatives=%s", getAlternatives()));
+
+		stringBuilder.append("}");
+
+		return stringBuilder.toString();
 	}
 
 	/**
