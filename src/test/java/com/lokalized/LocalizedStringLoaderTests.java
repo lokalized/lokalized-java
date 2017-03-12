@@ -19,6 +19,7 @@ package com.lokalized;
 import org.junit.Assert;
 import org.junit.Test;
 
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.nio.file.Paths;
 import java.util.Locale;
@@ -27,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 /**
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -35,17 +37,16 @@ import static java.lang.String.format;
 public class LocalizedStringLoaderTests {
 	@Test
 	public void testClasspathLoading() {
-		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath("strings");
-		Assert.assertEquals("Unexpected number of strings files", 2, localizedStringsByLocale.size());
-
-		for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
-			Assert.assertTrue(format("The '%s' strings file has no data", entry.getKey().toLanguageTag()),
-					entry.getValue().size() > 0);
+		verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath("strings"));
 	}
 
 	@Test
 	public void testFilesystemLoading() {
-		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings"));
+		verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
+	}
+
+	protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
+		requireNonNull(localizedStringsByLocale);
 		Assert.assertEquals("Unexpected number of strings files", 2, localizedStringsByLocale.size());
 
 		for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
