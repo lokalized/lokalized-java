@@ -30,7 +30,7 @@ import java.util.Locale;
 public class StringsTests {
 	@Test
 	public void placeholderTest() {
-		Strings strings = new DefaultStrings.Builder(Locale.US, () ->
+		Strings strings = new DefaultStrings.Builder("en", () ->
 				LocalizedStringLoader.loadFromClasspath("strings")
 		).build();
 

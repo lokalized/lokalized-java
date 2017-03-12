@@ -48,7 +48,7 @@ public class LocalizedStringLoaderTests {
 	protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
 		requireNonNull(localizedStringsByLocale);
 
-		Assert.assertEquals("Unexpected number of strings files", 2, localizedStringsByLocale.size());
+		Assert.assertEquals("Unexpected number of strings files", 3, localizedStringsByLocale.size());
 
 		for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
 			Assert.assertTrue(format("The '%s' strings file has no data", entry.getKey().toLanguageTag()),

@@ -75,6 +75,8 @@ public class LocalizedString {
 			languageFormTranslationsByPlaceholder = Collections.emptyMap();
 		} else {
 			// Defensive copy to unmodifiable map
+			// TODO: should probably use LinkedHashMap to preserve order in the default case since we are doing that elsewhere.
+			// Not required by the spec but nice to have
 			languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder.entrySet().stream()
 					.collect(Collectors.toMap(
 							entry -> entry.getKey(),
