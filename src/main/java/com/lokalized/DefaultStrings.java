@@ -71,6 +71,8 @@ public class DefaultStrings implements Strings {
 			suppliedLocalizedStringsByLocale = Collections.emptyMap();
 
 		// Defensive copy of iterator to unmodifiable set
+		// TODO: should probably use LinkedHashMap to preserve order in the default case since we are doing that elsewhere.
+		// Not required by the spec but nice to have
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
 						entry -> entry.getKey(),
