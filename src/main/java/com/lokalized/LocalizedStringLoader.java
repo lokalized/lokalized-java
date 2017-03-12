@@ -171,8 +171,12 @@ public final class LocalizedStringLoader {
 	private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@Nonnull File directory) {
 		requireNonNull(directory);
 
+		if (!directory.exists())
+			throw new LocalizedStringLoadingException(format("Location '%s' does not exist",
+					directory));
+
 		if (!directory.isDirectory())
-			throw new LocalizedStringLoadingException(format("Classpath location '%s' exists but is not a directory",
+			throw new LocalizedStringLoadingException(format("Location '%s' exists but is not a directory",
 					directory));
 
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
