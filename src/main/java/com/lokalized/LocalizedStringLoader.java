@@ -274,7 +274,7 @@ public final class LocalizedStringLoader {
 			if (translation == null)
 				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-			return new LocalizedString(key, translation);
+			return new LocalizedString.Builder(key, translation).build();
 		} else if (jsonValue.isObject()) {
 			// More complex case, there can be placeholders and alternatives.
 			//
@@ -283,6 +283,7 @@ public final class LocalizedStringLoader {
 			// {
 			//   "I read {{bookCount}} books" : {
 			//     "translation" : "I read {{bookCount}} {{books}}",
+			//     "commentary" : "Message shown when user achieves her book-reading goal for the month",
 			//     "placeholders" : {
 			//       "books" : {
 			//         "value" : "bookCount",
@@ -303,10 +304,27 @@ public final class LocalizedStringLoader {
 			// }
 
 			JsonObject localizedStringObject = jsonValue.asObject();
-			String translation = localizedStringObject.getString("translation", null);
 
-			if (translation == null)
+			JsonValue translationJsonValue = localizedStringObject.get("translation");
+
+			if (translationJsonValue == null || translationJsonValue.isNull())
 				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
+
+			if (!translationJsonValue.isString())
+				throw new LocalizedStringLoadingException(format("%s: translation must be a string for key '%s'", canonicalPath, key));
+
+			String translation = translationJsonValue.asString();
+
+			String commentary = null;
+
+			JsonValue commentaryJsonValue = localizedStringObject.get("commentary");
+
+			if (commentaryJsonValue != null && !commentaryJsonValue.isNull()) {
+				if (!commentaryJsonValue.isString())
+					throw new LocalizedStringLoadingException(format("%s: commentary must be a string for key '%s'", canonicalPath, key));
+
+				commentary = commentaryJsonValue.asString();
+			}
 
 			Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
 
@@ -339,19 +357,19 @@ public final class LocalizedStringLoader {
 					JsonObject translationsJsonObject = translationsJsonValue.asObject();
 
 					for (Member translationMember : translationsJsonObject) {
-						String translationKey = translationMember.getName();
-						JsonValue translationJsonValue = translationMember.getValue();
-						LanguageForm languageForm = SUPPORTED_LANGUAGE_FORMS_BY_NAME.get(translationKey);
+						String languageFormTranslationKey = translationMember.getName();
+						JsonValue languageFormTranslationJsonValue = translationMember.getValue();
+						LanguageForm languageForm = SUPPORTED_LANGUAGE_FORMS_BY_NAME.get(languageFormTranslationKey);
 
 						if (languageForm == null)
 							throw new LocalizedStringLoadingException(format("%s: unexpected placeholder translation language form encountered. Key was '%s'. " +
-											"You provided '%s', valid values are [%s]", canonicalPath, key, translationKey,
+											"You provided '%s', valid values are [%s]", canonicalPath, key, languageFormTranslationKey,
 									SUPPORTED_LANGUAGE_FORMS_BY_NAME.keySet().stream().collect(Collectors.joining(", "))));
 
-						if (!translationJsonValue.isString())
+						if (!languageFormTranslationJsonValue.isString())
 							throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key was '%s'", canonicalPath, key));
 
-						translationsByLanguageForm.put(languageForm, translationJsonValue.asString());
+						translationsByLanguageForm.put(languageForm, languageFormTranslationJsonValue.asString());
 					}
 
 					languageFormTranslationsByPlaceholder.put(placeholderKey, translationsByLanguageForm);
@@ -385,7 +403,11 @@ public final class LocalizedStringLoader {
 				}
 			}
 
-			return new LocalizedString(key, translation, languageFormTranslationsByPlaceholder, alternatives);
+			return new LocalizedString.Builder(key, translation)
+					.commentary(commentary)
+					.languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
+					.alternatives(alternatives)
+					.build();
 		} else {
 			throw new LocalizedStringLoadingException(format("%s: either a translation string or object value is required for key '%s'",
 					canonicalPath, key));

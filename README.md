@@ -111,8 +111,10 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 ```json
 {
+  "Hello, world!" : "Приветствую, мир",
   "I read {{bookCount}} books" : {
     "translation" : "I прочитал {{bookCount}} {{books}}",
+    "commentary" : "Message shown when user achieves her book-reading goal for the month",
     "placeholders" : {
       "books" : {
         "value" : "bookCount",

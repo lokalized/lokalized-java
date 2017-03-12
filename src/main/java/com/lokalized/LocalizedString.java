@@ -19,12 +19,14 @@ package com.lokalized;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -43,56 +45,47 @@ public class LocalizedString {
 	private final String key;
 	@Nonnull
 	private final String translation;
+	@Nullable
+	private final String commentary;
 	@Nonnull
 	private final Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder;
 	@Nonnull
 	private final List<LocalizedString> alternatives;
 
 	/**
-	 * Constructs a localized string with a key and translation.
-	 *
-	 * @param key         this string's translation key, not null
-	 * @param translation this string's default translation, not null
-	 */
-	public LocalizedString(@Nonnull String key, @Nonnull String translation) {
-		this(key, translation, null, null);
-	}
-
-	/**
 	 * Constructs a localized string with a key, default translation, and additional translation rules.
 	 *
 	 * @param key                                   this string's translation key, not null
 	 * @param translation                           this string's default translation, not null
+	 * @param commentary                            this string's commentary (usage/translation notes), not null
 	 * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
 	 * @param alternatives                          alternative expression-driven translations for this string, may be null
 	 */
-	public LocalizedString(@Nonnull String key, @Nonnull String translation,
-												 @Nullable Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder,
-												 @Nullable Iterable<LocalizedString> alternatives) {
+	protected LocalizedString(@Nonnull String key, @Nonnull String translation, @Nullable String commentary,
+														@Nullable Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder,
+														@Nullable List<LocalizedString> alternatives) {
 		requireNonNull(key);
 		requireNonNull(translation);
 
 		this.key = key;
 		this.translation = translation;
+		this.commentary = commentary;
 
-		if (languageFormTranslationsByPlaceholder == null)
+		if (languageFormTranslationsByPlaceholder == null) {
 			languageFormTranslationsByPlaceholder = Collections.emptyMap();
-
-		// Defensive copy to unmodifiable map
-		languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder.entrySet().stream()
-				.collect(Collectors.toMap(
-						entry -> entry.getKey(),
-						entry -> Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue()))
-				));
+		} else {
+			// Defensive copy to unmodifiable map
+			languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder.entrySet().stream()
+					.collect(Collectors.toMap(
+							entry -> entry.getKey(),
+							entry -> Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue()))
+					));
+		}
 
 		this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(languageFormTranslationsByPlaceholder);
 
-		List<LocalizedString> alternativesAsList = new ArrayList<>();
-
-		if (alternatives != null)
-			alternatives.forEach(alternativesAsList::add);
-
-		this.alternatives = Collections.unmodifiableList(alternativesAsList);
+		// Defensive copy to unmodifiable list
+		this.alternatives = alternatives == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(alternatives));
 	}
 
 	/**
@@ -104,6 +97,9 @@ public class LocalizedString {
 	@Nonnull
 	public String toString() {
 		StringBuilder stringBuilder = new StringBuilder(format("%s{key=%s, translation=%s", getClass().getSimpleName(), getKey(), getTranslation()));
+
+		if (getCommentary().isPresent())
+			stringBuilder.append(format(", commentary=%s", getCommentary().get()));
 
 		if (getLanguageFormTranslationsByPlaceholder().size() > 0)
 			stringBuilder.append(format(", languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
@@ -134,6 +130,7 @@ public class LocalizedString {
 
 		return Objects.equals(getKey(), localizedString.getKey())
 				&& Objects.equals(getTranslation(), localizedString.getTranslation())
+				&& Objects.equals(getCommentary(), localizedString.getCommentary())
 				&& Objects.equals(getLanguageFormTranslationsByPlaceholder(), localizedString.getLanguageFormTranslationsByPlaceholder())
 				&& Objects.equals(getAlternatives(), localizedString.getAlternatives());
 	}
@@ -145,7 +142,7 @@ public class LocalizedString {
 	 */
 	@Override
 	public int hashCode() {
-		return Objects.hash(getKey(), getTranslation(), getLanguageFormTranslationsByPlaceholder(), getAlternatives());
+		return Objects.hash(getKey(), getTranslation(), getCommentary(), getLanguageFormTranslationsByPlaceholder(), getAlternatives());
 	}
 
 	/**
@@ -166,6 +163,16 @@ public class LocalizedString {
 	@Nonnull
 	public String getTranslation() {
 		return translation;
+	}
+
+	/**
+	 * Gets this string's commentary (usage/translation notes).
+	 *
+	 * @return this string's commentary, not null
+	 */
+	@Nonnull
+	public Optional<String> getCommentary() {
+		return Optional.ofNullable(commentary);
 	}
 
 	/**
@@ -192,5 +199,88 @@ public class LocalizedString {
 	@Nonnull
 	public List<LocalizedString> getAlternatives() {
 		return alternatives;
+	}
+
+
+	/**
+	 * Builder used to construct instances of {@code LocalizedString}.
+	 * <p>
+	 * This class is intended for use by a single thread.
+	 *
+	 * @author <a href="https://revetkn.com">Mark Allen</a>
+	 */
+	@NotThreadSafe
+	public static class Builder {
+		@Nonnull
+		private final String key;
+		@Nonnull
+		private final String translation;
+		@Nullable
+		private String commentary;
+		@Nullable
+		private Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder;
+		@Nullable
+		private List<LocalizedString> alternatives;
+
+		/**
+		 * Constructs a localized string builder with a key and translation.
+		 *
+		 * @param key         this string's translation key, not null
+		 * @param translation this string's default translation, not null
+		 */
+		public Builder(@Nonnull String key, @Nonnull String translation) {
+			requireNonNull(key);
+			requireNonNull(translation);
+
+			this.key = key;
+			this.translation = translation;
+		}
+
+		/**
+		 * Applies commentary (usage/translation notes) to this builder.
+		 *
+		 * @param commentary commentary (usage/translation notes), may be null
+		 * @return this builder instance, for chaining. not null
+		 */
+		@Nonnull
+		public Builder commentary(@Nullable String commentary) {
+			this.commentary = commentary;
+			return this;
+		}
+
+		/**
+		 * Applies per-language-form translations to this builder.
+		 *
+		 * @param languageFormTranslationsByPlaceholder per-language-form translations, may be null
+		 * @return this builder instance, for chaining. not null
+		 */
+		@Nonnull
+		public Builder languageFormTranslationsByPlaceholder(
+				@Nullable Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder) {
+			this.languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder;
+			return this;
+		}
+
+		/**
+		 * Applies alternative expression-driven translations to this builder.
+		 *
+		 * @param alternatives alternative expression-driven translations, may be null
+		 * @return this builder instance, for chaining. not null
+		 */
+		@Nonnull
+		public Builder alternatives(@Nullable List<LocalizedString> alternatives) {
+			this.alternatives = alternatives;
+			return this;
+		}
+
+		/**
+		 * Constructs an instance of {@code LocalizedString}.
+		 *
+		 * @return an instance of {@code LocalizedString}, not null
+		 */
+		@Nonnull
+		public LocalizedString build() {
+			return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives);
+		}
 	}
 }
