@@ -120,9 +120,10 @@ Notice that there is no logic in code for handling the different rules, regardle
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "книгу",
-          "FEW" : "книги",
-          "OTHER" : "книг"
+          "ONE" : "книга",
+          "FEW" : "книг",
+          "MANY" : "книг",
+          "OTHER" : "книги"
         }
       }
     },
@@ -150,10 +151,10 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 ##### Russian Plural Rules
 
-* `ONE`: Cardinality of 1, 21, 31, 41, 51, 61, ... (e.g. `1 книгу` or `171 книгу`)
-* `FEW`: Cardinality of 2-4, 22-24, 32-34, ... (e.g. `2 книги` or `53 книги`)
+* `ONE`: Cardinality of 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
+* `FEW`: Cardinality of 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
 * `MANY`: Cardinality of 0, 5-20, 25-30, 35-40, ... (e.g. `6 книг` or `29 книг`)
-* `OTHER`: Everything else (e.g. `1.5 книг`)
+* `OTHER`: Everything else (e.g. `1,5 книги`)
 
 A listing of rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
 
@@ -170,16 +171,18 @@ This English statement has 6 variants:
 * `She read 1 book`
 * `She read 2 books`
 
-In Russian, we have 8, and notice the `а` suffixes for the feminine gender:
+In Russian, we have 10, and notice the `а` suffixes for the feminine gender:
 
 * `Она не читала книг`
 * `Она прочитала 1 книгу`
 * `Она прочитала 2 книги`
 * `Она прочитала 5 книг`
+* `Она прочитала 1.5 книги`
 * `Он не читал книг`
 * `Он прочитал 1 книгу`
 * `Он прочитал 2 книги`
 * `Он прочитал 5 книг`
+* `Он прочитал 1.5 книги`
 
 It is necessary to do more than replace "he/she", we must rewrite other words in the sentence as well.
 
@@ -208,7 +211,7 @@ It is necessary to do more than replace "he/she", we must rewrite other words in
           "ONE" : "книгу",
           "FEW" : "книги",
           "MANY" : "книг",
-          "OTHER" : "книг"
+          "OTHER" : "книги"
         }
       }
     },

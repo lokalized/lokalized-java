@@ -7,9 +7,10 @@
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "книгу",
-          "FEW" : "книги",
-          "OTHER" : "книг"
+          "ONE" : "книга",
+          "FEW" : "книг",
+          "MANY" : "книг",
+          "OTHER" : "книги"
         }
       }
     },
