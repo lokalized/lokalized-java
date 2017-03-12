@@ -158,6 +158,8 @@ public final class LocalizedStringLoader {
 		return loadFromDirectory(directory.toFile());
 	}
 
+	// TODO: should we expose methods for loading a single file?
+
 	/**
 	 * Loads all localized string files present in the specified directory.
 	 *
