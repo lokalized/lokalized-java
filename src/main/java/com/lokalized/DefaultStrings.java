@@ -54,9 +54,10 @@ public class DefaultStrings implements Strings {
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
 	 *
-	 * @param defaultLocale  default fallback locale, not null
-	 * @param localeSupplier standard locale supplier, may be null
-	 * @param failureMode    strategy for dealing with lookup failures, may be null
+	 * @param defaultLocale           default fallback locale, not null
+	 * @param localizedStringSupplier supplier of localized strings, not null
+	 * @param localeSupplier          standard locale supplier, may be null
+	 * @param failureMode             strategy for dealing with lookup failures, may be null
 	 */
 	protected DefaultStrings(@Nonnull Locale defaultLocale,
 													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
@@ -190,7 +191,7 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Builder used to construct instances of {@code DefaultStrings}.
+	 * Builder used to construct instances of {@link DefaultStrings}.
 	 * <p>
 	 * This class is intended for use by a single thread.
 	 *
@@ -207,6 +208,12 @@ public class DefaultStrings implements Strings {
 		@Nullable
 		private FailureMode failureMode;
 
+		/**
+		 * Constructs a strings builder with a default locale and localized string supplier.
+		 *
+		 * @param defaultLocale           default fallback locale, not null
+		 * @param localizedStringSupplier supplier of localized strings, not null
+		 */
 		public Builder(@Nonnull Locale defaultLocale, @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
 			requireNonNull(defaultLocale);
 			requireNonNull(localizedStringSupplier);
@@ -215,18 +222,36 @@ public class DefaultStrings implements Strings {
 			this.localizedStringSupplier = localizedStringSupplier;
 		}
 
+		/**
+		 * Applies a locale supplier to this builder.
+		 *
+		 * @param localeSupplier standard locale supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
 		@Nonnull
 		public Builder localeSupplier(@Nullable Supplier<Locale> localeSupplier) {
 			this.localeSupplier = localeSupplier;
 			return this;
 		}
 
+		/**
+		 * Applies a failure mode to this builder.
+		 *
+		 * @param failureMode strategy for dealing with lookup failures, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
 		@Nonnull
 		public Builder failureMode(@Nullable FailureMode failureMode) {
 			this.failureMode = failureMode;
 			return this;
 		}
 
+		/**
+		 * Constructs an instance of {@link DefaultStrings}.
+		 *
+		 * @return an instance of {@link DefaultStrings}, not null
+		 */
+		@Nonnull
 		public DefaultStrings build() {
 			return new DefaultStrings(defaultLocale, localizedStringSupplier, localeSupplier, failureMode);
 		}

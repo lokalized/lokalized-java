@@ -203,7 +203,7 @@ public class LocalizedString {
 
 
 	/**
-	 * Builder used to construct instances of {@code LocalizedString}.
+	 * Builder used to construct instances of {@link LocalizedString}.
 	 * <p>
 	 * This class is intended for use by a single thread.
 	 *
@@ -240,7 +240,7 @@ public class LocalizedString {
 		 * Applies commentary (usage/translation notes) to this builder.
 		 *
 		 * @param commentary commentary (usage/translation notes), may be null
-		 * @return this builder instance, for chaining. not null
+		 * @return this builder instance, useful for chaining. not null
 		 */
 		@Nonnull
 		public Builder commentary(@Nullable String commentary) {
@@ -252,7 +252,7 @@ public class LocalizedString {
 		 * Applies per-language-form translations to this builder.
 		 *
 		 * @param languageFormTranslationsByPlaceholder per-language-form translations, may be null
-		 * @return this builder instance, for chaining. not null
+		 * @return this builder instance, useful for chaining. not null
 		 */
 		@Nonnull
 		public Builder languageFormTranslationsByPlaceholder(
@@ -265,7 +265,7 @@ public class LocalizedString {
 		 * Applies alternative expression-driven translations to this builder.
 		 *
 		 * @param alternatives alternative expression-driven translations, may be null
-		 * @return this builder instance, for chaining. not null
+		 * @return this builder instance, useful for chaining. not null
 		 */
 		@Nonnull
 		public Builder alternatives(@Nullable List<LocalizedString> alternatives) {
@@ -274,9 +274,9 @@ public class LocalizedString {
 		}
 
 		/**
-		 * Constructs an instance of {@code LocalizedString}.
+		 * Constructs an instance of {@link LocalizedString}.
 		 *
-		 * @return an instance of {@code LocalizedString}, not null
+		 * @return an instance of {@link LocalizedString}, not null
 		 */
 		@Nonnull
 		public LocalizedString build() {
