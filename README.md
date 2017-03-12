@@ -87,6 +87,7 @@ Notice that there is no logic in code for handling the different rules, regardle
 {
   "I read {{bookCount}} books" : {
     "translation" : "I read {{bookCount}} {{books}}",
+    "commentary" : "Message shown when user achieves her book-reading goal for the month",
     "placeholders" : {
       "books" : {
         "value" : "bookCount",
