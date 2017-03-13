@@ -69,10 +69,10 @@ public interface Strings {
 	 * If no localized string is available, the key is returned.
 	 *
 	 * @param key          the localization key, not null
-	 * @param locale       the preferred locale for the string, not null
 	 * @param placeholders the placeholders to insert into the string, not null
+	 * @param locale       the preferred locale for the string, not null
 	 * @return a localized string for the key, not null
 	 */
 	@Nonnull
-	String get(@Nonnull String key, @Nonnull Locale locale, @Nonnull Map<String, Object> placeholders);
+	String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders, @Nonnull Locale locale);
 }

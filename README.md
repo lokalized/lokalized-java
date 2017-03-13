@@ -72,7 +72,7 @@ Locale russianLocale = Locale.forLanguageTag("ru");
 
 context.put("bookCount", 0);
 
-translated = strings.get("I read {{bookCount}} books", russianLocale, context);
+translated = strings.get("I read {{bookCount}} books", context, russianLocale);
 
 // Prints "Я не читал ни одной книги"
 // (in English: "I haven't read any books")

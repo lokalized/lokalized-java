@@ -34,10 +34,10 @@ public class StringsTests {
 				LocalizedStringLoader.loadFromClasspath("strings")
 		).build();
 
-		String translation = strings.get("I read {{bookCount}} books", Locale.forLanguageTag("ru"),
+		String translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
-				}});
+				}}, Locale.forLanguageTag("ru"));
 
 		Assert.assertEquals("I прочитал 3 книги", translation);
 	}

@@ -25,7 +25,10 @@ import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -51,9 +54,22 @@ public class DefaultStrings implements Strings {
 	private final Supplier<Locale> localeSupplier;
 	@Nonnull
 	private final FailureMode failureMode;
-
 	@Nonnull
 	private final Locale fallbackLocale;
+	@Nonnull
+	private final Logger logger;
+
+	/**
+	 * Cache of most appropriate strings for the given locale (populated on-demand per request at runtime)
+	 */
+	@Nonnull
+	private final Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByFixedLocale;
+
+	/**
+	 * Cache of most appropriate strings for the given locale (populated on-demand per request at runtime)
+	 */
+	@Nonnull
+	private final ConcurrentHashMap<Locale, Map<String, LocalizedString>> localizedStringsByKeyByDynamicLocale;
 
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
@@ -73,13 +89,15 @@ public class DefaultStrings implements Strings {
 		requireNonNull(fallbackLanguageCode);
 		requireNonNull(localizedStringSupplier);
 
+		this.logger = Logger.getLogger(getClass().getName());
+
 		Map<Locale, ? extends Iterable<LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
 
 		if (suppliedLocalizedStringsByLocale == null)
 			suppliedLocalizedStringsByLocale = Collections.emptyMap();
 
 		// Defensive copy of iterator to unmodifiable set
-		// TODO: should probably use LinkedHashMap to preserve order in the default case since we are doing that elsewhere.
+		// TODO: should probably use LinkedHashSet to preserve order in the default case since we are doing that elsewhere.
 		// Not required by the spec but nice to have
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
@@ -97,6 +115,19 @@ public class DefaultStrings implements Strings {
 		this.localeSupplier = localeSupplier == null ? () -> fallbackLocale : localeSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 
+		this.localizedStringsByKeyByFixedLocale = Collections.unmodifiableMap(localizedStringsByLocale.entrySet().stream()
+				.collect(Collectors.toMap(
+						entry1 -> entry1.getKey(),
+						entry1 ->
+								Collections.unmodifiableMap(entry1.getValue().stream()
+										.collect(Collectors.toMap(
+												entry2 -> entry2.getKey(),
+												entry2 -> entry2
+												)
+										)))));
+
+		this.localizedStringsByKeyByDynamicLocale = new ConcurrentHashMap<>();
+
 		if (!localizedStringsByLocale.containsKey(getFallbackLocale()))
 			throw new IllegalArgumentException(format("Specified fallback language code is '%s' but no matching " +
 							"localized strings locale was found. Known locales: [%s]", fallbackLanguageCode,
@@ -110,16 +141,7 @@ public class DefaultStrings implements Strings {
 	@Override
 	public String get(@Nonnull String key) {
 		requireNonNull(key);
-		return get(key, getImplicitLocale(), Collections.emptyMap());
-	}
-
-	@Nonnull
-	@Override
-	public String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders) {
-		requireNonNull(key);
-		requireNonNull(placeholders);
-
-		return get(key, getImplicitLocale(), Collections.emptyMap());
+		return get(key, Collections.emptyMap(), getImplicitLocale());
 	}
 
 	@Nonnull
@@ -128,15 +150,27 @@ public class DefaultStrings implements Strings {
 		requireNonNull(key);
 		requireNonNull(locale);
 
-		return get(key, locale, Collections.emptyMap());
+		return get(key, Collections.emptyMap(), locale);
 	}
 
 	@Nonnull
 	@Override
-	public String get(@Nonnull String key, @Nonnull Locale locale, @Nonnull Map<String, Object> placeholders) {
+	public String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders) {
 		requireNonNull(key);
-		requireNonNull(locale);
 		requireNonNull(placeholders);
+
+		return get(key, placeholders, getImplicitLocale());
+	}
+
+	@Nonnull
+	@Override
+	public String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders, @Nonnull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(placeholders);
+		requireNonNull(locale);
+
+		@SuppressWarnings("unused")
+		Map<String, LocalizedString> localizedStringsByKey = getLocalizedStringsByKeyForLocale(locale);
 
 		throw new UnsupportedOperationException();
 	}
@@ -200,6 +234,136 @@ public class DefaultStrings implements Strings {
 	protected Locale getImplicitLocale() {
 		Locale locale = getLocaleSupplier().get();
 		return locale == null ? getFallbackLocale() : locale;
+	}
+
+	@Nonnull
+	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByFixedLocale() {
+		return localizedStringsByKeyByFixedLocale;
+	}
+
+	@Nonnull
+	protected ConcurrentHashMap<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByDynamicLocale() {
+		return localizedStringsByKeyByDynamicLocale;
+	}
+
+	@Nonnull
+	protected Map<String, LocalizedString> getLocalizedStringsByKeyForLocale(@Nonnull Locale locale) {
+		requireNonNull(locale);
+
+		return getLocalizedStringsByKeyByDynamicLocale().computeIfAbsent(locale, (ignored) -> {
+			String language = locale.getLanguage();
+			String script = locale.getScript();
+			String country = locale.getCountry();
+			String variant = locale.getVariant();
+			Set<Character> extensionKeys = locale.hasExtensions() ? locale.getExtensionKeys() : Collections.emptySet();
+			Set<LocalizedString> localizedStrings = null;
+			Locale matchingLocale = null;
+
+			if (logger.isLoggable(Level.FINER))
+				logger.finer(format("Finding strings file that best matches locale %s...", locale.toLanguageTag()));
+
+			// Try most specific (matches all 5 criteria) and move back to least specific
+			Locale.Builder extensionsLocaleBuilder =
+					new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).setVariant(variant);
+
+			for (Character extensionKey : extensionKeys)
+				extensionsLocaleBuilder.setExtension(extensionKey, locale.getExtension(extensionKey));
+
+			Locale extensionsLocale = extensionsLocaleBuilder.build();
+			localizedStrings = getLocalizedStringsByLocale().get(extensionsLocale);
+
+			if (localizedStrings != null) {
+				matchingLocale = extensionsLocale;
+
+				if (logger.isLoggable(Level.FINER))
+					logger.finer(format("Best match strings file match for locale %s is %s", locale.toLanguageTag(),
+							extensionsLocale.toLanguageTag()));
+			}
+
+			// Variant (4)
+			if (matchingLocale == null) {
+				Locale variantLocale =
+						new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).setVariant(variant)
+								.build();
+				localizedStrings = getLocalizedStringsByLocale().get(variantLocale);
+
+				if (localizedStrings != null) {
+					matchingLocale = variantLocale;
+
+					if (logger.isLoggable(Level.FINER))
+						logger.finer(format("Best match strings file match for locale %s is %s", locale.toLanguageTag(),
+								variantLocale.toLanguageTag()));
+				}
+			}
+
+			// Region (3)
+			if (matchingLocale == null) {
+				Locale regionLocale = new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).build();
+				localizedStrings = getLocalizedStringsByLocale().get(regionLocale);
+
+				if (localizedStrings != null) {
+					matchingLocale = regionLocale;
+
+					if (logger.isLoggable(Level.FINER))
+						logger.finer(format("Best match strings file match for locale %s is %s", locale.toLanguageTag(),
+								regionLocale.toLanguageTag()));
+				}
+			}
+
+			// Script (2)
+			if (matchingLocale == null) {
+				Locale scriptLocale = new Locale.Builder().setLanguage(language).setScript(script).build();
+				localizedStrings = getLocalizedStringsByLocale().get(scriptLocale);
+
+				if (localizedStrings != null) {
+					matchingLocale = scriptLocale;
+
+					if (logger.isLoggable(Level.FINER))
+						logger.finer(format("Best match strings file match for locale %s is %s", locale.toLanguageTag(),
+								scriptLocale.toLanguageTag()));
+				}
+			}
+
+			// Language (1)
+			if (matchingLocale == null) {
+				Locale languageLocale = new Locale.Builder().setLanguage(language).build();
+				localizedStrings = getLocalizedStringsByLocale().get(languageLocale);
+
+				if (localizedStrings != null) {
+					matchingLocale = languageLocale;
+
+					if (logger.isLoggable(Level.FINER))
+						logger.finer(format("Best match strings file match for locale %s is %s", locale.toLanguageTag(),
+								languageLocale.toLanguageTag()));
+				}
+			}
+
+			// No matches? Try default locale
+			if (matchingLocale == null) {
+				localizedStrings = getLocalizedStringsByLocale().get(getFallbackLocale());
+
+				if (localizedStrings != null) {
+					matchingLocale = getFallbackLocale();
+
+					if (logger.isLoggable(Level.FINER))
+						logger.finer(format("Best match strings file match for locale %s is fallback locale %s",
+								locale.toLanguageTag(), getFallbackLocale().toLanguageTag()));
+				}
+			}
+
+			// Should never fail this check, but just in case...
+			if (matchingLocale == null)
+				throw new IllegalStateException(format("Not sure what to do with locale %s", locale.toLanguageTag()));
+
+			// Just point to our cached-off "fixed" mapping
+			Map<String, LocalizedString> localizedStringsByKeyByLocale = getLocalizedStringsByKeyByFixedLocale().get(matchingLocale);
+
+			// Should never fail this check, but just in case...
+			if (localizedStringsByKeyByLocale == null)
+				throw new IllegalStateException(format("Not sure what to do with locale %s", locale.toLanguageTag()));
+
+			return localizedStringsByKeyByLocale;
+		});
 	}
 
 	/**
