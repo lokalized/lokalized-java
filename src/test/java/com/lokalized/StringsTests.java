@@ -17,17 +17,24 @@
 package com.lokalized;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.logging.Level;
 
 /**
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
 public class StringsTests {
+	@BeforeClass
+	public static void configureLogging() {
+		LoggingUtils.setRootLoggerLevel(Level.FINER);
+	}
+
 	@Test
 	public void placeholderTest() {
 		Strings strings = new DefaultStrings.Builder("en", () ->

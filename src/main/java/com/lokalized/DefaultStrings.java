@@ -89,7 +89,7 @@ public class DefaultStrings implements Strings {
 		requireNonNull(fallbackLanguageCode);
 		requireNonNull(localizedStringSupplier);
 
-		this.logger = Logger.getLogger(getClass().getName());
+		this.logger = Logger.getLogger(LoggerType.STRINGS.getLoggerName());
 
 		Map<Locale, ? extends Iterable<LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
 

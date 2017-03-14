@@ -59,9 +59,11 @@ public final class LocalizedStringLoader {
 	@Nonnull
 	private static final Map<String, LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
 	@Nonnull
-	private static final Logger LOGGER = Logger.getLogger(LocalizedStringLoader.class.getName());
+	private static final Logger LOGGER;
 
 	static {
+		LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
+
 		SUPPORTED_LANGUAGE_TAGS = Collections.unmodifiableSet(Arrays.stream(Locale.getAvailableLocales())
 				.map(locale -> locale.toLanguageTag())
 				.collect(Collectors.toSet()));

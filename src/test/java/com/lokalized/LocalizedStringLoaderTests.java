@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.Nonnull;
@@ -26,6 +27,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.logging.Level;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -35,6 +37,11 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 public class LocalizedStringLoaderTests {
+	@BeforeClass
+	public static void configureLogging() {
+		LoggingUtils.setRootLoggerLevel(Level.FINER);
+	}
+
 	@Test
 	public void testClasspathLoading() {
 		verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath("strings"));
