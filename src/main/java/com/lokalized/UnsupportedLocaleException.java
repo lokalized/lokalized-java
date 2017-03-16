@@ -21,6 +21,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Locale;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 /**
  * Exception thrown when an operation was performed on a locale that is not recognized by the system.
@@ -31,12 +32,26 @@ import static java.lang.String.format;
  */
 @NotThreadSafe
 public class UnsupportedLocaleException extends RuntimeException {
+	@Nonnull
+	private final Locale locale;
+
 	/**
 	 * Constructs a new exception with the unsupported locale.
 	 *
 	 * @param locale the unsupported locale which triggered this exception, not null
 	 */
 	public UnsupportedLocaleException(@Nonnull Locale locale) {
-		super(format("Unsupported locale '%s' was provided", locale.toLanguageTag()));
+		super(format("Unsupported locale '%s' was provided", requireNonNull(locale).toLanguageTag()));
+		this.locale = locale;
+	}
+
+	/**
+	 * The unsupported locale that triggered this exception.
+	 *
+	 * @return the unsupported locale, not null
+	 */
+	@Nonnull
+	public Locale getLocale() {
+		return locale;
 	}
 }
