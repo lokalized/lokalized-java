@@ -130,7 +130,7 @@ public enum Plural implements LanguageForm {
 		 * <li>Yakut</li>
 		 * </ul>
 		 */
-		ASIAN,
+		NO_PLURALS,
 		/**
 		 * Languages include:
 		 * <p>
@@ -211,7 +211,7 @@ public enum Plural implements LanguageForm {
 		 * <li>Yoruba</li>
 		 * </ul>
 		 */
-		GERMANIC,
+		PLURAL_IF_NOT_EQUAL_1,
 		/**
 		 * Languages include:
 		 * <p>
@@ -236,7 +236,7 @@ public enum Plural implements LanguageForm {
 		 * <li>Walloon</li>
 		 * </ul>
 		 */
-		ROMANIC,
+		PLURAL_IF_GREATER_THAN_1,
 		/**
 		 * Languages include:
 		 * <p>
@@ -425,148 +425,148 @@ public enum Plural implements LanguageForm {
 			}});
 
 			PLURAL_FAMILIES_BY_LANGUAGE_TAG = Collections.unmodifiableMap(new HashMap<String, PluralFamily>() {{
-				put("ach", PluralFamily.ROMANIC); // Acholi
-				put("af", PluralFamily.GERMANIC); // Afrikaans
-				put("ak", PluralFamily.ROMANIC); // Akan
-				put("am", PluralFamily.ROMANIC); // Amharic
-				put("an", PluralFamily.GERMANIC); // Aragonese
-				put("anp", PluralFamily.GERMANIC); // Angika
+				put("ach", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Acholi
+				put("af", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Afrikaans
+				put("ak", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Akan
+				put("am", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Amharic
+				put("an", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Aragonese
+				put("anp", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Angika
 				put("ar", PluralFamily.ARABIC); // Arabic
-				put("arn", PluralFamily.ROMANIC); // Mapudungun
-				put("as", PluralFamily.GERMANIC); // Assamese
-				put("ast", PluralFamily.GERMANIC); // Asturian
-				put("ay", PluralFamily.ASIAN); // Aymará
-				put("az", PluralFamily.GERMANIC); // Azerbaijani
+				put("arn", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Mapudungun
+				put("as", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Assamese
+				put("ast", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Asturian
+				put("ay", PluralFamily.NO_PLURALS); // Aymará
+				put("az", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Azerbaijani
 				put("be", PluralFamily.SLAVIC_1); // Belarusian
-				put("bg", PluralFamily.GERMANIC); // Bulgarian
-				put("bn", PluralFamily.GERMANIC); // Bengali
+				put("bg", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Bulgarian
+				put("bn", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Bengali
 				put("br", PluralFamily.BRETON); // Breton
-				put("brx", PluralFamily.GERMANIC); // Bodo
+				put("brx", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Bodo
 				put("bs", PluralFamily.SLAVIC_1); // Bosnian
-				put("ca", PluralFamily.GERMANIC); // Catalan
-				put("cgg", PluralFamily.ASIAN); // Chiga
+				put("ca", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Catalan
+				put("cgg", PluralFamily.NO_PLURALS); // Chiga
 				put("cs", PluralFamily.SLAVIC_2); // Czech
 				put("csb", PluralFamily.KASHUBIAN); // Kashubian
 				put("cy", PluralFamily.WELSH); // Welsh
-				put("da", PluralFamily.GERMANIC); // Danish
-				put("de", PluralFamily.GERMANIC); // German
-				put("doi", PluralFamily.GERMANIC); // Dogri
-				put("dz", PluralFamily.ASIAN); // Dzongkha
-				put("el", PluralFamily.GERMANIC); // Greek
-				put("en", PluralFamily.GERMANIC); // English
-				put("eo", PluralFamily.GERMANIC); // Esperanto
-				put("es", PluralFamily.GERMANIC); // Spanish
-				put("es-AR", PluralFamily.GERMANIC); // Argentinean Spanish
-				put("et", PluralFamily.GERMANIC); // Estonian
-				put("eu", PluralFamily.GERMANIC); // Basque
-				put("fa", PluralFamily.ASIAN); // Persian
-				put("ff", PluralFamily.GERMANIC); // Fulah
-				put("fi", PluralFamily.GERMANIC); // Finnish
-				put("fil", PluralFamily.ROMANIC); // Filipino
-				put("fo", PluralFamily.GERMANIC); // Faroese
-				put("fr", PluralFamily.ROMANIC); // French
-				put("fur", PluralFamily.GERMANIC); // Friulian
-				put("fy", PluralFamily.GERMANIC); // Frisian
+				put("da", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Danish
+				put("de", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // German
+				put("doi", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Dogri
+				put("dz", PluralFamily.NO_PLURALS); // Dzongkha
+				put("el", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Greek
+				put("en", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // English
+				put("eo", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Esperanto
+				put("es", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Spanish
+				put("es-AR", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Argentinean Spanish
+				put("et", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Estonian
+				put("eu", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Basque
+				put("fa", PluralFamily.NO_PLURALS); // Persian
+				put("ff", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Fulah
+				put("fi", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Finnish
+				put("fil", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Filipino
+				put("fo", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Faroese
+				put("fr", PluralFamily.PLURAL_IF_GREATER_THAN_1); // French
+				put("fur", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Friulian
+				put("fy", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Frisian
 				put("ga", PluralFamily.IRISH_GAELIC); // Irish Gaelic
 				put("gd", PluralFamily.SCOTTISH_GAELIC); // Scottish Gaelic
-				put("gl", PluralFamily.GERMANIC); // Galician
-				put("gu", PluralFamily.GERMANIC); // Gujarati
-				put("gun", PluralFamily.ROMANIC); // Gun
-				put("ha", PluralFamily.GERMANIC); // Hausa
-				put("he", PluralFamily.GERMANIC); // Hebrew
-				put("hi", PluralFamily.GERMANIC); // Hindi
-				put("hne", PluralFamily.GERMANIC); // Chhattisgarhi
+				put("gl", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Galician
+				put("gu", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Gujarati
+				put("gun", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Gun
+				put("ha", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Hausa
+				put("he", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Hebrew
+				put("hi", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Hindi
+				put("hne", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Chhattisgarhi
 				put("hr", PluralFamily.SLAVIC_1); // Croatian
-				put("hu", PluralFamily.GERMANIC); // Hungarian
-				put("hy", PluralFamily.GERMANIC); // Armenian
-				put("ia", PluralFamily.GERMANIC); // Interlingua
-				put("id", PluralFamily.ASIAN); // Indonesian
+				put("hu", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Hungarian
+				put("hy", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Armenian
+				put("ia", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Interlingua
+				put("id", PluralFamily.NO_PLURALS); // Indonesian
 				put("is", PluralFamily.ICELANDIC); // Icelandic
-				put("it", PluralFamily.GERMANIC); // Italian
-				put("ja", PluralFamily.ASIAN); // Japanese
-				put("jbo", PluralFamily.ASIAN); // Lojban
+				put("it", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Italian
+				put("ja", PluralFamily.NO_PLURALS); // Japanese
+				put("jbo", PluralFamily.NO_PLURALS); // Lojban
 				put("jv", PluralFamily.JAVANESE); // Javanese
-				put("ka", PluralFamily.ASIAN); // Georgian
-				put("kk", PluralFamily.ASIAN); // Kazakh
-				put("kl", PluralFamily.GERMANIC); // Greenlandic
-				put("km", PluralFamily.ASIAN); // Khmer
-				put("kn", PluralFamily.GERMANIC); // Kannada
-				put("ko", PluralFamily.ASIAN); // Korean
-				put("ku", PluralFamily.GERMANIC); // Kurdish
+				put("ka", PluralFamily.NO_PLURALS); // Georgian
+				put("kk", PluralFamily.NO_PLURALS); // Kazakh
+				put("kl", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Greenlandic
+				put("km", PluralFamily.NO_PLURALS); // Khmer
+				put("kn", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Kannada
+				put("ko", PluralFamily.NO_PLURALS); // Korean
+				put("ku", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Kurdish
 				put("kw", PluralFamily.CORNISH); // Cornish
-				put("ky", PluralFamily.ASIAN); // Kyrgyz
-				put("lb", PluralFamily.GERMANIC); // Letzeburgesch
-				put("ln", PluralFamily.ROMANIC); // Lingala
-				put("lo", PluralFamily.ASIAN); // Lao
+				put("ky", PluralFamily.NO_PLURALS); // Kyrgyz
+				put("lb", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Letzeburgesch
+				put("ln", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Lingala
+				put("lo", PluralFamily.NO_PLURALS); // Lao
 				put("lt", PluralFamily.LITHUANIAN); // Lithuanian
 				put("lv", PluralFamily.LATVIAN); // Latvian
-				put("mai", PluralFamily.GERMANIC); // Maithili
+				put("mai", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Maithili
 				put("me", PluralFamily.MONTENEGRO); // Montenegro
-				put("mfe", PluralFamily.ROMANIC); // Mauritian Creole
-				put("mg", PluralFamily.ROMANIC); // Malagasy
-				put("mi", PluralFamily.ROMANIC); // Maori
+				put("mfe", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Mauritian Creole
+				put("mg", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Malagasy
+				put("mi", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Maori
 				put("mk", PluralFamily.MACEDONIAN); // Macedonian
-				put("ml", PluralFamily.GERMANIC); // Malayalam
-				put("mn", PluralFamily.GERMANIC); // Mongolian
-				put("mni", PluralFamily.GERMANIC); // Manipuri
+				put("ml", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Malayalam
+				put("mn", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Mongolian
+				put("mni", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Manipuri
 				put("mnk", PluralFamily.MANDINKA); // Mandinka
-				put("mr", PluralFamily.GERMANIC); // Marathi
-				put("ms", PluralFamily.ASIAN); // Malay
+				put("mr", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Marathi
+				put("ms", PluralFamily.NO_PLURALS); // Malay
 				put("mt", PluralFamily.MALTESE); // Maltese
-				put("my", PluralFamily.ASIAN); // Burmese
-				put("nah", PluralFamily.GERMANIC); // Nahuatl
-				put("nap", PluralFamily.GERMANIC); // Neapolitan
-				put("nb", PluralFamily.GERMANIC); // Norwegian Bokmål
-				put("ne", PluralFamily.GERMANIC); // Nepali
-				put("nl", PluralFamily.GERMANIC); // Dutch
-				put("nn", PluralFamily.GERMANIC); // Norwegian Nyorsk
-				put("nso", PluralFamily.GERMANIC); // Northern Sotho
-				put("oc", PluralFamily.ROMANIC); // Occitan
-				put("or", PluralFamily.GERMANIC); // Oriya
-				put("pa", PluralFamily.GERMANIC); // Punjabi
-				put("pap", PluralFamily.GERMANIC); // Papiamento
+				put("my", PluralFamily.NO_PLURALS); // Burmese
+				put("nah", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Nahuatl
+				put("nap", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Neapolitan
+				put("nb", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Norwegian Bokmål
+				put("ne", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Nepali
+				put("nl", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Dutch
+				put("nn", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Norwegian Nyorsk
+				put("nso", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Northern Sotho
+				put("oc", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Occitan
+				put("or", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Oriya
+				put("pa", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Punjabi
+				put("pap", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Papiamento
 				put("pl", PluralFamily.POLISH); // Polish
-				put("pms", PluralFamily.GERMANIC); // Piemontese
-				put("ps", PluralFamily.GERMANIC); // Pashto
-				put("pt", PluralFamily.GERMANIC); // Portuguese
-				put("pt-BR", PluralFamily.ROMANIC); // Brazilian Portuguese
-				put("rm", PluralFamily.GERMANIC); // Romansh
+				put("pms", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Piemontese
+				put("ps", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Pashto
+				put("pt", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Portuguese
+				put("pt-BR", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Brazilian Portuguese
+				put("rm", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Romansh
 				put("ro", PluralFamily.ROMANIAN); // Romanian
 				put("ru", PluralFamily.SLAVIC_1); // Russian
-				put("rw", PluralFamily.GERMANIC); // Kinyarwanda
-				put("sah", PluralFamily.ASIAN); // Yakut
-				put("sat", PluralFamily.GERMANIC); // Santali
-				put("sco", PluralFamily.GERMANIC); // Scots
-				put("sd", PluralFamily.GERMANIC); // Sindhi
-				put("se", PluralFamily.GERMANIC); // Northern Sami
-				put("si", PluralFamily.GERMANIC); // Sinhala
+				put("rw", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Kinyarwanda
+				put("sah", PluralFamily.NO_PLURALS); // Yakut
+				put("sat", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Santali
+				put("sco", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Scots
+				put("sd", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Sindhi
+				put("se", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Northern Sami
+				put("si", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Sinhala
 				put("sk", PluralFamily.SLAVIC_2); // Slovak
 				put("sl", PluralFamily.SLAVIC_3); // Slovenian
-				put("so", PluralFamily.GERMANIC); // Somali
-				put("son", PluralFamily.GERMANIC); // Songhay
-				put("sq", PluralFamily.GERMANIC); // Albanian
+				put("so", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Somali
+				put("son", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Songhay
+				put("sq", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Albanian
 				put("sr", PluralFamily.SLAVIC_1); // Serbian
-				put("su", PluralFamily.ASIAN); // Sudanese
-				put("sv", PluralFamily.GERMANIC); // Swedish
-				put("sw", PluralFamily.GERMANIC); // Swahili
-				put("ta", PluralFamily.GERMANIC); // Tamil
-				put("te", PluralFamily.GERMANIC); // Telugu
-				put("tg", PluralFamily.ROMANIC); // Tajik
-				put("th", PluralFamily.ASIAN); // Thai
-				put("ti", PluralFamily.ROMANIC); // Tigrinya
-				put("tk", PluralFamily.GERMANIC); // Turkmen
-				put("tr", PluralFamily.ROMANIC); // Turkish
-				put("tt", PluralFamily.ASIAN); // Tatar
-				put("ug", PluralFamily.ASIAN); // Uyghur
+				put("su", PluralFamily.NO_PLURALS); // Sudanese
+				put("sv", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Swedish
+				put("sw", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Swahili
+				put("ta", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Tamil
+				put("te", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Telugu
+				put("tg", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Tajik
+				put("th", PluralFamily.NO_PLURALS); // Thai
+				put("ti", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Tigrinya
+				put("tk", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Turkmen
+				put("tr", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Turkish
+				put("tt", PluralFamily.NO_PLURALS); // Tatar
+				put("ug", PluralFamily.NO_PLURALS); // Uyghur
 				put("uk", PluralFamily.SLAVIC_1); // Ukrainian
-				put("ur", PluralFamily.GERMANIC); // Urdu
-				put("uz", PluralFamily.ROMANIC); // Uzbek
-				put("vi", PluralFamily.ASIAN); // Vietnamese
-				put("wa", PluralFamily.ROMANIC); // Walloon
+				put("ur", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Urdu
+				put("uz", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Uzbek
+				put("vi", PluralFamily.NO_PLURALS); // Vietnamese
+				put("wa", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Walloon
 				put("wen", PluralFamily.SLAVIC_3); // Sorbian
-				put("wo", PluralFamily.ASIAN); // Wolof
-				put("yo", PluralFamily.GERMANIC); // Yoruba
-				put("zh", PluralFamily.ASIAN); // Chinese
+				put("wo", PluralFamily.NO_PLURALS); // Wolof
+				put("yo", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Yoruba
+				put("zh", PluralFamily.NO_PLURALS); // Chinese
 			}});
 		}
 
