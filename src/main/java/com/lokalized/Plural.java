@@ -55,37 +55,37 @@ public enum Plural implements LanguageForm {
 	/**
 	 * Normally the form used with 0, if it is limited to numbers whose integer values end with 0.
 	 * <p>
-	 * For example: {@code 0 cŵn, 0 cathod}.
+	 * For example: in Welsh, {@code 0 cŵn, 0 cathod}.
 	 */
 	ZERO,
 	/**
 	 * The form used with 1.
 	 * <p>
-	 * For example: {@code 1 ci, 1 gath}.
+	 * For example: in Welsh, {@code 1 ci, 1 gath}.
 	 */
 	ONE,
 	/**
 	 * Normally the form used with 2, if it is limited to numbers whose integer values end with 2.
 	 * <p>
-	 * For example: {@code 2 gi, 2 gath}.
+	 * For example: in Welsh, {@code 2 gi, 2 gath}.
 	 */
 	TWO,
 	/**
 	 * The form that falls between {@code TWO} and {@code MANY}.
 	 * <p>
-	 * For example: {@code  3 chi, 3 cath}.
+	 * For example: in Welsh, {@code  3 chi, 3 cath}.
 	 */
 	FEW,
 	/**
 	 * The form that falls between {@code FEW} and {@code OTHER}.
 	 * <p>
-	 * For example: {@code 6 chi, 6 chath}.
+	 * For example: in Welsh, {@code 6 chi, 6 chath}.
 	 */
 	MANY,
 	/**
 	 * General "catchall" form which comprises any cases not handled by the other forms.
 	 * <p>
-	 * For example: {@code 4 ci, 4 cath}.
+	 * For example: in Welsh, {@code 4 ci, 4 cath}.
 	 */
 	OTHER;
 
@@ -105,13 +105,29 @@ public enum Plural implements LanguageForm {
 		 * Languages include:
 		 * <p>
 		 * <ul>
+		 * <li>Aymara</li>
+		 * <li>Burmese</li>
+		 * <li>Chiga</li>
 		 * <li>Chinese</li>
+		 * <li>Dzongkha</li>
+		 * <li>Georgian</li>
+		 * <li>Indonesian</li>
 		 * <li>Japanese</li>
+		 * <li>Kazakh</li>
+		 * <li>Khmer</li>
+		 * <li>Kirghiz</li>
 		 * <li>Korean</li>
-		 * <li>Persian</li>
-		 * <li>Turkic/Altaic (Turkish)</li>
-		 * <li>Thai</li>
 		 * <li>Lao</li>
+		 * <li>Lojban</li>
+		 * <li>Malay</li>
+		 * <li>Persian</li>
+		 * <li>Sundanese</li>
+		 * <li>Tatar</li>
+		 * <li>Thai</li>
+		 * <li>Uighur</li>
+		 * <li>Vietnamese</li>
+		 * <li>Wolof</li>
+		 * <li>Yakut</li>
 		 * </ul>
 		 */
 		ASIAN,
@@ -119,25 +135,80 @@ public enum Plural implements LanguageForm {
 		 * Languages include:
 		 * <p>
 		 * <ul>
+		 * <li>Afrikaans</li>
+		 * <li>Albanian</li>
+		 * <li>Angika</li>
+		 * <li>Aragonese</li>
+		 * <li>Armenian</li>
+		 * <li>Assamese</li>
+		 * <li>Asturian</li>
+		 * <li>Azerbaijani</li>
+		 * <li>Basque</li>
+		 * <li>Bengali</li>
+		 * <li>Bodo</li>
+		 * <li>Bulgarian</li>
+		 * <li>Catalan</li>
+		 * <li>Chhattisgarhi</li>
 		 * <li>Danish</li>
+		 * <li>Dogri</li>
 		 * <li>Dutch</li>
 		 * <li>English</li>
-		 * <li>Faroese</li>
-		 * <li>Frisian</li>
-		 * <li>German</li>
-		 * <li>Norwegian</li>
-		 * <li>Swedish</li>
+		 * <li>Esperanto</li>
 		 * <li>Estonian</li>
+		 * <li>Faroese</li>
 		 * <li>Finnish</li>
-		 * <li>Hungarian</li>
-		 * <li>Basque</li>
+		 * <li>Frisian</li>
+		 * <li>Friulian</li>
+		 * <li>Fulah</li>
+		 * <li>Gallegan</li>
+		 * <li>German</li>
 		 * <li>Greek</li>
+		 * <li>Greenlandic</li>
+		 * <li>Gujarati</li>
+		 * <li>Hausa</li>
 		 * <li>Hebrew</li>
+		 * <li>Hindi</li>
+		 * <li>Hungarian</li>
+		 * <li>Interlingua</li>
 		 * <li>Italian</li>
+		 * <li>Kannada</li>
+		 * <li>Kinyarwanda</li>
+		 * <li>Kurdish</li>
+		 * <li>Luxembourgish</li>
+		 * <li>Maithili</li>
+		 * <li>Malayalam</li>
+		 * <li>Manipuri</li>
+		 * <li>Marathi</li>
+		 * <li>Mongolian</li>
+		 * <li>Nahuatl</li>
+		 * <li>Neapolitan</li>
+		 * <li>Nepali</li>
+		 * <li>Northern Sami</li>
+		 * <li>Norwegian Bokmål</li>
+		 * <li>Norwegian Nynorsk</li>
+		 * <li>Oriya</li>
+		 * <li>Panjabi</li>
+		 * <li>Papiamento</li>
+		 * <li>Pedi</li>
+		 * <li>Piemontese</li>
 		 * <li>Portuguese</li>
+		 * <li>Pushto</li>
+		 * <li>Raeto-Romance</li>
+		 * <li>Santali</li>
+		 * <li>Scots</li>
+		 * <li>Sindhi</li>
+		 * <li>Sinhalese</li>
+		 * <li>Somali</li>
+		 * <li>Songhai</li>
 		 * <li>Spanish</li>
-		 * <li>Catalan</li>
-		 * <li>Vietnamese</li>
+		 * <li>Spanish (Argentina)</li>
+		 * <li>Swahili</li>
+		 * <li>Swedish</li>
+		 * <li>Tamil</li>
+		 * <li>Telugu</li>
+		 * <li>Turkmen</li>
+		 * <li>Urdu</li>
+		 * <li>Yoruba</li>
 		 * </ul>
 		 */
 		GERMANIC,
@@ -145,8 +216,24 @@ public enum Plural implements LanguageForm {
 		 * Languages include:
 		 * <p>
 		 * <ul>
+		 * <li>Acoli</li>
+		 * <li>Akan</li>
+		 * <li>Amharic</li>
+		 * <li>Filipino</li>
 		 * <li>French</li>
-		 * <li>Brazilian Portuguese</li>
+		 * <li>Gun</li>
+		 * <li>Lingala</li>
+		 * <li>Malagasy</li>
+		 * <li>Maori</li>
+		 * <li>Mapudungun</li>
+		 * <li>Mauritian Creole</li>
+		 * <li>Occitan</li>
+		 * <li>Portuguese (Brazil)</li>
+		 * <li>Tajik</li>
+		 * <li>Tigrinya</li>
+		 * <li>Turkish</li>
+		 * <li>Uzbek</li>
+		 * <li>Walloon</li>
 		 * </ul>
 		 */
 		ROMANIC,
@@ -157,8 +244,8 @@ public enum Plural implements LanguageForm {
 		 * <li>Belarusian</li>
 		 * <li>Bosnian</li>
 		 * <li>Croatian</li>
-		 * <li>Serbian</li>
 		 * <li>Russian</li>
+		 * <li>Serbian</li>
 		 * <li>Ukrainian</li>
 		 * </ul>
 		 */
@@ -167,8 +254,8 @@ public enum Plural implements LanguageForm {
 		 * Languages include:
 		 * <p>
 		 * <ul>
-		 * <li>Slovak</li>
 		 * <li>Czech</li>
+		 * <li>Slovak</li>
 		 * </ul>
 		 */
 		SLAVIC_2,
@@ -429,7 +516,7 @@ public enum Plural implements LanguageForm {
 				put("my", PluralFamily.ASIAN); // Burmese
 				put("nah", PluralFamily.GERMANIC); // Nahuatl
 				put("nap", PluralFamily.GERMANIC); // Neapolitan
-				put("nb", PluralFamily.GERMANIC); // Norwegian Bokmal
+				put("nb", PluralFamily.GERMANIC); // Norwegian Bokmål
 				put("ne", PluralFamily.GERMANIC); // Nepali
 				put("nl", PluralFamily.GERMANIC); // Dutch
 				put("nn", PluralFamily.GERMANIC); // Norwegian Nyorsk
