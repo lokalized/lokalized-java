@@ -16,34 +16,27 @@
 
 package com.lokalized;
 
-import javax.annotation.Nullable;
+import javax.annotation.Nonnull;
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.Locale;
+
+import static java.lang.String.format;
 
 /**
- * Exception which indicates a problem encountered while processing a localized strings file.
+ * Exception thrown when an operation was performed on a locale that is not recognized by the system.
  * <p>
  * This class is intended for use by a single thread.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @NotThreadSafe
-public class LocalizedStringLoadingException extends RuntimeException {
+public class UnsupportedLocaleException extends RuntimeException {
 	/**
-	 * Constructs a new exception with the specified message.
+	 * Constructs a new exception with the unsupported locale.
 	 *
-	 * @param message the message to use for this exception, may be null
+	 * @param locale the unsupported locale which triggered this exception, not null
 	 */
-	public LocalizedStringLoadingException(@Nullable String message) {
-		super(message);
-	}
-
-	/**
-	 * Constructs a new exception with the specified message and cause.
-	 *
-	 * @param message the message to use for this exception, may be null
-	 * @param cause   the cause of the exception, may be null
-	 */
-	public LocalizedStringLoadingException(@Nullable String message, @Nullable Throwable cause) {
-		super(message, cause);
+	public UnsupportedLocaleException(@Nonnull Locale locale) {
+		super(format("Unsupported locale '%s' was provided", locale.toLanguageTag()));
 	}
 }

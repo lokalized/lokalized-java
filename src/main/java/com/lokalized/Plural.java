@@ -27,6 +27,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -89,18 +90,59 @@ public enum Plural implements LanguageForm {
 	 */
 	OTHER;
 
+	@Nonnull
+	static final Map<String, Plural> PLURALS_BY_NAME;
+
+	static {
+		PLURALS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
+				Plural.values()).collect(Collectors.toMap(plural -> plural.name(), plural -> plural)));
+	}
+
+	/**
+	 * Gets the mapping of plural names to plural values.
+	 *
+	 * @return the mapping of plural names to plural values, not null
+	 */
+	@Nonnull
+	public static Map<String, Plural> getPluralsByName() {
+		return PLURALS_BY_NAME;
+	}
+
+	/**
+	 * Gets an appropriate plural value for the given number and locale.
+	 * <p>
+	 * See <a href="http://translate.sourceforge.net/wiki/l10n/pluralforms">http://translate.sourceforge.net/wiki/l10n/pluralforms</a>
+	 * for a cheat sheet.
+	 *
+	 * @param number the number that drives pluralization, may be null
+	 * @param locale the locale that drives pluralization, not null
+	 * @return an appropriate plural value, not null
+	 * @throws UnsupportedLocaleException if the locale is not recognized
+	 */
+	@Nonnull
+	public static Plural pluralForNumber(@Nullable Number number, @Nonnull Locale locale) {
+		requireNonNull(locale);
+
+		Optional<Function<Number, Plural>> pluralValueFunction = PluralFamily.pluralValueFunctionForLocale(locale);
+
+		if (!pluralValueFunction.isPresent())
+			throw new UnsupportedLocaleException(locale);
+
+		return pluralValueFunction.get().apply(number);
+	}
+
 	/**
 	 * Plural forms grouped by language family.
 	 * <p>
 	 * Each family has a distinct plural calculation rule.
 	 * <p>
-	 * For example, Germanic languages can supply two {@link Plural} types: {@link Plural#ONE} for {@code 1}
+	 * For example, Germanic languages support two {@link Plural} types: {@link Plural#ONE} for {@code 1}
 	 * and {@link Plural#OTHER} for all other values.
 	 * <p>
 	 * See <a href="https://developer.mozilla.org/en-US/docs/Mozilla/Localization/Localization_and_Plurals">https://developer.mozilla.org/en-US/docs/Mozilla/Localization/Localization_and_Plurals</a>
 	 * for a cheat sheet.
 	 */
-	private enum PluralFamily {
+	enum PluralFamily {
 		/**
 		 * Languages include:
 		 * <p>
@@ -406,21 +448,100 @@ public enum Plural implements LanguageForm {
 		MALTESE;
 
 		@Nonnull
-		private static final Map<PluralFamily, Function<Number, Plural>> PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY;
+		static final Map<PluralFamily, Function<Number, Plural>> PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY;
 
 		@Nonnull
-		private static final Map<String, PluralFamily> PLURAL_FAMILIES_BY_LANGUAGE_TAG;
+		static final Map<String, PluralFamily> PLURAL_FAMILIES_BY_LANGUAGE_TAG;
 
 		static {
 			PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY = Collections.unmodifiableMap(new HashMap<PluralFamily, Function<Number, Plural>>() {{
+				put(PluralFamily.ARABIC, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.BRETON, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.CORNISH, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.ICELANDIC, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.IRISH_GAELIC, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.JAVANESE, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.KASHUBIAN, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.LATVIAN, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.LITHUANIAN, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.MACEDONIAN, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.MALTESE, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.MANDINKA, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.MONTENEGRO, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.NO_PLURALS, (number) -> {
+					return OTHER;
+				});
+				put(PluralFamily.PLURAL_IF_GREATER_THAN_1, (number) -> {
+					if (number == null)
+						return OTHER;
+
+					return number.doubleValue() > 1 ? ONE : OTHER;
+				});
+				put(PluralFamily.PLURAL_IF_NOT_EQUAL_1, (number) -> {
+					if (number == null)
+						return OTHER;
+
+					return number.doubleValue() == 1 ? ONE : OTHER;
+				});
+				put(PluralFamily.POLISH, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.ROMANIAN, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.SCOTTISH_GAELIC, (number) -> {
+					throw new UnsupportedOperationException();
+				});
 				put(PluralFamily.SLAVIC_1, (number) -> {
 					if (number == null)
 						return OTHER;
 
-					// TODO: finish
+					double value = number.doubleValue();
+
+					if (value % 10 == 1 && value % 100 != 11)
+						return ONE;
+					if (value % 10 >= 2 && value % 10 <= 4 && value % 100 < 12 && value % 100 > 14)
+						return FEW;
+					if (value % 10 == 0 || (value % 10 >= 5 && value % 10 <= 9) || (value % 100 >= 11 && value % 100 <= 14))
+						return MANY;
 
 					// Fallback
 					return OTHER;
+				});
+				put(PluralFamily.SLAVIC_2, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.SLAVIC_3, (number) -> {
+					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.WELSH, (number) -> {
+					throw new UnsupportedOperationException();
 				});
 			}});
 
@@ -570,54 +691,49 @@ public enum Plural implements LanguageForm {
 			}});
 		}
 
-		public static Optional<PluralFamily> pluralFamilyForLocale(@Nonnull Locale locale) {
+		/**
+		 * Gets an appropriate plural family for the given locale.
+		 *
+		 * @param locale the locale to check, not null
+		 * @return the appropriate plural family (if one exists) for the given locale, not null
+		 */
+		@Nonnull
+		static Optional<PluralFamily> pluralFamilyForLocale(@Nonnull Locale locale) {
 			requireNonNull(locale);
 
-			// TODO: finish
+			String language = locale.getLanguage();
+			String country = locale.getCountry();
 
-			throw new UnsupportedOperationException();
+			PluralFamily pluralFamily = null;
+
+			if (language != null && country != null)
+				pluralFamily = PLURAL_FAMILIES_BY_LANGUAGE_TAG.get(format("%s-%s", language, country));
+
+			if (pluralFamily != null)
+				return Optional.of(pluralFamily);
+
+			if (language != null)
+				pluralFamily = PLURAL_FAMILIES_BY_LANGUAGE_TAG.get(language);
+
+			return Optional.ofNullable(pluralFamily);
 		}
-	}
 
-	@Nonnull
-	private static final Map<String, Plural> PLURALS_BY_NAME;
+		/**
+		 * Gets an appropriate plural value determination function for the given locale.
+		 *
+		 * @param locale the locale to check, not null
+		 * @return the appropriate plural value determination function (if one exists) for the given locale, not null
+		 */
+		@Nonnull
+		public static Optional<Function<Number, Plural>> pluralValueFunctionForLocale(@Nonnull Locale locale) {
+			requireNonNull(locale);
 
-	static {
-		PLURALS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
-				Plural.values()).collect(Collectors.toMap(plural -> plural.name(), plural -> plural)));
-	}
+			Optional<PluralFamily> pluralFamily = pluralFamilyForLocale(locale);
 
-	/**
-	 * Gets the mapping of plural names to plural values.
-	 *
-	 * @return the mapping of plural names to plural values, not null
-	 */
-	@Nonnull
-	public static Map<String, Plural> getPluralsByName() {
-		return PLURALS_BY_NAME;
-	}
+			if (!pluralFamily.isPresent())
+				return Optional.empty();
 
-	/**
-	 * Gets an appropriate plural value for the given number and locale.
-	 * <p>
-	 * See <a href="http://translate.sourceforge.net/wiki/l10n/pluralforms">http://translate.sourceforge.net/wiki/l10n/pluralforms</a>
-	 * for a cheat sheet.
-	 *
-	 * @param number the number that drives pluralization, may be null
-	 * @param locale the locale that drives pluralization, not null
-	 * @return an appropriate plural value, not null
-	 */
-	@Nonnull
-	public static Plural pluralForNumber(@Nullable Number number, @Nonnull Locale locale) {
-		requireNonNull(locale);
-
-		// Default to OTHER if no number provided
-		if (number == null)
-			return OTHER;
-
-		// TODO: finish
-
-		// Not sure what else to do?  Fall back to OTHER
-		return OTHER;
+			return Optional.ofNullable(PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY.get(pluralFamily.get()));
+		}
 	}
 }

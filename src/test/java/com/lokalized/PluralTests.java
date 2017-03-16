@@ -17,37 +17,27 @@
 package com.lokalized;
 
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.logging.Level;
 
 /**
- * Exercises {@link Strings}.
+ * Exercises {@link Plural}.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
-public class StringsTests {
-	@BeforeClass
-	public static void configureLogging() {
-		LoggingUtils.setRootLoggerLevel(Level.FINER);
-	}
-
+public class PluralTests {
 	@Test
-	public void placeholderTest() {
-		Strings strings = new DefaultStrings.Builder("en", () ->
-				LocalizedStringLoader.loadFromClasspath("strings")
-		).build();
-
-		String translation = strings.get("I read {{bookCount}} books",
-				new HashMap<String, Object>() {{
-					put("bookCount", 3);
-				}}, Locale.forLanguageTag("ru"));
-
-		Assert.assertEquals("I прочитал 3 книги", translation);
+	public void pluralForms() {
+		Locale usEnglishLocale = Locale.forLanguageTag("en-US");
+		
+		Assert.assertEquals(String.format("Incorrect %s plural for 1", usEnglishLocale.toLanguageTag()),
+				Plural.ONE, Plural.pluralForNumber(1, usEnglishLocale));
+		Assert.assertEquals(String.format("Incorrect %s plural for 0", usEnglishLocale.toLanguageTag()),
+				Plural.OTHER, Plural.pluralForNumber(0, usEnglishLocale));
+		Assert.assertEquals(String.format("Incorrect %s plural for 1.5", usEnglishLocale.toLanguageTag()),
+				Plural.OTHER, Plural.pluralForNumber(1.5, usEnglishLocale));
 	}
 }

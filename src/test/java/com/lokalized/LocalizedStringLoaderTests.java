@@ -33,6 +33,8 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
+ * Exercises {@link LocalizedStringLoader}.
+ *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe

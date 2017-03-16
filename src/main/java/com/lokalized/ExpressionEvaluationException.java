@@ -16,6 +16,7 @@
 
 package com.lokalized;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 /**
@@ -32,7 +33,7 @@ public class ExpressionEvaluationException extends RuntimeException {
 	 *
 	 * @param message the message to use for this exception, may be null
 	 */
-	public ExpressionEvaluationException(String message) {
+	public ExpressionEvaluationException(@Nullable String message) {
 		super(message);
 	}
 
@@ -42,7 +43,7 @@ public class ExpressionEvaluationException extends RuntimeException {
 	 * @param message the message to use for this exception, may be null
 	 * @param cause   the cause of the exception, may be null
 	 */
-	public ExpressionEvaluationException(String message, Throwable cause) {
+	public ExpressionEvaluationException(@Nullable String message, @Nullable Throwable cause) {
 		super(message, cause);
 	}
 }
