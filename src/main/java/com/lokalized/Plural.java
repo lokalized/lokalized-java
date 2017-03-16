@@ -149,7 +149,7 @@ public enum Plural implements LanguageForm {
 		 * <li>Brazilian Portuguese</li>
 		 * </ul>
 		 */
-		ROMANIC_1,
+		ROMANIC,
 		/**
 		 * Languages include:
 		 * <p>
@@ -338,14 +338,14 @@ public enum Plural implements LanguageForm {
 			}});
 
 			PLURAL_FAMILIES_BY_LANGUAGE_TAG = Collections.unmodifiableMap(new HashMap<String, PluralFamily>() {{
-				put("ach", PluralFamily.ROMANIC_1); // Acholi
+				put("ach", PluralFamily.ROMANIC); // Acholi
 				put("af", PluralFamily.GERMANIC); // Afrikaans
-				put("ak", PluralFamily.ROMANIC_1); // Akan
-				put("am", PluralFamily.ROMANIC_1); // Amharic
+				put("ak", PluralFamily.ROMANIC); // Akan
+				put("am", PluralFamily.ROMANIC); // Amharic
 				put("an", PluralFamily.GERMANIC); // Aragonese
 				put("anp", PluralFamily.GERMANIC); // Angika
 				put("ar", PluralFamily.ARABIC); // Arabic
-				put("arn", PluralFamily.ROMANIC_1); // Mapudungun
+				put("arn", PluralFamily.ROMANIC); // Mapudungun
 				put("as", PluralFamily.GERMANIC); // Assamese
 				put("ast", PluralFamily.GERMANIC); // Asturian
 				put("ay", PluralFamily.ASIAN); // Aymará
@@ -375,16 +375,16 @@ public enum Plural implements LanguageForm {
 				put("fa", PluralFamily.ASIAN); // Persian
 				put("ff", PluralFamily.GERMANIC); // Fulah
 				put("fi", PluralFamily.GERMANIC); // Finnish
-				put("fil", PluralFamily.ROMANIC_1); // Filipino
+				put("fil", PluralFamily.ROMANIC); // Filipino
 				put("fo", PluralFamily.GERMANIC); // Faroese
-				put("fr", PluralFamily.ROMANIC_1); // French
+				put("fr", PluralFamily.ROMANIC); // French
 				put("fur", PluralFamily.GERMANIC); // Friulian
 				put("fy", PluralFamily.GERMANIC); // Frisian
 				put("ga", PluralFamily.IRISH_GAELIC); // Irish Gaelic
 				put("gd", PluralFamily.SCOTTISH_GAELIC); // Scottish Gaelic
 				put("gl", PluralFamily.GERMANIC); // Galician
 				put("gu", PluralFamily.GERMANIC); // Gujarati
-				put("gun", PluralFamily.ROMANIC_1); // Gun
+				put("gun", PluralFamily.ROMANIC); // Gun
 				put("ha", PluralFamily.GERMANIC); // Hausa
 				put("he", PluralFamily.GERMANIC); // Hebrew
 				put("hi", PluralFamily.GERMANIC); // Hindi
@@ -409,15 +409,15 @@ public enum Plural implements LanguageForm {
 				put("kw", PluralFamily.CORNISH); // Cornish
 				put("ky", PluralFamily.ASIAN); // Kyrgyz
 				put("lb", PluralFamily.GERMANIC); // Letzeburgesch
-				put("ln", PluralFamily.ROMANIC_1); // Lingala
+				put("ln", PluralFamily.ROMANIC); // Lingala
 				put("lo", PluralFamily.ASIAN); // Lao
 				put("lt", PluralFamily.LITHUANIAN); // Lithuanian
 				put("lv", PluralFamily.LATVIAN); // Latvian
 				put("mai", PluralFamily.GERMANIC); // Maithili
 				put("me", PluralFamily.MONTENEGRO); // Montenegro
-				put("mfe", PluralFamily.ROMANIC_1); // Mauritian Creole
-				put("mg", PluralFamily.ROMANIC_1); // Malagasy
-				put("mi", PluralFamily.ROMANIC_1); // Maori
+				put("mfe", PluralFamily.ROMANIC); // Mauritian Creole
+				put("mg", PluralFamily.ROMANIC); // Malagasy
+				put("mi", PluralFamily.ROMANIC); // Maori
 				put("mk", PluralFamily.MACEDONIAN); // Macedonian
 				put("ml", PluralFamily.GERMANIC); // Malayalam
 				put("mn", PluralFamily.GERMANIC); // Mongolian
@@ -434,7 +434,7 @@ public enum Plural implements LanguageForm {
 				put("nl", PluralFamily.GERMANIC); // Dutch
 				put("nn", PluralFamily.GERMANIC); // Norwegian Nyorsk
 				put("nso", PluralFamily.GERMANIC); // Northern Sotho
-				put("oc", PluralFamily.ROMANIC_1); // Occitan
+				put("oc", PluralFamily.ROMANIC); // Occitan
 				put("or", PluralFamily.GERMANIC); // Oriya
 				put("pa", PluralFamily.GERMANIC); // Punjabi
 				put("pap", PluralFamily.GERMANIC); // Papiamento
@@ -442,7 +442,7 @@ public enum Plural implements LanguageForm {
 				put("pms", PluralFamily.GERMANIC); // Piemontese
 				put("ps", PluralFamily.GERMANIC); // Pashto
 				put("pt", PluralFamily.GERMANIC); // Portuguese
-				put("pt-BR", PluralFamily.ROMANIC_1); // Brazilian Portuguese
+				put("pt-BR", PluralFamily.ROMANIC); // Brazilian Portuguese
 				put("rm", PluralFamily.GERMANIC); // Romansh
 				put("ro", PluralFamily.ROMANIAN); // Romanian
 				put("ru", PluralFamily.SLAVIC_1); // Russian
@@ -464,18 +464,18 @@ public enum Plural implements LanguageForm {
 				put("sw", PluralFamily.GERMANIC); // Swahili
 				put("ta", PluralFamily.GERMANIC); // Tamil
 				put("te", PluralFamily.GERMANIC); // Telugu
-				put("tg", PluralFamily.ROMANIC_1); // Tajik
+				put("tg", PluralFamily.ROMANIC); // Tajik
 				put("th", PluralFamily.ASIAN); // Thai
-				put("ti", PluralFamily.ROMANIC_1); // Tigrinya
+				put("ti", PluralFamily.ROMANIC); // Tigrinya
 				put("tk", PluralFamily.GERMANIC); // Turkmen
-				put("tr", PluralFamily.ROMANIC_1); // Turkish
+				put("tr", PluralFamily.ROMANIC); // Turkish
 				put("tt", PluralFamily.ASIAN); // Tatar
 				put("ug", PluralFamily.ASIAN); // Uyghur
 				put("uk", PluralFamily.SLAVIC_1); // Ukrainian
 				put("ur", PluralFamily.GERMANIC); // Urdu
-				put("uz", PluralFamily.ROMANIC_1); // Uzbek
+				put("uz", PluralFamily.ROMANIC); // Uzbek
 				put("vi", PluralFamily.ASIAN); // Vietnamese
-				put("wa", PluralFamily.ROMANIC_1); // Walloon
+				put("wa", PluralFamily.ROMANIC); // Walloon
 				put("wen", PluralFamily.SLAVIC_3); // Sorbian
 				put("wo", PluralFamily.ASIAN); // Wolof
 				put("yo", PluralFamily.GERMANIC); // Yoruba
