@@ -62,6 +62,8 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	private final Locale fallbackLocale;
 	@Nonnull
+	private final StringInterpolator stringInterpolator;
+	@Nonnull
 	private final Logger logger;
 
 	/**
@@ -126,6 +128,7 @@ public class DefaultStrings implements Strings {
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.localeSupplier = localeSupplier == null ? () -> fallbackLocale : localeSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
+		this.stringInterpolator = new StringInterpolator();
 
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
@@ -195,6 +198,8 @@ public class DefaultStrings implements Strings {
 				translation = localizedString.getTranslation();
 
 				// TODO: apply placeholder replacement, process language forms and alternatives
+
+				translation = stringInterpolator.interpolate(translation, placeholders);
 
 				break;
 			}
@@ -267,6 +272,11 @@ public class DefaultStrings implements Strings {
 	protected Locale getImplicitLocale() {
 		Locale locale = getLocaleSupplier().get();
 		return locale == null ? getFallbackLocale() : locale;
+	}
+
+	@Nonnull
+	protected StringInterpolator getStringInterpolator() {
+		return stringInterpolator;
 	}
 
 	@Nonnull
