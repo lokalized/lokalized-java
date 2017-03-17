@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Map;
 
@@ -45,11 +46,11 @@ public interface Strings {
 	 * If no localized string is available, the key is returned.
 	 *
 	 * @param key    the localization key, not null
-	 * @param locale the preferred locale for the string, not null
+	 * @param locale the preferred locale for the string, may be null
 	 * @return a localized string for the key, not null
 	 */
 	@Nonnull
-	String get(@Nonnull String key, @Nonnull Locale locale);
+	String get(@Nonnull String key, @Nullable Locale locale);
 
 	/**
 	 * Gets a localized string for the given key.
@@ -57,11 +58,11 @@ public interface Strings {
 	 * If no localized string is available, the key is returned.
 	 *
 	 * @param key          the localization key, not null
-	 * @param placeholders the placeholders to insert into the string, not null
+	 * @param placeholders the placeholders to insert into the string, may be null
 	 * @return a localized string for the key, not null
 	 */
 	@Nonnull
-	String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders);
+	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders);
 
 	/**
 	 * Gets a localized string for the given key.
@@ -69,10 +70,10 @@ public interface Strings {
 	 * If no localized string is available, the key is returned.
 	 *
 	 * @param key          the localization key, not null
-	 * @param placeholders the placeholders to insert into the string, not null
-	 * @param locale       the preferred locale for the string, not null
+	 * @param placeholders the placeholders to insert into the string, may be null
+	 * @param locale       the preferred locale for the string, may be null
 	 * @return a localized string for the key, not null
 	 */
 	@Nonnull
-	String get(@Nonnull String key, @Nonnull Map<String, Object> placeholders, @Nonnull Locale locale);
+	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders, @Nullable Locale locale);
 }

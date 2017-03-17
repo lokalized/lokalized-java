@@ -41,9 +41,17 @@ public class StringsTests {
 	public void placeholderTest() {
 		Strings strings = new DefaultStrings.Builder("en", () ->
 				LocalizedStringLoader.loadFromClasspath("strings")
-		).build();
+		).localeSupplier(() -> Locale.forLanguageTag("en-GB"))
+				.build();
 
 		String translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", 3);
+				}});
+
+		Assert.assertEquals("I read 3 books", translation);
+
+		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
 				}}, Locale.forLanguageTag("ru"));
