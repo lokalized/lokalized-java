@@ -32,7 +32,7 @@ enum LoggerType {
 	@Nonnull
 	private final String loggerName;
 
-	private LoggerType(@Nonnull String loggerName) {
+	LoggerType(@Nonnull String loggerName) {
 		requireNonNull(loggerName);
 		this.loggerName = loggerName;
 	}

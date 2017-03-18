@@ -494,6 +494,8 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Data structure which holds a locale and the localized strings for it, with the strings mapped by key for fast access.
+	 *
 	 * @author <a href="https://revetkn.com">Mark Allen</a>
 	 */
 	@Immutable
@@ -506,8 +508,8 @@ public class DefaultStrings implements Strings {
 		/**
 		 * Constructs a localized string source with the given locale and map of keys to localized strings.
 		 *
-		 * @param locale
-		 * @param localizedStringsByKey
+		 * @param locale                the locale for these localized strings, not null
+		 * @param localizedStringsByKey localized strings by translation key, not null
 		 */
 		public LocalizedStringSource(@Nonnull Locale locale, @Nonnull Map<String, LocalizedString> localizedStringsByKey) {
 			requireNonNull(locale);

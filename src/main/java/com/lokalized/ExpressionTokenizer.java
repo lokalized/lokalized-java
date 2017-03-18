@@ -116,10 +116,8 @@ class ExpressionTokenizer {
 			for (TokenType tokenType : TokenType.values()) {
 				String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
 
-				if (group != null) {
+				if (group != null)
 					tokens.add(new Token(tokenType, group));
-					continue;
-				}
 			}
 
 			if (matcher.group(WHITESPACE_GROUP_NAME) != null)

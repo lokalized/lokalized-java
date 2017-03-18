@@ -33,7 +33,7 @@ class StringInterpolator {
 	private static final Pattern PLACEHOLDER_PATTERN;
 
 	static {
-		PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\p{Alnum}+\\}\\}");
+		PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\p{Alnum}+}}");
 	}
 
 	@Nonnull
@@ -47,7 +47,7 @@ class StringInterpolator {
 			String name = matcher.group();
 			name = name.substring("{{".length(), name.length() - "}}".length());
 			Object value = context.get(name);
-			
+
 			// TODO: unwrap Optional<T> values first
 
 			matcher.appendReplacement(stringBuffer, value == null ? "" : value.toString());

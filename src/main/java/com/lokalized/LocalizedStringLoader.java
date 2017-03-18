@@ -185,15 +185,19 @@ public final class LocalizedStringLoader {
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
 				new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
 
-		for (File file : directory.listFiles()) {
-			String languageTag = file.getName();
+		File[] files = directory.listFiles();
 
-			if (SUPPORTED_LANGUAGE_TAGS.contains(languageTag)) {
-				LOGGER.fine(format("Loading localized strings file '%s'...", languageTag));
-				Locale locale = Locale.forLanguageTag(file.getName());
-				localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
-			} else {
-				LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", languageTag));
+		if (files != null) {
+			for (File file : files) {
+				String languageTag = file.getName();
+
+				if (SUPPORTED_LANGUAGE_TAGS.contains(languageTag)) {
+					LOGGER.fine(format("Loading localized strings file '%s'...", languageTag));
+					Locale locale = Locale.forLanguageTag(file.getName());
+					localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
+				} else {
+					LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", languageTag));
+				}
 			}
 		}
 
