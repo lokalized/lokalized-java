@@ -1,0 +1,21 @@
+{
+  "{{heOrShe}} is a good actor." : {
+    "translation" : "{{heOrShe}} es {{suffix}}.",
+    "placeholders" : {
+      "heOrShe": {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "Él",
+          "FEMININE" : "Ella"
+        }
+      },
+      "suffix" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "un buen actor",
+          "FEMININE" : "una buena actriz"
+        }
+      }
+    }
+  }
+}

@@ -69,4 +69,39 @@ public class StringsTests {
 
 		Assert.assertEquals("I прочитал 3 книги", translation);
 	}
+
+	@Test
+	public void genderPlaceholderTest() {
+		Strings strings = new DefaultStrings.Builder("en", () ->
+				LocalizedStringLoader.loadFromClasspath("strings")
+		).build();
+
+		String translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+				}});
+
+		Assert.assertEquals("He is a good actor.", translation);
+
+		translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+				}});
+
+		Assert.assertEquals("She is a good actress.", translation);
+
+		translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Él es un buen actor.", translation);
+
+		translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Ella es una buena actriz.", translation);
+	}
 }

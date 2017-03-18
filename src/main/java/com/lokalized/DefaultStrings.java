@@ -195,8 +195,8 @@ public class DefaultStrings implements Strings {
 			locale = getImplicitLocale();
 
 		String translation = null;
+		Map<String, Object> immutableContext = Collections.unmodifiableMap(placeholders);
 		Map<String, Object> context = new HashMap<>(placeholders);
-
 		List<LocalizedStringSource> localizedStringSources = getLocalizedStringSourcesForLocale(locale);
 
 		for (LocalizedStringSource localizedStringSource : localizedStringSources) {
@@ -211,9 +211,7 @@ public class DefaultStrings implements Strings {
 				for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
 					String placeholderName = entry.getKey();
 					LanguageFormTranslation languageFormTranslation = entry.getValue();
-
-					Object value = context.get(languageFormTranslation.getValue());
-
+					Object value = immutableContext.get(languageFormTranslation.getValue());
 					Map<Plural, String> translationsByPlural = new HashMap<>();
 					Map<Gender, String> translationsByGender = new HashMap<>();
 
@@ -260,7 +258,26 @@ public class DefaultStrings implements Strings {
 
 					// Handle genders
 					if (translationsByGender.size() > 0) {
-						throw new UnsupportedOperationException("TODO: implement gender");
+						if (value == null) {
+							logger.warning(format("Value '%s' for '%s' is null. No replacement will be performed.", value,
+									languageFormTranslation.getValue()));
+							continue;
+						}
+
+						if (!(value instanceof Gender)) {
+							logger.warning(format("Value '%s' for '%s' is not a %s. No replacement will be performed.", value,
+									languageFormTranslation.getValue(), Gender.class.getSimpleName()));
+							continue;
+						}
+
+						Gender gender = (Gender) value;
+						String genderTranslation = translationsByGender.get(gender);
+
+						if (genderTranslation == null)
+							logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+									Gender.class.getSimpleName(), gender.name(), localizedString));
+
+						context.put(placeholderName, genderTranslation);
 					}
 				}
 

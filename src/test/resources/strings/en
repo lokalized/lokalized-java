@@ -1,5 +1,24 @@
 {
   "I am going on vacation" : "I am going on vacation",
+  "{{heOrShe}} is a good actor." : {
+    "translation" : "{{heOrShe}} is a good {{actor}}.",
+    "placeholders" : {
+      "heOrShe": {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "He",
+          "FEMININE" : "She"
+        }
+      },
+      "actor" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "actor",
+          "FEMININE" : "actress"
+        }
+      }
+    }
+  },
   "I read {{bookCount}} books" : {
     "translation" : "I read {{bookCount}} {{books}}",
     "commentary" : "Message shown when user achieves her book-reading goal for the month",
