@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -48,7 +47,7 @@ public class LocalizedString {
 	@Nullable
 	private final String commentary;
 	@Nonnull
-	private final Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder;
+	private final Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder;
 	@Nonnull
 	private final List<LocalizedString> alternatives;
 
@@ -62,7 +61,7 @@ public class LocalizedString {
 	 * @param alternatives                          alternative expression-driven translations for this string, may be null
 	 */
 	protected LocalizedString(@Nonnull String key, @Nonnull String translation, @Nullable String commentary,
-														@Nullable Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder,
+														@Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder,
 														@Nullable List<LocalizedString> alternatives) {
 		requireNonNull(key);
 		requireNonNull(translation);
@@ -72,19 +71,13 @@ public class LocalizedString {
 		this.commentary = commentary;
 
 		if (languageFormTranslationsByPlaceholder == null) {
-			languageFormTranslationsByPlaceholder = Collections.emptyMap();
+			this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
 		} else {
 			// Defensive copy to unmodifiable map
 			// TODO: should probably use LinkedHashMap to preserve order in the default case since we are doing that elsewhere.
 			// Not required by the spec but nice to have
-			languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder.entrySet().stream()
-					.collect(Collectors.toMap(
-							entry -> entry.getKey(),
-							entry -> Collections.unmodifiableMap(new LinkedHashMap<>(entry.getValue()))
-					));
+			this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(languageFormTranslationsByPlaceholder);
 		}
-
-		this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(languageFormTranslationsByPlaceholder);
 
 		// Defensive copy to unmodifiable list
 		this.alternatives = alternatives == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(alternatives));
@@ -185,7 +178,7 @@ public class LocalizedString {
 	 * @return per-language-form translations that correspond to a placeholder value, not null
 	 */
 	@Nonnull
-	public Map<String, Map<LanguageForm, String>> getLanguageFormTranslationsByPlaceholder() {
+	public Map<String, LanguageFormTranslation> getLanguageFormTranslationsByPlaceholder() {
 		return languageFormTranslationsByPlaceholder;
 	}
 
@@ -220,7 +213,7 @@ public class LocalizedString {
 		@Nullable
 		private String commentary;
 		@Nullable
-		private Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder;
+		private Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder;
 		@Nullable
 		private List<LocalizedString> alternatives;
 
@@ -258,7 +251,7 @@ public class LocalizedString {
 		 */
 		@Nonnull
 		public Builder languageFormTranslationsByPlaceholder(
-				@Nullable Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder) {
+				@Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
 			this.languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder;
 			return this;
 		}
@@ -283,6 +276,88 @@ public class LocalizedString {
 		@Nonnull
 		public LocalizedString build() {
 			return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives);
+		}
+	}
+
+	/**
+	 * Container for language-form (gender, plural) translation information.
+	 *
+	 * @author <a href="https://revetkn.com">Mark Allen</a>
+	 */
+	@Immutable
+	public static class LanguageFormTranslation {
+		@Nonnull
+		private final String value;
+		@Nonnull
+		private final Map<LanguageForm, String> translationsByLanguageForm;
+
+		public LanguageFormTranslation(@Nonnull String value, @Nonnull Map<LanguageForm, String> translationsByLanguageForm) {
+			requireNonNull(value);
+			requireNonNull(translationsByLanguageForm);
+
+			this.value = value;
+			this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+		}
+
+		/**
+		 * Generates a {@code String} representation of this object.
+		 *
+		 * @return a string representation of this object, not null
+		 */
+		@Override
+		@Nonnull
+		public String toString() {
+			return format("%s{value=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getValue(), getTranslationsByLanguageForm());
+		}
+
+		/**
+		 * Checks if this object is equal to another one.
+		 *
+		 * @param other the object to check, null returns false
+		 * @return true if this is equal to the other object, false otherwise
+		 */
+		@Override
+		public boolean equals(@Nullable Object other) {
+			if (this == other)
+				return true;
+
+			if (other == null || !getClass().equals(other.getClass()))
+				return false;
+
+			LanguageFormTranslation languageFormTranslation = (LanguageFormTranslation) other;
+
+			return Objects.equals(getValue(), languageFormTranslation.getValue())
+					&& Objects.equals(getTranslationsByLanguageForm(), languageFormTranslation.getTranslationsByLanguageForm());
+		}
+
+		/**
+		 * A hash code for this object.
+		 *
+		 * @return a suitable hash code
+		 */
+		@Override
+		public int hashCode() {
+			return Objects.hash(getValue(), getTranslationsByLanguageForm());
+		}
+
+		/**
+		 * Gets the value for this per-language-form translation set.
+		 *
+		 * @return the value for this per-language-form translation set, not null
+		 */
+		@Nonnull
+		public String getValue() {
+			return value;
+		}
+
+		/**
+		 * Gets the translations by language form for this per-language-form translation set.
+		 *
+		 * @return the translations by language form for this per-language-form translation set, not null
+		 */
+		@Nonnull
+		public Map<LanguageForm, String> getTranslationsByLanguageForm() {
+			return translationsByLanguageForm;
 		}
 	}
 }

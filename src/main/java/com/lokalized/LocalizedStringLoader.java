@@ -16,6 +16,7 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.MinimalJson.Json;
 import com.lokalized.MinimalJson.JsonArray;
 import com.lokalized.MinimalJson.JsonObject;
@@ -334,7 +335,7 @@ public final class LocalizedStringLoader {
 				commentary = commentaryJsonValue.asString();
 			}
 
-			Map<String, Map<LanguageForm, String>> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
+			Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
 
 			JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
 
@@ -347,11 +348,23 @@ public final class LocalizedStringLoader {
 				for (Member placeholderMember : placeholdersJsonObject) {
 					String placeholderKey = placeholderMember.getName();
 					JsonValue placeholderJsonValue = placeholderMember.getValue();
+					String value;
 
 					if (!placeholderJsonValue.isObject())
 						throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key was '%s'", canonicalPath, key));
 
 					JsonObject placeholderJsonObject = placeholderJsonValue.asObject();
+
+					JsonValue valueJsonValue = placeholderJsonObject.get("value");
+
+					if (valueJsonValue == null || valueJsonValue.isNull())
+						throw new LocalizedStringLoadingException(format("%s: a placeholder translation value is required. Key was '%s'", canonicalPath, key));
+
+					if (!valueJsonValue.isString())
+						throw new LocalizedStringLoadingException(format("%s: a placeholder translation value must be a string. Key was '%s'", canonicalPath, key));
+
+					value = valueJsonValue.asString();
+
 					JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
 
 					if (translationsJsonValue == null || translationsJsonValue.isNull())
@@ -380,7 +393,7 @@ public final class LocalizedStringLoader {
 						translationsByLanguageForm.put(languageForm, languageFormTranslationJsonValue.asString());
 					}
 
-					languageFormTranslationsByPlaceholder.put(placeholderKey, translationsByLanguageForm);
+					languageFormTranslationsByPlaceholder.put(placeholderKey, new LanguageFormTranslation(value, translationsByLanguageForm));
 				}
 			}
 

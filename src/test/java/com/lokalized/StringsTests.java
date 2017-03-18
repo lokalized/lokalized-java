@@ -44,12 +44,23 @@ public class StringsTests {
 		).localeSupplier(() -> Locale.forLanguageTag("en-GB"))
 				.build();
 
-		String translation = strings.get("I read {{bookCount}} books",
+		String translation = strings.get("I am going on vacation");
+
+		Assert.assertEquals("I am going on holiday", translation);
+
+		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
 				}});
 
 		Assert.assertEquals("I read 3 books", translation);
+
+		translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", 1);
+				}});
+
+		Assert.assertEquals("I read 1 book", translation);
 
 		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{

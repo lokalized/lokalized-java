@@ -17,7 +17,6 @@
 package com.lokalized;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -114,13 +113,14 @@ public enum Plural implements LanguageForm {
 	 * See <a href="http://translate.sourceforge.net/wiki/l10n/pluralforms">http://translate.sourceforge.net/wiki/l10n/pluralforms</a>
 	 * for a cheat sheet.
 	 *
-	 * @param number the number that drives pluralization, may be null
+	 * @param number the number that drives pluralization, not null
 	 * @param locale the locale that drives pluralization, not null
 	 * @return an appropriate plural value, not null
 	 * @throws UnsupportedLocaleException if the locale is not recognized
 	 */
 	@Nonnull
-	public static Plural pluralForNumber(@Nullable Number number, @Nonnull Locale locale) {
+	public static Plural pluralForNumber(@Nonnull Number number, @Nonnull Locale locale) {
+		requireNonNull(number);
 		requireNonNull(locale);
 
 		Optional<Function<Number, Plural>> pluralValueFunction = PluralFamily.pluralValueFunctionForLocale(locale);

@@ -16,6 +16,8 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.LanguageFormTranslation;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
@@ -23,11 +25,14 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Locale.LanguageRange;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,6 +62,8 @@ public class DefaultStrings implements Strings {
 	private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
 	@Nonnull
 	private final Supplier<Locale> localeSupplier;
+	@Nonnull
+	private final Supplier<LanguageRange> languageRangeSupplier;
 	@Nonnull
 	private final FailureMode failureMode;
 	@Nonnull
@@ -93,12 +100,14 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @param fallbackLanguageCode    fallback language code, not null
 	 * @param localizedStringSupplier supplier of localized strings, not null
-	 * @param localeSupplier          standard locale supplier, may be null
+	 * @param localeSupplier          locale supplier, may be null
+	 * @param languageRangeSupplier   language range supplier, may be null
 	 * @param failureMode             strategy for dealing with lookup failures, may be null
 	 */
 	protected DefaultStrings(@Nonnull String fallbackLanguageCode,
 													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
 													 @Nullable Supplier<Locale> localeSupplier,
+													 @Nullable Supplier<LanguageRange> languageRangeSupplier,
 													 @Nullable FailureMode failureMode) {
 		requireNonNull(fallbackLanguageCode);
 		requireNonNull(localizedStringSupplier);
@@ -127,6 +136,7 @@ public class DefaultStrings implements Strings {
 		this.fallbackLanguageCode = fallbackLanguageCode;
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.localeSupplier = localeSupplier == null ? () -> fallbackLocale : localeSupplier;
+		this.languageRangeSupplier = languageRangeSupplier == null ? () -> new LanguageRange(fallbackLocale.toLanguageTag()) : languageRangeSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();
 
@@ -185,6 +195,7 @@ public class DefaultStrings implements Strings {
 			locale = getImplicitLocale();
 
 		String translation = null;
+		Map<String, Object> context = new HashMap<>(placeholders);
 
 		List<LocalizedStringSource> localizedStringSources = getLocalizedStringSourcesForLocale(locale);
 
@@ -197,9 +208,65 @@ public class DefaultStrings implements Strings {
 				logger.finer(format("A match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
 				translation = localizedString.getTranslation();
 
-				// TODO: apply placeholder replacement, process language forms and alternatives
+				for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+					String placeholderName = entry.getKey();
+					LanguageFormTranslation languageFormTranslation = entry.getValue();
 
-				translation = stringInterpolator.interpolate(translation, placeholders);
+					Object value = context.get(languageFormTranslation.getValue());
+
+					Map<Plural, String> translationsByPlural = new HashMap<>();
+					Map<Gender, String> translationsByGender = new HashMap<>();
+
+					for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
+						LanguageForm languageForm = translationEntry.getKey();
+						String translatedLanguageForm = translationEntry.getValue();
+
+						if (languageForm instanceof Plural)
+							translationsByPlural.put((Plural) languageForm, translatedLanguageForm);
+						else if (languageForm instanceof Gender)
+							translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+						else
+							throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
+
+					}
+
+					if (translationsByPlural.size() > 0 && translationsByGender.size() > 0)
+						throw new IllegalArgumentException(format("You cannot mix-and-match %s and %s types. Offending localized string was %s",
+								Plural.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
+
+					if (translationsByPlural.size() == 0 && translationsByGender.size() == 0)
+						continue;
+
+					// Handle plurals
+					if (translationsByPlural.size() > 0) {
+						if (value == null)
+							value = 0;
+
+						if (!(value instanceof Number)) {
+							logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
+									value, languageFormTranslation.getValue()));
+							value = 0;
+						}
+
+						Plural plural = Plural.pluralForNumber((Number) value, localizedStringSource.getLocale());
+						String pluralTranslation = translationsByPlural.get(plural);
+
+						if (pluralTranslation == null)
+							logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+									Plural.class.getSimpleName(), plural.name(), localizedString));
+
+						context.put(placeholderName, pluralTranslation);
+					}
+
+					// Handle genders
+					if (translationsByGender.size() > 0) {
+						throw new UnsupportedOperationException("TODO: implement gender");
+					}
+				}
+
+				// TODO: apply alternatives
+
+				translation = stringInterpolator.interpolate(translation, context);
 
 				break;
 			}
@@ -234,13 +301,23 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Gets the standard locale supplier.
+	 * Gets the locale supplier.
 	 *
-	 * @return the standard locale supplier, not null
+	 * @return the locale supplier, not null
 	 */
 	@Nonnull
-	public Supplier<Locale> getLocaleSupplier() {
+	protected Supplier<Locale> getLocaleSupplier() {
 		return localeSupplier;
+	}
+
+	/**
+	 * Gets the language range supplier.
+	 *
+	 * @return the language range supplier, not null
+	 */
+	@Nonnull
+	protected Supplier<LanguageRange> getLanguageRangeSupplier() {
+		return languageRangeSupplier;
 	}
 
 	/**
@@ -527,6 +604,8 @@ public class DefaultStrings implements Strings {
 		@Nullable
 		private Supplier<Locale> localeSupplier;
 		@Nullable
+		private Supplier<LanguageRange> languageRangeSupplier;
+		@Nullable
 		private FailureMode failureMode;
 
 		/**
@@ -549,12 +628,24 @@ public class DefaultStrings implements Strings {
 		/**
 		 * Applies a locale supplier to this builder.
 		 *
-		 * @param localeSupplier standard locale supplier, may be null
+		 * @param localeSupplier locale supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@Nonnull
 		public Builder localeSupplier(@Nullable Supplier<Locale> localeSupplier) {
 			this.localeSupplier = localeSupplier;
+			return this;
+		}
+
+		/**
+		 * Applies a language range supplier to this builder.
+		 *
+		 * @param languageRangeSupplier language range supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@Nonnull
+		public Builder languageRangeSupplier(@Nullable Supplier<LanguageRange> languageRangeSupplier) {
+			this.languageRangeSupplier = languageRangeSupplier;
 			return this;
 		}
 
@@ -577,7 +668,7 @@ public class DefaultStrings implements Strings {
 		 */
 		@Nonnull
 		public DefaultStrings build() {
-			return new DefaultStrings(fallbackLanguageCode, localizedStringSupplier, localeSupplier, failureMode);
+			return new DefaultStrings(fallbackLanguageCode, localizedStringSupplier, localeSupplier, languageRangeSupplier, failureMode);
 		}
 	}
 }
