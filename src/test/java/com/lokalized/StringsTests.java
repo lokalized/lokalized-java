@@ -17,13 +17,11 @@
 package com.lokalized;
 
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.logging.Level;
 
 /**
  * Exercises {@link Strings}.
@@ -32,13 +30,8 @@ import java.util.logging.Level;
  */
 @ThreadSafe
 public class StringsTests {
-	@BeforeClass
-	public static void configureLogging() {
-		LoggingUtils.setRootLoggerLevel(Level.FINER);
-	}
-
 	@Test
-	public void placeholderTest() {
+	public void basicLanguageSpecificityTest() {
 		Strings strings = new DefaultStrings.Builder("en", () ->
 				LocalizedStringLoader.loadFromClasspath("strings")
 		).localeSupplier(() -> Locale.forLanguageTag("en-GB"))
@@ -47,8 +40,15 @@ public class StringsTests {
 		String translation = strings.get("I am going on vacation");
 
 		Assert.assertEquals("I am going on holiday", translation);
+	}
 
-		translation = strings.get("I read {{bookCount}} books",
+	@Test
+	public void pluralPlaceholderTest() {
+		Strings strings = new DefaultStrings.Builder("en", () ->
+				LocalizedStringLoader.loadFromClasspath("strings")
+		).build();
+
+		String translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
 				}});

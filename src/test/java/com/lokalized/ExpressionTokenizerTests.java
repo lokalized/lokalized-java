@@ -16,13 +16,11 @@
 
 package com.lokalized;
 
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 
 import static org.junit.Assert.assertEquals;
 
@@ -33,11 +31,6 @@ import static org.junit.Assert.assertEquals;
  */
 @ThreadSafe
 public class ExpressionTokenizerTests {
-	@BeforeClass
-	public static void configureLogging() {
-		LoggingUtils.setRootLoggerLevel(Level.FINER);
-	}
-
 	@Test
 	public void basicTokenization() {
 		List<Token> tokens = new ExpressionTokenizer().extractTokens("chickenCount == ZERO");
