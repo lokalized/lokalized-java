@@ -483,6 +483,7 @@ public enum Plural implements LanguageForm {
 					throw new UnsupportedOperationException();
 				});
 				put(PluralFamily.MACEDONIAN, (number) -> {
+					// TODO: cheat-sheet is at https://doc.qt.io/archives/qq/qq19-plurals.html for this and others
 					throw new UnsupportedOperationException();
 				});
 				put(PluralFamily.MALTESE, (number) -> {
