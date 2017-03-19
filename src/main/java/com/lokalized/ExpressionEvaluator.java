@@ -27,6 +27,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.lang.String.format;
@@ -364,6 +365,140 @@ class ExpressionEvaluator {
 	}
 
 	/**
+	 * Determines the type of an operand.
+	 *
+	 * @param operand the operand to examine, not null
+	 * @param context the context for the expression, not null
+	 * @return the type of the operand (or {@link OperandType#UNKNOWN} if indeterminate), not null
+	 */
+	@Nonnull
+	protected OperandType operandType(@Nonnull Token operand, @Nonnull Map<String, Object> context) {
+		requireNonNull(operand);
+		requireNonNull(context);
+
+		if (operand.getTokenType() == TokenType.NUMBER)
+			return OperandType.NUMBER;
+		if (isPlural(operand))
+			return OperandType.PLURAL;
+		if (isGender(operand))
+			return OperandType.GENDER;
+
+		if (operand.getTokenType() == TokenType.VARIABLE) {
+			Object value = context.get(operand.getSymbol());
+
+			if (value instanceof Optional)
+				value = ((Optional<?>) value).orElse(null);
+
+			if (value == null)
+				return OperandType.NULL;
+			if (value instanceof Number)
+				return OperandType.NUMBER;
+			if (value instanceof Plural)
+				return OperandType.PLURAL;
+			if (value instanceof Gender)
+				return OperandType.GENDER;
+		}
+
+		return OperandType.UNKNOWN;
+	}
+
+	/**
+	 * Determines the double value of an operand.
+	 *
+	 * @param operand the operand to examine, not null
+	 * @param context the context for the expression, not null
+	 * @return the double value of the operand, not null
+	 * @throws ExpressionEvaluationException if unable to determine double value (operand is of invalid type, etc.)
+	 */
+	@Nonnull
+	protected Double doubleFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context) {
+		requireNonNull(operand);
+		requireNonNull(context);
+
+		if (operand.getTokenType() == TokenType.NUMBER)
+			return Double.parseDouble(operand.getSymbol());
+
+		if (operand.getTokenType() == TokenType.VARIABLE) {
+			Object value = context.get(operand.getSymbol());
+
+			if (value instanceof Optional)
+				value = ((Optional<?>) value).orElse(null);
+
+			if (value instanceof Number)
+				return ((Number) value).doubleValue();
+		}
+
+		throw new ExpressionEvaluationException(format("Unable to extract numeric value from '%s'", operand.getSymbol()));
+	}
+
+	/**
+	 * Determines the gender value of an operand.
+	 *
+	 * @param operand the operand to examine, not null
+	 * @param context the context for the expression, not null
+	 * @return the gender value of the operand, not null
+	 * @throws ExpressionEvaluationException if unable to determine gender value (operand is of invalid type, etc.)
+	 */
+	@Nonnull
+	protected Gender genderFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context) {
+		requireNonNull(operand);
+		requireNonNull(context);
+
+		if (isGender(operand))
+			return Gender.getGendersByName().get(operand.getSymbol());
+
+		if (operand.getTokenType() == TokenType.VARIABLE) {
+			Object value = context.get(operand.getSymbol());
+
+			if (value instanceof Optional)
+				value = ((Optional<?>) value).orElse(null);
+
+			if (value instanceof Gender)
+				return (Gender) value;
+		}
+
+		throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+				Gender.class.getSimpleName(), operand.getSymbol()));
+	}
+
+	/**
+	 * Determines the plural value of an operand.
+	 *
+	 * @param operand the operand to examine, not null
+	 * @param context the context for the expression, not null
+	 * @param locale  the locale to use for evaluation, not null
+	 * @return the plural value of the operand, not null
+	 * @throws ExpressionEvaluationException if unable to determine plural value (operand is of invalid type, etc.)
+	 */
+	@Nonnull
+	protected Plural pluralFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+		requireNonNull(operand);
+		requireNonNull(context);
+		requireNonNull(locale);
+
+		if (isPlural(operand))
+			return Plural.getPluralsByName().get(operand.getSymbol());
+
+		if (operand.getTokenType() == TokenType.NUMBER)
+			return Plural.pluralForNumber(doubleFromOperand(operand, context), locale);
+
+		if (operand.getTokenType() == TokenType.VARIABLE) {
+			Object value = context.get(operand.getSymbol());
+
+			if (value instanceof Optional)
+				value = ((Optional<?>) value).orElse(null);
+
+			if (value instanceof Plural)
+				return (Plural) value;
+			if (value instanceof Number)
+				return Plural.pluralForNumber((Number) value, locale);
+		}
+
+		throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+				Plural.class.getSimpleName(), operand.getSymbol()));
+	}
+
+	/**
 	 * Gets the expression tokenizer.
 	 *
 	 * @return the expression tokenizer, not null
@@ -371,5 +506,14 @@ class ExpressionEvaluator {
 	@Nonnull
 	protected ExpressionTokenizer getExpressionTokenizer() {
 		return expressionTokenizer;
+	}
+
+	/**
+	 * Expression operand types.
+	 *
+	 * @author <a href="https://revetkn.com">Mark Allen</a>
+	 */
+	protected enum OperandType {
+		NUMBER, GENDER, PLURAL, NULL, UNKNOWN;
 	}
 }
