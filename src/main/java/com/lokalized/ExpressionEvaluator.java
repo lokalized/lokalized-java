@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -65,7 +66,7 @@ class ExpressionEvaluator {
 	@Nonnull
 	private static final Set<TokenType> OPERATOR_TOKEN_TYPES;
 
-	// TRUE and FALSE are magic tokens used at RPN evaluation time to hold result of boolean expressions.
+	// TRUE and FALSE are magic tokens used at RPN evaluation time to hold result of boolean binary operator expressions.
 	@Nonnull
 	private static final Token TRUE_RESULT_TOKEN;
 	@Nonnull
@@ -149,21 +150,38 @@ class ExpressionEvaluator {
 	}
 
 	/**
-	 * Evaluates an expression given context and locale.
+	 * Evaluates an expression given a locale.
 	 * <p>
 	 * Locale is necessary for plural form evaluation.
 	 *
 	 * @param expression the expression to evaluate, not null
-	 * @param context    the context for the expression, not null
 	 * @param locale     the locale to use for evaluation, not null
 	 * @return the result of expression evaluation, not null
 	 * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
 	 */
 	@Nonnull
-	public Boolean evaluate(@Nonnull String expression, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+	public Boolean evaluate(@Nonnull String expression, @Nonnull Locale locale) {
+		return evaluate(expression, null, locale);
+	}
+
+	/**
+	 * Evaluates an expression given context and locale.
+	 * <p>
+	 * Locale is necessary for plural form evaluation.
+	 *
+	 * @param expression the expression to evaluate, not null
+	 * @param context    the context for the expression, may be null
+	 * @param locale     the locale to use for evaluation, not null
+	 * @return the result of expression evaluation, not null
+	 * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
+	 */
+	@Nonnull
+	public Boolean evaluate(@Nonnull String expression, @Nullable Map<String, Object> context, @Nonnull Locale locale) {
 		requireNonNull(expression);
-		requireNonNull(context);
 		requireNonNull(locale);
+
+		if (context == null)
+			context = Collections.emptyMap();
 
 		List<Token> tokens = getExpressionTokenizer().extractTokens(expression);
 		tokens = convertTokensToReversePolishNotation(tokens);
@@ -245,6 +263,9 @@ class ExpressionEvaluator {
 	/**
 	 * Given a list of tokens in RPN format, evaluate the expression they comprise against the given context
 	 * and locale and return a true or false result.
+	 * <p>
+	 * RPN evaluation algorithm is outlined at
+	 * <a href="http://en.wikipedia.org/wiki/Reverse_Polish_notation">http://en.wikipedia.org/wiki/Reverse_Polish_notation</a>.
 	 *
 	 * @param tokens  the RPN-format tokens to evaluate, not null
 	 * @param context the context for the expression, not null
@@ -253,12 +274,176 @@ class ExpressionEvaluator {
 	 * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
 	 */
 	@Nonnull
-	protected Boolean evaluateReversePolishNotationTokens(@Nonnull List<Token> tokens, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+	protected Boolean evaluateReversePolishNotationTokens(@Nonnull List<Token> tokens,
+																												@Nonnull Map<String, Object> context, @Nonnull Locale locale) {
 		requireNonNull(tokens);
 		requireNonNull(context);
 		requireNonNull(locale);
 
-		throw new UnsupportedOperationException();
+		Deque<Token> valueStack = new ArrayDeque<>();
+
+		// Evaluate RPN tokens.
+		// See http://en.wikipedia.org/wiki/Reverse_Polish_notation
+		for (Token token : tokens) {
+			// If the token is a value
+			if (isOperand(token)) {
+				// Push it onto the stack.
+				valueStack.push(token);
+			} else if (isOperator(token)) {
+				// It is known a priori that an operator takes 2 arguments.
+				// If there are fewer than 2 values on the stack, the user has not input sufficient values in the expression.
+				if (valueStack.size() < 2)
+					throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s' (%s)",
+							token.getSymbol(), valueStack.stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+
+				// Else, Pop the top 2 values from the stack.
+				Token rightHandOperand = valueStack.pop();
+				Token leftHandOperand = valueStack.pop();
+
+				// Evaluate the operator, with the values as arguments.
+				Token result = evaluateBinaryOperator(leftHandOperand, token, rightHandOperand, context, locale);
+
+				// Push the returned results, if any, back onto the stack.
+				valueStack.push(result);
+			} else {
+				throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
+			}
+		}
+
+		// If there is only one value in the stack, that value is the result of the calculation.
+		if (valueStack.size() == 1) {
+			Token resultToken = valueStack.pop();
+
+			if (resultToken == TRUE_RESULT_TOKEN)
+				return true;
+			if (resultToken == FALSE_RESULT_TOKEN)
+				return false;
+
+			throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
+		}
+
+		// Otherwise, there are more values in the stack. The user input has too many values.
+		throw new ExpressionEvaluationException(format("Unexpected extra values exist on the stack: %s", valueStack
+				.stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+	}
+
+	/**
+	 * Applies a binary operator to the given left- and right-hand operands.
+	 * <p>
+	 * A special {@link #TRUE_RESULT_TOKEN} or {@link #FALSE_RESULT_TOKEN} is returned to indicate the result.
+	 *
+	 * @param leftHandOperand  the left-hand-side token, not null
+	 * @param operator         the binary operator to apply, not null
+	 * @param rightHandOperand the right-hand-side token, not null
+	 * @param context          the context for the expression, not null
+	 * @param locale           the locale to use for evaluation, not null
+	 * @return the result of the binary operator evaluation (magic TRUE_RESULT_TOKEN or FALSE_RESULT_TOKEN), not null
+	 * @throws ExpressionEvaluationException if an error occurs while evaluating the operator
+	 */
+	protected Token evaluateBinaryOperator(@Nonnull Token leftHandOperand, @Nonnull Token operator, @Nonnull Token rightHandOperand,
+																				 @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+		requireNonNull(leftHandOperand);
+		requireNonNull(operator);
+		requireNonNull(rightHandOperand);
+		requireNonNull(context);
+		requireNonNull(locale);
+
+		if (isBooleanOperator(operator)) {
+			boolean lhsValue = booleanValue(leftHandOperand);
+			boolean rhsValue = booleanValue(rightHandOperand);
+
+			if (operator.getTokenType() == TokenType.AND)
+				return lhsValue && rhsValue ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+			else if (operator.getTokenType() == TokenType.OR)
+				return lhsValue || rhsValue ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+			else
+				throw new ExpressionEvaluationException(format("Expected boolean operator (one of %s) but encountered '%s'",
+						BOOLEAN_OPERATOR_TOKEN_TYPES.stream()
+								.map(tokenType -> tokenType.getSymbol().get())
+								.collect(Collectors.toList()), operator));
+		} else if (isComparisonOperator(operator)) {
+			OperandType lhsOperandType = operandType(leftHandOperand, context);
+			OperandType rhsOperandType = operandType(rightHandOperand, context);
+
+			// If either side is unknown we evaluate to false
+			// TODO: fail-fast here?
+			if (lhsOperandType == OperandType.UNKNOWN || rhsOperandType == OperandType.UNKNOWN)
+				return FALSE_RESULT_TOKEN;
+
+			// null == null
+			if (lhsOperandType == OperandType.NULL && rhsOperandType == OperandType.NULL)
+				return TRUE_RESULT_TOKEN;
+
+			// null on either side evaluates to false (no coercing to some default value)
+			if (lhsOperandType == OperandType.NULL || rhsOperandType == OperandType.NULL)
+				return FALSE_RESULT_TOKEN;
+
+			// Number (operators: any)
+			if (lhsOperandType == OperandType.NUMBER && rhsOperandType == OperandType.NUMBER) {
+				double lhsValue = doubleFromOperand(leftHandOperand, context);
+				double rhsValue = doubleFromOperand(rightHandOperand, context);
+				boolean result = false;
+
+				if (operator.getTokenType() == TokenType.LESS_THAN)
+					result = lhsValue < rhsValue;
+				else if (operator.getTokenType() == TokenType.LESS_THAN_OR_EQUAL_TO)
+					result = lhsValue <= rhsValue;
+				else if (operator.getTokenType() == TokenType.GREATER_THAN)
+					result = lhsValue > rhsValue;
+				else if (operator.getTokenType() == TokenType.GREATER_THAN_OR_EQUAL_TO)
+					result = lhsValue >= rhsValue;
+				else if (operator.getTokenType() == TokenType.EQUAL_TO)
+					result = lhsValue == rhsValue;
+				else if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+					result = lhsValue != rhsValue;
+				else
+					throw new ExpressionEvaluationException(format("Encountered unexpected operator '%s'", operator.getSymbol()));
+
+				return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+			}
+
+			// Gender (operators: ==, !=)
+			if (lhsOperandType == OperandType.GENDER && rhsOperandType == OperandType.GENDER) {
+				if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+					throw new ExpressionEvaluationException(
+							format(
+									"You may only use the '%s' and '%s' operators when performing gender comparisons. Offending comparison: '%s %s %s'",
+									TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+									operator.getSymbol(), rightHandOperand.getSymbol()));
+
+				Gender lhsValue = genderFromOperand(leftHandOperand, context);
+				Gender rhsValue = genderFromOperand(rightHandOperand, context);
+				boolean result = false;
+
+				if (operator.getTokenType() == TokenType.EQUAL_TO)
+					result = lhsValue == rhsValue;
+				if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+					result = lhsValue != rhsValue;
+
+				return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+			}
+
+			// Plural (operators: ==, !=)
+			if (lhsOperandType == OperandType.PLURAL || rhsOperandType == OperandType.PLURAL) {
+				Plural lhsValue = pluralFromOperand(leftHandOperand, context, locale);
+				Plural rhsValue = pluralFromOperand(rightHandOperand, context, locale);
+
+				boolean result = false;
+
+				if (operator.getTokenType() == TokenType.EQUAL_TO)
+					result = lhsValue == rhsValue;
+				if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+					result = lhsValue != rhsValue;
+
+				return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+			}
+
+			throw new ExpressionEvaluationException(format(
+					"Unable to evaluate expression '%s %s %s'. Operand types %s and %s are incompatible", leftHandOperand.getSymbol(),
+					operator.getSymbol(), rightHandOperand.getSymbol(), lhsOperandType.name(), rhsOperandType.name()));
+		} else {
+			throw new ExpressionEvaluationException(format("Expected operator but encountered '%s'", operator.getSymbol()));
+		}
 	}
 
 	/**
@@ -496,6 +681,25 @@ class ExpressionEvaluator {
 
 		throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
 				Plural.class.getSimpleName(), operand.getSymbol()));
+	}
+
+	/**
+	 * Determines the boolean value of a token.
+	 *
+	 * @param token the token to examine, not null
+	 * @return the boolean value of the token, not null
+	 * @throws ExpressionEvaluationException if unable to determine boolean value (token is of invalid type, etc.)
+	 */
+	@Nonnull
+	protected Boolean booleanValue(@Nonnull Token token) {
+		requireNonNull(token);
+
+		if (token == TRUE_RESULT_TOKEN)
+			return true;
+		if (token == FALSE_RESULT_TOKEN)
+			return false;
+
+		throw new ExpressionEvaluationException(format("Expected boolean but encountered '%s'", token.getSymbol()));
 	}
 
 	/**
