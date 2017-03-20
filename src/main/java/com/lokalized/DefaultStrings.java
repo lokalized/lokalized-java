@@ -71,6 +71,8 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	private final StringInterpolator stringInterpolator;
 	@Nonnull
+	private final ExpressionEvaluator expressionEvaluator;
+	@Nonnull
 	private final Logger logger;
 
 	/**
@@ -139,6 +141,7 @@ public class DefaultStrings implements Strings {
 		this.languageRangeSupplier = languageRangeSupplier == null ? () -> new LanguageRange(fallbackLocale.toLanguageTag()) : languageRangeSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();
+		this.expressionEvaluator = new ExpressionEvaluator();
 
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
@@ -206,85 +209,7 @@ public class DefaultStrings implements Strings {
 				logger.finer(format("No match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
 			} else {
 				logger.finer(format("A match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
-				translation = localizedString.getTranslation();
-
-				for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
-					String placeholderName = entry.getKey();
-					LanguageFormTranslation languageFormTranslation = entry.getValue();
-					Object value = immutableContext.get(languageFormTranslation.getValue());
-					Map<Plural, String> translationsByPlural = new HashMap<>();
-					Map<Gender, String> translationsByGender = new HashMap<>();
-
-					for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
-						LanguageForm languageForm = translationEntry.getKey();
-						String translatedLanguageForm = translationEntry.getValue();
-
-						if (languageForm instanceof Plural)
-							translationsByPlural.put((Plural) languageForm, translatedLanguageForm);
-						else if (languageForm instanceof Gender)
-							translationsByGender.put((Gender) languageForm, translatedLanguageForm);
-						else
-							throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
-
-					}
-
-					if (translationsByPlural.size() > 0 && translationsByGender.size() > 0)
-						throw new IllegalArgumentException(format("You cannot mix-and-match %s and %s types. Offending localized string was %s",
-								Plural.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
-
-					if (translationsByPlural.size() == 0 && translationsByGender.size() == 0)
-						continue;
-
-					// Handle plurals
-					if (translationsByPlural.size() > 0) {
-						if (value == null)
-							value = 0;
-
-						if (!(value instanceof Number)) {
-							logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
-									value, languageFormTranslation.getValue()));
-							value = 0;
-						}
-
-						Plural plural = Plural.pluralForNumber((Number) value, localizedStringSource.getLocale());
-						String pluralTranslation = translationsByPlural.get(plural);
-
-						if (pluralTranslation == null)
-							logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
-									Plural.class.getSimpleName(), plural.name(), localizedString));
-
-						context.put(placeholderName, pluralTranslation);
-					}
-
-					// Handle genders
-					if (translationsByGender.size() > 0) {
-						if (value == null) {
-							logger.warning(format("Value '%s' for '%s' is null. No replacement will be performed.", value,
-									languageFormTranslation.getValue()));
-							continue;
-						}
-
-						if (!(value instanceof Gender)) {
-							logger.warning(format("Value '%s' for '%s' is not a %s. No replacement will be performed.", value,
-									languageFormTranslation.getValue(), Gender.class.getSimpleName()));
-							continue;
-						}
-
-						Gender gender = (Gender) value;
-						String genderTranslation = translationsByGender.get(gender);
-
-						if (genderTranslation == null)
-							logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
-									Gender.class.getSimpleName(), gender.name(), localizedString));
-
-						context.put(placeholderName, genderTranslation);
-					}
-				}
-
-				// TODO: apply alternatives
-
-				translation = stringInterpolator.interpolate(translation, context);
-
+				translation = getInternal(key, localizedString, context, immutableContext, localizedStringSource.getLocale());
 				break;
 			}
 		}
@@ -293,6 +218,106 @@ public class DefaultStrings implements Strings {
 			logger.finer(format("No match for '%s' was found in any strings file.", key));
 			translation = key;
 		}
+
+		return translation;
+	}
+
+	@Nonnull
+	protected String getInternal(@Nonnull String key, @Nonnull LocalizedString localizedString,
+															 @Nonnull Map<String, Object> context, @Nonnull Map<String, Object> immutableContext,
+															 @Nonnull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(localizedString);
+		requireNonNull(context);
+		requireNonNull(immutableContext);
+		requireNonNull(locale);
+
+		// First, see if any alternatives match by evaluating them
+		for (LocalizedString alternative : localizedString.getAlternatives()) {
+			if (getExpressionEvaluator().evaluate(alternative.getKey(), context, locale)) {
+				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, context));
+
+				// If we have a matching alternative, recurse into it
+				return getInternal(key, alternative, context, immutableContext, locale);
+			}
+		}
+
+		String translation = localizedString.getTranslation();
+
+		for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+			String placeholderName = entry.getKey();
+			LanguageFormTranslation languageFormTranslation = entry.getValue();
+			Object value = immutableContext.get(languageFormTranslation.getValue());
+			Map<Plural, String> translationsByPlural = new HashMap<>();
+			Map<Gender, String> translationsByGender = new HashMap<>();
+
+			for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
+				LanguageForm languageForm = translationEntry.getKey();
+				String translatedLanguageForm = translationEntry.getValue();
+
+				if (languageForm instanceof Plural)
+					translationsByPlural.put((Plural) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Gender)
+					translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+				else
+					throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
+
+			}
+
+			if (translationsByPlural.size() > 0 && translationsByGender.size() > 0)
+				throw new IllegalArgumentException(format("You cannot mix-and-match %s and %s types. Offending localized string was %s",
+						Plural.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
+
+			if (translationsByPlural.size() == 0 && translationsByGender.size() == 0)
+				continue;
+
+			// Handle plurals
+			if (translationsByPlural.size() > 0) {
+				if (value == null)
+					value = 0;
+
+				if (!(value instanceof Number)) {
+					logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
+							value, languageFormTranslation.getValue()));
+					value = 0;
+				}
+
+				Plural plural = Plural.pluralForNumber((Number) value, locale);
+				String pluralTranslation = translationsByPlural.get(plural);
+
+				if (pluralTranslation == null)
+					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+							Plural.class.getSimpleName(), plural.name(), localizedString));
+
+				context.put(placeholderName, pluralTranslation);
+			}
+
+			// Handle genders
+			if (translationsByGender.size() > 0) {
+				if (value == null) {
+					logger.warning(format("Value '%s' for '%s' is null. No replacement will be performed.", value,
+							languageFormTranslation.getValue()));
+					continue;
+				}
+
+				if (!(value instanceof Gender)) {
+					logger.warning(format("Value '%s' for '%s' is not a %s. No replacement will be performed.", value,
+							languageFormTranslation.getValue(), Gender.class.getSimpleName()));
+					continue;
+				}
+
+				Gender gender = (Gender) value;
+				String genderTranslation = translationsByGender.get(gender);
+
+				if (genderTranslation == null)
+					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+							Gender.class.getSimpleName(), gender.name(), localizedString));
+
+				context.put(placeholderName, genderTranslation);
+			}
+		}
+
+		translation = stringInterpolator.interpolate(translation, context);
 
 		return translation;
 	}
@@ -371,6 +396,11 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	protected StringInterpolator getStringInterpolator() {
 		return stringInterpolator;
+	}
+
+	@Nonnull
+	protected ExpressionEvaluator getExpressionEvaluator() {
+		return expressionEvaluator;
 	}
 
 	@Nonnull

@@ -34,7 +34,7 @@
     "alternatives" : [
       {
         "bookCount == 0" : {
-          "translation" : "I haven't read any books"
+          "translation" : "I didn't read any books"
         }
       }
     ]

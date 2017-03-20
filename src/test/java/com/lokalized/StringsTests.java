@@ -17,11 +17,13 @@
 package com.lokalized;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.logging.Level;
 
 /**
  * Exercises {@link Strings}.
@@ -30,6 +32,11 @@ import java.util.Locale;
  */
 @ThreadSafe
 public class StringsTests {
+	@BeforeClass
+	public static void configureLogging() {
+		LoggingUtils.setRootLoggerLevel(Level.FINER);
+	}
+
 	@Test
 	public void basicLanguageSpecificityTest() {
 		Strings strings = new DefaultStrings.Builder("en", () ->
@@ -103,5 +110,19 @@ public class StringsTests {
 				}}, Locale.forLanguageTag("es"));
 
 		Assert.assertEquals("Ella es una buena actriz.", translation);
+	}
+
+	@Test
+	public void alternativesTest() {
+		Strings strings = new DefaultStrings.Builder("en", () ->
+				LocalizedStringLoader.loadFromClasspath("strings")
+		).build();
+
+		String translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", 0);
+				}});
+
+		Assert.assertEquals("I didn't read any books", translation);
 	}
 }
