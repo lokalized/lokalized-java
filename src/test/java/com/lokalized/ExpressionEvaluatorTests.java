@@ -20,6 +20,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.HashMap;
 import java.util.Locale;
 
 /**
@@ -52,9 +53,30 @@ public class ExpressionEvaluatorTests {
 	public void numericOperators() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Number <= failed", expressionEvaluator.evaluate("12.5 <= 12.5", Locale.forLanguageTag("en-US")));
-		Assert.assertTrue("Number < failed", expressionEvaluator.evaluate("12.4 < 12.5", Locale.forLanguageTag("en-US")));
-		Assert.assertTrue("Number >= failed", expressionEvaluator.evaluate("12.5 >= 12.5", Locale.forLanguageTag("en-US")));
-		Assert.assertTrue("Number > failed", expressionEvaluator.evaluate("12.6 > 12.5", Locale.forLanguageTag("en-US")));
+		Assert.assertTrue("Number <= failed", expressionEvaluator.evaluate("12.5 <= 12.5", LOCALE));
+		Assert.assertTrue("Number < failed", expressionEvaluator.evaluate("12.4 < 12.5", LOCALE));
+		Assert.assertTrue("Number >= failed", expressionEvaluator.evaluate("12.5 >= 12.5", LOCALE));
+		Assert.assertTrue("Number > failed", expressionEvaluator.evaluate("12.6 > 12.5", LOCALE));
+	}
+
+	@Test
+	public void contextualExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		Assert.assertTrue("Number-variable comparison failed", expressionEvaluator.evaluate("12.5 == x", new HashMap<String, Object>() {{
+			put("x", 12.5);
+		}}, LOCALE));
+
+		Assert.assertTrue("Gender-variable comparison failed", expressionEvaluator.evaluate("gender == MASCULINE", new HashMap<String, Object>() {{
+			put("gender", Gender.MASCULINE);
+		}}, LOCALE));
+
+		Assert.assertTrue("Plural-variable comparison failed", expressionEvaluator.evaluate("OTHER == bigNumber", new HashMap<String, Object>() {{
+			put("bigNumber", 1_000);
+		}}, LOCALE));
+
+		Assert.assertTrue("Plural-variable comparison failed", expressionEvaluator.evaluate("ONE == exactlyOne", new HashMap<String, Object>() {{
+			put("exactlyOne", 1);
+		}}, LOCALE));
 	}
 }
