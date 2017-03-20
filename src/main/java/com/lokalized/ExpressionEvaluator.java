@@ -65,8 +65,6 @@ class ExpressionEvaluator {
 	private static final Set<TokenType> OPERAND_TOKEN_TYPES;
 	@Nonnull
 	private static final Set<TokenType> OPERATOR_TOKEN_TYPES;
-
-	// TRUE and FALSE are magic tokens used at RPN evaluation time to hold result of boolean binary operator expressions.
 	@Nonnull
 	private static final Token TRUE_RESULT_TOKEN;
 	@Nonnull
@@ -127,6 +125,7 @@ class ExpressionEvaluator {
 
 		OPERATOR_TOKEN_TYPES = Collections.unmodifiableSet(operatorTokenTypes);
 
+		// TRUE and FALSE are magic tokens used at RPN evaluation time to hold result of binary operator expressions
 		TRUE_RESULT_TOKEN = new Token(TokenType.VARIABLE, "TRUE");
 		FALSE_RESULT_TOKEN = new Token(TokenType.VARIABLE, "FALSE");
 	}
