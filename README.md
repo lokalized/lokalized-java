@@ -98,7 +98,7 @@ out.println(translated);
 
 Notice that there is no logic in code for handling the different rules, regardless of language.  As a programmer, you are responsible for passing in whatever context is needed to display the string (in this case, the number of books).  The translator, via the translation file, is responsible for the rest.
 
-##### English Translation File
+#### English Translation File
 
 ```json
 {
@@ -125,7 +125,7 @@ Notice that there is no logic in code for handling the different rules, regardle
 }
 ```
 
-##### Russian Translation File
+#### Russian Translation File
 
 ```json
 {
@@ -154,7 +154,7 @@ Notice that there is no logic in code for handling the different rules, regardle
 }
 ```
 
-##### Notes
+#### Notes
 
 * Translation files are recursive.  Each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`
 * You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`
@@ -162,12 +162,12 @@ Notice that there is no logic in code for handling the different rules, regardle
 * Gender rules vary across languages, but the meaning is the same. Valid values are `MASCULINE`, `FEMININE`, and `NEUTER`
 * Plural rules vary across languages, and the meanings may differ. Valid values are `ZERO`, `ONE`, `TWO`, `FEW`, `MANY`, `OTHER`. Values do not necessarily map exactly to the named number, e.g. in some languages `ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `OTHER` in those cases)
 
-##### Example: English Plural Rules
+#### Example: English Plural Rules
 
 * `ONE`: Matches 1 (e.g. `1 book`)
 * `OTHER`: Everything else (e.g. `256 books`)
 
-##### Example: Russian Plural Rules
+#### Example: Russian Plural Rules
 
 * `ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
 * `FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
@@ -225,79 +225,79 @@ translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best basebal
 out.println(translated);
 ```
 
-##### English Translation File
+#### English Translation File
 
 ```json
 {
-	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
-		"translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-		"placeholders" : {
-			"heOrShe": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "He",
-					"FEMININE" : "She"
-				}
-			}
-		},
-		"alternatives" : [
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players.":{
+    "translation":"{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+    "placeholders":{
+      "heOrShe":{
+        "value":"heOrShe",
+        "translations":{
+          "MASCULINE":"He",
+          "FEMININE":"She"
+        }
+      }
+    },
+    "alternatives":[
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
-          "translation" : "He was the best baseball player."
+        "heOrShe == MASCULINE && groupSize <= 1":{
+          "translation":"He was the best baseball player."
         }
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : {
-          "translation" : "She was the best baseball player."
+        "heOrShe == FEMININE && groupSize <= 1":{
+          "translation":"She was the best baseball player."
         }
       }
-		]
-	}
+    ]
+  }
 }
 ```
 
-##### Spanish Translation File
+#### Spanish Translation File
 
 ```json
 {
-	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
-		"translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
-		"placeholders" : {
-			"uno": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "uno",
-					"FEMININE" : "una"
-				}
-			},
-			"los": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "los",
-					"FEMININE" : "las"
-				}
-			},
-			"jugadores": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "jugadores",
-					"FEMININE" : "jugadoras"
-				}
-			}
-		},
-		"alternatives" : [
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players.":{
+    "translation":"Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
+    "placeholders":{
+      "uno":{
+        "value":"heOrShe",
+        "translations":{
+          "MASCULINE":"uno",
+          "FEMININE":"una"
+        }
+      },
+      "los":{
+        "value":"heOrShe",
+        "translations":{
+          "MASCULINE":"los",
+          "FEMININE":"las"
+        }
+      },
+      "jugadores":{
+        "value":"heOrShe",
+        "translations":{
+          "MASCULINE":"jugadores",
+          "FEMININE":"jugadoras"
+        }
+      }
+    },
+    "alternatives":[
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
-          "translation" : "Él era el mejor jugador de béisbol."
+        "heOrShe == MASCULINE && groupSize <= 1":{
+          "translation":"Él era el mejor jugador de béisbol."
         }
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : {
-          "translation" : "Ella era la mejor jugadora de béisbol."
+        "heOrShe == FEMININE && groupSize <= 1":{
+          "translation":"Ella era la mejor jugadora de béisbol."
         }
       }
-		]
-	}
+    ]
+  }
 }
 ```
 
@@ -306,21 +306,21 @@ out.println(translated);
 A grammar for alternative expressions follows.
 
 ```EBNF
-EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION
-OPERAND = VARIABLE | PLURAL | GENDER | NUMBER
-PLURAL = "ZERO" | "ONE" | "TWO" | "FEW" | "MANY" | "OTHER"
-GENDER = "MASCULINE" | "FEMININE" | "NEUTER"
-VARIABLE = { alphabetic character | digit }
-BOOLEAN_OPERATOR = "&&" | "||"
-COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!="
+EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
+OPERAND = VARIABLE | PLURAL | GENDER | NUMBER ;
+PLURAL = "ZERO" | "ONE" | "TWO" | "FEW" | "MANY" | "OTHER" ;
+GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
+VARIABLE = { alphabetic character | digit } ;
+BOOLEAN_OPERATOR = "&&" | "||" ;
+COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
 
-##### What Expressions Currently Support
+#### What Expressions Currently Support
 
 * Evaluate "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
 * Compare gender, plural, and literal numeric values against each other or user-supplied variables
 
-##### What Expressions Do Not Currently Support
+#### What Expressions Do Not Currently Support
 
 * The unary `!` operator
 * Explicit `null` operands (can be implicit via `VARIABLE` value)
