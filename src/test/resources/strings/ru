@@ -9,7 +9,6 @@
         "translations" : {
           "ONE" : "книга",
           "FEW" : "книг",
-          "MANY" : "книг",
           "OTHER" : "книги"
         }
       }
@@ -17,7 +16,7 @@
     "alternatives" : [
       {
         "bookCount == 0" : {
-          "translation" : "Я не читал ни одной книги"
+          "translation" : "Я не читал книг"
         }
       }
     ]

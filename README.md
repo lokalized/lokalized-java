@@ -28,7 +28,7 @@ Lokalized aims to provide the best solution for all parties.
 Suppose my application needs to display the number of books I've read, and I have a requirement to support both English and Russian users.
 In English, we can say this 3 ways:
 
-* `I haven't read any books`
+* `I didn't read any books`
 * `I read 1 book`
 * `I read 2 books`
 
@@ -36,7 +36,7 @@ English is a complex language, but its plural rules are simple.  We say `book` i
 
 In Russian, we have 4 variants:
 
-* `Я не читал ни одной книги`
+* `Я не читал книг`
 * `Я прочитал 1 книгу`
 * `Я прочитал 2 книги`
 * `Я прочитал 5 книг`
@@ -48,18 +48,21 @@ Russian has more plural rules than English.  Roughly, we say `книгу` when t
 Our Java code might look like this:
 
 ```java
-Map<String, Object> context = new HashMap<>();
-context.put("bookCount", 0);
-
-String translated = strings.get("I read {{bookCount}} books", context);
+// Your strings instance "knows" the correct locale by consulting a Supplier<Locale>
+// that you provide.  For example, in a webapp, the Supplier might consult the
+// HttpServletRequest bound to the current thread
+String translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
+  put("bookCount", 0);
+}});
 
 // Prints "I haven't read any books"
 out.println(translated);
 
 context.put("bookCount", 1);
 
-// Translates to system locale - in my case en-US, by default
-translated = strings.get("I read {{bookCount}} books", context);
+translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
+  put("bookCount", 0);
+}});
 
 // Prints "I read 1 book"
 out.println(translated);
@@ -68,13 +71,12 @@ out.println(translated);
 OK, let's try Russian strings:
 
 ```java
-Locale russianLocale = Locale.forLanguageTag("ru");
+// You can force a target language via explicit Locale parameter - here we use Russian
+translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
+  put("bookCount", 0);
+}}, Locale.forLanguageTag("ru"));
 
-context.put("bookCount", 0);
-
-translated = strings.get("I read {{bookCount}} books", context, russianLocale);
-
-// Prints "Я не читал ни одной книги"
+// Prints "Я не читал книг"
 // (in English: "I haven't read any books")
 out.println(translated);
 ```
@@ -122,7 +124,6 @@ Notice that there is no logic in code for handling the different rules, regardle
         "translations" : {
           "ONE" : "книга",
           "FEW" : "книг",
-          "MANY" : "книг",
           "OTHER" : "книги"
         }
       }
@@ -130,7 +131,7 @@ Notice that there is no logic in code for handling the different rules, regardle
     "alternatives" : [
       {
         "bookCount == 0" : {
-          "translation" : "Я не читал ни одной книги"
+          "translation" : "Я не читал книг"
         }
       }
     ]
@@ -146,15 +147,14 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 ##### English Plural Rules
 
-* `ONE`: Cardinality of 1 (e.g. `1 book`)
+* `ONE`: Matches 1 (e.g. `1 book`)
 * `OTHER`: Everything else (e.g. `256 books`)
 
 ##### Russian Plural Rules
 
-* `ONE`: Cardinality of 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
-* `FEW`: Cardinality of 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
-* `MANY`: Cardinality of 0, 5-20, 25-30, 35-40, ... (e.g. `6 книг` or `29 книг`)
-* `OTHER`: Everything else (e.g. `1,5 книги`)
+* `ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
+* `FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
+* `OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
 A listing of rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
 
@@ -171,18 +171,16 @@ This English statement has 6 variants:
 * `She read 1 book`
 * `She read 2 books`
 
-In Russian, we have 10, and notice the `а` suffixes for the feminine gender:
+In Russian, we have 8, and notice the `а` suffixes for the feminine gender:
 
 * `Она не читала книг`
 * `Она прочитала 1 книгу`
 * `Она прочитала 2 книги`
 * `Она прочитала 5 книг`
-* `Она прочитала 1.5 книги`
 * `Он не читал книг`
 * `Он прочитал 1 книгу`
 * `Он прочитал 2 книги`
 * `Он прочитал 5 книг`
-* `Он прочитал 1.5 книги`
 
 It is necessary to do more than replace "he/she", we must rewrite other words in the sentence as well.
 
