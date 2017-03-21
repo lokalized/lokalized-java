@@ -139,4 +139,89 @@ public class StringsTests {
 
 		Assert.assertEquals("I didn't read any books", translation);
 	}
+
+	@Test
+	public void complexTest() {
+		Strings strings = new DefaultStrings.Builder("en", () ->
+				LocalizedStringLoader.loadFromClasspath("strings")
+		).build();
+
+		// English
+
+		// He was one of the 10 best baseball players.
+		// She was one of the 10 best baseball players.
+		// He was the best baseball player.
+		// SHe was the best baseball player.
+
+		String translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+					put("groupSize", 10);
+				}});
+
+		Assert.assertEquals("He was one of the 10 best baseball players.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+					put("groupSize", 1);
+				}});
+
+		Assert.assertEquals("He was the best baseball player.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+					put("groupSize", 10);
+				}});
+
+		Assert.assertEquals("She was one of the 10 best baseball players.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+					put("groupSize", 1);
+				}});
+
+		Assert.assertEquals("She was the best baseball player.", translation);
+
+		// Spanish
+
+		// Fue uno de los 10 mejores jugadores de béisbol.
+		// Fue una de las 10 mejores jugadoras de béisbol.
+		// Él era el mejor jugador de béisbol.
+		// Ella era la mejor jugadora de béisbol.
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+					put("groupSize", 10);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Fue uno de los 10 mejores jugadores de béisbol.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+					put("groupSize", 1);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Él era el mejor jugador de béisbol.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+					put("groupSize", 10);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Fue una de las 10 mejores jugadoras de béisbol.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+					put("groupSize", 1);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Ella era la mejor jugadora de béisbol.", translation);
+	}
 }

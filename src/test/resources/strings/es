@@ -27,5 +27,43 @@
 				 "heOrShe == FEMININE" : "Ella es una gran actriz."
 			 }
     ]
-  }
+  },
+	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+		"translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
+		"placeholders" : {
+			"uno": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "uno",
+					"FEMININE" : "una"
+				}
+			},
+			"los": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "los",
+					"FEMININE" : "las"
+				}
+			},
+			"jugadores": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "jugadores",
+					"FEMININE" : "jugadoras"
+				}
+			}
+		},
+		"alternatives" : [
+      {
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "Él era el mejor jugador de béisbol."
+        }
+      },
+      {
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "Ella era la mejor jugadora de béisbol."
+        }
+      }
+		]
+	}
 }

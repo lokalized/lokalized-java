@@ -58,10 +58,9 @@ String translated = strings.get("I read {{bookCount}} books", new HashMap<String
 // Prints "I haven't read any books"
 out.println(translated);
 
-context.put("bookCount", 1);
-
+// Try again with a different value
 translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
-  put("bookCount", 0);
+  put("bookCount", 1);
 }});
 
 // Prints "I read 1 book"
@@ -72,12 +71,28 @@ OK, let's try Russian strings:
 
 ```java
 // You can force a target language via explicit Locale parameter - here we use Russian
+String translated = strings.get("Hello, world!", Locale.forLanguageTag("ru"));
+
+// Prints "Приветствую, мир"
+// (in English: "Hello, world!")
+out.println(translated);
+
+// Try the special 0 case
 translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
   put("bookCount", 0);
 }}, Locale.forLanguageTag("ru"));
 
 // Prints "Я не читал книг"
 // (in English: "I haven't read any books")
+out.println(translated);
+
+// Try again with a different value
+translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
+  put("bookCount", 8);
+}}, Locale.forLanguageTag("ru"));
+
+// Prints "Я прочитал 8 книг"
+// (in English: "I read 8 books")
 out.println(translated);
 ```
 
@@ -143,90 +158,171 @@ Notice that there is no logic in code for handling the different rules, regardle
 
 * Translation files are recursive.  Each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`
 * You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`
-* Each language has a well-defined set of plural and gender rules, with examples outlined below.  You may use these to determine placeholder values and include them in `alternatives` expressions
+* Each language has a well-defined set of gender and plural rules, with examples outlined below.  You may use these to determine placeholder values and include them in `alternatives` expressions
+* Gender rules vary across languages, but the meaning is the same. Valid values are `MASCULINE`, `FEMININE`, and `NEUTER`
+* Plural rules vary across languages, and the meanings may differ. Valid values are `ZERO`, `ONE`, `TWO`, `FEW`, `MANY`, `OTHER`. Values do not necessarily map exactly to the named number, e.g. in some languages `ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `OTHER` in those cases)
 
-##### English Plural Rules
+##### Example: English Plural Rules
 
 * `ONE`: Matches 1 (e.g. `1 book`)
 * `OTHER`: Everything else (e.g. `256 books`)
 
-##### Russian Plural Rules
+##### Example: Russian Plural Rules
 
 * `ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
 * `FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
 * `OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
-A listing of rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
+A listing of plural rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
 
 ### A More Complex Example
 
-Suppose we introduce gender.  In English, gender usually does not alter verbs.  But in Russian it does.
+Suppose we introduce gender to go along with plurals.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
 
-This English statement has 6 variants:
+This English statement has 4 variants:
 
-* `He hasn't read any books`
-* `He read 1 book`
-* `He read 2 books`
-* `She hasn't read any books`
-* `She read 1 book`
-* `She read 2 books`
+* `He was one of the X best baseball players.`
+* `She was one of the X best baseball players.`
+* `He was the best baseball player.`
+* `She was the best baseball player.`
 
-In Russian, we have 8, and notice the `а` suffixes for the feminine gender:
+In Spanish, we have the same number of variants (in a language like Russian or Polish there would be more!)
+But notice how the statements must change to match gender - `uno` becomes `una`, `jugadores` becomes `jugadoras`, etc.
 
-* `Она не читала книг`
-* `Она прочитала 1 книгу`
-* `Она прочитала 2 книги`
-* `Она прочитала 5 книг`
-* `Он не читал книг`
-* `Он прочитал 1 книгу`
-* `Он прочитал 2 книги`
-* `Он прочитал 5 книг`
+* `Fue uno de los X mejores jugadores de béisbol.`
+* `Fue una de las X mejores jugadoras de béisbol.`
+* `Él era el mejor jugador de béisbol.`
+* `Ella era la mejor jugadora de béisbol.`
 
-It is necessary to do more than replace "he/she", we must rewrite other words in the sentence as well.
+Again, we keep this gender and plural logic out of our code entirely and leave it to the translation configuration.
+
+```java
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.MASCULINE);
+    put("groupSize", 10);
+  }});
+
+// Prints "He was one of the 10 best baseball players."
+out.println(translated);
+
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.MASCULINE);
+    put("groupSize", 1);
+  }});
+
+// Prints "He was the best baseball player."
+out.println(translated);
+
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.FEMININE);
+    put("groupSize", 3);
+  }}, Locale.forLanguageTag("es"));
+
+// Prints "Fue una de las 3 mejores jugadoras de béisbol."
+out.println(translated);
+```
+
+##### English Translation File
 
 ```json
 {
-  "{{gender}} read {{bookCount}} books" : {
-    "translation" : "{{subject}} {{read}} {{bookCount}} {{books}}",
-    "placeholders" : {
-      "subject" : {
-        "value" : "gender",
-        "translations" : {
-          "MASCULINE" : "Он",
-          "FEMININE" : "Она"
-        }
-      },
-      "read" : {
-        "value" : "gender",
-        "translations" : {
-          "MASCULINE" : "прочитал",
-          "FEMININE" : "прочитала"
-        }
-      },
-      "books" : {
-        "value" : "bookCount",
-        "translations" : {
-          "ONE" : "книгу",
-          "FEW" : "книги",
-          "MANY" : "книг",
-          "OTHER" : "книги"
-        }
-      }
-    },
-    "alternatives" : [
+	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+		"translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+		"placeholders" : {
+			"heOrShe": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "He",
+					"FEMININE" : "She"
+				}
+			}
+		},
+		"alternatives" : [
       {
-        "bookCount == 0 && gender == MASCULINE" : {
-          "translation" : "Он не читал книг",
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "He was the best baseball player."
         }
       },
       {
-        "bookCount == 0 && gender == FEMININE" : {
-          "translation" : "Она не читала книг",
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "She was the best baseball player."
         }
       }
-    ]
-  }
+		]
+	}
 }
 ```
+
+##### Spanish Translation File
+
+```json
+{
+	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+		"translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
+		"placeholders" : {
+			"uno": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "uno",
+					"FEMININE" : "una"
+				}
+			},
+			"los": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "los",
+					"FEMININE" : "las"
+				}
+			},
+			"jugadores": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "jugadores",
+					"FEMININE" : "jugadoras"
+				}
+			}
+		},
+		"alternatives" : [
+      {
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "Él era el mejor jugador de béisbol."
+        }
+      },
+      {
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "Ella era la mejor jugadora de béisbol."
+        }
+      }
+		]
+	}
+}
+```
+
+### Alternative Expressions
+
+A grammar for alternative expressions follows.
+
+```EBNF
+EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION
+OPERAND = VARIABLE | PLURAL | GENDER | NUMBER
+PLURAL = "ZERO" | "ONE" | "TWO" | "FEW" | "MANY" | "OTHER"
+GENDER = "MASCULINE" | "FEMININE" | "NEUTER"
+VARIABLE = { alphabetic character | digit }
+BOOLEAN_OPERATOR = "&&" | "||"
+COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!="
+```
+
+##### What Expressions Currently Support
+
+* Evaluate "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
+* Compare gender, plural, and literal numeric values against each other or user-supplied variables
+
+##### What Expressions Do Not Currently Support
+
+* The unary `!` operator
+* Explicit `null` operands (can be implicit via `VARIABLE` value)
 
 #### TODO: finish documentation

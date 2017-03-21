@@ -38,5 +38,29 @@
         }
       }
     ]
-  }
+  },
+	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+		"translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+		"placeholders" : {
+			"heOrShe": {
+				"value" : "heOrShe",
+				"translations" : {
+					"MASCULINE" : "He",
+					"FEMININE" : "She"
+				}
+			}
+		},
+		"alternatives" : [
+      {
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "He was the best baseball player."
+        }
+      },
+      {
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "She was the best baseball player."
+        }
+      }
+		]
+	}
 }
