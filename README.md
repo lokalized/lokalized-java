@@ -12,7 +12,7 @@ Lokalized facilitates natural-sounding software translations.
 
 #### Design Non-goals
 
-* Support for date/time, number, percentage, and currency formatting (the problems are already solved well)
+* Support for date/time, number, percentage, and currency formatting (these problems are already solved well)
 
 ### Why?
 
