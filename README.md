@@ -7,11 +7,12 @@ Design goals:
 * Complex translation rules can be expressed in a configuration file, not code
 * First-class support for gender and plural grammar rules
 * Support for multiple platforms (currently JavaScript and Java - Swift and Python ports coming soon)
+* Immutability/thread-safety
 * No dependencies
 
 Design non-goals:
 
-* Support for date/time, number, percentage, and currency formatting (Java already does these well)
+* Support for date/time, number, percentage, and currency formatting (the problems are already solved well)
 
 ### Why?
 
@@ -19,7 +20,7 @@ As a developer, it is unrealistic to embed per-locale translation rules in code 
 
 As a translator, sufficient context and the power of an expression language are required to provide the best translations possible.
 
-As a project manager, it is preferable to have a single translation specification that works on the backend, web frontend, and native mobile apps.
+As a manager, it is preferable to have a single translation specification that works on the backend, web frontend, and native mobile apps.
 
 Lokalized aims to provide the best solution for all parties.
 
@@ -49,8 +50,12 @@ Our Java code might look like this:
 
 ```java
 // Your strings instance "knows" the correct locale by consulting a Supplier<Locale>
-// that you provide.  For example, in a webapp, the Supplier might consult the
-// HttpServletRequest bound to the current thread
+// that you provide. For example, in a webapp, to find an appropriate locale you
+// might consult the HttpServletRequest bound to the current thread
+Strings strings = new DefaultStrings.Builder("en", () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
+  .localeSupplier(() -> MyWebContext.getRequest().getLocale())
+  .build();
+
 String translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
   put("bookCount", 0);
 }});
