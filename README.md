@@ -229,26 +229,26 @@ out.println(translated);
 
 ```json
 {
-  "{{heOrShe}} was one of the {{groupSize}} best baseball players.":{
-    "translation":"{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-    "placeholders":{
-      "heOrShe":{
-        "value":"heOrShe",
-        "translations":{
-          "MASCULINE":"He",
-          "FEMININE":"She"
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+    "translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+    "placeholders" : {
+      "heOrShe" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "He",
+          "FEMININE" : "She"
         }
       }
     },
-    "alternatives":[
+    "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1":{
-          "translation":"He was the best baseball player."
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "He was the best baseball player."
         }
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1":{
-          "translation":"She was the best baseball player."
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "She was the best baseball player."
         }
       }
     ]
@@ -260,40 +260,40 @@ out.println(translated);
 
 ```json
 {
-  "{{heOrShe}} was one of the {{groupSize}} best baseball players.":{
-    "translation":"Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
-    "placeholders":{
-      "uno":{
-        "value":"heOrShe",
-        "translations":{
-          "MASCULINE":"uno",
-          "FEMININE":"una"
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+    "translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
+    "placeholders" : {
+      "uno" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "uno",
+          "FEMININE" : "una"
         }
       },
-      "los":{
-        "value":"heOrShe",
-        "translations":{
-          "MASCULINE":"los",
-          "FEMININE":"las"
+      "los" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "los",
+          "FEMININE" : "las"
         }
       },
-      "jugadores":{
-        "value":"heOrShe",
-        "translations":{
-          "MASCULINE":"jugadores",
-          "FEMININE":"jugadoras"
+      "jugadores" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "jugadores",
+          "FEMININE" : "jugadoras"
         }
       }
     },
-    "alternatives":[
+    "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1":{
-          "translation":"Él era el mejor jugador de béisbol."
+        "heOrShe == MASCULINE && groupSize <= 1" : {
+          "translation" : "Él era el mejor jugador de béisbol."
         }
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1":{
-          "translation":"Ella era la mejor jugadora de béisbol."
+        "heOrShe == FEMININE && groupSize <= 1" : {
+          "translation" : "Ella era la mejor jugadora de béisbol."
         }
       }
     ]
