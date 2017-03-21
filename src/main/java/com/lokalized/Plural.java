@@ -296,20 +296,11 @@ public enum Plural implements LanguageForm {
 		 * Languages include:
 		 * <p>
 		 * <ul>
-		 * <li>Czech</li>
-		 * <li>Slovak</li>
-		 * </ul>
-		 */
-		SLAVIC_2,
-		/**
-		 * Languages include:
-		 * <p>
-		 * <ul>
 		 * <li>Slovenian</li>
 		 * <li>Sorbian</li>
 		 * </ul>
 		 */
-		SLAVIC_3,
+		SLAVIC_2,
 		/**
 		 * Languages include:
 		 * <p>
@@ -445,7 +436,23 @@ public enum Plural implements LanguageForm {
 		 * <li>Maltese</li>
 		 * </ul>
 		 */
-		MALTESE;
+		MALTESE,
+		/**
+		 * Languages include:
+		 * <p>
+		 * <ul>
+		 * <li>Czech</li>
+		 * </ul>
+		 */
+		CZECH,
+		/**
+		 * Languages include:
+		 * <p>
+		 * <ul>
+		 * <li>Slovak</li>
+		 * </ul>
+		 */
+		SLOVAK;
 
 		@Nonnull
 		static final Map<PluralFamily, Function<Number, Plural>> PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY;
@@ -454,6 +461,7 @@ public enum Plural implements LanguageForm {
 		static final Map<String, PluralFamily> PLURAL_FAMILIES_BY_LANGUAGE_TAG;
 
 		static {
+			// A cheat-sheet is available at https://doc.qt.io/archives/qq/qq19-plurals.html for some plural forms
 			PLURAL_VALUE_FUNCTIONS_BY_PLURAL_FAMILY = Collections.unmodifiableMap(new HashMap<PluralFamily, Function<Number, Plural>>() {{
 				put(PluralFamily.ARABIC, (number) -> {
 					throw new UnsupportedOperationException();
@@ -463,6 +471,18 @@ public enum Plural implements LanguageForm {
 				});
 				put(PluralFamily.CORNISH, (number) -> {
 					throw new UnsupportedOperationException();
+				});
+				put(PluralFamily.CZECH, (number) -> {
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value % 100 == 1)
+							return ONE;
+						if (value % 100 >= 2 && value % 100 <= 4)
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.ICELANDIC, (number) -> {
 					throw new UnsupportedOperationException();
@@ -477,14 +497,40 @@ public enum Plural implements LanguageForm {
 					throw new UnsupportedOperationException();
 				});
 				put(PluralFamily.LATVIAN, (number) -> {
-					throw new UnsupportedOperationException();
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value % 10 == 1 && value % 100 != 11)
+							return ONE;
+						if (value != 0)
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.LITHUANIAN, (number) -> {
-					throw new UnsupportedOperationException();
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value % 10 == 1 && value % 100 != 11)
+							return ONE;
+						if (value % 100 != 12 && value % 10 == 2)
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.MACEDONIAN, (number) -> {
-					// TODO: cheat-sheet is at https://doc.qt.io/archives/qq/qq19-plurals.html for this and others
-					throw new UnsupportedOperationException();
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value % 10 == 1)
+							return ONE;
+						if (value % 10 == 2)
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.MALTESE, (number) -> {
 					throw new UnsupportedOperationException();
@@ -499,47 +545,64 @@ public enum Plural implements LanguageForm {
 					return OTHER;
 				});
 				put(PluralFamily.PLURAL_IF_GREATER_THAN_1, (number) -> {
-					if (number == null)
-						return OTHER;
-
-					return number.doubleValue() > 1 ? ONE : OTHER;
+					return number != null && number.doubleValue() > 1 ? ONE : OTHER;
 				});
 				put(PluralFamily.PLURAL_IF_NOT_EQUAL_1, (number) -> {
-					if (number == null)
-						return OTHER;
-
-					return number.doubleValue() == 1 ? ONE : OTHER;
+					return number != null && number.doubleValue() == 1 ? ONE : OTHER;
 				});
 				put(PluralFamily.POLISH, (number) -> {
-					throw new UnsupportedOperationException();
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value == 1)
+							return ONE;
+						if (value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 > 20))
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.ROMANIAN, (number) -> {
-					throw new UnsupportedOperationException();
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value == 1)
+							return ONE;
+						if (value == 0 || (value % 100 >= 1 && value % 100 <= 20))
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.SCOTTISH_GAELIC, (number) -> {
 					throw new UnsupportedOperationException();
 				});
 				put(PluralFamily.SLAVIC_1, (number) -> {
-					if (number == null)
-						return OTHER;
+					if (number != null) {
+						double value = number.doubleValue();
 
-					double value = number.doubleValue();
+						if (value % 10 == 1 && value % 100 != 11)
+							return ONE;
+						if (value % 10 >= 2 && value % 10 <= 4 && (value % 100 < 10 || value % 100 > 20))
+							return FEW;
+					}
 
-					if (value % 10 == 1 && value % 100 != 11)
-						return ONE;
-					if (value % 10 >= 2 && value % 10 <= 4 && value % 100 < 12 && value % 100 > 14)
-						return FEW;
-					if (value % 10 == 0 || (value % 10 >= 5 && value % 10 <= 9) || (value % 100 >= 11 && value % 100 <= 14))
-						return MANY;
-
-					// Fallback
 					return OTHER;
 				});
 				put(PluralFamily.SLAVIC_2, (number) -> {
 					throw new UnsupportedOperationException();
 				});
-				put(PluralFamily.SLAVIC_3, (number) -> {
-					throw new UnsupportedOperationException();
+				put(PluralFamily.SLOVAK, (number) -> {
+					if (number != null) {
+						double value = number.doubleValue();
+
+						if (value == 1)
+							return ONE;
+						if (value >= 2 && value <= 4)
+							return FEW;
+					}
+
+					return OTHER;
 				});
 				put(PluralFamily.WELSH, (number) -> {
 					throw new UnsupportedOperationException();
@@ -567,7 +630,7 @@ public enum Plural implements LanguageForm {
 				put("bs", PluralFamily.SLAVIC_1); // Bosnian
 				put("ca", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Catalan
 				put("cgg", PluralFamily.NO_PLURALS); // Chiga
-				put("cs", PluralFamily.SLAVIC_2); // Czech
+				put("cs", PluralFamily.CZECH); // Czech
 				put("csb", PluralFamily.KASHUBIAN); // Kashubian
 				put("cy", PluralFamily.WELSH); // Welsh
 				put("da", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Danish
@@ -662,8 +725,8 @@ public enum Plural implements LanguageForm {
 				put("sd", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Sindhi
 				put("se", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Northern Sami
 				put("si", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Sinhala
-				put("sk", PluralFamily.SLAVIC_2); // Slovak
-				put("sl", PluralFamily.SLAVIC_3); // Slovenian
+				put("sk", PluralFamily.SLOVAK); // Slovak
+				put("sl", PluralFamily.SLAVIC_2); // Slovenian
 				put("so", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Somali
 				put("son", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Songhay
 				put("sq", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Albanian
@@ -685,7 +748,7 @@ public enum Plural implements LanguageForm {
 				put("uz", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Uzbek
 				put("vi", PluralFamily.NO_PLURALS); // Vietnamese
 				put("wa", PluralFamily.PLURAL_IF_GREATER_THAN_1); // Walloon
-				put("wen", PluralFamily.SLAVIC_3); // Sorbian
+				put("wen", PluralFamily.SLAVIC_2); // Sorbian
 				put("wo", PluralFamily.NO_PLURALS); // Wolof
 				put("yo", PluralFamily.PLURAL_IF_NOT_EQUAL_1); // Yoruba
 				put("zh", PluralFamily.NO_PLURALS); // Chinese

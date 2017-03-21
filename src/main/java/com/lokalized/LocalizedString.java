@@ -289,7 +289,7 @@ public class LocalizedString {
 	}
 
 	/**
-	 * Container for language-form (gender, plural) translation information.
+	 * Container for per-language-form (gender, plural) translation information.
 	 *
 	 * @author <a href="https://revetkn.com">Mark Allen</a>
 	 */
