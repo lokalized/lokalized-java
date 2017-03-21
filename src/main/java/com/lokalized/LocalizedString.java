@@ -73,8 +73,6 @@ public class LocalizedString {
 			this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
 		} else {
 			// Defensive copy to unmodifiable map
-			// TODO: should probably use LinkedHashMap to preserve order in the default case since we are doing that elsewhere.
-			// Not required by the spec but nice to have
 			this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(languageFormTranslationsByPlaceholder);
 		}
 
@@ -302,6 +300,12 @@ public class LocalizedString {
 		@Nonnull
 		private final Map<LanguageForm, String> translationsByLanguageForm;
 
+		/**
+		 * Constructs a per-language-form translation set with the given placeholder value and mapping of translations by language form.
+		 *
+		 * @param value                      the placeholder value to compare against for translation, not null
+		 * @param translationsByLanguageForm the possible translations keyed by language form, not null
+		 */
 		public LanguageFormTranslation(@Nonnull String value, @Nonnull Map<LanguageForm, String> translationsByLanguageForm) {
 			requireNonNull(value);
 			requireNonNull(translationsByLanguageForm);

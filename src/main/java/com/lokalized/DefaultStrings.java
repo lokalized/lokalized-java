@@ -123,8 +123,6 @@ public class DefaultStrings implements Strings {
 			suppliedLocalizedStringsByLocale = Collections.emptyMap();
 
 		// Defensive copy of iterator to unmodifiable set
-		// TODO: should probably use LinkedHashSet to preserve order in the default case since we are doing that elsewhere.
-		// Not required by the spec but nice to have
 		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
 						entry -> entry.getKey(),
@@ -199,8 +197,8 @@ public class DefaultStrings implements Strings {
 			locale = getImplicitLocale();
 
 		String translation = null;
+		Map<String, Object> mutableContext = new HashMap<>(placeholders);
 		Map<String, Object> immutableContext = Collections.unmodifiableMap(placeholders);
-		Map<String, Object> context = new HashMap<>(placeholders);
 		List<LocalizedStringSource> localizedStringSources = getLocalizedStringSourcesForLocale(locale);
 
 		for (LocalizedStringSource localizedStringSource : localizedStringSources) {
@@ -210,7 +208,7 @@ public class DefaultStrings implements Strings {
 				logger.finer(format("No match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
 			} else {
 				logger.finer(format("A match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
-				translation = getInternal(key, localizedString, context, immutableContext, localizedStringSource.getLocale()).orElse(null);
+				translation = getInternal(key, localizedString, mutableContext, immutableContext, localizedStringSource.getLocale()).orElse(null);
 				break;
 			}
 		}
@@ -223,23 +221,33 @@ public class DefaultStrings implements Strings {
 		return translation;
 	}
 
+	/**
+	 * Recursive method which attempts to translate a localized string.
+	 *
+	 * @param key              the toplevel translation key (always the same regardless of recursion depth), not null
+	 * @param localizedString  the localized string on which to operate, not null
+	 * @param mutableContext   the mutable context for the translation, not null
+	 * @param immutableContext the original user-supplied translation context, not null
+	 * @param locale           the locale to use for evaluation, not null
+	 * @return the translation, if possible (may not be possible if no translation value specified and no alternative expressions match), not null
+	 */
 	@Nonnull
 	protected Optional<String> getInternal(@Nonnull String key, @Nonnull LocalizedString localizedString,
-																				 @Nonnull Map<String, Object> context, @Nonnull Map<String, Object> immutableContext,
+																				 @Nonnull Map<String, Object> mutableContext, @Nonnull Map<String, Object> immutableContext,
 																				 @Nonnull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
-		requireNonNull(context);
+		requireNonNull(mutableContext);
 		requireNonNull(immutableContext);
 		requireNonNull(locale);
 
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
-			if (getExpressionEvaluator().evaluate(alternative.getKey(), context, locale)) {
-				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, context));
+			if (getExpressionEvaluator().evaluate(alternative.getKey(), mutableContext, locale)) {
+				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, mutableContext));
 
 				// If we have a matching alternative, recurse into it
-				return getInternal(key, alternative, context, immutableContext, locale);
+				return getInternal(key, alternative, mutableContext, immutableContext, locale);
 			}
 		}
 
@@ -293,7 +301,7 @@ public class DefaultStrings implements Strings {
 					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
 							Plural.class.getSimpleName(), plural.name(), localizedString));
 
-				context.put(placeholderName, pluralTranslation);
+				mutableContext.put(placeholderName, pluralTranslation);
 			}
 
 			// Handle genders
@@ -317,104 +325,13 @@ public class DefaultStrings implements Strings {
 					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
 							Gender.class.getSimpleName(), gender.name(), localizedString));
 
-				context.put(placeholderName, genderTranslation);
+				mutableContext.put(placeholderName, genderTranslation);
 			}
 		}
 
-		translation = stringInterpolator.interpolate(translation, context);
+		translation = stringInterpolator.interpolate(translation, mutableContext);
 
 		return Optional.of(translation);
-	}
-
-	/**
-	 * Gets the fallback language code.
-	 *
-	 * @return the fallback language code, not null
-	 */
-	@Nonnull
-	public String getFallbackLanguageCode() {
-		return fallbackLanguageCode;
-	}
-
-	/**
-	 * Gets the set of localized strings for each locale.
-	 *
-	 * @return the set of localized strings for each locale, not null
-	 */
-	@Nonnull
-	public Map<Locale, Set<LocalizedString>> getLocalizedStringsByLocale() {
-		return localizedStringsByLocale;
-	}
-
-	/**
-	 * Gets the locale supplier.
-	 *
-	 * @return the locale supplier, not null
-	 */
-	@Nonnull
-	protected Supplier<Locale> getLocaleSupplier() {
-		return localeSupplier;
-	}
-
-	/**
-	 * Gets the language range supplier.
-	 *
-	 * @return the language range supplier, not null
-	 */
-	@Nonnull
-	protected Supplier<LanguageRange> getLanguageRangeSupplier() {
-		return languageRangeSupplier;
-	}
-
-	/**
-	 * Gets the strategy for handling string lookup failures.
-	 *
-	 * @return the strategy for handling string lookup failures, not null
-	 */
-	@Nonnull
-	public FailureMode getFailureMode() {
-		return failureMode;
-	}
-
-	/**
-	 * Gets the fallback locale.
-	 *
-	 * @return the fallback locale, not null
-	 */
-	@Nonnull
-	protected Locale getFallbackLocale() {
-		return fallbackLocale;
-	}
-
-	/**
-	 * Gets the locale to use if one was not explicitly provided.
-	 *
-	 * @return the implicit locale to use, not null
-	 */
-	@Nonnull
-	protected Locale getImplicitLocale() {
-		Locale locale = getLocaleSupplier().get();
-		return locale == null ? getFallbackLocale() : locale;
-	}
-
-	@Nonnull
-	protected StringInterpolator getStringInterpolator() {
-		return stringInterpolator;
-	}
-
-	@Nonnull
-	protected ExpressionEvaluator getExpressionEvaluator() {
-		return expressionEvaluator;
-	}
-
-	@Nonnull
-	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByLocale() {
-		return localizedStringsByKeyByLocale;
-	}
-
-	@Nonnull
-	protected ConcurrentHashMap<Locale, List<LocalizedStringSource>> getLocalizedStringSourcesByLocale() {
-		return localizedStringSourcesByLocale;
 	}
 
 	@Nonnull
@@ -542,6 +459,117 @@ public class DefaultStrings implements Strings {
 
 			return Collections.unmodifiableList(localizedStringSources);
 		});
+	}
+
+	/**
+	 * Gets the fallback language code.
+	 *
+	 * @return the fallback language code, not null
+	 */
+	@Nonnull
+	public String getFallbackLanguageCode() {
+		return fallbackLanguageCode;
+	}
+
+	/**
+	 * Gets the set of localized strings for each locale.
+	 *
+	 * @return the set of localized strings for each locale, not null
+	 */
+	@Nonnull
+	public Map<Locale, Set<LocalizedString>> getLocalizedStringsByLocale() {
+		return localizedStringsByLocale;
+	}
+
+	/**
+	 * Gets the locale supplier.
+	 *
+	 * @return the locale supplier, not null
+	 */
+	@Nonnull
+	protected Supplier<Locale> getLocaleSupplier() {
+		return localeSupplier;
+	}
+
+	/**
+	 * Gets the language range supplier.
+	 *
+	 * @return the language range supplier, not null
+	 */
+	@Nonnull
+	protected Supplier<LanguageRange> getLanguageRangeSupplier() {
+		return languageRangeSupplier;
+	}
+
+	/**
+	 * Gets the strategy for handling string lookup failures.
+	 *
+	 * @return the strategy for handling string lookup failures, not null
+	 */
+	@Nonnull
+	public FailureMode getFailureMode() {
+		return failureMode;
+	}
+
+	/**
+	 * Gets the fallback locale.
+	 *
+	 * @return the fallback locale, not null
+	 */
+	@Nonnull
+	protected Locale getFallbackLocale() {
+		return fallbackLocale;
+	}
+
+	/**
+	 * Gets the locale to use if one was not explicitly provided.
+	 *
+	 * @return the implicit locale to use, not null
+	 */
+	@Nonnull
+	protected Locale getImplicitLocale() {
+		Locale locale = getLocaleSupplier().get();
+		return locale == null ? getFallbackLocale() : locale;
+	}
+
+	/**
+	 * Gets the string interpolator used to merge placeholders into translations.
+	 *
+	 * @return the string interpolator, not null
+	 */
+	@Nonnull
+	protected StringInterpolator getStringInterpolator() {
+		return stringInterpolator;
+	}
+
+	/**
+	 * Gets the expression evaluator used to determine if alternative expressions match the evaluation context.
+	 *
+	 * @return the expression evaluator, not null
+	 */
+	@Nonnull
+	protected ExpressionEvaluator getExpressionEvaluator() {
+		return expressionEvaluator;
+	}
+
+	/**
+	 * Gets our "master" cache of localized strings by key by locale.
+	 *
+	 * @return the cache of localized strings by key by locale, not null
+	 */
+	@Nonnull
+	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByLocale() {
+		return localizedStringsByKeyByLocale;
+	}
+
+	/**
+	 * Get the "runtime" generated map of locales to localized string sources.
+	 *
+	 * @return the map of locales to localized string sources, not null
+	 */
+	@Nonnull
+	protected ConcurrentHashMap<Locale, List<LocalizedStringSource>> getLocalizedStringSourcesByLocale() {
+		return localizedStringSourcesByLocale;
 	}
 
 	/**
