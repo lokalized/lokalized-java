@@ -17,5 +17,15 @@
         }
       }
     }
+  },
+  "{{heOrShe}} is a great actor." : {
+    "alternatives" : [
+			 {
+				 "heOrShe == MASCULINE" : "Él es un gran actor."
+			 },
+			 {
+				 "heOrShe == FEMININE" : "Ella es una gran actriz."
+			 }
+    ]
   }
 }

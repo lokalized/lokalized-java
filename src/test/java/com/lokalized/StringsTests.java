@@ -110,6 +110,20 @@ public class StringsTests {
 				}}, Locale.forLanguageTag("es"));
 
 		Assert.assertEquals("Ella es una buena actriz.", translation);
+
+		translation = strings.get("{{heOrShe}} is a great actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.MASCULINE);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Él es un gran actor.", translation);
+
+		translation = strings.get("{{heOrShe}} is a great actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.FEMININE);
+				}}, Locale.forLanguageTag("es"));
+
+		Assert.assertEquals("Ella es una gran actriz.", translation);
 	}
 
 	@Test

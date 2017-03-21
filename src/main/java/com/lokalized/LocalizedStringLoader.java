@@ -287,7 +287,7 @@ public final class LocalizedStringLoader {
 			if (translation == null)
 				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-			return new LocalizedString.Builder(key, translation).build();
+			return new LocalizedString.Builder(key).translation(translation).build();
 		} else if (jsonValue.isObject()) {
 			// More complex case, there can be placeholders and alternatives.
 			//
@@ -318,15 +318,16 @@ public final class LocalizedStringLoader {
 
 			JsonObject localizedStringObject = jsonValue.asObject();
 
+			String translation = null;
+
 			JsonValue translationJsonValue = localizedStringObject.get("translation");
 
-			if (translationJsonValue == null || translationJsonValue.isNull())
-				throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
+			if (translationJsonValue != null && !translationJsonValue.isNull()) {
+				if (!translationJsonValue.isString())
+					throw new LocalizedStringLoadingException(format("%s: translation must be a string for key '%s'", canonicalPath, key));
 
-			if (!translationJsonValue.isString())
-				throw new LocalizedStringLoadingException(format("%s: translation must be a string for key '%s'", canonicalPath, key));
-
-			String translation = translationJsonValue.asString();
+				translation = translationJsonValue.asString();
+			}
 
 			String commentary = null;
 
@@ -428,7 +429,8 @@ public final class LocalizedStringLoader {
 				}
 			}
 
-			return new LocalizedString.Builder(key, translation)
+			return new LocalizedString.Builder(key)
+					.translation(translation)
 					.commentary(commentary)
 					.languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
 					.alternatives(alternatives)

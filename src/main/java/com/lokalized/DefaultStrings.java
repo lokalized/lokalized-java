@@ -34,6 +34,7 @@ import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -209,7 +210,7 @@ public class DefaultStrings implements Strings {
 				logger.finer(format("No match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
 			} else {
 				logger.finer(format("A match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
-				translation = getInternal(key, localizedString, context, immutableContext, localizedStringSource.getLocale());
+				translation = getInternal(key, localizedString, context, immutableContext, localizedStringSource.getLocale()).orElse(null);
 				break;
 			}
 		}
@@ -223,9 +224,9 @@ public class DefaultStrings implements Strings {
 	}
 
 	@Nonnull
-	protected String getInternal(@Nonnull String key, @Nonnull LocalizedString localizedString,
-															 @Nonnull Map<String, Object> context, @Nonnull Map<String, Object> immutableContext,
-															 @Nonnull Locale locale) {
+	protected Optional<String> getInternal(@Nonnull String key, @Nonnull LocalizedString localizedString,
+																				 @Nonnull Map<String, Object> context, @Nonnull Map<String, Object> immutableContext,
+																				 @Nonnull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
 		requireNonNull(context);
@@ -242,7 +243,10 @@ public class DefaultStrings implements Strings {
 			}
 		}
 
-		String translation = localizedString.getTranslation();
+		if (!localizedString.getTranslation().isPresent())
+			return Optional.empty();
+
+		String translation = localizedString.getTranslation().get();
 
 		for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
 			String placeholderName = entry.getKey();
@@ -319,7 +323,7 @@ public class DefaultStrings implements Strings {
 
 		translation = stringInterpolator.interpolate(translation, context);
 
-		return translation;
+		return Optional.of(translation);
 	}
 
 	/**

@@ -42,7 +42,7 @@ import static java.util.Objects.requireNonNull;
 public class LocalizedString {
 	@Nonnull
 	private final String key;
-	@Nonnull
+	@Nullable
 	private final String translation;
 	@Nullable
 	private final String commentary;
@@ -55,16 +55,15 @@ public class LocalizedString {
 	 * Constructs a localized string with a key, default translation, and additional translation rules.
 	 *
 	 * @param key                                   this string's translation key, not null
-	 * @param translation                           this string's default translation, not null
-	 * @param commentary                            this string's commentary (usage/translation notes), not null
+	 * @param translation                           this string's default translation, may be null
+	 * @param commentary                            this string's commentary (usage/translation notes), may be null
 	 * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
 	 * @param alternatives                          alternative expression-driven translations for this string, may be null
 	 */
-	protected LocalizedString(@Nonnull String key, @Nonnull String translation, @Nullable String commentary,
+	protected LocalizedString(@Nonnull String key, @Nullable String translation, @Nullable String commentary,
 														@Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder,
 														@Nullable List<LocalizedString> alternatives) {
 		requireNonNull(key);
-		requireNonNull(translation);
 
 		this.key = key;
 		this.translation = translation;
@@ -81,6 +80,10 @@ public class LocalizedString {
 
 		// Defensive copy to unmodifiable list
 		this.alternatives = alternatives == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(alternatives));
+
+		if (translation == null && alternatives.size() == 0)
+			throw new IllegalArgumentException(format("You must provide either a translation or at least one alternative expression. " +
+					"Offending key was '%s'", key));
 	}
 
 	/**
@@ -91,7 +94,7 @@ public class LocalizedString {
 	@Override
 	@Nonnull
 	public String toString() {
-		StringBuilder stringBuilder = new StringBuilder(format("%s{key=%s, translation=%s", getClass().getSimpleName(), getKey(), getTranslation()));
+		StringBuilder stringBuilder = new StringBuilder(format("%s{key=%s, translation=%s", getClass().getSimpleName(), getKey(), getTranslation().orElse(null)));
 
 		if (getCommentary().isPresent())
 			stringBuilder.append(format(", commentary=%s", getCommentary().get()));
@@ -151,13 +154,13 @@ public class LocalizedString {
 	}
 
 	/**
-	 * Gets this string's default translation.
+	 * Gets this string's default translation, if available.
 	 *
 	 * @return this string's default translation, not null
 	 */
 	@Nonnull
-	public String getTranslation() {
-		return translation;
+	public Optional<String> getTranslation() {
+		return Optional.ofNullable(translation);
 	}
 
 	/**
@@ -208,8 +211,8 @@ public class LocalizedString {
 	public static class Builder {
 		@Nonnull
 		private final String key;
-		@Nonnull
-		private final String translation;
+		@Nullable
+		private String translation;
 		@Nullable
 		private String commentary;
 		@Nullable
@@ -218,17 +221,25 @@ public class LocalizedString {
 		private List<LocalizedString> alternatives;
 
 		/**
-		 * Constructs a localized string builder with a key and translation.
+		 * Constructs a localized string builder with the given key.
 		 *
-		 * @param key         this string's translation key, not null
-		 * @param translation this string's default translation, not null
+		 * @param key this string's translation key, not null
 		 */
-		public Builder(@Nonnull String key, @Nonnull String translation) {
+		public Builder(@Nonnull String key) {
 			requireNonNull(key);
-			requireNonNull(translation);
-
 			this.key = key;
+		}
+
+		/**
+		 * Applies a default translation to this builder.
+		 *
+		 * @param translation a default translation, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@Nonnull
+		public Builder translation(@Nullable String translation) {
 			this.translation = translation;
+			return this;
 		}
 
 		/**
