@@ -2,7 +2,7 @@
 
 Lokalized facilitates natural-sounding software translations.
 
-Design goals:
+#### Design Goals
 
 * Complex translation rules can be expressed in a configuration file, not code
 * First-class support for gender and plural grammar rules
@@ -10,7 +10,7 @@ Design goals:
 * Immutability/thread-safety
 * No dependencies
 
-Design non-goals:
+#### Design Non-goals
 
 * Support for date/time, number, percentage, and currency formatting (the problems are already solved well)
 
