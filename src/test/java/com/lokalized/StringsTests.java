@@ -74,7 +74,7 @@ public class StringsTests {
           put("bookCount", 3);
         }}, Locale.forLanguageTag("ru"));
 
-    Assert.assertEquals("I прочитал 3 книги", translation);
+    Assert.assertEquals("I прочитал 3 книг", translation);
   }
 
   @Test
