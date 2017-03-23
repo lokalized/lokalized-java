@@ -19,8 +19,11 @@ package com.lokalized;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static java.lang.String.format;
 
 /**
  * Merges data into a string using {@code {{placeholder}} syntax}.
@@ -48,9 +51,13 @@ class StringInterpolator {
       name = name.substring("{{".length(), name.length() - "}}".length());
       Object value = context.get(name);
 
-      // TODO: unwrap Optional<T> values first
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
 
-      matcher.appendReplacement(stringBuffer, value == null ? "" : value.toString());
+      if (value == null)
+        matcher.appendReplacement(stringBuffer, format("{{%s}}", name));
+      else
+        matcher.appendReplacement(stringBuffer, value == null ? "" : value.toString());
     }
 
     matcher.appendTail(stringBuffer);

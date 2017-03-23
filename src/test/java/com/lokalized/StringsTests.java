@@ -224,4 +224,15 @@ public class StringsTests {
 
     Assert.assertEquals("Ella era la mejor jugadora de béisbol.", translation);
   }
+
+  @Test
+  public void missingPlaceholders() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).build();
+
+    String translation = strings.get("I read {{bookCount}} books");
+
+    Assert.assertEquals("I read {{bookCount}} books", translation);
+  }
 }
