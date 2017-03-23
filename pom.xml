@@ -20,7 +20,7 @@
         <developer>
             <name>Mark Allen</name>
             <email>maa@xmog.com</email>
-            <organization>Transmogrify, LLC.</organization>
+            <organization>Product Mog LLC.</organization>
             <organizationUrl>http://www.xmog.com</organizationUrl>
         </developer>
     </developers>
@@ -84,7 +84,7 @@
                     <failOnError>true</failOnError>
                     <linksource>true</linksource>
                     <bottom>
-                        <![CDATA[Copyright 2017 Transmogrify LLC. Licensed under the Apache License, Version 2.0]]>
+                        <![CDATA[Copyright 2017 Product Mog LLC. Licensed under the Apache License, Version 2.0]]>
                     </bottom>
                 </configuration>
                 <executions>
