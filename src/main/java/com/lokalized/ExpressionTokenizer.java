@@ -39,104 +39,104 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 class ExpressionTokenizer {
-	@Nonnull
-	private static final Map<TokenType, String> PATTERNS_BY_TOKEN_TYPE;
-	@Nonnull
-	private static final Map<TokenType, String> GROUP_NAMES_BY_TOKEN_TYPE;
-	@Nonnull
-	private static final Pattern TOKEN_PATTERN;
-	@Nonnull
-	private static final String WHITESPACE_GROUP_NAME = "WHITESPACE";
-	@Nonnull
-	private static final String WHITESPACE_GROUP_PATTERN = "\\p{Space}";
-	@Nonnull
-	private static final String ERROR_GROUP_NAME = "ERROR";
-	@Nonnull
-	private static final String ERROR_GROUP_PATTERN = ".+";
+  @Nonnull
+  private static final Map<TokenType, String> PATTERNS_BY_TOKEN_TYPE;
+  @Nonnull
+  private static final Map<TokenType, String> GROUP_NAMES_BY_TOKEN_TYPE;
+  @Nonnull
+  private static final Pattern TOKEN_PATTERN;
+  @Nonnull
+  private static final String WHITESPACE_GROUP_NAME = "WHITESPACE";
+  @Nonnull
+  private static final String WHITESPACE_GROUP_PATTERN = "\\p{Space}";
+  @Nonnull
+  private static final String ERROR_GROUP_NAME = "ERROR";
+  @Nonnull
+  private static final String ERROR_GROUP_PATTERN = ".+";
 
-	static {
-		// Performs double-duty: keyset maintains insertion order so the regexes are always attempted in correct order.
-		// Must escape \.[]{}()*+-?^$|
-		PATTERNS_BY_TOKEN_TYPE = Collections.unmodifiableMap(new LinkedHashMap<TokenType, String>() {{
-			put(TokenType.GROUP_START, "\\(");
-			put(TokenType.GROUP_END, "\\)");
-			put(TokenType.AND, "&&");
-			put(TokenType.OR, "\\|\\|");
-			put(TokenType.LESS_THAN_OR_EQUAL_TO, "<=");
-			put(TokenType.GREATER_THAN_OR_EQUAL_TO, ">=");
-			put(TokenType.LESS_THAN, "<");
-			put(TokenType.GREATER_THAN, ">");
-			put(TokenType.EQUAL_TO, "==");
-			put(TokenType.NOT_EQUAL_TO, "!=");
-			put(TokenType.ZERO, "ZERO");
-			put(TokenType.ONE, "ONE");
-			put(TokenType.TWO, "TWO");
-			put(TokenType.FEW, "FEW");
-			put(TokenType.MANY, "MANY");
-			put(TokenType.OTHER, "OTHER");
-			put(TokenType.MASCULINE, "MASCULINE");
-			put(TokenType.FEMININE, "FEMININE");
-			put(TokenType.NEUTER, "NEUTER");
-			put(TokenType.NUMBER, "-?(0|([1-9]\\d*))(\\.\\d+)?");
-			put(TokenType.VARIABLE, "\\p{Alnum}+");
-		}});
+  static {
+    // Performs double-duty: keyset maintains insertion order so the regexes are always attempted in correct order.
+    // Must escape \.[]{}()*+-?^$|
+    PATTERNS_BY_TOKEN_TYPE = Collections.unmodifiableMap(new LinkedHashMap<TokenType, String>() {{
+      put(TokenType.GROUP_START, "\\(");
+      put(TokenType.GROUP_END, "\\)");
+      put(TokenType.AND, "&&");
+      put(TokenType.OR, "\\|\\|");
+      put(TokenType.LESS_THAN_OR_EQUAL_TO, "<=");
+      put(TokenType.GREATER_THAN_OR_EQUAL_TO, ">=");
+      put(TokenType.LESS_THAN, "<");
+      put(TokenType.GREATER_THAN, ">");
+      put(TokenType.EQUAL_TO, "==");
+      put(TokenType.NOT_EQUAL_TO, "!=");
+      put(TokenType.ZERO, "ZERO");
+      put(TokenType.ONE, "ONE");
+      put(TokenType.TWO, "TWO");
+      put(TokenType.FEW, "FEW");
+      put(TokenType.MANY, "MANY");
+      put(TokenType.OTHER, "OTHER");
+      put(TokenType.MASCULINE, "MASCULINE");
+      put(TokenType.FEMININE, "FEMININE");
+      put(TokenType.NEUTER, "NEUTER");
+      put(TokenType.NUMBER, "-?(0|([1-9]\\d*))(\\.\\d+)?");
+      put(TokenType.VARIABLE, "\\p{Alnum}+");
+    }});
 
-		// Underscore is illegal in regex group names.
-		GROUP_NAMES_BY_TOKEN_TYPE = Collections.unmodifiableMap(stream(TokenType.values())
-				.collect(Collectors.toMap(tokenType -> tokenType, (TokenType tokenType) -> tokenType.name().replace("_", ""))));
+    // Underscore is illegal in regex group names.
+    GROUP_NAMES_BY_TOKEN_TYPE = Collections.unmodifiableMap(stream(TokenType.values())
+        .collect(Collectors.toMap(tokenType -> tokenType, (TokenType tokenType) -> tokenType.name().replace("_", ""))));
 
-		StringBuilder tokenPatterns = new StringBuilder();
+    StringBuilder tokenPatterns = new StringBuilder();
 
-		tokenPatterns.append(format("(?<%s>%s)", WHITESPACE_GROUP_NAME, WHITESPACE_GROUP_PATTERN));
+    tokenPatterns.append(format("(?<%s>%s)", WHITESPACE_GROUP_NAME, WHITESPACE_GROUP_PATTERN));
 
-		for (TokenType tokenType : PATTERNS_BY_TOKEN_TYPE.keySet())
-			tokenPatterns.append(format("|(?<%s>%s)", GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType),
-					PATTERNS_BY_TOKEN_TYPE.get(tokenType)));
+    for (TokenType tokenType : PATTERNS_BY_TOKEN_TYPE.keySet())
+      tokenPatterns.append(format("|(?<%s>%s)", GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType),
+          PATTERNS_BY_TOKEN_TYPE.get(tokenType)));
 
-		tokenPatterns.append(format("|(?<%s>%s)", ERROR_GROUP_NAME, ERROR_GROUP_PATTERN));
+    tokenPatterns.append(format("|(?<%s>%s)", ERROR_GROUP_NAME, ERROR_GROUP_PATTERN));
 
-		// Compile and cache pattern for performance
-		TOKEN_PATTERN = Pattern.compile(tokenPatterns.toString());
-	}
+    // Compile and cache pattern for performance
+    TOKEN_PATTERN = Pattern.compile(tokenPatterns.toString());
+  }
 
-	/**
-	 * Given an {@code expression}, scan it into a set of {@link Token} components.
-	 *
-	 * @param expression the expression to tokenize
-	 * @return the tokens that comprise the expression
-	 * @throws ExpressionEvaluationException if an error occurs while extracting tokens
-	 */
-	public List<Token> extractTokens(@Nonnull String expression) {
-		requireNonNull(expression);
+  /**
+   * Given an {@code expression}, scan it into a set of {@link Token} components.
+   *
+   * @param expression the expression to tokenize
+   * @return the tokens that comprise the expression
+   * @throws ExpressionEvaluationException if an error occurs while extracting tokens
+   */
+  public List<Token> extractTokens(@Nonnull String expression) {
+    requireNonNull(expression);
 
-		List<Token> tokens = new ArrayList<>();
-		Matcher matcher = TOKEN_PATTERN.matcher(expression);
+    List<Token> tokens = new ArrayList<>();
+    Matcher matcher = TOKEN_PATTERN.matcher(expression);
 
-		while (matcher.find()) {
-			for (TokenType tokenType : TokenType.values()) {
-				String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
+    while (matcher.find()) {
+      for (TokenType tokenType : TokenType.values()) {
+        String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
 
-				if (group != null)
-					tokens.add(new Token(tokenType, group));
-			}
+        if (group != null)
+          tokens.add(new Token(tokenType, group));
+      }
 
-			if (matcher.group(WHITESPACE_GROUP_NAME) != null)
-				continue;
+      if (matcher.group(WHITESPACE_GROUP_NAME) != null)
+        continue;
 
-			if (matcher.group(ERROR_GROUP_NAME) != null) {
-				String errorGroup = matcher.group(ERROR_GROUP_NAME);
+      if (matcher.group(ERROR_GROUP_NAME) != null) {
+        String errorGroup = matcher.group(ERROR_GROUP_NAME);
 
-				String errorMessage =
-						format("Unexpected content '%s' encountered while evaluating expression '%s'.", errorGroup, expression);
+        String errorMessage =
+            format("Unexpected content '%s' encountered while evaluating expression '%s'.", errorGroup, expression);
 
-				// Special message for common error of using "=" instead of "==" for equality checks
-				if (errorGroup.startsWith("= "))
-					errorMessage = format("%s Did you mean '=%s'?", errorMessage, errorGroup);
+        // Special message for common error of using "=" instead of "==" for equality checks
+        if (errorGroup.startsWith("= "))
+          errorMessage = format("%s Did you mean '=%s'?", errorMessage, errorGroup);
 
-				throw new ExpressionEvaluationException(errorMessage);
-			}
-		}
+        throw new ExpressionEvaluationException(errorMessage);
+      }
+    }
 
-		return tokens;
-	}
+    return tokens;
+  }
 }

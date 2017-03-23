@@ -24,5 +24,5 @@ package com.lokalized;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public interface LanguageForm {
-	// Marker interface
+  // Marker interface
 }

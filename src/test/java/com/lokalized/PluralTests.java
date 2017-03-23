@@ -29,15 +29,15 @@ import java.util.Locale;
  */
 @ThreadSafe
 public class PluralTests {
-	@Test
-	public void pluralForms() {
-		Locale usEnglishLocale = Locale.forLanguageTag("en-US");
-		
-		Assert.assertEquals(String.format("Incorrect %s plural for 1", usEnglishLocale.toLanguageTag()),
-				Plural.ONE, Plural.pluralForNumber(1, usEnglishLocale));
-		Assert.assertEquals(String.format("Incorrect %s plural for 0", usEnglishLocale.toLanguageTag()),
-				Plural.OTHER, Plural.pluralForNumber(0, usEnglishLocale));
-		Assert.assertEquals(String.format("Incorrect %s plural for 1.5", usEnglishLocale.toLanguageTag()),
-				Plural.OTHER, Plural.pluralForNumber(1.5, usEnglishLocale));
-	}
+  @Test
+  public void pluralForms() {
+    Locale usEnglishLocale = Locale.forLanguageTag("en-US");
+
+    Assert.assertEquals(String.format("Incorrect %s plural for 1", usEnglishLocale.toLanguageTag()),
+        Plural.ONE, Plural.pluralForNumber(1, usEnglishLocale));
+    Assert.assertEquals(String.format("Incorrect %s plural for 0", usEnglishLocale.toLanguageTag()),
+        Plural.OTHER, Plural.pluralForNumber(0, usEnglishLocale));
+    Assert.assertEquals(String.format("Incorrect %s plural for 1.5", usEnglishLocale.toLanguageTag()),
+        Plural.OTHER, Plural.pluralForNumber(1.5, usEnglishLocale));
+  }
 }

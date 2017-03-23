@@ -28,34 +28,34 @@ import java.util.stream.Collectors;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public enum Gender implements LanguageForm {
-	/**
-	 * Masculine gender.
-	 */
-	MASCULINE,
-	/**
-	 * Feminine gender.
-	 */
-	FEMININE,
-	/**
-	 * Neutral/unspecified gender.
-	 */
-	NEUTER;
+  /**
+   * Masculine gender.
+   */
+  MASCULINE,
+  /**
+   * Feminine gender.
+   */
+  FEMININE,
+  /**
+   * Neutral/unspecified gender.
+   */
+  NEUTER;
 
-	@Nonnull
-	private static final Map<String, Gender> GENDERS_BY_NAME;
+  @Nonnull
+  private static final Map<String, Gender> GENDERS_BY_NAME;
 
-	static {
-		GENDERS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
-				Gender.values()).collect(Collectors.toMap(gender -> gender.name(), gender -> gender)));
-	}
+  static {
+    GENDERS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
+        Gender.values()).collect(Collectors.toMap(gender -> gender.name(), gender -> gender)));
+  }
 
-	/**
-	 * Gets the mapping of gender names to gender values.
-	 *
-	 * @return the mapping of gender names to gender values, not null
-	 */
-	@Nonnull
-	public static Map<String, Gender> getGendersByName() {
-		return GENDERS_BY_NAME;
-	}
+  /**
+   * Gets the mapping of gender names to gender values.
+   *
+   * @return the mapping of gender names to gender values, not null
+   */
+  @Nonnull
+  public static Map<String, Gender> getGendersByName() {
+    return GENDERS_BY_NAME;
+  }
 }

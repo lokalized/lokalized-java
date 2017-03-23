@@ -29,32 +29,32 @@ import java.util.regex.Pattern;
  */
 @ThreadSafe
 class StringInterpolator {
-	@Nonnull
-	private static final Pattern PLACEHOLDER_PATTERN;
+  @Nonnull
+  private static final Pattern PLACEHOLDER_PATTERN;
 
-	static {
-		PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\p{Alnum}+}}");
-	}
+  static {
+    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\p{Alnum}+}}");
+  }
 
-	@Nonnull
-	public String interpolate(@Nonnull String string, @Nonnull Map<String, Object> context) {
-		Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
+  @Nonnull
+  public String interpolate(@Nonnull String string, @Nonnull Map<String, Object> context) {
+    Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
 
-		// Matcher#appendReplacement only accepts StringBuffer, not StringBuilder
-		StringBuffer stringBuffer = new StringBuffer();
+    // Matcher#appendReplacement only accepts StringBuffer, not StringBuilder
+    StringBuffer stringBuffer = new StringBuffer();
 
-		while (matcher.find()) {
-			String name = matcher.group();
-			name = name.substring("{{".length(), name.length() - "}}".length());
-			Object value = context.get(name);
+    while (matcher.find()) {
+      String name = matcher.group();
+      name = name.substring("{{".length(), name.length() - "}}".length());
+      Object value = context.get(name);
 
-			// TODO: unwrap Optional<T> values first
+      // TODO: unwrap Optional<T> values first
 
-			matcher.appendReplacement(stringBuffer, value == null ? "" : value.toString());
-		}
+      matcher.appendReplacement(stringBuffer, value == null ? "" : value.toString());
+    }
 
-		matcher.appendTail(stringBuffer);
+    matcher.appendTail(stringBuffer);
 
-		return stringBuffer.toString();
-	}
+    return stringBuffer.toString();
+  }
 }

@@ -24,21 +24,21 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 enum LoggerType {
-	ROOT("com.lokalized"),
-	STRINGS("com.lokalized.STRINGS"),
-	LOCALIZED_STRING_LOADER("com.lokalized.LOCALIZED_STRING_LOADER"),
-	TEST("com.lokalized.TEST");
+  ROOT("com.lokalized"),
+  STRINGS("com.lokalized.STRINGS"),
+  LOCALIZED_STRING_LOADER("com.lokalized.LOCALIZED_STRING_LOADER"),
+  TEST("com.lokalized.TEST");
 
-	@Nonnull
-	private final String loggerName;
+  @Nonnull
+  private final String loggerName;
 
-	LoggerType(@Nonnull String loggerName) {
-		requireNonNull(loggerName);
-		this.loggerName = loggerName;
-	}
+  LoggerType(@Nonnull String loggerName) {
+    requireNonNull(loggerName);
+    this.loggerName = loggerName;
+  }
 
-	@Nonnull
-	public String getLoggerName() {
-		return loggerName;
-	}
+  @Nonnull
+  public String getLoggerName() {
+    return loggerName;
+  }
 }

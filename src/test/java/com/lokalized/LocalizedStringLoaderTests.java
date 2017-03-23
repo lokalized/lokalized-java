@@ -37,23 +37,23 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 public class LocalizedStringLoaderTests {
-	@Test
-	public void testClasspathLoading() {
-		verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath("strings"));
-	}
+  @Test
+  public void testClasspathLoading() {
+    verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath("strings"));
+  }
 
-	@Test
-	public void testFilesystemLoading() {
-		verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
-	}
+  @Test
+  public void testFilesystemLoading() {
+    verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
+  }
 
-	protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
-		requireNonNull(localizedStringsByLocale);
+  protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
+    requireNonNull(localizedStringsByLocale);
 
-		Assert.assertEquals("Unexpected number of strings files", 3, localizedStringsByLocale.size());
+    Assert.assertEquals("Unexpected number of strings files", 3, localizedStringsByLocale.size());
 
-		for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
-			Assert.assertTrue(format("The '%s' strings file has no data", entry.getKey().toLanguageTag()),
-					entry.getValue().size() > 0);
-	}
+    for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
+      Assert.assertTrue(format("The '%s' strings file has no data", entry.getKey().toLanguageTag()),
+          entry.getValue().size() > 0);
+  }
 }

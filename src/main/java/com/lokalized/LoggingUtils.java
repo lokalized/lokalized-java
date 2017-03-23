@@ -32,26 +32,26 @@ import java.util.logging.Logger;
  */
 @ThreadSafe
 final class LoggingUtils {
-	private LoggingUtils() {
-		// Non-instantiable
-	}
+  private LoggingUtils() {
+    // Non-instantiable
+  }
 
-	/**
-	 * Overrides the system's root logger level.
-	 * <p>
-	 * This is for internal testing and debugging only!
-	 *
-	 * @param level the level to use, not null
-	 */
-	@Nonnull
-	public static void setRootLoggerLevel(@Nonnull Level level) {
-		Objects.requireNonNull(level);
+  /**
+   * Overrides the system's root logger level.
+   * <p>
+   * This is for internal testing and debugging only!
+   *
+   * @param level the level to use, not null
+   */
+  @Nonnull
+  public static void setRootLoggerLevel(@Nonnull Level level) {
+    Objects.requireNonNull(level);
 
-		Logger rootLogger = Logger.getLogger("");
+    Logger rootLogger = Logger.getLogger("");
 
-		for (Handler handler : rootLogger.getHandlers())
-			handler.setLevel(Level.FINEST);
+    for (Handler handler : rootLogger.getHandlers())
+      handler.setLevel(Level.FINEST);
 
-		rootLogger.setLevel(level);
-	}
+    rootLogger.setLevel(level);
+  }
 }
