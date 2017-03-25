@@ -23,6 +23,7 @@ import org.junit.Test;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Locale.LanguageRange;
 import java.util.logging.Level;
 
 /**
@@ -234,5 +235,48 @@ public class StringsTests {
     String translation = strings.get("I read {{bookCount}} books");
 
     Assert.assertEquals("I read {{bookCount}} books", translation);
+  }
+
+  @Test
+  public void languageRange() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25")).build();
+
+    String translation = strings.get("I am going on vacation");
+
+    Assert.assertEquals("I am going on vacation", translation);
+
+    Strings enGbStrings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).languageRangesSupplier(() -> LanguageRange.parse("en-GB;q=1.0,en;q=0.75,en-US;q=0.5,fr-FR;q=0.25")).build();
+
+    String enGbTranslation = enGbStrings.get("I am going on vacation");
+
+    Assert.assertEquals("I am going on holiday", enGbTranslation);
+
+    Strings enUsStrings = new DefaultStrings.Builder("ru", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25")).build();
+
+    String enUsTranslation = enUsStrings.get("I am going on vacation");
+
+    Assert.assertEquals("I am going on vacation", enUsTranslation);
+
+    Strings ruStrings = new DefaultStrings.Builder("ru", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25")).build();
+
+    String ruTranslation = ruStrings.get("I am going on vacation - MISSING KEY");
+
+    Assert.assertEquals("I am going on vacation - MISSING KEY", ruTranslation);
+
+    Strings ru2Strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25")).build();
+
+    String ru2Translation = ru2Strings.get("Hello, world!");
+
+    Assert.assertEquals("Приветствую, мир", ru2Translation);
   }
 }

@@ -61,10 +61,10 @@ public class DefaultStrings implements Strings {
   private final String fallbackLanguageCode;
   @Nonnull
   private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
-  @Nonnull
+  @Nullable
   private final Supplier<Locale> localeSupplier;
-  @Nonnull
-  private final Supplier<LanguageRange> languageRangeSupplier;
+  @Nullable
+  private final Supplier<List<LanguageRange>> languageRangesSupplier;
   @Nonnull
   private final FailureMode failureMode;
   @Nonnull
@@ -104,13 +104,13 @@ public class DefaultStrings implements Strings {
    * @param fallbackLanguageCode    fallback language code, not null
    * @param localizedStringSupplier supplier of localized strings, not null
    * @param localeSupplier          locale supplier, may be null
-   * @param languageRangeSupplier   language range supplier, may be null
+   * @param languageRangesSupplier  language ranges supplier, may be null
    * @param failureMode             strategy for dealing with lookup failures, may be null
    */
   protected DefaultStrings(@Nonnull String fallbackLanguageCode,
                            @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
                            @Nullable Supplier<Locale> localeSupplier,
-                           @Nullable Supplier<LanguageRange> languageRangeSupplier,
+                           @Nullable Supplier<List<LanguageRange>> languageRangesSupplier,
                            @Nullable FailureMode failureMode) {
     requireNonNull(fallbackLanguageCode);
     requireNonNull(localizedStringSupplier);
@@ -136,8 +136,8 @@ public class DefaultStrings implements Strings {
     this.fallbackLocale = Locale.forLanguageTag(fallbackLanguageCode);
     this.fallbackLanguageCode = fallbackLanguageCode;
     this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
-    this.localeSupplier = localeSupplier == null ? () -> fallbackLocale : localeSupplier;
-    this.languageRangeSupplier = languageRangeSupplier == null ? () -> new LanguageRange(fallbackLocale.toLanguageTag()) : languageRangeSupplier;
+    this.localeSupplier = localeSupplier;
+    this.languageRangesSupplier = languageRangesSupplier;
     this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
     this.stringInterpolator = new StringInterpolator();
     this.expressionEvaluator = new ExpressionEvaluator();
@@ -162,6 +162,14 @@ public class DefaultStrings implements Strings {
               .map(locale -> locale.toLanguageTag())
               .sorted()
               .collect(Collectors.joining(", "))));
+
+    if (localeSupplier == null && languageRangesSupplier == null)
+      throw new IllegalArgumentException(format("You must provide either a localeSupplier " +
+          "or a languageRangesSupplier when building an instance of %s", getClass().getSimpleName()));
+
+    if (localeSupplier != null && languageRangesSupplier != null)
+      throw new IllegalArgumentException(format("You cannot provide both a localeSupplier " +
+          "and a languageRangesSupplier when building an instance of %s - you must pick one of the two.", getClass().getSimpleName()));
   }
 
   @Nonnull
@@ -338,6 +346,25 @@ public class DefaultStrings implements Strings {
   protected List<LocalizedStringSource> getLocalizedStringSourcesForLocale(@Nonnull Locale locale) {
     requireNonNull(locale);
 
+    /*
+    List<Locale> results = Locale.filter(getLanguageRangesSupplier().get().get(), getLocalizedStringsByLocale().keySet());
+
+    for (Locale possibleLocale : getLocalizedStringsByLocale().keySet())
+      System.out.println("Possible: " + possibleLocale.toLanguageTag());
+
+    for (LanguageRange languageRange : getLanguageRangesSupplier().get().get())
+      System.out.println("Range: " + languageRange.getRange());
+
+    for (Locale resultLocale : results) {
+      System.out.println("Matching: " + resultLocale.toLanguageTag());
+    }
+
+    // Uses RFC 4647
+    Locale lookupLocale = Locale.lookup(getLanguageRangesSupplier().get().get(), getLocalizedStringsByLocale().keySet());
+
+    System.out.println("Lookup locale: " + lookupLocale);
+*/
+
     return getLocalizedStringSourcesByLocale().computeIfAbsent(locale, (ignored) -> {
       String language = locale.getLanguage();
       String script = locale.getScript();
@@ -487,18 +514,18 @@ public class DefaultStrings implements Strings {
    * @return the locale supplier, not null
    */
   @Nonnull
-  protected Supplier<Locale> getLocaleSupplier() {
-    return localeSupplier;
+  protected Optional<Supplier<Locale>> getLocaleSupplier() {
+    return Optional.ofNullable(localeSupplier);
   }
 
   /**
-   * Gets the language range supplier.
+   * Gets the language ranges supplier.
    *
-   * @return the language range supplier, not null
+   * @return the language ranges supplier, not null
    */
   @Nonnull
-  protected Supplier<LanguageRange> getLanguageRangeSupplier() {
-    return languageRangeSupplier;
+  protected Optional<Supplier<List<LanguageRange>>> getLanguageRangesSupplier() {
+    return Optional.ofNullable(languageRangesSupplier);
   }
 
   /**
@@ -528,7 +555,17 @@ public class DefaultStrings implements Strings {
    */
   @Nonnull
   protected Locale getImplicitLocale() {
-    Locale locale = getLocaleSupplier().get();
+    Locale locale = null;
+
+    if (getLocaleSupplier().isPresent()) {
+      locale = getLocaleSupplier().get().get();
+    } else if (getLanguageRangesSupplier().isPresent()) {
+      List<LanguageRange> languageRanges = getLanguageRangesSupplier().get().get();
+
+      if (languageRanges != null)
+        locale = Locale.lookup(languageRanges, getLocalizedStringsByLocale().keySet());
+    }
+
     return locale == null ? getFallbackLocale() : locale;
   }
 
@@ -672,6 +709,8 @@ public class DefaultStrings implements Strings {
   /**
    * Builder used to construct instances of {@link DefaultStrings}.
    * <p>
+   * You cannot provide both a {@code localeSupplier} and a {@code languageRangesSupplier} - you must choose one or neither.
+   * <p>
    * This class is intended for use by a single thread.
    *
    * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -685,7 +724,7 @@ public class DefaultStrings implements Strings {
     @Nullable
     private Supplier<Locale> localeSupplier;
     @Nullable
-    private Supplier<LanguageRange> languageRangeSupplier;
+    private Supplier<List<LanguageRange>> languageRangesSupplier;
     @Nullable
     private FailureMode failureMode;
 
@@ -719,14 +758,14 @@ public class DefaultStrings implements Strings {
     }
 
     /**
-     * Applies a language range supplier to this builder.
+     * Applies a supplier of language ranges to this builder.
      *
-     * @param languageRangeSupplier language range supplier, may be null
+     * @param languageRangesSupplier language ranges supplier, may be null
      * @return this builder instance, useful for chaining. not null
      */
     @Nonnull
-    public Builder languageRangeSupplier(@Nullable Supplier<LanguageRange> languageRangeSupplier) {
-      this.languageRangeSupplier = languageRangeSupplier;
+    public Builder languageRangesSupplier(@Nullable Supplier<List<LanguageRange>> languageRangesSupplier) {
+      this.languageRangesSupplier = languageRangesSupplier;
       return this;
     }
 
@@ -749,7 +788,7 @@ public class DefaultStrings implements Strings {
      */
     @Nonnull
     public DefaultStrings build() {
-      return new DefaultStrings(fallbackLanguageCode, localizedStringSupplier, localeSupplier, languageRangeSupplier, failureMode);
+      return new DefaultStrings(fallbackLanguageCode, localizedStringSupplier, localeSupplier, languageRangesSupplier, failureMode);
     }
   }
 }
