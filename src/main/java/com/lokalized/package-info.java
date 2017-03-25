@@ -17,7 +17,7 @@
 /**
  * Lokalized facilitates natural-sounding software translations.
  * <p>
- * See <a href="https://lokalized.com">lokalized.com</a> for complete documentation and examples.
+ * See <a href="https://www.lokalized.com">lokalized.com</a> for complete documentation and examples.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
