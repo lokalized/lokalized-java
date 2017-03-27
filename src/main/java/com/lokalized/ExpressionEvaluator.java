@@ -41,8 +41,8 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * <pre>
  * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | '(' EXPRESSION ')' | EXPRESSION BOOLEAN_OPERATOR EXPRESSION
- * OPERAND = VARIABLE | PLURAL | GENDER | NUMBER
- * PLURAL = 'ZERO' | 'ONE' | 'TWO' | 'FEW' | 'MANY' | 'OTHER'
+ * OPERAND = VARIABLE | CARDINALITY | GENDER | NUMBER
+ * CARDINALITY = 'ZERO' | 'ONE' | 'TWO' | 'FEW' | 'MANY' | 'OTHER'
  * GENDER = 'MASCULINE' | 'FEMININE' | 'NEUTER'
  * VARIABLE = alphanumeric
  * BOOLEAN_OPERATOR = '&&' | '||'
@@ -54,7 +54,7 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 class ExpressionEvaluator {
   @Nonnull
-  private static final Set<TokenType> PLURAL_TOKEN_TYPES;
+  private static final Set<TokenType> CARDINALITY_TOKEN_TYPES;
   @Nonnull
   private static final Set<TokenType> GENDER_TOKEN_TYPES;
   @Nonnull
@@ -74,7 +74,7 @@ class ExpressionEvaluator {
   private final ExpressionTokenizer expressionTokenizer;
 
   static {
-    PLURAL_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+    CARDINALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
         add(TokenType.ZERO);
         add(TokenType.ONE);
@@ -112,7 +112,7 @@ class ExpressionEvaluator {
     });
 
     Set<TokenType> operandTokenTypes = new HashSet<>();
-    operandTokenTypes.addAll(PLURAL_TOKEN_TYPES);
+    operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
     operandTokenTypes.add(TokenType.VARIABLE);
     operandTokenTypes.add(TokenType.NUMBER);
@@ -151,7 +151,7 @@ class ExpressionEvaluator {
   /**
    * Evaluates an expression given a locale.
    * <p>
-   * Locale is necessary for plural form evaluation.
+   * Locale is necessary for plural cardinality and ordinal form evaluation.
    *
    * @param expression the expression to evaluate, not null
    * @param locale     the locale to use for evaluation, not null
@@ -166,7 +166,7 @@ class ExpressionEvaluator {
   /**
    * Evaluates an expression given context and locale.
    * <p>
-   * Locale is necessary for plural form evaluation.
+   * Locale is necessary for plural cardinality and ordinal form evaluation.
    *
    * @param expression the expression to evaluate, not null
    * @param context    the context for the expression, may be null
@@ -422,10 +422,10 @@ class ExpressionEvaluator {
         return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
       }
 
-      // Plural (operators: ==, !=)
-      if (lhsOperandType == OperandType.PLURAL || rhsOperandType == OperandType.PLURAL) {
-        Plural lhsValue = pluralFromOperand(leftHandOperand, context, locale);
-        Plural rhsValue = pluralFromOperand(rightHandOperand, context, locale);
+      // Cardinality (operators: ==, !=)
+      if (lhsOperandType == OperandType.CARDINALITY || rhsOperandType == OperandType.CARDINALITY) {
+        Cardinality lhsValue = cardinalityFromOperand(leftHandOperand, context, locale);
+        Cardinality rhsValue = cardinalityFromOperand(rightHandOperand, context, locale);
 
         boolean result = false;
 
@@ -537,15 +537,15 @@ class ExpressionEvaluator {
   }
 
   /**
-   * Does the specified token represent a plural?
+   * Does the specified token represent a plural cardinality?
    *
    * @param token the token to check, not null
-   * @return whether the token represents a plural, not null
+   * @return whether the token represents a plural cardinality, not null
    */
   @Nonnull
-  protected Boolean isPlural(@Nonnull Token token) {
+  protected Boolean isCardinality(@Nonnull Token token) {
     requireNonNull(token);
-    return PLURAL_TOKEN_TYPES.contains(token.getTokenType());
+    return CARDINALITY_TOKEN_TYPES.contains(token.getTokenType());
   }
 
   /**
@@ -562,8 +562,8 @@ class ExpressionEvaluator {
 
     if (operand.getTokenType() == TokenType.NUMBER)
       return OperandType.NUMBER;
-    if (isPlural(operand))
-      return OperandType.PLURAL;
+    if (isCardinality(operand))
+      return OperandType.CARDINALITY;
     if (isGender(operand))
       return OperandType.GENDER;
 
@@ -577,8 +577,8 @@ class ExpressionEvaluator {
         return OperandType.NULL;
       if (value instanceof Number)
         return OperandType.NUMBER;
-      if (value instanceof Plural)
-        return OperandType.PLURAL;
+      if (value instanceof Cardinality)
+        return OperandType.CARDINALITY;
       if (value instanceof Gender)
         return OperandType.GENDER;
     }
@@ -646,25 +646,25 @@ class ExpressionEvaluator {
   }
 
   /**
-   * Determines the plural value of an operand.
+   * Determines the plural cardinality of an operand.
    *
    * @param operand the operand to examine, not null
    * @param context the context for the expression, not null
    * @param locale  the locale to use for evaluation, not null
-   * @return the plural value of the operand, not null
-   * @throws ExpressionEvaluationException if unable to determine plural value (operand is of invalid type, etc.)
+   * @return the plural cardinality of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine plural cardinality value (operand is of invalid type, etc.)
    */
   @Nonnull
-  protected Plural pluralFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+  protected Cardinality cardinalityFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
     requireNonNull(operand);
     requireNonNull(context);
     requireNonNull(locale);
 
-    if (isPlural(operand))
-      return Plural.getPluralsByName().get(operand.getSymbol());
+    if (isCardinality(operand))
+      return Cardinality.getCardinalitiesByName().get(operand.getSymbol());
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Plural.pluralForNumber(doubleFromOperand(operand, context), locale);
+      return Cardinality.forNumber(doubleFromOperand(operand, context), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -672,14 +672,14 @@ class ExpressionEvaluator {
       if (value instanceof Optional)
         value = ((Optional<?>) value).orElse(null);
 
-      if (value instanceof Plural)
-        return (Plural) value;
+      if (value instanceof Cardinality)
+        return (Cardinality) value;
       if (value instanceof Number)
-        return Plural.pluralForNumber((Number) value, locale);
+        return Cardinality.forNumber((Number) value, locale);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
-        Plural.class.getSimpleName(), operand.getSymbol()));
+        Cardinality.class.getSimpleName(), operand.getSymbol()));
   }
 
   /**
@@ -717,6 +717,6 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, PLURAL, NULL, UNKNOWN;
+    NUMBER, GENDER, CARDINALITY, NULL, UNKNOWN;
   }
 }

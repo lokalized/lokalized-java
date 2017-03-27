@@ -71,7 +71,7 @@ public final class LocalizedStringLoader {
 
     Set<LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
-    supportedLanguageForms.addAll(Arrays.asList(Plural.values()));
+    supportedLanguageForms.addAll(Arrays.asList(Cardinality.values()));
 
     Map<String, LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
 

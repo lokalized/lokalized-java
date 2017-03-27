@@ -136,7 +136,6 @@ public class DefaultStrings implements Strings {
     this.fallbackLocale = Locale.forLanguageTag(fallbackLanguageCode);
     this.fallbackLanguageCode = fallbackLanguageCode;
     this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
-    this.localeSupplier = localeSupplier;
     this.languageRangesSupplier = languageRangesSupplier;
     this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
     this.stringInterpolator = new StringInterpolator();
@@ -163,13 +162,14 @@ public class DefaultStrings implements Strings {
               .sorted()
               .collect(Collectors.joining(", "))));
 
-    if (localeSupplier == null && languageRangesSupplier == null)
-      throw new IllegalArgumentException(format("You must provide either a localeSupplier " +
-          "or a languageRangesSupplier when building an instance of %s", getClass().getSimpleName()));
-
     if (localeSupplier != null && languageRangesSupplier != null)
       throw new IllegalArgumentException(format("You cannot provide both a localeSupplier " +
           "and a languageRangesSupplier when building an instance of %s - you must pick one of the two.", getClass().getSimpleName()));
+
+    if (localeSupplier == null && languageRangesSupplier == null)
+      this.localeSupplier = () -> getFallbackLocale();
+    else
+      this.localeSupplier = localeSupplier;
   }
 
   @Nonnull
@@ -268,15 +268,15 @@ public class DefaultStrings implements Strings {
       String placeholderName = entry.getKey();
       LanguageFormTranslation languageFormTranslation = entry.getValue();
       Object value = immutableContext.get(languageFormTranslation.getValue());
-      Map<Plural, String> translationsByPlural = new HashMap<>();
+      Map<Cardinality, String> translationsByCardinality = new HashMap<>();
       Map<Gender, String> translationsByGender = new HashMap<>();
 
       for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
         LanguageForm languageForm = translationEntry.getKey();
         String translatedLanguageForm = translationEntry.getValue();
 
-        if (languageForm instanceof Plural)
-          translationsByPlural.put((Plural) languageForm, translatedLanguageForm);
+        if (languageForm instanceof Cardinality)
+          translationsByCardinality.put((Cardinality) languageForm, translatedLanguageForm);
         else if (languageForm instanceof Gender)
           translationsByGender.put((Gender) languageForm, translatedLanguageForm);
         else
@@ -284,15 +284,15 @@ public class DefaultStrings implements Strings {
 
       }
 
-      if (translationsByPlural.size() > 0 && translationsByGender.size() > 0)
+      if (translationsByCardinality.size() > 0 && translationsByGender.size() > 0)
         throw new IllegalArgumentException(format("You cannot mix-and-match %s and %s types. Offending localized string was %s",
-            Plural.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
+            Cardinality.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
 
-      if (translationsByPlural.size() == 0 && translationsByGender.size() == 0)
+      if (translationsByCardinality.size() == 0 && translationsByGender.size() == 0)
         continue;
 
-      // Handle plurals
-      if (translationsByPlural.size() > 0) {
+      // Handle plural cardinalities
+      if (translationsByCardinality.size() > 0) {
         if (value == null)
           value = 0;
 
@@ -302,14 +302,14 @@ public class DefaultStrings implements Strings {
           value = 0;
         }
 
-        Plural plural = Plural.pluralForNumber((Number) value, locale);
-        String pluralTranslation = translationsByPlural.get(plural);
+        Cardinality cardinality = Cardinality.forNumber((Number) value, locale);
+        String cardinalityTranslation = translationsByCardinality.get(cardinality);
 
-        if (pluralTranslation == null)
+        if (cardinalityTranslation == null)
           logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
-              Plural.class.getSimpleName(), plural.name(), localizedString));
+              Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
 
-        mutableContext.put(placeholderName, pluralTranslation);
+        mutableContext.put(placeholderName, cardinalityTranslation);
       }
 
       // Handle genders

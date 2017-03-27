@@ -17,7 +17,7 @@
 package com.lokalized;
 
 /**
- * Marker interface which signifies a language construct (genders, plurals).
+ * Marker interface which signifies a language construct (genders, cardinalities, ordinalities).
  * <p>
  * Implementors must be {@link Enum} types only.
  *

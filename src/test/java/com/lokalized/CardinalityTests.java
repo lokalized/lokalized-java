@@ -23,21 +23,21 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 
 /**
- * Exercises {@link Plural}.
+ * Exercises {@link Cardinality}.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
-public class PluralTests {
+public class CardinalityTests {
   @Test
-  public void pluralForms() {
+  public void cardinalityForms() {
     Locale usEnglishLocale = Locale.forLanguageTag("en-US");
 
-    Assert.assertEquals(String.format("Incorrect %s plural for 1", usEnglishLocale.toLanguageTag()),
-        Plural.ONE, Plural.pluralForNumber(1, usEnglishLocale));
-    Assert.assertEquals(String.format("Incorrect %s plural for 0", usEnglishLocale.toLanguageTag()),
-        Plural.OTHER, Plural.pluralForNumber(0, usEnglishLocale));
-    Assert.assertEquals(String.format("Incorrect %s plural for 1.5", usEnglishLocale.toLanguageTag()),
-        Plural.OTHER, Plural.pluralForNumber(1.5, usEnglishLocale));
+    Assert.assertEquals(String.format("Incorrect %s cardinality for 1", usEnglishLocale.toLanguageTag()),
+        Cardinality.ONE, Cardinality.forNumber(1, usEnglishLocale));
+    Assert.assertEquals(String.format("Incorrect %s cardinality for 0", usEnglishLocale.toLanguageTag()),
+        Cardinality.OTHER, Cardinality.forNumber(0, usEnglishLocale));
+    Assert.assertEquals(String.format("Incorrect %s cardinality for 1.5", usEnglishLocale.toLanguageTag()),
+        Cardinality.OTHER, Cardinality.forNumber(1.5, usEnglishLocale));
   }
 }
