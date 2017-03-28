@@ -7,9 +7,9 @@
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "книга",
-          "FEW" : "книг",
-          "OTHER" : "книги"
+          "CARDINALITY_ONE" : "книга",
+          "CARDINALITY_FEW" : "книг",
+          "CARDINALITY_OTHER" : "книги"
         }
       }
     },

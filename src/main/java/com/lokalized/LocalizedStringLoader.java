@@ -88,6 +88,10 @@ public final class LocalizedStringLoader {
                 "Language form names must be unique", existingLanguageForm.getClass().getSimpleName(), languageFormName,
             languageForm.getClass().getSimpleName(), languageFormName));
 
+      // Massage Cardinality to match file format, e.g. "ONE" -> "CARDINALITY_ONE"
+      if (languageForm instanceof Cardinality)
+        languageFormName = LocalizedStringUtils.localizedStringNameForCardinalityName(languageFormName);
+
       supportedLanguageFormsByName.put(languageFormName, languageForm);
     }
 

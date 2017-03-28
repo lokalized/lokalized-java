@@ -114,8 +114,8 @@ Notice that there is no logic in code for handling the different rules, regardle
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "book",
-          "OTHER" : "books"
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
         }
       }
     },
@@ -142,9 +142,9 @@ Notice that there is no logic in code for handling the different rules, regardle
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "книга",
-          "FEW" : "книг",
-          "OTHER" : "книги"
+          "CARDINALITY_ONE" : "книга",
+          "CARDINALITY_FEW" : "книг",
+          "CARDINALITY_OTHER" : "книги"
         }
       }
     },
@@ -165,18 +165,18 @@ Notice that there is no logic in code for handling the different rules, regardle
 * You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`
 * Each language has a well-defined set of gender and plural rules, with examples outlined below.  You may use these to determine placeholder values and include them in `alternatives` expressions
 * Gender rules vary across languages, but the meaning is the same. Valid values are `MASCULINE`, `FEMININE`, and `NEUTER`
-* Plural rules vary across languages, and the meanings may differ. Valid values are `ZERO`, `ONE`, `TWO`, `FEW`, `MANY`, `OTHER`. Values do not necessarily map exactly to the named number, e.g. in some languages `ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `OTHER` in those cases)
+* Plural rules vary across languages, and the meanings may differ. Valid values are `CARDINALITY_ZERO`, `CARDINALITY_ONE`, `CARDINALITY_TWO`, `CARDINALITY_FEW`, `CARDINALITY_MANY`, `CARDINALITY_OTHER`. Values do not necessarily map exactly to the named number, e.g. in some languages `CARDINALITY_ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `CARDINALITY_OTHER` in those cases)
 
 #### Example: English Plural Rules
 
-* `ONE`: Matches 1 (e.g. `1 book`)
-* `OTHER`: Everything else (e.g. `256 books`)
+* `CARDINALITY_ONE`: Matches 1 (e.g. `1 book`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `256 books`)
 
 #### Example: Russian Plural Rules
 
-* `ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
-* `FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
-* `OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
+* `CARDINALITY_ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
+* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
 A listing of plural rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
 
@@ -312,8 +312,10 @@ A grammar for alternative expressions follows.
 
 ```EBNF
 EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
-OPERAND = VARIABLE | PLURAL | GENDER | NUMBER ;
-PLURAL = "ZERO" | "ONE" | "TWO" | "FEW" | "MANY" | "OTHER" ;
+OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
+CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
+ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
 GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
 VARIABLE = { alphabetic character | digit } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;

@@ -26,8 +26,8 @@
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "ONE" : "book",
-          "OTHER" : "books"
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
         }
       }
     },

@@ -68,12 +68,12 @@ class ExpressionTokenizer {
       put(TokenType.GREATER_THAN, ">");
       put(TokenType.EQUAL_TO, "==");
       put(TokenType.NOT_EQUAL_TO, "!=");
-      put(TokenType.ZERO, "ZERO");
-      put(TokenType.ONE, "ONE");
-      put(TokenType.TWO, "TWO");
-      put(TokenType.FEW, "FEW");
-      put(TokenType.MANY, "MANY");
-      put(TokenType.OTHER, "OTHER");
+      put(TokenType.CARDINALITY_ZERO, "CARDINALITY_ZERO");
+      put(TokenType.CARDINALITY_ONE, "CARDINALITY_ONE");
+      put(TokenType.CARDINALITY_TWO, "CARDINALITY_TWO");
+      put(TokenType.CARDINALITY_FEW, "CARDINALITY_FEW");
+      put(TokenType.CARDINALITY_MANY, "CARDINALITY_MANY");
+      put(TokenType.CARDINALITY_OTHER, "CARDINALITY_OTHER");
       put(TokenType.MASCULINE, "MASCULINE");
       put(TokenType.FEMININE, "FEMININE");
       put(TokenType.NEUTER, "NEUTER");

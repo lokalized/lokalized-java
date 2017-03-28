@@ -40,13 +40,15 @@ import static java.util.Objects.requireNonNull;
  * Rough grammar:
  * <p>
  * <pre>
- * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | '(' EXPRESSION ')' | EXPRESSION BOOLEAN_OPERATOR EXPRESSION
- * OPERAND = VARIABLE | CARDINALITY | GENDER | NUMBER
- * CARDINALITY = 'ZERO' | 'ONE' | 'TWO' | 'FEW' | 'MANY' | 'OTHER'
- * GENDER = 'MASCULINE' | 'FEMININE' | 'NEUTER'
- * VARIABLE = alphanumeric
- * BOOLEAN_OPERATOR = '&&' | '||'
- * COMPARISON_OPERATOR = '<' | '>' | '<=' | '>=' | '==' | '!='
+ * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
+ * OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
+ * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
+ * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
+ * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
+ * GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
+ * VARIABLE = { alphabetic character | digit } ;
+ * BOOLEAN_OPERATOR = "&&" | "||" ;
+ * COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
  * </pre>
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -76,12 +78,12 @@ class ExpressionEvaluator {
   static {
     CARDINALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
-        add(TokenType.ZERO);
-        add(TokenType.ONE);
-        add(TokenType.TWO);
-        add(TokenType.FEW);
-        add(TokenType.MANY);
-        add(TokenType.OTHER);
+        add(TokenType.CARDINALITY_ZERO);
+        add(TokenType.CARDINALITY_ONE);
+        add(TokenType.CARDINALITY_TWO);
+        add(TokenType.CARDINALITY_FEW);
+        add(TokenType.CARDINALITY_MANY);
+        add(TokenType.CARDINALITY_OTHER);
       }
     });
 
@@ -661,7 +663,7 @@ class ExpressionEvaluator {
     requireNonNull(locale);
 
     if (isCardinality(operand))
-      return Cardinality.getCardinalitiesByName().get(operand.getSymbol());
+      return Cardinality.getCardinalitiesByName().get(LocalizedStringUtils.cardinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
       return Cardinality.forNumber(doubleFromOperand(operand, context), locale);

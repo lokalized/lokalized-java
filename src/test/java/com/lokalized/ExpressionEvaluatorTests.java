@@ -44,9 +44,9 @@ public class ExpressionEvaluatorTests {
     Assert.assertFalse("Unequal genders evaluate as equal", expressionEvaluator.evaluate("MASCULINE == FEMININE", LOCALE));
     Assert.assertTrue("Unequal genders evaluate as equal", expressionEvaluator.evaluate("MASCULINE != FEMININE", LOCALE));
 
-    Assert.assertTrue("Cardinality identity failed", expressionEvaluator.evaluate("ONE == ONE", LOCALE));
-    Assert.assertFalse("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("ONE == MANY", LOCALE));
-    Assert.assertTrue("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("ONE != MANY", LOCALE));
+    Assert.assertTrue("Cardinality identity failed", expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_ONE", LOCALE));
+    Assert.assertFalse("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_MANY", LOCALE));
+    Assert.assertTrue("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("CARDINALITY_ONE != CARDINALITY_MANY", LOCALE));
   }
 
   @Test
@@ -71,11 +71,11 @@ public class ExpressionEvaluatorTests {
       put("gender", Gender.MASCULINE);
     }}, LOCALE));
 
-    Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("OTHER == bigNumber", new HashMap<String, Object>() {{
+    Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("CARDINALITY_OTHER == bigNumber", new HashMap<String, Object>() {{
       put("bigNumber", 1_000);
     }}, LOCALE));
 
-    Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("ONE == exactlyOne", new HashMap<String, Object>() {{
+    Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("CARDINALITY_ONE == exactlyOne", new HashMap<String, Object>() {{
       put("exactlyOne", 1);
     }}, LOCALE));
   }
