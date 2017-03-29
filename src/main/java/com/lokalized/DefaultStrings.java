@@ -269,6 +269,7 @@ public class DefaultStrings implements Strings {
       LanguageFormTranslation languageFormTranslation = entry.getValue();
       Object value = immutableContext.get(languageFormTranslation.getValue());
       Map<Cardinality, String> translationsByCardinality = new HashMap<>();
+      Map<Ordinality, String> translationsByOrdinality = new HashMap<>();
       Map<Gender, String> translationsByGender = new HashMap<>();
 
       for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
@@ -277,18 +278,22 @@ public class DefaultStrings implements Strings {
 
         if (languageForm instanceof Cardinality)
           translationsByCardinality.put((Cardinality) languageForm, translatedLanguageForm);
+        else if (languageForm instanceof Ordinality)
+          translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
         else if (languageForm instanceof Gender)
           translationsByGender.put((Gender) languageForm, translatedLanguageForm);
         else
           throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
-
       }
 
-      if (translationsByCardinality.size() > 0 && translationsByGender.size() > 0)
-        throw new IllegalArgumentException(format("You cannot mix-and-match %s and %s types. Offending localized string was %s",
-            Cardinality.class.getSimpleName(), Gender.class.getSimpleName(), localizedString));
+      int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
+          (translationsByOrdinality.size() > 0 ? 1 : 0) +
+          (translationsByGender.size() > 0 ? 1 : 0);
 
-      if (translationsByCardinality.size() == 0 && translationsByGender.size() == 0)
+      if (distinctLanguageForms > 1)
+        throw new IllegalArgumentException(format("You cannot mix-and-match language forms. Offending localized string was %s", localizedString));
+
+      if (distinctLanguageForms == 0)
         continue;
 
       // Handle plural cardinalities
@@ -310,6 +315,27 @@ public class DefaultStrings implements Strings {
               Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
 
         mutableContext.put(placeholderName, cardinalityTranslation);
+      }
+
+      // Handle plural ordinalities
+      if (translationsByOrdinality.size() > 0) {
+        if (value == null)
+          value = 0;
+
+        if (!(value instanceof Number)) {
+          logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
+              value, languageFormTranslation.getValue()));
+          value = 0;
+        }
+
+        Ordinality ordinality = Ordinality.forNumber((Number) value, locale);
+        String ordinalityTranslation = translationsByOrdinality.get(ordinality);
+
+        if (ordinalityTranslation == null)
+          logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+              Ordinality.class.getSimpleName(), ordinality.name(), localizedString));
+
+        mutableContext.put(placeholderName, ordinalityTranslation);
       }
 
       // Handle genders

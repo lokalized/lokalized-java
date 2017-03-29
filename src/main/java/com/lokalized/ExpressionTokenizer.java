@@ -74,6 +74,12 @@ class ExpressionTokenizer {
       put(TokenType.CARDINALITY_FEW, "CARDINALITY_FEW");
       put(TokenType.CARDINALITY_MANY, "CARDINALITY_MANY");
       put(TokenType.CARDINALITY_OTHER, "CARDINALITY_OTHER");
+      put(TokenType.ORDINALITY_ZERO, "ORDINALITY_ZERO");
+      put(TokenType.ORDINALITY_ONE, "ORDINALITY_ONE");
+      put(TokenType.ORDINALITY_TWO, "ORDINALITY_TWO");
+      put(TokenType.ORDINALITY_FEW, "ORDINALITY_FEW");
+      put(TokenType.ORDINALITY_MANY, "ORDINALITY_MANY");
+      put(TokenType.ORDINALITY_OTHER, "ORDINALITY_OTHER");
       put(TokenType.MASCULINE, "MASCULINE");
       put(TokenType.FEMININE, "FEMININE");
       put(TokenType.NEUTER, "NEUTER");

@@ -32,7 +32,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Language plural cardinality forms.
  * <p>
- * For example, English has two: {@code 1 dog} and {@code 2 dogs}, while Welsh has many: {@code 0 cŵn, 1 ci, 2 gi, 3 chi, 4 ci}.
+ * For example, English has two: {@code 1 dog, 2 dogs}, while Welsh has many: {@code 0 cŵn, 1 ci, 2 gi, 3 chi, 4 ci}.
  * <p>
  * See the <a href="http://cldr.unicode.org/index/cldr-spec/plural-rules">Unicode Common Locale Data Repository</a>
  * and its <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
@@ -96,7 +96,7 @@ public enum Cardinality implements LanguageForm {
 
   static {
     CARDINALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
-        Cardinality.values()).collect(Collectors.toMap(cardinal -> cardinal.name(), cardinal -> cardinal)));
+        Cardinality.values()).collect(Collectors.toMap(cardinality -> cardinality.name(), cardinality -> cardinality)));
   }
 
   /**
@@ -457,13 +457,13 @@ public enum Cardinality implements LanguageForm {
     SLOVAK;
 
     @Nonnull
-    static final Map<CardinalityFamily, Function<Number, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINAL_FAMILY;
+    static final Map<CardinalityFamily, Function<Number, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY;
 
     @Nonnull
     static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_TAG;
 
     static {
-      CARDINALITY_FUNCTIONS_BY_CARDINAL_FAMILY = Collections.unmodifiableMap(new HashMap<CardinalityFamily, Function<Number, Cardinality>>() {{
+      CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY = Collections.unmodifiableMap(new HashMap<CardinalityFamily, Function<Number, Cardinality>>() {{
         put(CardinalityFamily.ARABIC, (number) -> {
           throw new UnsupportedOperationException();
         });
@@ -798,7 +798,7 @@ public enum Cardinality implements LanguageForm {
       if (!cardinalityFamily.isPresent())
         return Optional.empty();
 
-      return Optional.ofNullable(CARDINALITY_FUNCTIONS_BY_CARDINAL_FAMILY.get(cardinalityFamily.get()));
+      return Optional.ofNullable(CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY.get(cardinalityFamily.get()));
     }
   }
 }

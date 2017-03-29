@@ -31,9 +31,12 @@ import static java.util.Objects.requireNonNull;
 final class LocalizedStringUtils {
   @Nonnull
   private static final String CARDINALITY_NAME_PREFIX;
+  @Nonnull
+  private static final String ORDINALITY_NAME_PREFIX;
 
   static {
     CARDINALITY_NAME_PREFIX = "CARDINALITY_";
+    ORDINALITY_NAME_PREFIX = "ORDINALITY_";
   }
 
   private LocalizedStringUtils() {
@@ -68,5 +71,35 @@ final class LocalizedStringUtils {
           localizedStringName, CARDINALITY_NAME_PREFIX));
 
     return localizedStringName.substring(CARDINALITY_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Ordinality name ({@code ONE}) to match localized strings file format {@code "ORDINALITY_ONE"}.
+   *
+   * @param ordinalityName the ordinality name to massage, not null
+   * @return the localized strings file representation of an ordinality name, not null
+   */
+  @Nonnull
+  static String localizedStringNameForOrdinalityName(@Nonnull String ordinalityName) {
+    requireNonNull(ordinalityName);
+    return format("%s%s", ORDINALITY_NAME_PREFIX, ordinalityName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "ORDINALITY_ONE"} to match ordinality name ({@code ONE}).
+   *
+   * @param localizedStringName the localized strings ordinality name to massage, not null
+   * @return the ordinality name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @Nonnull
+  static String ordinalityNameForLocalizedStringName(@Nonnull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(ORDINALITY_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Ordinality value '%s' does not start with prefix '%s'",
+          localizedStringName, ORDINALITY_NAME_PREFIX));
+
+    return localizedStringName.substring(ORDINALITY_NAME_PREFIX.length());
   }
 }

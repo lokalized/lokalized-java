@@ -58,6 +58,8 @@ class ExpressionEvaluator {
   @Nonnull
   private static final Set<TokenType> CARDINALITY_TOKEN_TYPES;
   @Nonnull
+  private static final Set<TokenType> ORDINALITY_TOKEN_TYPES;
+  @Nonnull
   private static final Set<TokenType> GENDER_TOKEN_TYPES;
   @Nonnull
   private static final Set<TokenType> COMPARISON_OPERATOR_TOKEN_TYPES;
@@ -84,6 +86,17 @@ class ExpressionEvaluator {
         add(TokenType.CARDINALITY_FEW);
         add(TokenType.CARDINALITY_MANY);
         add(TokenType.CARDINALITY_OTHER);
+      }
+    });
+
+    ORDINALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.ORDINALITY_ZERO);
+        add(TokenType.ORDINALITY_ONE);
+        add(TokenType.ORDINALITY_TWO);
+        add(TokenType.ORDINALITY_FEW);
+        add(TokenType.ORDINALITY_MANY);
+        add(TokenType.ORDINALITY_OTHER);
       }
     });
 
@@ -115,6 +128,7 @@ class ExpressionEvaluator {
 
     Set<TokenType> operandTokenTypes = new HashSet<>();
     operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
+    operandTokenTypes.addAll(ORDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
     operandTokenTypes.add(TokenType.VARIABLE);
     operandTokenTypes.add(TokenType.NUMBER);
@@ -439,6 +453,21 @@ class ExpressionEvaluator {
         return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
       }
 
+      // Ordinality (operators: ==, !=)
+      if (lhsOperandType == OperandType.ORDINALITY || rhsOperandType == OperandType.ORDINALITY) {
+        Ordinality lhsValue = ordinalityFromOperand(leftHandOperand, context, locale);
+        Ordinality rhsValue = ordinalityFromOperand(rightHandOperand, context, locale);
+
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
       throw new ExpressionEvaluationException(format(
           "Unable to evaluate expression '%s %s %s'. Operand types %s and %s are incompatible", leftHandOperand.getSymbol(),
           operator.getSymbol(), rightHandOperand.getSymbol(), lhsOperandType.name(), rhsOperandType.name()));
@@ -551,6 +580,18 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Does the specified token represent a plural ordinality?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a plural ordinality, not null
+   */
+  @Nonnull
+  protected Boolean isOrdinality(@Nonnull Token token) {
+    requireNonNull(token);
+    return ORDINALITY_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
    * Determines the type of an operand.
    *
    * @param operand the operand to examine, not null
@@ -566,6 +607,8 @@ class ExpressionEvaluator {
       return OperandType.NUMBER;
     if (isCardinality(operand))
       return OperandType.CARDINALITY;
+    if (isOrdinality(operand))
+      return OperandType.ORDINALITY;
     if (isGender(operand))
       return OperandType.GENDER;
 
@@ -581,6 +624,8 @@ class ExpressionEvaluator {
         return OperandType.NUMBER;
       if (value instanceof Cardinality)
         return OperandType.CARDINALITY;
+      if (value instanceof Ordinality)
+        return OperandType.ORDINALITY;
       if (value instanceof Gender)
         return OperandType.GENDER;
     }
@@ -685,6 +730,43 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Determines the plural ordinality of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @param locale  the locale to use for evaluation, not null
+   * @return the plural ordinality of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine plural ordinality value (operand is of invalid type, etc.)
+   */
+  @Nonnull
+  protected Ordinality ordinalityFromOperand(@Nonnull Token operand, @Nonnull Map<String, Object> context, @Nonnull Locale locale) {
+    requireNonNull(operand);
+    requireNonNull(context);
+    requireNonNull(locale);
+
+    if (isCardinality(operand))
+      return Ordinality.getOrdinalitiesByName().get(LocalizedStringUtils.ordinalityNameForLocalizedStringName(operand.getSymbol()));
+
+    if (operand.getTokenType() == TokenType.NUMBER)
+      return Ordinality.forNumber(doubleFromOperand(operand, context), locale);
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Ordinality)
+        return (Ordinality) value;
+      if (value instanceof Number)
+        return Ordinality.forNumber((Number) value, locale);
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Ordinality.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
    * Determines the boolean value of a token.
    *
    * @param token the token to examine, not null
@@ -719,6 +801,6 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, CARDINALITY, NULL, UNKNOWN;
+    NUMBER, GENDER, CARDINALITY, ORDINALITY, NULL, UNKNOWN;
   }
 }

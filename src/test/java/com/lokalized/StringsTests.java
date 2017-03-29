@@ -51,7 +51,7 @@ public class StringsTests {
   }
 
   @Test
-  public void pluralPlaceholderTest() {
+  public void cardinalityPlaceholderTest() {
     Strings strings = new DefaultStrings.Builder("en", () ->
         LocalizedStringLoader.loadFromClasspath("strings")
     ).build();
@@ -76,6 +76,52 @@ public class StringsTests {
         }}, Locale.forLanguageTag("ru"));
 
     Assert.assertEquals("I прочитал 3 книг", translation);
+  }
+
+  @Test
+  public void ordinalityPlaceholderTest() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).build();
+
+    String translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+        new HashMap<String, Object>() {{
+          put("hisOrHer", Gender.MASCULINE);
+          put("year", 18);
+        }});
+
+    Assert.assertEquals("His 18th birthday party is next week.", translation);
+
+    translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+        new HashMap<String, Object>() {{
+          put("hisOrHer", Gender.FEMININE);
+          put("year", 21);
+        }});
+
+    Assert.assertEquals("Her 21st birthday party is next week.", translation);
+
+    translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+        new HashMap<String, Object>() {{
+          put("hisOrHer", Gender.MASCULINE);
+          put("year", 18);
+        }}, Locale.forLanguageTag("es"));
+
+    Assert.assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
+
+    translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+        new HashMap<String, Object>() {{
+          put("year", 1);
+        }}, Locale.forLanguageTag("es"));
+
+    Assert.assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
+
+    translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+        new HashMap<String, Object>() {{
+          put("hisOrHer", Gender.FEMININE);
+          put("year", 15);
+        }}, Locale.forLanguageTag("es"));
+
+    Assert.assertEquals("Su quinceañera es la próxima semana.", translation);
   }
 
   @Test

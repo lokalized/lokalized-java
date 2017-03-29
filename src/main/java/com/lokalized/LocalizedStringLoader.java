@@ -72,6 +72,7 @@ public final class LocalizedStringLoader {
     Set<LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
     supportedLanguageForms.addAll(Arrays.asList(Cardinality.values()));
+    supportedLanguageForms.addAll(Arrays.asList(Ordinality.values()));
 
     Map<String, LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
 
@@ -91,6 +92,10 @@ public final class LocalizedStringLoader {
       // Massage Cardinality to match file format, e.g. "ONE" -> "CARDINALITY_ONE"
       if (languageForm instanceof Cardinality)
         languageFormName = LocalizedStringUtils.localizedStringNameForCardinalityName(languageFormName);
+
+      // Massage Ordinality to match file format, e.g. "ONE" -> "ORDINALITY_ONE"
+      if (languageForm instanceof Ordinality)
+        languageFormName = LocalizedStringUtils.localizedStringNameForOrdinalityName(languageFormName);
 
       supportedLanguageFormsByName.put(languageFormName, languageForm);
     }
