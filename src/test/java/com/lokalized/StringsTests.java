@@ -198,7 +198,7 @@ public class StringsTests {
     // He was one of the 10 best baseball players.
     // She was one of the 10 best baseball players.
     // He was the best baseball player.
-    // SHe was the best baseball player.
+    // She was the best baseball player.
 
     String translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
         new HashMap<String, Object>() {{

@@ -5,111 +5,57 @@ Lokalized facilitates natural-sounding software translations.
 #### Design Goals
 
 * Complex translation rules can be expressed in a configuration file, not code
-* First-class support for gender and plural grammar rules
-* Support for multiple platforms (currently JavaScript and Java - Swift and Python ports coming soon)
+* First-class support for gender and plural (cardinal, ordinal) language forms
+* Provide a simple expression language to handle traditionally difficult edge cases
+* Support for multiple platforms
 * Immutability/thread-safety
 * No dependencies
 
-#### Design Non-goals
+#### Design Non-Goals
 
 * Support for date/time, number, percentage, and currency formatting (these problems are already solved well)
 
-### Why?
+#### License
 
-As a developer, it is unrealistic to embed per-locale translation rules in code for every text string.
+[Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-As a translator, sufficient context and the power of an expression language are required to provide the best translations possible.
+#### Maven Installation
 
-As a manager, it is preferable to have a single translation specification that works on the backend, web frontend, and native mobile apps.
-
-Lokalized aims to provide the best solution for all parties.
-
-### What Does That Mean?
-
-Suppose my application needs to display the number of books I've read, and I have a requirement to support both English and Russian users.
-In English, we can say this 3 ways:
-
-* `I didn't read any books`
-* `I read 1 book`
-* `I read 2 books`
-
-English is a complex language, but its plural rules are simple.  We say `book` if there is only 1 and `books` otherwise.
-
-In Russian, we have 4 variants:
-
-* `Я не читал книг`
-* `Я прочитал 1 книгу`
-* `Я прочитал 2 книги`
-* `Я прочитал 5 книг`
-
-Russian has more plural rules than English.  Roughly, we say `книгу` when the number of books ends in 1 (except for 11), `книги` when the number of books ends in 2, 3, or 4, and `книг` when the number of books ends in 5, 6, 7, 8, 9, or 0.
-
-### How Can I Express This?
-
-Our Java code might look like this:
-
-```java
-// Your strings instance "knows" the correct locale by consulting a Supplier<Locale>
-// that you provide. For example, in a webapp, to find an appropriate locale you
-// might consult the HttpServletRequest bound to the current thread
-Strings strings = new DefaultStrings.Builder("en", () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
-  .localeSupplier(() -> MyWebContext.getRequest().getLocale())
-  .build();
-
-String translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
-  put("bookCount", 0);
-}});
-
-// Prints "I haven't read any books"
-out.println(translated);
-
-// Try again with a different value
-translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
-  put("bookCount", 1);
-}});
-
-// Prints "I read 1 book"
-out.println(translated);
+```xml
+<dependency>
+  <groupId>com.lokalized</groupId>
+  <artifactId>lokalized</artifactId>
+  <version>1.0.0-SNAPSHOT</version>
+</dependency>
 ```
 
-OK, let's try Russian strings:
+#### Direct Download
 
-```java
-// You can force a target language via explicit Locale parameter - here we use Russian
-String translated = strings.get("Hello, world!", Locale.forLanguageTag("ru"));
+If you don't use Maven, you can drop [lokalized-1.0.0-SNAPSHOT.jar](http://central.maven.org/maven2/com/lokalized/lokalized/1.0.0-SNAPSHOT/lokalized-1.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
-// Prints "Приветствую, мир"
-// (in English: "Hello, world!")
-out.println(translated);
+## Why Lokalized?
 
-// Try the special 0 case
-translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
-  put("bookCount", 0);
-}}, Locale.forLanguageTag("ru"));
+* **As a developer**, it is unrealistic to embed per-locale translation rules in code for every text string
+* **As a translator**, sufficient context and the power of an expression language are required to provide the best translations possible
+* **As a manager**, it is preferable to have a single translation specification that works on the backend, web frontend, and native mobile apps
 
-// Prints "Я не читал книг"
-// (in English: "I haven't read any books")
-out.println(translated);
+Perhaps most importantly, the Lokalized placeholder system and expression language allow you to support edge cases that are critical to natural-sounding translations - this can be difficult to achieve using traditional solutions. 
 
-// Try again with a different value
-translated = strings.get("I read {{bookCount}} books", new HashMap<String, Object>() {{
-  put("bookCount", 8);
-}}, Locale.forLanguageTag("ru"));
+## Example Code
 
-// Prints "Я прочитал 8 книг"
-// (in English: "I read 8 books")
-out.println(translated);
-```
+We'll start with hands-on examples to illustrate key features.  More detailed documentation is available further down in this document.
 
-Notice that there is no logic in code for handling the different rules, regardless of language.  As a programmer, you are responsible for passing in whatever context is needed to display the string (in this case, the number of books).  The translator, via the translation file, is responsible for the rest.
+##### 1. Construct Localized Strings Files
 
-#### English Translation File
+Filenames must correspond to the IETF BCP 47 format for language tags.
+
+Here is a generic English (`en`) localized strings file which handles two localizations:
 
 ```json
 {
-  "I read {{bookCount}} books" : {
-    "translation" : "I read {{bookCount}} {{books}}",
-    "commentary" : "Message shown when user achieves her book-reading goal for the month",
+  "I am going on vacation" : "I am going on vacation.",
+  "I read {{bookCount}} books." : {
+    "translation" : "I read {{bookCount}} {{books}}.",    
     "placeholders" : {
       "books" : {
         "value" : "bookCount",
@@ -122,65 +68,48 @@ Notice that there is no logic in code for handling the different rules, regardle
     "alternatives" : [
       {
         "bookCount == 0" : {
-          "translation" : "I haven't read any books"
+          "translation" : "I didn't read any books."
         }
       }
     ]
-  }
+  }  
 }
 ```
 
-#### Russian Translation File
+Here is a British English (`en-GB`) localized strings file:
 
 ```json
 {
-  "Hello, world!" : "Приветствую, мир",
-  "I read {{bookCount}} books" : {
-    "translation" : "I прочитал {{bookCount}} {{books}}",
-    "commentary" : "Message shown when user achieves her book-reading goal for the month",
-    "placeholders" : {
-      "books" : {
-        "value" : "bookCount",
-        "translations" : {
-          "CARDINALITY_ONE" : "книга",
-          "CARDINALITY_FEW" : "книг",
-          "CARDINALITY_OTHER" : "книги"
-        }
-      }
-    },
-    "alternatives" : [
-      {
-        "bookCount == 0" : {
-          "translation" : "Я не читал книг"
-        }
-      }
-    ]
-  }
+  "I am going on vacation." : "I am going on holiday."
 }
 ```
 
-#### Notes
+Lokalized performs locale matching and falls back to less-specific locales as appropriate, so there is no need to duplicate all the `en` translations in `en-GB` - it is sufficient to specify only the dialect-specific differences. 
 
-* Translation files are recursive.  Each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`
-* You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`
-* Each language has a well-defined set of gender and plural rules, with examples outlined below.  You may use these to determine placeholder values and include them in `alternatives` expressions
-* Gender rules vary across languages, but the meaning is the same. Valid values are `MASCULINE`, `FEMININE`, and `NEUTER`
-* Plural rules vary across languages, and the meanings may differ. Valid values are `CARDINALITY_ZERO`, `CARDINALITY_ONE`, `CARDINALITY_TWO`, `CARDINALITY_FEW`, `CARDINALITY_MANY`, `CARDINALITY_OTHER`. Values do not necessarily map exactly to the named number, e.g. in some languages `CARDINALITY_ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `CARDINALITY_OTHER` in those cases)
+##### 2. Create a Strings Instance
+   
+```java
+// Your "native" fallback strings file, used in case no specific locale match is found.
+// ISO 639 alpha-2 or alpha-3 language code
+final String FALLBACK_LANGUAGE_CODE = "en";
 
-#### Example: English Plural Rules
+// Creates a Strings instance which loads localized strings files from the given directory.
+// Normally you'll only need a single shared instance to support your entire application.
+// Lokalized permits 
+Strings strings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
+    () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
+  .build();
+```
 
-* `CARDINALITY_ONE`: Matches 1 (e.g. `1 book`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `256 books`)
+##### 3. 
 
-#### Example: Russian Plural Rules
+```java
 
-* `CARDINALITY_ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
-* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
+```
 
-A listing of plural rules for all languages is available at http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html.
+##### TODO: finish
 
-### A More Complex Example
+## A More Complex Example
 
 Suppose we introduce gender to go along with plurals.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
 
@@ -232,6 +161,8 @@ out.println(translated);
 
 #### English Translation File
 
+English is a little simpler than Spanish because gender only affects the `He` or `She` component of the sentence. 
+
 ```json
 {
   "{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
@@ -262,6 +193,8 @@ out.println(translated);
 ```
 
 #### Spanish Translation File
+
+Note that we define our own placeholders in `translation` and drive them off of the `heOrShe` value to support gender-based word changes.
 
 ```json
 {
@@ -306,7 +239,76 @@ out.println(translated);
 }
 ```
 
-### Alternative Expressions
+##### TODO: include example of recursive alternatives
+
+## Ordinality Example
+
+##### TODO: finish
+
+## Localized Strings Concepts
+
+#### Gender
+
+Gender rules vary across languages, but the general meaning is the same.
+ 
+Lokalized supports these values:
+
+* `MASCULINE`
+* `FEMININE`
+* `NEUTER`
+
+#### Plural Cardinality
+
+For example: `1 book, 2 books, ...`
+
+Plural rules vary widely across languages.
+
+Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
+
+* `CARDINALITY_ZERO`
+* `CARDINALITY_ONE`
+* `CARDINALITY_TWO`
+* `CARDINALITY_FEW`
+* `CARDINALITY_MANY`
+* `CARDINALITY_OTHER` 
+
+Values do not necessarily map exactly to the named number, e.g. in some languages `CARDINALITY_ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `CARDINALITY_OTHER` in those cases).
+
+##### Japanese
+
+* `CARDINALITY_OTHER`: Matches everything (this language has no plural form)
+
+##### English
+
+* `CARDINALITY_ONE`: Matches 1 (e.g. `1 book`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `256 books`)
+
+##### Russian
+
+* `CARDINALITY_ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
+* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
+
+#### Plural Ordinality
+
+##### TODO: finish
+
+1st, 2nd, 3rd...
+
+Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
+
+* `ORDINALITY_ZERO`
+* `ORDINALITY_ONE`
+* `ORDINALITY_TWO`
+* `ORDINALITY_FEW`
+* `ORDINALITY_MANY`
+* `ORDINALITY_OTHER` 
+
+#### Alternative Expressions
+
+You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`.
+
+Expression recursion is supported. That is, each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`.
 
 A grammar for alternative expressions follows.
 
@@ -322,14 +324,59 @@ BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
 
-#### What Expressions Currently Support
+##### What Expressions Currently Support
 
-* Evaluate "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
-* Compare gender, plural, and literal numeric values against each other or user-supplied variables
+* Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
+* Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
 
-#### What Expressions Do Not Currently Support
+##### What Expressions Do Not Currently Support
 
 * The unary `!` operator
-* Explicit `null` operands (can be implicit via `VARIABLE` value)
+* Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
 
-#### TODO: finish documentation
+## java.util.logging
+
+Lokalized uses ```java.util.Logging``` internally.  The usual way to hook into this is with [SLF4J](http://slf4j.org), which can funnel all the different logging mechanisms in your app through a single one, normally [Logback](http://logback.qos.ch).  Your Maven configuration might look like this:
+
+```xml
+<dependency>
+  <groupId>ch.qos.logback</groupId>
+  <artifactId>logback-classic</artifactId>
+  <version>1.1.9</version>
+</dependency>
+<dependency>
+  <groupId>org.slf4j</groupId>
+  <artifactId>jul-to-slf4j</artifactId>
+  <version>1.7.22</version>
+</dependency>
+```
+
+You might have code like this which runs at startup:
+
+```java
+// Bridge all java.util.logging to SLF4J
+java.util.logging.Logger rootLogger = java.util.logging.LogManager.getLogManager().getLogger("");
+for (Handler handler : rootLogger.getHandlers())
+  rootLogger.removeHandler(handler);
+
+SLF4JBridgeHandler.install();
+```
+
+Don't forget to uninstall the bridge at shutdown time:
+
+```java
+// Sometime later
+SLF4JBridgeHandler.uninstall();
+```
+
+Note: ```SLF4JBridgeHandler``` can impact performance.  You can mitigate that with Logback's ```LevelChangePropagator``` configuration option [as described here](http://logback.qos.ch/manual/configuration.html#LevelChangePropagator).
+
+## About
+
+Lokalized was created by [Mark Allen](http://revetkn.com) and sponsored by [Product Mog, LLC.](https://www.xmog.com)
+
+Development was aided by
+
+* [SomaFM](http://somafm.com)
+* [Scared of Chaka](https://www.youtube.com/watch?v=lYSa2U2St54)
+* [Dog Party](https://www.youtube.com/watch?v=GIn0SCdCu5I)

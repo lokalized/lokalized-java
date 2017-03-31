@@ -55,13 +55,15 @@
 		},
 		"alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
-          "translation" : "Él era el mejor jugador de béisbol."
-        }
-      },
-      {
-        "heOrShe == FEMININE && groupSize <= 1" : {
-          "translation" : "Ella era la mejor jugadora de béisbol."
+        "groupSize <= 1" : {
+          "alternatives" : [
+            {
+            	"heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
+            },
+            {
+            	"heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
+            }
+          ]
         }
       }
 		]
