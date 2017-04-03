@@ -142,7 +142,7 @@ translation = strings.get("I read {{bookCount}} books.",
 assertEquals("I didn't read any books.", translation);
 
 // Here we force British English.
-// Normally providing an explicit locale is an uncommon use case -
+// Note that providing an explicit locale is an uncommon use case -
 // standard practice is to specify a localeSupplier when constructing your 
 // Strings instance and Lokalized will pick the appropriate locale, e.g. 
 // the locale specified by the current web request's Accept-Language header
