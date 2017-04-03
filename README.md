@@ -117,7 +117,7 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
-// That is, it understands the 3 means CARDINALITY_OTHER ("books") in English.
+// That is, it understands the 3 means CARDINALITY_OTHER ("books") in English
 String translation = strings.get("I read {{bookCount}} books.",
   new HashMap<String, Object>() {{
     put("bookCount", 3);
@@ -125,7 +125,7 @@ String translation = strings.get("I read {{bookCount}} books.",
 
 assertEquals("I read 3 books.", translation);
 
-// 1 means CARDINALITY_ONE ("book") in English.
+// 1 means CARDINALITY_ONE ("book") in English
 translation = strings.get("I read {{bookCount}} books.",
   new HashMap<String, Object>() {{
     put("bookCount", 1);
@@ -141,7 +141,11 @@ translation = strings.get("I read {{bookCount}} books.",
 
 assertEquals("I didn't read any books.", translation);
 
-// Here we force British English
+// Here we force British English.
+// Normally providing an explicit locale is an uncommon use case -
+// standard practice is to specify a localeSupplier when constructing your 
+// Strings instance and Lokalized will pick the appropriate locale, e.g. 
+// the locale specified by the current web request's Accept-Language header
 translation = strings.get("I am going on vacation.", Locale.forLanguageTag("en-GB"));
 
 // We have an exact match for this key in the en-GB file, so that translation is applied.
