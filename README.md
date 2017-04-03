@@ -41,13 +41,13 @@ If you don't use Maven, you can drop [lokalized-1.0.0-SNAPSHOT.jar](http://centr
 
 Perhaps most importantly, the Lokalized placeholder system and expression language allow you to support edge cases that are critical to natural-sounding translations - this can be difficult to achieve using traditional solutions. 
 
-## Example Code
+## Getting Started
 
 We'll start with hands-on examples to illustrate key features.  More detailed documentation is available further down in this document.
 
-##### 1. Construct Localized Strings Files
+##### 1. Create Localized Strings Files
 
-Filenames must correspond to the IETF BCP 47 format for language tags.
+Filenames must conform to the IETF BCP 47 language tag format.
 
 Here is a generic English (`en`) localized strings file which handles two localizations:
 
@@ -94,24 +94,64 @@ Lokalized performs locale matching and falls back to less-specific locales as ap
 final String FALLBACK_LANGUAGE_CODE = "en";
 
 // Creates a Strings instance which loads localized strings files from the given directory.
-// Normally you'll only need a single shared instance to support your entire application.
-// Lokalized permits 
+// Normally you'll only need a single shared instance to support your entire application,
+// even for multitenant/concurrent usage, e.g. a Servlet container
 Strings strings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
     () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
   .build();
 ```
 
-##### 3. 
+You may also provide the builder with a locale-supplying lambda, which is useful for
+environments like webapps where each request can have a different locale.
 
 ```java
-
+// "Smart" locale selection which queries the current web request for locale data.
+// MyWebContext is a class you might write yourself, perhaps using a ThreadLocal internally
+Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
+    () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
+  .localeSupplier(() -> MyWebContext.getHttpServletRequest().getLocale())
+  .build();
 ```
 
-##### TODO: finish
+##### 3. Ask Strings Instance for Translations
+
+```java
+// Lokalized knows how to map numbers to plural cardinalities per locale.
+// That is, it understands the 3 means CARDINALITY_OTHER ("books") in English.
+String translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 3);
+  }});
+
+assertEquals("I read 3 books.", translation);
+
+// 1 means CARDINALITY_ONE ("book") in English.
+translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 1);
+  }});
+
+assertEquals("I read 1 book.", translation);
+
+// A special alternative rule is applied when bookCount == 0
+translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 0);
+  }});
+
+assertEquals("I didn't read any books.", translation);
+
+// Here we force British English
+translation = strings.get("I am going on vacation.", Locale.forLanguageTag("en-GB"));
+
+// We have an exact match for this key in the en-GB file, so that translation is applied.
+// If none were found, we would fall back to "en" and try there instead
+assertEquals("I am going on holiday.", translation);
+```
 
 ## A More Complex Example
 
-Suppose we introduce gender to go along with plurals.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
+Lokalized's strength is handling phrases that must be rewritten in different ways according to language rules. Suppose we introduce gender alongside plural forms.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
 
 This English statement has 4 variants:
 
@@ -131,32 +171,33 @@ But notice how the statements must change to match gender - `uno` becomes `una`,
 Again, we keep this gender and plural logic out of our code entirely and leave it to the translation configuration.
 
 ```java
+// "Normal" translation
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   new HashMap<String, Object>() {{
     put("heOrShe", Gender.MASCULINE);
     put("groupSize", 10);
   }});
 
-// Prints "He was one of the 10 best baseball players."
-out.println(translated);
+assertEquals("He was one of the 10 best baseball players.", translation);
 
+// Alternative expression triggered
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   new HashMap<String, Object>() {{
     put("heOrShe", Gender.MASCULINE);
     put("groupSize", 1);
   }});
 
-// Prints "He was the best baseball player."
-out.println(translated);
+assertEquals("He was the best baseball player.", translation);
 
+// Let's try Spanish
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   new HashMap<String, Object>() {{
     put("heOrShe", Gender.FEMININE);
     put("groupSize", 3);
   }}, Locale.forLanguageTag("es"));
 
-// Prints "Fue una de las 3 mejores jugadoras de béisbol."
-out.println(translated);
+// Note that the correct feminine forms were applied
+assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
 ```
 
 #### English Translation File
