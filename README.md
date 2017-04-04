@@ -418,26 +418,36 @@ There are two common approaches - natural language and contextual. Some benefits
  
 #### Natural Language Keys
 
-For example: `"I read {[bookCount}} books."`
+For example: `"I read {{bookCount}} books."`
 
-* **Pro** Any developer can create a key by writing a phrase in her native language - no need to coordinate with others or choose arbitrary names
-* **Pro** Placeholders are encoded directly in the key and serve as "automatic" documentation for translators
-* **Pro** There is always a sensible default fallback in the event that a translation is missing
-* **Con** Context is lost; the same text on one screen might have a completely different meaning on another
-* **Con** Not suited for large amounts of text, like a software licensing agreement
-* **Con** Small changes to text require updating every strings file since keys are not "constant"
+##### Pros
+
+* Any developer can create a key by writing a phrase in her native language - no need to coordinate with others or choose arbitrary names
+* Placeholders are encoded directly in the key and serve as "automatic" documentation for translators
+* There is always a sensible default fallback in the event that a translation is missing
+
+##### Cons
+
+* Context is lost; the same text on one screen might have a completely different meaning on another
+* Not suited for large amounts of text, like a software licensing agreement
+* Small changes to text require updating every strings file since keys are not "constant"
 
 #### Contextual Keys
 
 For example: `"screen.profile.books-read"`
 
-* **Pro** It is possible to specifically target app components, which enforces translation context
-* **Pro** Perfect for big chunks of text like legal disclaimers
-* **Pro** "Constant" keys means translations can change without affecting code
-* **Con** You must come up with names for every key and cross-reference in your localized strings files
-* **Con** Placeholders are not encoded in the key and must be communicated to translators through some other mechanism
-* **Con** Requires diligent recordkeeping and inter-team communication ("are our iOS and Android apps using the same keys or are we duplicating effort?")
-* **Con** There is no default language fallback if no translation is present; users will see your contextual key onscreen 
+##### Pros
+
+* It is possible to specifically target app components, which enforces translation context
+* Perfect for big chunks of text like legal disclaimers
+* "Constant" keys means translations can change without affecting code
+
+##### Cons
+
+* You must come up with names for every key and cross-reference in your localized strings files
+* Placeholders are not encoded in the key and must be communicated to translators through some other mechanism
+* Requires diligent recordkeeping and inter-team communication ("are our iOS and Android apps using the same keys or are we duplicating effort?")
+* There is no default language fallback if no translation is present; users will see your contextual key onscreen 
 
 #### Or - Mix Both!
 
@@ -445,7 +455,7 @@ It's possible to cherrypick and create a hybrid solution.  For example, you migh
 
 ## java.util.logging
 
-Lokalized uses ```java.util.Logging``` internally.  The usual way to hook into this is with [SLF4J](http://slf4j.org), which can funnel all the different logging mechanisms in your app through a single one, normally [Logback](http://logback.qos.ch).  Your Maven configuration might look like this:
+Lokalized uses ```java.util.logging``` internally.  The usual way to hook into this is with [SLF4J](http://slf4j.org), which can funnel all the different logging mechanisms in your app through a single one, normally [Logback](http://logback.qos.ch).  Your Maven configuration might look like this:
 
 ```xml
 <dependency>
