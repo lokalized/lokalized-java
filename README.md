@@ -7,13 +7,19 @@ Lokalized facilitates natural-sounding software translations.
 * Complex translation rules can be expressed in a configuration file, not code
 * First-class support for gender and plural (cardinal, ordinal) language forms
 * Provide a simple expression language to handle traditionally difficult edge cases
-* Support for multiple platforms
+* Support multiple platforms natively
 * Immutability/thread-safety
 * No dependencies
 
 #### Design Non-Goals
 
-* Support for date/time, number, percentage, and currency formatting (these problems are already solved well)
+* Support for collation and date/time, number, percentage, and currency formatting (these problems are already solved well)
+
+#### Roadmap
+
+* Static analysis tool to autogenerate/sync localized strings files
+* Additional Ports (JavaScript, Python, Go, ...)
+* Webapp for translators
 
 #### License
 
@@ -45,7 +51,7 @@ Perhaps most importantly, the Lokalized placeholder system and expression langua
 
 We'll start with hands-on examples to illustrate key features.  More detailed documentation is available further down in this document.
 
-##### 1. Create Localized Strings Files
+#### 1. Create Localized Strings Files
 
 Filenames must conform to the IETF BCP 47 language tag format.
 
@@ -86,7 +92,7 @@ Here is a British English (`en-GB`) localized strings file:
 
 Lokalized performs locale matching and falls back to less-specific locales as appropriate, so there is no need to duplicate all the `en` translations in `en-GB` - it is sufficient to specify only the dialect-specific differences. 
 
-##### 2. Create a Strings Instance
+#### 2. Create a Strings Instance
    
 ```java
 // Your "native" fallback strings file, used in case no specific locale match is found.
@@ -113,7 +119,7 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
   .build();
 ```
 
-##### 3. Ask Strings Instance for Translations
+#### 3. Ask Strings Instance for Translations
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
@@ -313,7 +319,7 @@ Note that this is just a snippet to illustrate functionality - the other portion
 
 ## Ordinality Example
 
-##### TODO: finish
+#### TODO: finish
 
 ## Language Forms
 
@@ -394,15 +400,48 @@ BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
 
-##### What Expressions Currently Support
+#### What Expressions Currently Support
 
 * Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
 * Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
 
-##### What Expressions Do Not Currently Support
+#### What Expressions Do Not Currently Support
 
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
+
+## Keying Strategy
+
+Ultimately, it is up to you and your team how best to name your localization keys.  Lokalized does not impose key naming constraints. 
+  
+There are two common approaches - natural language and contextual. Some benefits and drawbacks of each are listed below to help you make the best decision for your situation.
+ 
+#### Natural Language Keys
+
+For example: `"I read {[bookCount}} books."`
+
+* **Pro** Any developer can create a key by writing a phrase in her native language - no need to coordinate with others or choose arbitrary names
+* **Pro** Placeholders are encoded directly in the key and serve as "automatic" documentation for translators
+* **Pro** There is always a sensible default fallback in the event that a translation is missing
+* **Con** Context is lost; the same text on one screen might have a completely different meaning on another
+* **Con** Not suited for large amounts of text, like a software licensing agreement
+* **Con** Small changes to text require updating every strings file since keys are not "constant"
+
+#### Contextual Keys
+
+For example: `"screen.profile.books-read"`
+
+* **Pro** It is possible to specifically target app components, which enforces translation context
+* **Pro** Perfect for big chunks of text like legal disclaimers
+* **Pro** "Constant" keys means translations can change without affecting code
+* **Con** You must come up with names for every key and cross-reference in your localized strings files
+* **Con** Placeholders are not encoded in the key and must be communicated to translators through some other mechanism
+* **Con** Requires diligent recordkeeping and inter-team communication ("are our iOS and Android apps using the same keys or are we duplicating effort?")
+* **Con** There is no default language fallback if no translation is present; users will see your contextual key onscreen 
+
+#### Or - Mix Both!
+
+It's possible to cherrypick and create a hybrid solution.  For example, you might mostly use natural language keys but switch to contextual for legalese and other special cases.
 
 ## java.util.logging
 
