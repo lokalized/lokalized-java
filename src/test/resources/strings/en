@@ -1,87 +1,87 @@
-{
+{  
   "I am going on vacation" : "I am going on vacation",
-  "{{heOrShe}} is a good actor." : {
+  "{{heOrShe}} is a good actor." : {  
     "translation" : "{{heOrShe}} is a good {{actor}}.",
-    "placeholders" : {
-      "heOrShe": {
+    "placeholders" : {  
+      "heOrShe" : {  
         "value" : "heOrShe",
-        "translations" : {
+        "translations" : {  
           "MASCULINE" : "He",
           "FEMININE" : "She"
         }
       },
-      "actor" : {
+      "actor" : {  
         "value" : "heOrShe",
-        "translations" : {
+        "translations" : {  
           "MASCULINE" : "actor",
           "FEMININE" : "actress"
         }
       }
     }
   },
-  "I read {{bookCount}} books" : {
+  "I read {{bookCount}} books" : {  
     "translation" : "I read {{bookCount}} {{books}}",
     "commentary" : "Message shown when user achieves her book-reading goal for the month",
-    "placeholders" : {
-      "books" : {
+    "placeholders" : {  
+      "books" : {  
         "value" : "bookCount",
-        "translations" : {
+        "translations" : {  
           "CARDINALITY_ONE" : "book",
           "CARDINALITY_OTHER" : "books"
         }
       }
     },
-    "alternatives" : [
-      {
-        "bookCount == 0" : {
+    "alternatives" : [  
+      {  
+        "bookCount == 0" : {  
           "translation" : "I didn't read any books"
         }
       }
     ]
   },
-	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
-		"translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-		"placeholders" : {
-			"heOrShe": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "He",
-					"FEMININE" : "She"
-				}
-			}
-		},
-		"alternatives" : [
-      {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players." : {  
+    "translation" : "{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+    "placeholders" : {  
+      "heOrShe" : {  
+        "value" : "heOrShe",
+        "translations" : {  
+          "MASCULINE" : "He",
+          "FEMININE" : "She"
+        }
+      }
+    },
+    "alternatives" : [  
+      {  
+        "heOrShe == MASCULINE && groupSize <= 1" : {  
           "translation" : "He was the best baseball player."
         }
       },
-      {
-        "heOrShe == FEMININE && groupSize <= 1" : {
+      {  
+        "heOrShe == FEMININE && groupSize <= 1" : {  
           "translation" : "She was the best baseball player."
         }
       }
-		]
-	},
-	"{{hisOrHer}} {{year}}th birthday party is next week." : {
-		"translation" : "{{hisOrHer}} {{year}}{{ordinal}} birthday party is next week.",
-		"placeholders" : {
-			"hisOrHer": {
-				"value" : "hisOrHer",
-				"translations" : {
-					"MASCULINE" : "His",
-					"FEMININE" : "Her"
-				}
-			},
-			"ordinal": {
-				"value" : "year",
-				"translations" : {
-					"ORDINALITY_ONE" : "st",
-					"ORDINALITY_TWO" : "nd",
-					"ORDINALITY_FEW" : "rd",
-					"ORDINALITY_OTHER" : "th"
-				}
-			}
-		}
-	}
+    ]
+  },
+  "{{hisOrHer}} {{year}}th birthday party is next week." : {  
+    "translation" : "{{hisOrHer}} {{year}}{{ordinal}} birthday party is next week.",
+    "placeholders" : {  
+      "hisOrHer" : {  
+        "value" : "hisOrHer",
+        "translations" : {  
+          "MASCULINE" : "His",
+          "FEMININE" : "Her"
+        }
+      },
+      "ordinal" : {  
+        "value" : "year",
+        "translations" : {  
+          "ORDINALITY_ONE" : "st",
+          "ORDINALITY_TWO" : "nd",
+          "ORDINALITY_FEW" : "rd",
+          "ORDINALITY_OTHER" : "th"
+        }
+      }
+    }
+  }
 }

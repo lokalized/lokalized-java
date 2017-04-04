@@ -1,21 +1,21 @@
-{
+{  
   "Hello, world!" : "Приветствую, мир",
-  "I read {{bookCount}} books" : {
+  "I read {{bookCount}} books" : {  
     "translation" : "I прочитал {{bookCount}} {{books}}",
     "commentary" : "Message shown when user achieves her book-reading goal for the month",
-    "placeholders" : {
-      "books" : {
+    "placeholders" : {  
+      "books" : {  
         "value" : "bookCount",
-        "translations" : {
+        "translations" : {  
           "CARDINALITY_ONE" : "книга",
           "CARDINALITY_FEW" : "книг",
           "CARDINALITY_OTHER" : "книги"
         }
       }
     },
-    "alternatives" : [
-      {
-        "bookCount == 0" : {
+    "alternatives" : [  
+      {  
+        "bookCount == 0" : {  
           "translation" : "Я не читал книг"
         }
       }

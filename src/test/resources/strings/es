@@ -2,7 +2,7 @@
   "{{heOrShe}} is a good actor." : {
     "translation" : "{{heOrShe}} es {{suffix}}.",
     "placeholders" : {
-      "heOrShe": {
+      "heOrShe" : {
         "value" : "heOrShe",
         "translations" : {
           "MASCULINE" : "Él",
@@ -20,57 +20,57 @@
   },
   "{{heOrShe}} is a great actor." : {
     "alternatives" : [
-			 {
-				 "heOrShe == MASCULINE" : "Él es un gran actor."
-			 },
-			 {
-				 "heOrShe == FEMININE" : "Ella es una gran actriz."
-			 }
+      {
+        "heOrShe == MASCULINE" : "Él es un gran actor."
+      },
+      {
+        "heOrShe == FEMININE" : "Ella es una gran actriz."
+      }
     ]
   },
-	"{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
-		"translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
-		"placeholders" : {
-			"uno": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "uno",
-					"FEMININE" : "una"
-				}
-			},
-			"los": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "los",
-					"FEMININE" : "las"
-				}
-			},
-			"jugadores": {
-				"value" : "heOrShe",
-				"translations" : {
-					"MASCULINE" : "jugadores",
-					"FEMININE" : "jugadoras"
-				}
-			}
-		},
-		"alternatives" : [
+  "{{heOrShe}} was one of the {{groupSize}} best baseball players." : {
+    "translation" : "Fue {{uno}} de {{los}} {{groupSize}} mejores {{jugadores}} de béisbol.",
+    "placeholders" : {
+      "uno" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "uno",
+          "FEMININE" : "una"
+        }
+      },
+      "los" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "los",
+          "FEMININE" : "las"
+        }
+      },
+      "jugadores" : {
+        "value" : "heOrShe",
+        "translations" : {
+          "MASCULINE" : "jugadores",
+          "FEMININE" : "jugadoras"
+        }
+      }
+    },
+    "alternatives" : [
       {
         "groupSize <= 1" : {
           "alternatives" : [
             {
-            	"heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
+              "heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
             },
             {
-            	"heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
+              "heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
             }
           ]
         }
       }
-		]
-	},
-	"{{hisOrHer}} {{year}}th birthday party is next week." : {
-		"translation" : "Su fiesta de cumpleaños número {{year}} es la próxima semana.",
-		"alternatives" : [
+    ]
+  },
+  "{{hisOrHer}} {{year}}th birthday party is next week." : {
+    "translation" : "Su fiesta de cumpleaños número {{year}} es la próxima semana.",
+    "alternatives" : [
       {
         "year == 1" : {
           "translation" : "Su primera fiesta de cumpleaños es la próxima semana."
@@ -81,6 +81,6 @@
           "translation" : "Su quinceañera es la próxima semana."
         }
       }
-		]
-	}
+    ]
+  }
 }
