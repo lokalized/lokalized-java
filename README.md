@@ -119,7 +119,7 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
   .build();
 ```
 
-#### 3. Ask Strings Instance for Translations
+#### 3. Ask Strings Instance For Translations
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
@@ -260,7 +260,7 @@ Note that we define our own placeholders in `translation` and drive them off of 
 
 #### The Rules, Exercised
 
-Again, we keep this gender and plural logic out of our code entirely and leave it to the translation configuration.
+Again, we keep the gender and plural logic out of our code entirely and leave the rule processing to the translation configuration.
 
 ```java
 // "Normal" translation
@@ -317,9 +317,116 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
-## Ordinality Example
+## Working With Ordinalities
 
-#### TODO: finish
+Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
+ 
+* `Take the 1st left after the intersection`
+* `She is my 2nd cousin`
+* `I finished the race in 3rd place`
+
+Let's look at an example related to birthdays.
+
+#### English Translation File
+
+English has 4 ordinalities.
+
+```json
+{
+  "{{hisOrHer}} {{year}}th birthday party is next week." : {  
+    "translation" : "{{hisOrHer}} {{year}}{{ordinal}} birthday party is next week.",
+    "placeholders" : {  
+      "hisOrHer" : {  
+        "value" : "hisOrHer",
+        "translations" : {  
+          "MASCULINE" : "His",
+          "FEMININE" : "Her"
+        }
+      },
+      "ordinal" : {  
+        "value" : "year",
+        "translations" : {  
+          "ORDINALITY_ONE" : "st",
+          "ORDINALITY_TWO" : "nd",
+          "ORDINALITY_FEW" : "rd",
+          "ORDINALITY_OTHER" : "th"
+        }
+      }
+    }
+  }
+}
+```
+
+#### Spanish Translation File
+
+Spanish doesn't have ordinalities, so we can disregard them.  But we do have a few special cases - a first birthday and a quinceañera for girls.
+
+```json
+{
+  "{{hisOrHer}} {{year}}th birthday party is next week." : {
+    "translation" : "Su fiesta de cumpleaños número {{year}} es la próxima semana.",
+    "alternatives" : [
+      {
+        "year == 1" : {
+          "translation" : "Su primera fiesta de cumpleaños es la próxima semana."
+        }
+      },
+      {
+        "hisOrHer == FEMININE && year == 15" : {
+          "translation" : "Su quinceañera es la próxima semana."
+        }
+      }
+    ]
+  }
+}
+```
+
+#### Ordinalities, Exercised
+
+```java
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+  new HashMap<String, Object>() {{
+    put("hisOrHer", Gender.MASCULINE);
+    put("year", 18);
+  }});
+
+assertEquals("His 18th birthday party is next week.", translation);
+
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+	new HashMap<String, Object>() {{
+		put("hisOrHer", Gender.FEMININE);
+		put("year", 21);
+	}});
+
+// The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 11, 21, ...) in English
+assertEquals("Her 21st birthday party is next week.", translation);
+
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+	new HashMap<String, Object>() {{
+		put("hisOrHer", Gender.MASCULINE);
+		put("year", 18);
+	}}, Locale.forLanguageTag("es"));
+
+// Normal case
+assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
+
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+	new HashMap<String, Object>() {{
+		put("year", 1);
+	}}, Locale.forLanguageTag("es"));
+
+// Special case for first birthday
+assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
+
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+	new HashMap<String, Object>() {{
+		put("hisOrHer", Gender.FEMININE);
+		put("year", 15);
+	}}, Locale.forLanguageTag("es"));
+
+// Special case for a girl's 15th birthday
+assertEquals("Su quinceañera es la próxima semana.", translation);
+```
 
 ## Language Forms
 
@@ -365,7 +472,7 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 * `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
 * `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
-#### Plural Ordinality
+#### Ordinality
 
 ##### TODO: finish
 
