@@ -144,7 +144,7 @@ assertEquals("I didn't read any books.", translation);
 // Here we force British English.
 // Note that providing an explicit locale is an uncommon use case -
 // standard practice is to specify a localeSupplier when constructing your 
-// Strings instance and Lokalized will pick the appropriate locale, e.g. 
+// Strings instance and Lokalized will use it to pick the appropriate locale, e.g. 
 // the locale specified by the current web request's Accept-Language header
 translation = strings.get("I am going on vacation.", Locale.forLanguageTag("en-GB"));
 
@@ -171,38 +171,6 @@ But notice how the statements must change to match gender - `uno` becomes `una`,
 * `Fue una de las X mejores jugadoras de béisbol.`
 * `Él era el mejor jugador de béisbol.`
 * `Ella era la mejor jugadora de béisbol.`
-
-Again, we keep this gender and plural logic out of our code entirely and leave it to the translation configuration.
-
-```java
-// "Normal" translation
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.MASCULINE);
-    put("groupSize", 10);
-  }});
-
-assertEquals("He was one of the 10 best baseball players.", translation);
-
-// Alternative expression triggered
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.MASCULINE);
-    put("groupSize", 1);
-  }});
-
-assertEquals("He was the best baseball player.", translation);
-
-// Let's try Spanish
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.FEMININE);
-    put("groupSize", 3);
-  }}, Locale.forLanguageTag("es"));
-
-// Note that the correct feminine forms were applied
-assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
-```
 
 #### English Translation File
 
@@ -284,13 +252,70 @@ Note that we define our own placeholders in `translation` and drive them off of 
 }
 ```
 
-##### TODO: include example of recursive alternatives
+#### The Rules, Exercised
+
+Again, we keep this gender and plural logic out of our code entirely and leave it to the translation configuration.
+
+```java
+// "Normal" translation
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.MASCULINE);
+    put("groupSize", 10);
+  }});
+
+assertEquals("He was one of the 10 best baseball players.", translation);
+
+// Alternative expression triggered
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.MASCULINE);
+    put("groupSize", 1);
+  }});
+
+assertEquals("He was the best baseball player.", translation);
+
+// Let's try Spanish
+translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  new HashMap<String, Object>() {{
+    put("heOrShe", Gender.FEMININE);
+    put("groupSize", 3);
+  }}, Locale.forLanguageTag("es"));
+
+// Note that the correct feminine forms were applied
+assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
+```
+
+#### Recursive Alternatives
+
+You can exploit the recursive nature of alternative expressions to reduce logic duplication.  Here, we define a toplevel alternative for `groupSize <= 1` which itself has alternatives for `MASCULINE` and `FEMININE` cases.  This is equivalent to the alternative rules defined above but might be a more "comfortable" way to express behavior for some.
+
+Note that this is just a snippet to illustrate functionality - the other portion of this localized string has been elided for brevity.
+
+```json
+{
+  "alternatives" : [
+    {
+      "groupSize <= 1" : {
+        "alternatives" : [
+          {
+            "heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
+          },
+          {
+            "heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
+          }
+        ]
+      }
+    }
+  ]
+}
+```
 
 ## Ordinality Example
 
 ##### TODO: finish
 
-## Localized Strings Concepts
+## Language Forms
 
 #### Gender
 
@@ -349,7 +374,7 @@ Lokalized supports these values according to [CLDR rules](http://www.unicode.org
 * `ORDINALITY_MANY`
 * `ORDINALITY_OTHER` 
 
-#### Alternative Expressions
+## Alternative Expressions
 
 You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`.
 
