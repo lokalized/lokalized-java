@@ -393,36 +393,36 @@ translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week."
 assertEquals("His 18th birthday party is next week.", translation);
 
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-	new HashMap<String, Object>() {{
-		put("hisOrHer", Gender.FEMININE);
-		put("year", 21);
-	}});
+  new HashMap<String, Object>() {{
+    put("hisOrHer", Gender.FEMININE);
+    put("year", 21);
+  }});
 
 // The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 11, 21, ...) in English
 assertEquals("Her 21st birthday party is next week.", translation);
 
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-	new HashMap<String, Object>() {{
-		put("hisOrHer", Gender.MASCULINE);
-		put("year", 18);
-	}}, Locale.forLanguageTag("es"));
+  new HashMap<String, Object>() {{
+    put("hisOrHer", Gender.MASCULINE);
+    put("year", 18);
+  }}, Locale.forLanguageTag("es"));
 
 // Normal case
 assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
 
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-	new HashMap<String, Object>() {{
-		put("year", 1);
-	}}, Locale.forLanguageTag("es"));
+  new HashMap<String, Object>() {{
+    put("year", 1);
+  }}, Locale.forLanguageTag("es"));
 
 // Special case for first birthday
 assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
 
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-	new HashMap<String, Object>() {{
-		put("hisOrHer", Gender.FEMININE);
-		put("year", 15);
-	}}, Locale.forLanguageTag("es"));
+  new HashMap<String, Object>() {{
+    put("hisOrHer", Gender.FEMININE);
+    put("year", 15);
+  }}, Locale.forLanguageTag("es"));
 
 // Special case for a girl's 15th birthday
 assertEquals("Su quinceañera es la próxima semana.", translation);
