@@ -390,6 +390,7 @@ translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week."
     put("year", 18);
   }});
 
+// The ORDINALITY_OTHER rule is applied for 18 in English
 assertEquals("His 18th birthday party is next week.", translation);
 
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
