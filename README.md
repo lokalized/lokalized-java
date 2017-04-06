@@ -260,7 +260,7 @@ Note that we define our own placeholders in `translation` and drive them off of 
 
 #### The Rules, Exercised
 
-Again, we keep the gender and plural logic out of our code entirely and leave the rule processing to the translation configuration.
+Again, we keep the gender and plural logic out of our code entirely and leavex rule processing to the translation configuration.
 
 ```java
 // "Normal" translation
@@ -469,15 +469,15 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 ##### Russian
 
-* `CARDINALITY_ONE`: Matches 1, 21, 31, 41, 51, 61, ... (e.g. `1 книга` or `171 книга`)
+* `CARDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1 книга` or `171 книга`)
 * `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
 * `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
 #### Ordinality
 
-##### TODO: finish
+For example: `1st, 2nd, 3rd, 4th, ...`
 
-1st, 2nd, 3rd...
+Similar to plural cardinality, ordinal rules very widely across languages.
 
 Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
 
@@ -486,7 +486,25 @@ Lokalized supports these values according to [CLDR rules](http://www.unicode.org
 * `ORDINALITY_TWO`
 * `ORDINALITY_FEW`
 * `ORDINALITY_MANY`
-* `ORDINALITY_OTHER` 
+* `ORDINALITY_OTHER`
+
+Again, like cardinal values, ordinals do not necessarily map to the named number. For example, `ORDINALITY_ONE` might apply to any number that ends in `1`.
+
+##### Spanish
+
+* `ORDINALITY_OTHER`: Matches everything (this language has no plural form)
+
+##### English
+
+* `ORDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1st prize`)
+* `ORDINALITY_TWO`: Matches 2, 22, 32, ... (e.g. `22nd prize`)
+* `ORDINALITY_FEW`: Matches 3, 23, 33, ... (e.g. `33rd prize`)
+* `ORDINALITY_OTHER`: Everything else (e.g. `12th prize`)
+
+##### Italian
+
+* `ORDINALITY_MANY`: Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
+* `ORDINALITY_OTHER`: Everything else (e.g. `	Prendi la 7° a destra`)
 
 ## Alternative Expressions
 
