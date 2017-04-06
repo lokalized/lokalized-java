@@ -73,9 +73,7 @@ Here is a generic English (`en`) localized strings file which handles two locali
     },
     "alternatives" : [
       {
-        "bookCount == 0" : {
-          "translation" : "I didn't read any books."
-        }
+        "bookCount == 0" : "I didn't read any books."        
       }
     ]
   }  
@@ -197,14 +195,10 @@ English is a little simpler than Spanish because gender only affects the `He` or
     },
     "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
-          "translation" : "He was the best baseball player."
-        }
+        "heOrShe == MASCULINE && groupSize <= 1" : "He was the best baseball player."        
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : {
-          "translation" : "She was the best baseball player."
-        }
+        "heOrShe == FEMININE && groupSize <= 1" : "She was the best baseball player."        
       }
     ]
   }
@@ -244,14 +238,10 @@ Note that we define our own placeholders in `translation` and drive them off of 
     },
     "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : {
-          "translation" : "Él era el mejor jugador de béisbol."
-        }
+        "heOrShe == MASCULINE && groupSize <= 1" : "Él era el mejor jugador de béisbol."        
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : {
-          "translation" : "Ella era la mejor jugadora de béisbol."
-        }
+        "heOrShe == FEMININE && groupSize <= 1" : "Ella era la mejor jugadora de béisbol."        
       }
     ]
   }
@@ -367,14 +357,10 @@ Spanish doesn't have ordinalities, so we can disregard them.  But we do have a f
     "translation" : "Su fiesta de cumpleaños número {{year}} es la próxima semana.",
     "alternatives" : [
       {
-        "year == 1" : {
-          "translation" : "Su primera fiesta de cumpleaños es la próxima semana."
-        }
+        "year == 1" : "Su primera fiesta de cumpleaños es la próxima semana."        
       },
       {
-        "hisOrHer == FEMININE && year == 15" : {
-          "translation" : "Su quinceañera es la próxima semana."
-        }
+        "hisOrHer == FEMININE && year == 15" : "Su quinceañera es la próxima semana."        
       }
     ]
   }
@@ -535,6 +521,82 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
+
+## Localized Strings File Format
+
+#### Structure
+
+Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW`.
+ 
+The file must contain a single toplevel JSON object.
+  
+The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
+
+The value for a translation key can be a string (simple cases) or an object (complex cases).
+
+Let's return to our example `en-GB` strings file, which contains a single translation.  We can use the string shorthand to concisely express our intent:
+
+```json
+{
+  "I am going on vacation." : "I am going on holiday."
+}
+```
+
+This is equivalent to the more verbose object form, which we don't need in this situation.
+
+```json
+{
+  "I am going on vacation." : {
+    "translation" : "I am going on holiday."
+  }
+}
+```
+
+In addition to `translation`, each object form supports 3 additional keys: `commentary`, `placeholders`, and `alternatives`.
+
+All 4 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
+
+#### Commentary
+
+This field is used to supply context for the translator, such as how and where the phrase is used in the application.
+
+```json
+{
+  "I am going on vacation." : {
+    "commentary" : "This is one of the options in the user's status update dropdown.",
+    "translation" : "I am going on holiday."
+  }
+}
+```
+
+#### Placeholders
+
+A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
+
+You are free to add as many as you like to support your translation.
+
+##### TODO: finish up
+
+```json
+{
+  "I read {{bookCount}} books." : {
+    "translation" : "I read {{bookCount}} {{books}}.",    
+    "placeholders" : {
+      "books" : {
+        "value" : "bookCount",
+        "translations" : {
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
+        }
+      }
+    }
+  }  
+}
+```
+
+#### Alternatives
+
+##### TODO: finish up
 
 ## Keying Strategy
 

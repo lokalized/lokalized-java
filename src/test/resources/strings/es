@@ -72,14 +72,10 @@
     "translation" : "Su fiesta de cumpleaños número {{year}} es la próxima semana.",
     "alternatives" : [
       {
-        "year == 1" : {
-          "translation" : "Su primera fiesta de cumpleaños es la próxima semana."
-        }
+        "year == 1" : "Su primera fiesta de cumpleaños es la próxima semana."
       },
       {
-        "hisOrHer == FEMININE && year == 15" : {
-          "translation" : "Su quinceañera es la próxima semana."
-        }
+        "hisOrHer == FEMININE && year == 15" : "Su quinceañera es la próxima semana."
       }
     ]
   }
