@@ -250,7 +250,7 @@ Note that we define our own placeholders in `translation` and drive them off of 
 
 #### The Rules, Exercised
 
-Again, we keep the gender and plural logic out of our code entirely and leavex rule processing to the translation configuration.
+Again, we keep the gender and plural logic out of our code entirely and leave rule processing to the translation configuration.
 
 ```java
 // "Normal" translation
@@ -307,7 +307,7 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
-## Working With Ordinalities
+## Working With Ordinals
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
  
@@ -319,7 +319,7 @@ Let's look at an example related to birthdays.
 
 #### English Translation File
 
-English has 4 ordinalities.
+English has 4 ordinals.
 
 ```json
 {
@@ -349,7 +349,7 @@ English has 4 ordinalities.
 
 #### Spanish Translation File
 
-Spanish doesn't have ordinalities, so we can disregard them.  But we do have a few special cases - a first birthday and a quinceañera for girls.
+Spanish doesn't have ordinals, so we can disregard them.  But we do have a few special cases - a first birthday and a quinceañera for girls.
 
 ```json
 {
@@ -367,7 +367,7 @@ Spanish doesn't have ordinalities, so we can disregard them.  But we do have a f
 }
 ```
 
-#### Ordinalities, Exercised
+#### Ordinals, Exercised
 
 ```java
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
@@ -459,7 +459,7 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 * `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
 * `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
 
-#### Ordinality
+#### Ordinals
 
 For example: `1st, 2nd, 3rd, 4th, ...`
 
