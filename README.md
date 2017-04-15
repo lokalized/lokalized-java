@@ -13,7 +13,7 @@ Lokalized facilitates natural-sounding software translations.
 
 #### Design Non-Goals
 
-* Support for collation and date/time, number, percentage, and currency formatting (these problems are already solved well)
+* Support for date/time, number, percentage, and currency localization, as well as collation (these problems are already solved well)
 
 #### Roadmap
 
@@ -680,7 +680,7 @@ Note: ```SLF4JBridgeHandler``` can impact performance.  You can mitigate that wi
 
 ## About
 
-Lokalized was created by [Mark Allen](http://revetkn.com) and sponsored by [Product Mog, LLC.](https://www.xmog.com)
+Lokalized was created by [Mark Allen](https://www.revetkn.com) and sponsored by [Product Mog, LLC.](https://www.xmog.com)
 
 Development was aided by
 
