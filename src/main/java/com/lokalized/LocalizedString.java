@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -92,20 +93,23 @@ public class LocalizedString {
   @Override
   @Nonnull
   public String toString() {
-    StringBuilder stringBuilder = new StringBuilder(format("%s{key=%s, translation=%s", getClass().getSimpleName(), getKey(), getTranslation().orElse(null)));
+    List<String> components = new ArrayList<>(5);
+
+    components.add(format("key=%s", getKey()));
+
+    if (getTranslation().isPresent())
+      components.add(format("translation=%s", getTranslation().get()));
 
     if (getCommentary().isPresent())
-      stringBuilder.append(format(", commentary=%s", getCommentary().get()));
+      components.add(format("commentary=%s", getCommentary().get()));
 
     if (getLanguageFormTranslationsByPlaceholder().size() > 0)
-      stringBuilder.append(format(", languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
+      components.add(format("languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
 
     if (getAlternatives().size() > 0)
-      stringBuilder.append(format(", alternatives=%s", getAlternatives()));
+      components.add(format("alternatives=%s", getAlternatives()));
 
-    stringBuilder.append("}");
-
-    return stringBuilder.toString();
+    return format("%s{%s}", getClass().getSimpleName(), components.stream().collect(Collectors.joining(", ")));
   }
 
   /**
