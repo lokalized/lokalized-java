@@ -2,10 +2,45 @@
 
 Lokalized facilitates natural-sounding software translations.
 
+It is both a translation file format...
+
+```json
+{
+  "I read {{bookCount}} books." : {
+    "translation" : "I read {{bookCount}} {{books}}.",    
+    "placeholders" : {
+      "books" : {
+        "value" : "bookCount",
+        "translations" : {
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
+        }
+      }
+    },
+    "alternatives" : [
+      {
+        "bookCount == 0" : "I didn't read any books."        
+      }
+    ]
+  }  
+}
+```
+
+...and a library that operates on it. 
+
+```java
+String translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 0);
+  }});
+
+assertEquals("I didn't read any books.", translation);
+```
+
 #### Design Goals
 
 * Complex translation rules can be expressed in a configuration file, not code
-* First-class support for gender and plural (cardinal, ordinal) language forms
+* First-class support for gender and plural (cardinal, ordinal, range) language forms per latest CLDR specifications
 * Provide a simple expression language to handle traditionally difficult edge cases
 * Support multiple platforms natively
 * Immutability/thread-safety
@@ -13,12 +48,14 @@ Lokalized facilitates natural-sounding software translations.
 
 #### Design Non-Goals
 
-* Support for date/time, number, percentage, and currency localization, as well as collation (these problems are already solved well)
+* Support for date/time, number, percentage, and currency formatting/parsing
+* Support for collation
+* Support for Java 7 and below
 
 #### Roadmap
 
 * Static analysis tool to autogenerate/sync localized strings files
-* Additional Ports (JavaScript, Python, Go, ...)
+* Additional Ports (JavaScript, Python, Android, Go, ...)
 * Webapp for translators
 
 #### License
