@@ -114,7 +114,7 @@ public enum Cardinality implements LanguageForm {
   /**
    * Gets an appropriate plural cardinality for the given number and locale.
    * <p>
-   * It is assumed that the number will have no visible decimals.  If you need to specify this, use {@link #forNumber(Number, Number, Locale)}.
+   * It is assumed that the number will have no visible decimals.  If you need to specify this, use {@link #forNumber(Number, Integer, Locale)}.
    * <p>
    * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
@@ -149,24 +149,15 @@ public enum Cardinality implements LanguageForm {
    * @throws UnsupportedLocaleException if the locale is not supported
    */
   @Nonnull
-  public static Cardinality forNumber(@Nonnull Number number, @Nullable Number visibleDecimalPlaces, @Nonnull Locale locale) {
+  public static Cardinality forNumber(@Nonnull Number number, @Nullable Integer visibleDecimalPlaces, @Nonnull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
     // If number of visible decimal places is not specified, compute the number of decimal places.
     // If the number is a BigDecimal, then we have access to trailing zeroes.
     // We cannot know the number of trailing zeroes otherwise - onus is on caller to explicitly specify if she cares about this
-    if (visibleDecimalPlaces == null) {
-      if (number instanceof BigDecimal) {
-        // Can determine trailing zeroes in this case
-        BigDecimal numberAsBigDecimal = (BigDecimal) number;
-        visibleDecimalPlaces = numberAsBigDecimal.scale();
-      } else {
-        // Cannot determine trailing zeroes in this case
-        BigDecimal numberAsBigDecimal = new BigDecimal(String.valueOf(number.doubleValue()));
-        visibleDecimalPlaces = Math.max(0, numberAsBigDecimal.stripTrailingZeros().scale());
-      }
-    }
+    if (visibleDecimalPlaces == null)
+      visibleDecimalPlaces = NumberUtils.numberOfDecimalPlaces(number);
 
     Optional<BiFunction<Number, Number, Cardinality>> cardinalityFunction = CardinalityFamily.cardinalityFunctionForLocale(locale);
 
@@ -184,8 +175,8 @@ public enum Cardinality implements LanguageForm {
    * For example, Germanic languages {@link CardinalityFamily#FAMILY_2} support two {@link Cardinality} types: {@link Cardinality#ONE} for {@code 1}
    * and {@link Cardinality#OTHER} for all other values.
    * <p>
-   * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html</a>
-   * for a cheat sheet.
+   * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * for more information.
    */
   enum CardinalityFamily {
     /**
@@ -670,7 +661,7 @@ public enum Cardinality implements LanguageForm {
             double value = number.doubleValue();
 
             // n = 1
-            if (false /* TODO */)
+            if (value == 1)
               return ONE;
           }
 
@@ -685,6 +676,7 @@ public enum Cardinality implements LanguageForm {
         put(CardinalityFamily.FAMILY_3, (number, visibleDecimalPlaces) -> {
           if (number != null) {
             double value = number.doubleValue();
+            long valueAsLong = number.longValue();
 
             // i = 1 and v = 0
             if (false /* TODO */)
