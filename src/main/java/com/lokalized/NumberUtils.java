@@ -63,7 +63,7 @@ class NumberUtils {
     }
 
     // Cannot determine trailing zeroes in this case
-    BigDecimal numberAsBigDecimal = new BigDecimal(String.valueOf(number.doubleValue()));
+    BigDecimal numberAsBigDecimal = toBigDecimal(number);
     return Math.max(0, numberAsBigDecimal.stripTrailingZeros().scale());
   }
 
@@ -82,6 +82,7 @@ class NumberUtils {
    * @param number the number for which we are determining the integer component, not null
    * @return the integer component, not null
    */
+  @Nonnull
   static BigInteger integerComponent(@Nonnull Number number) {
     requireNonNull(number);
 
@@ -90,6 +91,22 @@ class NumberUtils {
       return numberAsBigDecimal.toBigInteger();
     }
 
-    return new BigDecimal(String.valueOf(number.doubleValue())).toBigInteger();
+    return toBigDecimal(number).toBigInteger();
+  }
+
+  /**
+   * Provides a {@code BigDecimal} representation of the given number.
+   *
+   * @param number the number to represent as a {@code BigDecimal}, not null
+   * @return a {@code BigDecimal} representation of the given number, not null
+   */
+  @Nonnull
+  static BigDecimal toBigDecimal(@Nonnull Number number) {
+    requireNonNull(number);
+
+    if (number instanceof BigDecimal)
+      return (BigDecimal) number;
+
+    return new BigDecimal(String.valueOf(number.doubleValue()));
   }
 }
