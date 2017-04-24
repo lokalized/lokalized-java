@@ -57,4 +57,22 @@ public class NumberUtilsTests {
     assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(45));
     assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(45.6));
   }
+
+  @Test
+  public void fractionalComponent() {
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(new BigDecimal("0.0")));
+    assertEquals(BigInteger.valueOf(1L), NumberUtils.fractionalComponent(new BigDecimal("0.1")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(new BigDecimal("1.0")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(new BigDecimal("-1")));
+    assertEquals(BigInteger.valueOf(5L), NumberUtils.fractionalComponent(new BigDecimal("-1.5")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(new BigDecimal("45")));
+    assertEquals(BigInteger.valueOf(600L), NumberUtils.fractionalComponent(new BigDecimal("45.600")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(0));
+    assertEquals(BigInteger.valueOf(1L), NumberUtils.fractionalComponent(0.1));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(1.0));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(-1));
+    assertEquals(BigInteger.valueOf(5L), NumberUtils.fractionalComponent(-1.5));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.fractionalComponent(45));
+    assertEquals(BigInteger.valueOf(6L), NumberUtils.fractionalComponent(45.600));
+  }
 }

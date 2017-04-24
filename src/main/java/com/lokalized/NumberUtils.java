@@ -95,6 +95,44 @@ class NumberUtils {
   }
 
   /**
+   * Determines the fractional component of the given number.
+   * <p>
+   * If the number is a {@link BigDecimal}, then fractional value according to its scale (which may include trailing
+   * zeroes) is returned.
+   * <p>
+   * Otherwise, the fractional value without trailing zeroes is returned.
+   * <p>
+   * For example:
+   * <p>
+   * <ul>
+   * <li>{@code 2} has a fractional component of {@code 0}</li>
+   * <li>{@code 1.234} has a fractional component of {@code 234}</li>
+   * <li>{@code -1.5} has a fractional component of {@code 5}</li>
+   * <li>{@code .5} has a fractional component of {@code 5}</li>
+   * <li>{@code 2.150} has a fractional component of {@code 15} (if non-{@code BigDecimal}) and {@code 150} (if {@code BigDecimal})</li>
+   * </ul>
+   *
+   * @param number the number for which we are determining the fractional component, not null
+   * @return the fractional component, not null
+   */
+  @Nonnull
+  static BigInteger fractionalComponent(@Nonnull Number number) {
+    requireNonNull(number);
+
+    BigDecimal numberAsBigDecimal = null;
+
+    if (number instanceof BigDecimal)
+      numberAsBigDecimal = (BigDecimal) number;
+    else
+      numberAsBigDecimal = toBigDecimal(number);
+
+    return numberAsBigDecimal.remainder(BigDecimal.ONE)
+        .movePointRight(numberAsBigDecimal.scale())
+        .abs()
+        .toBigInteger();
+  }
+
+  /**
    * Provides a {@code BigDecimal} representation of the given number.
    *
    * @param number the number to represent as a {@code BigDecimal}, not null
