@@ -20,8 +20,8 @@ import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
-import static com.lokalized.NumberUtils.numberOfDecimalPlaces;
 import static org.junit.Assert.assertEquals;
 
 /**
@@ -32,11 +32,29 @@ import static org.junit.Assert.assertEquals;
 @ThreadSafe
 public class NumberUtilsTests {
   @Test
-  public void testNumberOfDecimalPlaces() {
-    assertEquals(1, numberOfDecimalPlaces(new BigDecimal("1.0")).intValue());
-    assertEquals(0, numberOfDecimalPlaces(new BigDecimal("1")).intValue());
-    assertEquals(2, numberOfDecimalPlaces(new BigDecimal("1.50")).intValue());
-    assertEquals(1, numberOfDecimalPlaces(1.50).intValue());
-    assertEquals(0, numberOfDecimalPlaces(150).intValue());
+  public void numberOfDecimalPlaces() {
+    assertEquals(1, NumberUtils.numberOfDecimalPlaces(new BigDecimal("1.0")).intValue());
+    assertEquals(0, NumberUtils.numberOfDecimalPlaces(new BigDecimal("1")).intValue());
+    assertEquals(2, NumberUtils.numberOfDecimalPlaces(new BigDecimal("1.50")).intValue());
+    assertEquals(0, NumberUtils.numberOfDecimalPlaces(1.0).intValue());
+    assertEquals(1, NumberUtils.numberOfDecimalPlaces(1.50).intValue());
+    assertEquals(0, NumberUtils.numberOfDecimalPlaces(150).intValue());
+  }
+
+  @Test
+  public void integerComponent() {
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.integerComponent(new BigDecimal("0.0")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.integerComponent(new BigDecimal("0.1")));
+    assertEquals(BigInteger.valueOf(1L), NumberUtils.integerComponent(new BigDecimal("1.0")));
+    assertEquals(BigInteger.valueOf(-1L), NumberUtils.integerComponent(new BigDecimal("-1")));
+    assertEquals(BigInteger.valueOf(-1L), NumberUtils.integerComponent(new BigDecimal("-1.5")));
+    assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(new BigDecimal("45")));
+    assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(new BigDecimal("45.6")));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.integerComponent(0));
+    assertEquals(BigInteger.valueOf(0L), NumberUtils.integerComponent(0.1));
+    assertEquals(BigInteger.valueOf(-1L), NumberUtils.integerComponent(-1));
+    assertEquals(BigInteger.valueOf(-1L), NumberUtils.integerComponent(-1.5));
+    assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(45));
+    assertEquals(BigInteger.valueOf(45L), NumberUtils.integerComponent(45.6));
   }
 }

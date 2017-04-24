@@ -19,6 +19,7 @@ package com.lokalized;
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import static java.util.Objects.requireNonNull;
 
@@ -64,5 +65,31 @@ class NumberUtils {
     // Cannot determine trailing zeroes in this case
     BigDecimal numberAsBigDecimal = new BigDecimal(String.valueOf(number.doubleValue()));
     return Math.max(0, numberAsBigDecimal.stripTrailingZeros().scale());
+  }
+
+  /**
+   * Determines the integer component of the given number.
+   * <p>
+   * For example:
+   * <p>
+   * <ul>
+   * <li>{@code 2} has an integer component of {@code 2}</li>
+   * <li>{@code 1.234} has an integer component of {@code 1}</li>
+   * <li>{@code -1.5} has an integer component of {@code -1}</li>
+   * <li>{@code .5} has an integer component of {@code 0}</li>
+   * </ul>
+   *
+   * @param number the number for which we are determining the integer component, not null
+   * @return the integer component, not null
+   */
+  static BigInteger integerComponent(@Nonnull Number number) {
+    requireNonNull(number);
+
+    if (number instanceof BigDecimal) {
+      BigDecimal numberAsBigDecimal = (BigDecimal) number;
+      return numberAsBigDecimal.toBigInteger();
+    }
+
+    return new BigDecimal(String.valueOf(number.doubleValue())).toBigInteger();
   }
 }
