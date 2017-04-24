@@ -145,6 +145,6 @@ class NumberUtils {
     if (number instanceof BigDecimal)
       return (BigDecimal) number;
 
-    return new BigDecimal(String.valueOf(number.doubleValue()));
+    return new BigDecimal(String.valueOf(number.doubleValue())).stripTrailingZeros();
   }
 }

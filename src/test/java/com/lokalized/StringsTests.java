@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
@@ -69,6 +70,13 @@ public class StringsTests {
         }});
 
     Assert.assertEquals("I read 1 book", translation);
+
+    translation = strings.get("I read {{bookCount}} books",
+        new HashMap<String, Object>() {{
+          put("bookCount", new BigDecimal("1.0"));
+        }});
+
+    Assert.assertEquals("I read 1.0 books", translation);
 
     translation = strings.get("I read {{bookCount}} books",
         new HashMap<String, Object>() {{

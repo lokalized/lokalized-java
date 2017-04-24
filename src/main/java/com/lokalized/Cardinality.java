@@ -19,13 +19,14 @@ package com.lokalized;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -153,18 +154,30 @@ public enum Cardinality implements LanguageForm {
     requireNonNull(number);
     requireNonNull(locale);
 
+    boolean numberIsBigDecimal = number instanceof BigDecimal;
+    BigDecimal numberAsBigDecimal = null;
+
     // If number of visible decimal places is not specified, compute the number of decimal places.
     // If the number is a BigDecimal, then we have access to trailing zeroes.
     // We cannot know the number of trailing zeroes otherwise - onus is on caller to explicitly specify if she cares about this
-    if (visibleDecimalPlaces == null)
-      visibleDecimalPlaces = NumberUtils.numberOfDecimalPlaces(number);
+    if (visibleDecimalPlaces == null && !numberIsBigDecimal) {
+      numberAsBigDecimal = NumberUtils.toBigDecimal(number);
+      numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), BigDecimal.ROUND_FLOOR);
+    } else if (visibleDecimalPlaces != null && numberIsBigDecimal) {
+      numberAsBigDecimal = (BigDecimal) number;
+      numberAsBigDecimal.setScale(visibleDecimalPlaces, BigDecimal.ROUND_FLOOR);
+    }
 
-    Optional<BiFunction<Number, Number, Cardinality>> cardinalityFunction = CardinalityFamily.cardinalityFunctionForLocale(locale);
+    if (numberAsBigDecimal == null)
+      numberAsBigDecimal = NumberUtils.toBigDecimal(number);
 
+    Optional<Function<BigDecimal, Cardinality>> cardinalityFunction = CardinalityFamily.cardinalityFunctionForLocale(locale);
+
+    // TODO: throwing an exception might not be the best solution here...need to think about it
     if (!cardinalityFunction.isPresent())
       throw new UnsupportedLocaleException(locale);
 
-    return cardinalityFunction.get().apply(number, visibleDecimalPlaces);
+    return cardinalityFunction.get().apply(numberAsBigDecimal);
   }
 
   /**
@@ -624,7 +637,7 @@ public enum Cardinality implements LanguageForm {
     FAMILY_35;
 
     @Nonnull
-    static final Map<CardinalityFamily, BiFunction<Number, Number, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY;
+    static final Map<CardinalityFamily, Function<BigDecimal, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY;
 
     @Nonnull
     static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_TAG;
@@ -655,549 +668,412 @@ public enum Cardinality implements LanguageForm {
      * </ul>
      */
     static {
-      CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY = Collections.unmodifiableMap(new HashMap<CardinalityFamily, BiFunction<Number, Number, Cardinality>>() {{
-        put(CardinalityFamily.FAMILY_1, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1
-            if (value == 1)
-              return ONE;
-          }
+      CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY = Collections.unmodifiableMap(new HashMap<CardinalityFamily, Function<BigDecimal, Cardinality>>() {{
+        put(CardinalityFamily.FAMILY_1, (number) -> {
+          // n = 1
+          if (number.equals(BigDecimal.ONE))
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_2, (number, visibleDecimalPlaces) -> {
+        put(CardinalityFamily.FAMILY_2, (number) -> {
           // No cardinality rules for this family
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_3, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-            long valueAsLong = number.longValue();
-
-            // i = 1 and v = 0
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_3, (number) -> {
+          // i = 1 and v = 0
+          if (NumberUtils.integerComponent(number).equals(BigInteger.ONE) && number.scale() == 0)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_4, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0..1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_4, (number) -> {
+          // n = 0..1
+          if (number.compareTo(BigDecimal.ZERO) >= 0 && number.compareTo(BigDecimal.ONE) <= 0)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_5, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 0 or n = 1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_5, (number) -> {
+          // i = 0 or n = 1
+          if (NumberUtils.integerComponent(number).equals(BigInteger.ZERO) || number.equals(BigDecimal.ONE))
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_6, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 2
-            if (false /* TODO */)
-              return TWO;
-          }
+        put(CardinalityFamily.FAMILY_6, (number) -> {
+          // n = 1
+          if (number.equals(BigDecimal.ONE))
+            return ONE;
+          // n = 2
+          if (number.equals(BigDecimal.valueOf(2)))
+            return TWO;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_7, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_7, (number) -> {
+          // v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_8, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 0,1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_8, (number) -> {
+          // i = 0,1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_9, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0
-            if (false /* TODO */)
-              return ZERO;
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 2
-            if (false /* TODO */)
-              return TWO;
-            // n % 100 = 3..10
-            if (false /* TODO */)
-              return FEW;
-            // n % 100 = 11..99
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_9, (number) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n % 100 = 3..10
+          if (false /* TODO */)
+            return FEW;
+          // n % 100 = 11..99
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_10, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 1 and v = 0
-            if (false /* TODO */)
-              return ONE;
-            // i = 2..4 and v = 0
-            if (false /* TODO */)
-              return FEW;
-            // v != 0
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_10, (number) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // i = 2..4 and v = 0
+          if (false /* TODO */)
+            return FEW;
+          // v != 0
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_11, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 100 = 1 or f % 100 = 1
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 100 = 2 or f % 100 = 2
-            if (false /* TODO */)
-              return TWO;
-            // v = 0 and i % 100 = 3..4 or f % 100 = 3..4
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_11, (number) -> {
+          // v = 0 and i % 100 = 1 or f % 100 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 100 = 2 or f % 100 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 3..4 or f % 100 = 3..4
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_12, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_12, (number) -> {
+          // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_13, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19
-            if (false /* TODO */)
-              return ZERO;
-            // n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_13, (number) -> {
+          // n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19
+          if (false /* TODO */)
+            return ZERO;
+          // n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_14, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 1 and v = 0
-            if (false /* TODO */)
-              return ONE;
-            // v != 0 or n = 0 or n != 1 and n % 100 = 1..19
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_14, (number) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // v != 0 or n = 0 or n != 1 and n % 100 = 1..19
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_15, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 10 = 1 and i % 100 != 11
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
-            if (false /* TODO */)
-              return FEW;
-            // v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_15, (number) -> {
+          // v = 0 and i % 10 = 1 and i % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_16, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n % 10 = 1 and n % 100 != 11
-            if (false /* TODO */)
-              return ONE;
-            // n % 10 = 2..4 and n % 100 != 12..14
-            if (false /* TODO */)
-              return FEW;
-            // n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_16, (number) -> {
+          // n % 10 = 1 and n % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2..4 and n % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_17, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n % 10 = 1 and n % 100 != 11,71,91
-            if (false /* TODO */)
-              return ONE;
-            // n % 10 = 2 and n % 100 != 12,72,92
-            if (false /* TODO */)
-              return TWO;
-            // n % 10 = 3..4,9 and n % 100 != 10..19,70..79,90..99
-            if (false /* TODO */)
-              return FEW;
-            // n != 0 and n % 1000000 = 0
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_17, (number) -> {
+          // n % 10 = 1 and n % 100 != 11,71,91
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2 and n % 100 != 12,72,92
+          if (false /* TODO */)
+            return TWO;
+          // n % 10 = 3..4,9 and n % 100 != 10..19,70..79,90..99
+          if (false /* TODO */)
+            return FEW;
+          // n != 0 and n % 1000000 = 0
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_18, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0
-            if (false /* TODO */)
-              return ZERO;
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 2
-            if (false /* TODO */)
-              return TWO;
-            // n = 3
-            if (false /* TODO */)
-              return FEW;
-            // n = 6
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_18, (number) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n = 3
+          if (false /* TODO */)
+            return FEW;
+          // n = 6
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_19, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1 or t != 0 and i = 0,1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_19, (number) -> {
+          // n = 1 or t != 0 and i = 0,1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_20, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 2
-            if (false /* TODO */)
-              return TWO;
-            // n = 3..6
-            if (false /* TODO */)
-              return FEW;
-            // n = 7..10
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_20, (number) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n = 3..6
+          if (false /* TODO */)
+            return FEW;
+          // n = 7..10
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_21, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1,11
-            if (false /* TODO */)
-              return ONE;
-            // n = 2,12
-            if (false /* TODO */)
-              return TWO;
-            // n = 3..10,13..19
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_21, (number) -> {
+          // n = 1,11
+          if (false /* TODO */)
+            return ONE;
+          // n = 2,12
+          if (false /* TODO */)
+            return TWO;
+          // n = 3..10,13..19
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_22, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 10 = 1
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 10 = 2
-            if (false /* TODO */)
-              return TWO;
-            // v = 0 and i % 100 = 0,20,40,60,80
-            if (false /* TODO */)
-              return FEW;
-            // v != 0
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_22, (number) -> {
+          // v = 0 and i % 10 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 0,20,40,60,80
+          if (false /* TODO */)
+            return FEW;
+          // v != 0
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_23, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 1 and v = 0
-            if (false /* TODO */)
-              return ONE;
-            // i = 2 and v = 0
-            if (false /* TODO */)
-              return TWO;
-            // v = 0 and n != 0..10 and n % 10 = 0
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_23, (number) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // i = 2 and v = 0
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and n != 0..10 and n % 10 = 0
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_24, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // t = 0 and i % 10 = 1 and i % 100 != 11 or t != 0
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_24, (number) -> {
+          // t = 0 and i % 10 = 1 and i % 100 != 11 or t != 0
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_25, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0
-            if (false /* TODO */)
-              return ZERO;
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_25, (number) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_26, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0
-            if (false /* TODO */)
-              return ZERO;
-            // i = 0,1 and n != 0
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_26, (number) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // i = 0,1 and n != 0
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_27, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n % 10 = 1 and n % 100 != 11..19
-            if (false /* TODO */)
-              return ONE;
-            // n % 10 = 2..9 and n % 100 != 11..19
-            if (false /* TODO */)
-              return FEW;
-            // f != 0
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_27, (number) -> {
+          // n % 10 = 1 and n % 100 != 11..19
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2..9 and n % 100 != 11..19
+          if (false /* TODO */)
+            return FEW;
+          // f != 0
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_28, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 10 = 1 or f % 10 = 1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_28, (number) -> {
+          // v = 0 and i % 10 = 1 or f % 10 = 1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_29, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 0 or n % 100 = 2..10
-            if (false /* TODO */)
-              return FEW;
-            // n % 100 = 11..19
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_29, (number) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 0 or n % 100 = 2..10
+          if (false /* TODO */)
+            return FEW;
+          // n % 100 = 11..19
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_30, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 1 and v = 0
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
-            if (false /* TODO */)
-              return FEW;
-            // v = 0 and i != 1 and i % 10 = 0..1 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 12..14
-            if (false /* TODO */)
-              return MANY;
-          }
+        put(CardinalityFamily.FAMILY_30, (number) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // v = 0 and i != 1 and i % 10 = 0..1 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 12..14
+          if (false /* TODO */)
+            return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_31, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 0..1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_31, (number) -> {
+          // i = 0..1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_32, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // i = 0 or n = 1
-            if (false /* TODO */)
-              return ONE;
-            // n = 2..10
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_32, (number) -> {
+          // i = 0 or n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2..10
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_33, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0,1 or i = 0 and f = 1
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_33, (number) -> {
+          // n = 0,1 or i = 0 and f = 1
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_34, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // v = 0 and i % 100 = 1
-            if (false /* TODO */)
-              return ONE;
-            // v = 0 and i % 100 = 2
-            if (false /* TODO */)
-              return TWO;
-            // v = 0 and i % 100 = 3..4 or v != 0
-            if (false /* TODO */)
-              return FEW;
-          }
+        put(CardinalityFamily.FAMILY_34, (number) -> {
+          // v = 0 and i % 100 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 100 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 3..4 or v != 0
+          if (false /* TODO */)
+            return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_35, (number, visibleDecimalPlaces) -> {
-          if (number != null) {
-            double value = number.doubleValue();
-
-            // n = 0..1 or n = 11..99
-            if (false /* TODO */)
-              return ONE;
-          }
+        put(CardinalityFamily.FAMILY_35, (number) -> {
+          // n = 0..1 or n = 11..99
+          if (false /* TODO */)
+            return ONE;
 
           return OTHER;
         });
@@ -1439,7 +1315,7 @@ public enum Cardinality implements LanguageForm {
      * @return the appropriate plural cardinality determination function (if one exists) for the given locale, not null
      */
     @Nonnull
-    public static Optional<BiFunction<Number, Number, Cardinality>> cardinalityFunctionForLocale(@Nonnull Locale locale) {
+    public static Optional<Function<BigDecimal, Cardinality>> cardinalityFunctionForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
       Optional<CardinalityFamily> cardinalityFamily = cardinalityFamilyForLocale(locale);
