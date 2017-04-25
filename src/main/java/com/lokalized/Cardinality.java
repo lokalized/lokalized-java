@@ -95,9 +95,82 @@ public enum Cardinality implements LanguageForm {
   OTHER;
 
   @Nonnull
+  private static final BigInteger BIG_INTEGER_0;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_1;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_2;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_3;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_4;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_5;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_6;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_9;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_10;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_11;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_12;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_14;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_19;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_100;
+
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_0;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_1;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_2;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_3;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_10;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_11;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_19;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_99;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_100;
+
+  @Nonnull
   static final Map<String, Cardinality> CARDINALITIES_BY_NAME;
 
   static {
+    BIG_INTEGER_0 = BigInteger.ZERO;
+    BIG_INTEGER_1 = BigInteger.ONE;
+    BIG_INTEGER_2 = BigInteger.valueOf(2);
+    BIG_INTEGER_3 = BigInteger.valueOf(3);
+    BIG_INTEGER_4 = BigInteger.valueOf(4);
+    BIG_INTEGER_5 = BigInteger.valueOf(5);
+    BIG_INTEGER_6 = BigInteger.valueOf(6);
+    BIG_INTEGER_9 = BigInteger.valueOf(9);
+    BIG_INTEGER_10 = BigInteger.TEN;
+    BIG_INTEGER_11 = BigInteger.valueOf(11);
+    BIG_INTEGER_12 = BigInteger.valueOf(12);
+    BIG_INTEGER_14 = BigInteger.valueOf(14);
+    BIG_INTEGER_19 = BigInteger.valueOf(19);
+    BIG_INTEGER_100 = BigInteger.valueOf(100);
+
+    BIG_DECIMAL_0 = BigDecimal.ZERO;
+    BIG_DECIMAL_1 = BigDecimal.ONE;
+    BIG_DECIMAL_2 = BigDecimal.valueOf(2);
+    BIG_DECIMAL_3 = BigDecimal.valueOf(3);
+    BIG_DECIMAL_10 = BigDecimal.TEN;
+    BIG_DECIMAL_11 = BigDecimal.valueOf(11);
+    BIG_DECIMAL_19 = BigDecimal.valueOf(19);
+    BIG_DECIMAL_99 = BigDecimal.valueOf(99);
+    BIG_DECIMAL_100 = BigDecimal.valueOf(100);
+
     CARDINALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
         Cardinality.values()).collect(Collectors.toMap(cardinality -> cardinality.name(), cardinality -> cardinality)));
   }
@@ -669,166 +742,216 @@ public enum Cardinality implements LanguageForm {
      */
     static {
       CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY = Collections.unmodifiableMap(new HashMap<CardinalityFamily, Function<BigDecimal, Cardinality>>() {{
-        put(CardinalityFamily.FAMILY_1, (number) -> {
+        put(CardinalityFamily.FAMILY_1, (n) -> {
           // n = 1
-          if (number.equals(BigDecimal.ONE))
+          if (n.equals(BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_2, (number) -> {
+        put(CardinalityFamily.FAMILY_2, (n) -> {
           // No cardinality rules for this family
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_3, (number) -> {
+        put(CardinalityFamily.FAMILY_3, (n) -> {
+          BigInteger i = NumberUtils.integerComponent(n);
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+
           // i = 1 and v = 0
-          if (NumberUtils.integerComponent(number).equals(BigInteger.ONE) && number.scale() == 0)
+          if (i.equals(BIG_INTEGER_1) && v == 0)
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_4, (number) -> {
+        put(CardinalityFamily.FAMILY_4, (n) -> {
           // n = 0..1
-          if (number.compareTo(BigDecimal.ZERO) >= 0 && number.compareTo(BigDecimal.ONE) <= 0)
+          if (n.compareTo(BIG_DECIMAL_0) >= 0 && n.compareTo(BIG_DECIMAL_1) <= 0)
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_5, (number) -> {
+        put(CardinalityFamily.FAMILY_5, (n) -> {
           // i = 0 or n = 1
-          if (NumberUtils.integerComponent(number).equals(BigInteger.ZERO) || number.equals(BigDecimal.ONE))
+          if (NumberUtils.integerComponent(n).equals(BIG_INTEGER_0) || n.equals(BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_6, (number) -> {
+        put(CardinalityFamily.FAMILY_6, (n) -> {
           // n = 1
-          if (number.equals(BigDecimal.ONE))
+          if (n.equals(BIG_DECIMAL_1))
             return ONE;
           // n = 2
-          if (number.equals(BigDecimal.valueOf(2)))
+          if (n.equals(BIG_DECIMAL_2))
             return TWO;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_7, (number) -> {
+        put(CardinalityFamily.FAMILY_7, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+          BigInteger f = NumberUtils.fractionalComponent(n);
+
           // v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11
-          if (false /* TODO */)
+          if ((v == 0 && !i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
+              || (f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11)))
             return ONE;
           // v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14
-          if (false /* TODO */)
+          if ((v == 0
+              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
+              && !(i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
+              || (f.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0 && f.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
+              && !(f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0)))
             return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_8, (number) -> {
+        put(CardinalityFamily.FAMILY_8, (n) -> {
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i = 0,1
-          if (false /* TODO */)
+          if (i.equals(BIG_INTEGER_0) || i.equals(BIG_INTEGER_1))
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_9, (number) -> {
+        put(CardinalityFamily.FAMILY_9, (n) -> {
           // n = 0
-          if (false /* TODO */)
+          if (n.equals(BIG_DECIMAL_0))
             return ZERO;
           // n = 1
-          if (false /* TODO */)
+          if (n.equals(BIG_DECIMAL_1))
             return ONE;
           // n = 2
-          if (false /* TODO */)
+          if (n.equals(BIG_DECIMAL_2))
             return TWO;
           // n % 100 = 3..10
-          if (false /* TODO */)
+          if (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_3) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_10) <= 0)
             return FEW;
           // n % 100 = 11..99
-          if (false /* TODO */)
+          if (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_99) <= 0)
             return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_10, (number) -> {
+        put(CardinalityFamily.FAMILY_10, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i = 1 and v = 0
-          if (false /* TODO */)
+          if (i.equals(BIG_INTEGER_1) && v == 0)
             return ONE;
           // i = 2..4 and v = 0
-          if (false /* TODO */)
+          if (i.compareTo(BIG_INTEGER_2) >= 0 && i.compareTo(BIG_INTEGER_4) <= 0 && v == 0)
             return FEW;
           // v != 0
-          if (false /* TODO */)
+          if (v != 0)
             return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_11, (number) -> {
+        put(CardinalityFamily.FAMILY_11, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+          BigInteger f = NumberUtils.fractionalComponent(n);
+
           // v = 0 and i % 100 = 1 or f % 100 = 1
-          if (false /* TODO */)
+          if ((v == 0 && i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_1))
+              || (f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_1)))
             return ONE;
           // v = 0 and i % 100 = 2 or f % 100 = 2
-          if (false /* TODO */)
+          if ((v == 0 && i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_2))
+              || (f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_2)))
             return TWO;
           // v = 0 and i % 100 = 3..4 or f % 100 = 3..4
-          if (false /* TODO */)
+          if ((v == 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_3) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_4) <= 0)
+              || (f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_3) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_4) <= 0))
             return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_12, (number) -> {
+        put(CardinalityFamily.FAMILY_12, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+          BigInteger f = NumberUtils.fractionalComponent(n);
+
           // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
-          if (false /* TODO */)
+          if ((v == 0 && (i.equals(BIG_INTEGER_1) || i.equals(BIG_INTEGER_2) || i.equals(BIG_INTEGER_3)))
+              || (v == 0 && !(i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_4) || i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_5) || i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_6)))
+              || (v != 0 && !(f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_4) || f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_6) || f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_9))))
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_13, (number) -> {
+        put(CardinalityFamily.FAMILY_13, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger f = NumberUtils.fractionalComponent(n);
+
           // n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19
-          if (false /* TODO */)
+          if (n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_0)
+              || (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_19) <= 0)
+              || (v == 2 && (f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_11) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_19) <= 0)))
             return ZERO;
           // n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1
-          if (false /* TODO */)
+          if ((n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_1) && !n.remainder(BIG_DECIMAL_100).equals(BIG_DECIMAL_11))
+              || (v == 2 && f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
+              || (v != 2 && f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1)))
             return ONE;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_14, (number) -> {
+        put(CardinalityFamily.FAMILY_14, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i = 1 and v = 0
-          if (false /* TODO */)
+          if (i.equals(BIG_INTEGER_1) && v == 0)
             return ONE;
           // v != 0 or n = 0 or n != 1 and n % 100 = 1..19
-          if (false /* TODO */)
+          if (v != 0
+              || n.equals(BIG_DECIMAL_0)
+              || (!n.equals(BIG_DECIMAL_1) && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_1) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_19) <= 0))
             return FEW;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_15, (number) -> {
+        put(CardinalityFamily.FAMILY_15, (n) -> {
+          int v = NumberUtils.numberOfDecimalPlaces(n);
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // v = 0 and i % 10 = 1 and i % 100 != 11
-          if (false /* TODO */)
+          if (v == 0 && i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
             return ONE;
           // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
-          if (false /* TODO */)
+          if (v == 0
+              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0
+              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
+              && !(i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
             return FEW;
           // v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14
-          if (false /* TODO */)
+          if ((v == 0 && i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_0))
+              || (v == 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_5) >= 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_9) <= 0)
+              || (v == 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_11) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
             return MANY;
 
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_16, (number) -> {
+        put(CardinalityFamily.FAMILY_16, (n) -> {
           // n % 10 = 1 and n % 100 != 11
           if (false /* TODO */)
             return ONE;
@@ -842,7 +965,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_17, (number) -> {
+        put(CardinalityFamily.FAMILY_17, (n) -> {
           // n % 10 = 1 and n % 100 != 11,71,91
           if (false /* TODO */)
             return ONE;
@@ -859,7 +982,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_18, (number) -> {
+        put(CardinalityFamily.FAMILY_18, (n) -> {
           // n = 0
           if (false /* TODO */)
             return ZERO;
@@ -879,7 +1002,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_19, (number) -> {
+        put(CardinalityFamily.FAMILY_19, (n) -> {
           // n = 1 or t != 0 and i = 0,1
           if (false /* TODO */)
             return ONE;
@@ -887,7 +1010,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_20, (number) -> {
+        put(CardinalityFamily.FAMILY_20, (n) -> {
           // n = 1
           if (false /* TODO */)
             return ONE;
@@ -904,7 +1027,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_21, (number) -> {
+        put(CardinalityFamily.FAMILY_21, (n) -> {
           // n = 1,11
           if (false /* TODO */)
             return ONE;
@@ -918,7 +1041,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_22, (number) -> {
+        put(CardinalityFamily.FAMILY_22, (n) -> {
           // v = 0 and i % 10 = 1
           if (false /* TODO */)
             return ONE;
@@ -935,7 +1058,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_23, (number) -> {
+        put(CardinalityFamily.FAMILY_23, (n) -> {
           // i = 1 and v = 0
           if (false /* TODO */)
             return ONE;
@@ -949,7 +1072,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_24, (number) -> {
+        put(CardinalityFamily.FAMILY_24, (n) -> {
           // t = 0 and i % 10 = 1 and i % 100 != 11 or t != 0
           if (false /* TODO */)
             return ONE;
@@ -957,7 +1080,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_25, (number) -> {
+        put(CardinalityFamily.FAMILY_25, (n) -> {
           // n = 0
           if (false /* TODO */)
             return ZERO;
@@ -968,7 +1091,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_26, (number) -> {
+        put(CardinalityFamily.FAMILY_26, (n) -> {
           // n = 0
           if (false /* TODO */)
             return ZERO;
@@ -979,7 +1102,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_27, (number) -> {
+        put(CardinalityFamily.FAMILY_27, (n) -> {
           // n % 10 = 1 and n % 100 != 11..19
           if (false /* TODO */)
             return ONE;
@@ -993,7 +1116,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_28, (number) -> {
+        put(CardinalityFamily.FAMILY_28, (n) -> {
           // v = 0 and i % 10 = 1 or f % 10 = 1
           if (false /* TODO */)
             return ONE;
@@ -1001,7 +1124,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_29, (number) -> {
+        put(CardinalityFamily.FAMILY_29, (n) -> {
           // n = 1
           if (false /* TODO */)
             return ONE;
@@ -1015,7 +1138,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_30, (number) -> {
+        put(CardinalityFamily.FAMILY_30, (n) -> {
           // i = 1 and v = 0
           if (false /* TODO */)
             return ONE;
@@ -1029,7 +1152,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_31, (number) -> {
+        put(CardinalityFamily.FAMILY_31, (n) -> {
           // i = 0..1
           if (false /* TODO */)
             return ONE;
@@ -1037,7 +1160,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_32, (number) -> {
+        put(CardinalityFamily.FAMILY_32, (n) -> {
           // i = 0 or n = 1
           if (false /* TODO */)
             return ONE;
@@ -1048,7 +1171,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_33, (number) -> {
+        put(CardinalityFamily.FAMILY_33, (n) -> {
           // n = 0,1 or i = 0 and f = 1
           if (false /* TODO */)
             return ONE;
@@ -1056,7 +1179,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_34, (number) -> {
+        put(CardinalityFamily.FAMILY_34, (n) -> {
           // v = 0 and i % 100 = 1
           if (false /* TODO */)
             return ONE;
@@ -1070,7 +1193,7 @@ public enum Cardinality implements LanguageForm {
           return OTHER;
         });
 
-        put(CardinalityFamily.FAMILY_35, (number) -> {
+        put(CardinalityFamily.FAMILY_35, (n) -> {
           // n = 0..1 or n = 11..99
           if (false /* TODO */)
             return ONE;
