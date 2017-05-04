@@ -105,7 +105,7 @@ public enum Ordinality implements LanguageForm {
    * @return the mapping of ordinality names to values, not null
    */
   @Nonnull
-  public static Map<String, Ordinality> getOrdinalitiesByName() {
+  static Map<String, Ordinality> getOrdinalitiesByName() {
     return ORDINALITIES_BY_NAME;
   }
 
@@ -186,7 +186,7 @@ public enum Ordinality implements LanguageForm {
      * @return the appropriate plural ordinality family (if one exists) for the given locale, not null
      */
     @Nonnull
-    public static Optional<OrdinalityFamily> ordinalityFamilyForLocale(@Nonnull Locale locale) {
+    static Optional<OrdinalityFamily> ordinalityFamilyForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
       String language = locale.getLanguage();
@@ -213,7 +213,7 @@ public enum Ordinality implements LanguageForm {
      * @return the appropriate plural ordinality determination function (if one exists) for the given locale, not null
      */
     @Nonnull
-    public static Optional<Function<Number, Ordinality>> ordinalityFunctionForLocale(@Nonnull Locale locale) {
+    static Optional<Function<Number, Ordinality>> ordinalityFunctionForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
       Optional<OrdinalityFamily> ordinalityFamily = ordinalityFamilyForLocale(locale);

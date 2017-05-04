@@ -55,7 +55,7 @@ public enum Gender implements LanguageForm {
    * @return the mapping of gender names to gender values, not null
    */
   @Nonnull
-  public static Map<String, Gender> getGendersByName() {
+  static Map<String, Gender> getGendersByName() {
     return GENDERS_BY_NAME;
   }
 }

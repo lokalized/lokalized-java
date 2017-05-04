@@ -241,14 +241,18 @@ public enum Cardinality implements LanguageForm {
    * @return the mapping of cardinality names to values, not null
    */
   @Nonnull
-  public static Map<String, Cardinality> getCardinalitiesByName() {
+  static Map<String, Cardinality> getCardinalitiesByName() {
     return CARDINALITIES_BY_NAME;
   }
 
   /**
    * Gets an appropriate plural cardinality for the given number and locale.
    * <p>
-   * It is assumed that the number will have no visible decimals.  If you need to specify this, use {@link #forNumber(Number, Integer, Locale)}.
+   * When determining cardinality, the decimal places of {@code number} will be computed and used.
+   * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
+   * scale or supply a non-null {@code visibleDecimalPlaces} value.
+   * <p>
+   * If you do not provide a {@link BigDecimal} and wish to manually specify the number of visible decimals, use {@link #forNumber(Number, Integer, Locale)} instead.
    * <p>
    * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
@@ -1531,7 +1535,7 @@ public enum Cardinality implements LanguageForm {
      * @return the appropriate plural cardinality family (if one exists) for the given locale, not null
      */
     @Nonnull
-    public static Optional<CardinalityFamily> cardinalityFamilyForLocale(@Nonnull Locale locale) {
+    static Optional<CardinalityFamily> cardinalityFamilyForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
       String language = locale.getLanguage();
@@ -1558,7 +1562,7 @@ public enum Cardinality implements LanguageForm {
      * @return the appropriate plural cardinality determination function (if one exists) for the given locale, not null
      */
     @Nonnull
-    public static Optional<Function<BigDecimal, Cardinality>> cardinalityFunctionForLocale(@Nonnull Locale locale) {
+    static Optional<Function<BigDecimal, Cardinality>> cardinalityFunctionForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
       Optional<CardinalityFamily> cardinalityFamily = cardinalityFamilyForLocale(locale);
