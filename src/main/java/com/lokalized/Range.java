@@ -21,6 +21,7 @@ import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -43,9 +44,19 @@ import static java.util.Objects.requireNonNull;
 @Immutable
 public class Range<T> {
   @Nonnull
+  private static final Range<?> EMPTY_FINITE_RANGE;
+  @Nonnull
+  private static final Range<?> EMPTY_INFINITE_RANGE;
+
+  @Nonnull
   private final List<T> values;
   @Nonnull
   private final Boolean infinite;
+
+  static {
+    EMPTY_FINITE_RANGE = new Range<>(Collections.emptySet(), false);
+    EMPTY_INFINITE_RANGE = new Range<>(Collections.emptySet(), true);
+  }
 
   /**
    * Provides an infinite range for the given values.
@@ -55,9 +66,9 @@ public class Range<T> {
    * @return an infinite range, not null
    */
   @Nonnull
-  public static <T> Range<T> ofInfiniteValues(@Nonnull Iterable<T> values) {
+  public static <T> Range<T> ofInfiniteValues(@Nonnull Collection<T> values) {
     requireNonNull(values);
-    return new Range(values, true);
+    return values.size() == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
 
   /**
@@ -69,7 +80,7 @@ public class Range<T> {
    */
   @Nonnull
   public static <T> Range<T> ofInfiniteValues(@Nullable T... values) {
-    return new Range(values, true);
+    return values == null || values.length == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
 
   /**
@@ -80,9 +91,9 @@ public class Range<T> {
    * @return a finite range, not null
    */
   @Nonnull
-  public static <T> Range<T> ofFiniteValues(@Nonnull Iterable<T> values) {
+  public static <T> Range<T> ofFiniteValues(@Nonnull Collection<T> values) {
     requireNonNull(values);
-    return new Range(values, false);
+    return values.size() == 0 ? emptyFiniteRange() : new Range(values, false);
   }
 
   /**
@@ -94,7 +105,27 @@ public class Range<T> {
    */
   @Nonnull
   public static <T> Range<T> ofFiniteValues(@Nullable T... values) {
-    return new Range(values, false);
+    return values == null || values.length == 0 ? emptyFiniteRange() : new Range(values, false);
+  }
+
+  /**
+   * Gets the empty finite range.
+   *
+   * @param <T> the type of values contained in the range
+   * @return the empty finite range, not null
+   */
+  public static <T> Range<T> emptyFiniteRange() {
+    return (Range<T>) EMPTY_FINITE_RANGE;
+  }
+
+  /**
+   * Gets the empty infinite range.
+   *
+   * @param <T> the type of values contained in the range
+   * @return the empty infinite range, not null
+   */
+  public static <T> Range<T> emptyInfiniteRange() {
+    return (Range<T>) EMPTY_INFINITE_RANGE;
   }
 
   /**
@@ -103,14 +134,11 @@ public class Range<T> {
    * @param values   the values that comprise this range, not null
    * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  private Range(@Nonnull Iterable<T> values, @Nonnull Boolean infinite) {
+  private Range(@Nonnull Collection<T> values, @Nonnull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
-    List<T> valuesAsList = new ArrayList<>();
-    values.forEach(valuesAsList::add);
-
-    this.values = Collections.unmodifiableList(valuesAsList);
+    this.values = values.size() == 0 ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(values));
     this.infinite = infinite;
   }
 
