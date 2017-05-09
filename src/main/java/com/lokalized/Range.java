@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -35,14 +36,24 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * This class is not designed to hold large or "infinite" ranges; it is not stream-based.
  * Instead, you might supply a small representative range of values and specify the range is "infinite"
- * if it is understood that the range's pattern repeats indefinitely.
+ * if it is understood that the value pattern repeats indefinitely.
  * <p>
  * For example, you might generate an infinite powers-of-ten range with the 4 values {@code 1, 10, 100, 1000}.
+ * <p>
+ * Ranges are constructed via static methods.
+ * <p>
+ * Examples:
+ * <ul>
+ * <li>{@code Range.ofFiniteValues(1, 10, 12)}</li>
+ * <li>{@code Range.ofInfiniteValues(1, 2, 3, 4, 5, 6)}</li>
+ * <li>{@code Range.emptyFiniteRange()}</li>
+ * <li>{@code Range.emptyInfiniteRange()}</li>
+ * </ul>
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
-public class Range<T> {
+public class Range<T> implements Collection<T> {
   @Nonnull
   private static final Range<?> EMPTY_FINITE_RANGE;
   @Nonnull
@@ -154,6 +165,175 @@ public class Range<T> {
 
     this.values = values == null ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(values));
     this.infinite = infinite;
+  }
+
+  /**
+   * Returns the number of elements in this range.
+   *
+   * @return the number of elements in this range
+   */
+  @Override
+  public int size() {
+    return getValues().size();
+  }
+
+  /**
+   * Returns true if this range contains no elements.
+   *
+   * @return true if this range contains no elements
+   */
+  @Override
+  public boolean isEmpty() {
+    return getValues().isEmpty();
+  }
+
+  /**
+   * Returns true if this range contains the specified value.
+   * <p>
+   * More formally, returns true if and only if this range contains at least one value v such that {@code (o==null ? v==null : o.equals(v))}.
+   *
+   * @param value value whose presence in this range is to be tested
+   * @return true if this range contains the specified value
+   */
+  @Override
+  public boolean contains(@Nullable Object value) {
+    return getValues().contains(value);
+  }
+
+  /**
+   * Returns an iterator over the values in this range in proper sequence.
+   * <p>
+   * The returned iterator is <a href="https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#fail-fast" target="_blank">fail-fast</a>.
+   *
+   * @return an iterator over the values in this range in proper sequence, not null
+   */
+  @Nonnull
+  @Override
+  public Iterator<T> iterator() {
+    return getValues().iterator();
+  }
+
+  /**
+   * Returns an array containing all of the values in this range in proper sequence (from first to last value).
+   * <p>
+   * The returned array will be "safe" in that no references to it are maintained by this range. (In other words, this method must allocate a new array). The caller is thus free to modify the returned array.
+   * <p>
+   * This method acts as bridge between array-based and collection-based APIs.
+   *
+   * @return an array containing all of the values in this range in proper sequence, not null
+   */
+  @Nonnull
+  @Override
+  public Object[] toArray() {
+    return getValues().toArray();
+  }
+
+  /**
+   * Returns an array containing all of the values in this range in proper sequence (from first to last element); the runtime type of the returned array is that of the specified array. If the range fits in the specified array, it is returned therein. Otherwise, a new array is allocated with the runtime type of the specified array and the size of this range.
+   * <p>
+   * If the range fits in the specified array with room to spare (i.e., the array has more elements than the range), the element in the array immediately following the end of the collection is set to null. (This is useful in determining the length of the range only if the caller knows that the range does not contain any null elements.)
+   *
+   * @param a    the array into which the values of the range are to be stored, if it is big enough; otherwise, a new array of the same runtime type is allocated for this purpose. not null
+   * @param <T1> the runtime type of the array to contain the collection
+   * @return an array containing the values of the range, not null
+   */
+  @Nonnull
+  @Override
+  public <T1> T1[] toArray(@Nonnull T1[] a) {
+    return getValues().toArray(a);
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @param t the value to add, ignored
+   * @return no return value; this method always throws UnsupportedOperationException
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  @Deprecated
+  public boolean add(@Nullable T t) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @param o the value to remove, ignored
+   * @return no return value; this method always throws UnsupportedOperationException
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  @Deprecated
+  public boolean remove(@Nullable Object o) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Returns true if this range contains all of the elements of the specified collection.
+   *
+   * @param c collection to be checked for containment in this range, not null
+   * @return true if this range contains all of the elements of the specified collection
+   */
+  @Override
+  public boolean containsAll(@Nonnull Collection<?> c) {
+    requireNonNull(c);
+    return getValues().containsAll(c);
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @param c collection containing elements to be added to this range, ignored
+   * @return no return value; this method always throws UnsupportedOperationException
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  @Deprecated
+  public boolean addAll(@Nullable Collection<? extends T> c) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @param c collection containing elements to be removed from this range, ignored
+   * @return no return value; this method always throws UnsupportedOperationException
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  @Deprecated
+  public boolean removeAll(@Nullable Collection<?> c) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @param c collection containing elements to be retained in this range, ignored
+   * @return no return value; this method always throws UnsupportedOperationException
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  public boolean retainAll(@Nullable Collection<?> c) {
+    throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Guaranteed to throw an exception and leave the range unmodified.
+   *
+   * @throws UnsupportedOperationException always
+   * @deprecated Unsupported operation; this type is immutable.
+   */
+  @Override
+  @Deprecated
+  public void clear() {
+    throw new UnsupportedOperationException();
   }
 
   /**
