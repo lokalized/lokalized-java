@@ -16,6 +16,8 @@
 
 package com.lokalized;
 
+import com.lokalized.Maps.MapEntry;
+
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
@@ -26,6 +28,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -236,16 +240,6 @@ public enum Cardinality implements LanguageForm {
   }
 
   /**
-   * Gets the mapping of cardinality names to values.
-   *
-   * @return the mapping of cardinality names to values, not null
-   */
-  @Nonnull
-  static Map<String, Cardinality> getCardinalitiesByName() {
-    return CARDINALITIES_BY_NAME;
-  }
-
-  /**
    * Gets an appropriate plural cardinality for the given number and locale.
    * <p>
    * When determining cardinality, the decimal places of {@code number} will be computed and used.
@@ -317,6 +311,40 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFunction.get().apply(numberAsBigDecimal);
   }
 
+  @Nonnull
+  public static SortedSet<Cardinality> supportedCardinalitiesForLocale(@Nonnull Locale locale) {
+    requireNonNull(locale);
+
+    Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
+    return cardinalityFamily.isPresent() ? cardinalityFamily.get().getSupportedCardinalities() : Collections.emptySortedSet();
+  }
+
+  @Nonnull
+  public static SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesForLocale(@Nonnull Locale locale) {
+    requireNonNull(locale);
+
+    Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
+    return cardinalityFamily.isPresent() ? Collections.emptySortedMap() : cardinalityFamily.get().getExampleIntegerValuesByCardinality();
+  }
+
+  @Nonnull
+  public static SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesForLocale(@Nonnull Locale locale) {
+    requireNonNull(locale);
+
+    Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
+    return cardinalityFamily.isPresent() ? Collections.emptySortedMap() : cardinalityFamily.get().getExampleDecimalValuesByCardinality();
+  }
+
+  /**
+   * Gets the mapping of cardinality names to values.
+   *
+   * @return the mapping of cardinality names to values, not null
+   */
+  @Nonnull
+  static Map<String, Cardinality> getCardinalitiesByName() {
+    return CARDINALITIES_BY_NAME;
+  }
+
   /**
    * Plural cardinality forms grouped by language family.
    * <p>
@@ -327,6 +355,30 @@ public enum Cardinality implements LanguageForm {
    * <p>
    * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for more information.
+   * <p>
+   * Cardinality functions are driven by CLDR data.
+   * <p>
+   * The expression format as specified by http://www.unicode.org/reports/tr35/tr35-numbers.html#Language_Plural_Rules
+   * uses the following notation:
+   * <ul>
+   * <li>{@code n} absolute value of the source number (integer and decimals).</li>
+   * <li>{@code i} integer digits of n.</li>
+   * <li>{@code v} number of visible fraction digits in n, with trailing zeros.</li>
+   * <li>{@code w} number of visible fraction digits in n, without trailing zeros.</li>
+   * <li>{@code f} visible fractional digits in n, with trailing zeros.</li>
+   * <li>{@code t} visible fractional digits in n, without trailing zeros.</li>
+   * </ul>
+   * <p>
+   * Some examples follow:
+   * <ul>
+   * <li>{@code n=1: i=1, v=0, w=0, f=0, t=0}</li>
+   * <li>{@code n=1.0: i=1, v=1, w=0, f=0, t=0}</li>
+   * <li>{@code n=1.00: i=1, v=2, w=0, f=0, t=0}</li>
+   * <li>{@code n=1.3: i=1, v=1, w=1, f=3, t=3}</li>
+   * <li>{@code n=1.30: i=1, v=2, w=1, f=30, t=3}</li>
+   * <li>{@code n=1.03: i=1, v=2, w=2, f=3, t=3}</li>
+   * <li>{@code n=1.230: i=1, v=3, w=2, f=230, t=23}</li>
+   * </ul>
    */
   enum CardinalityFamily {
     /**
@@ -420,7 +472,27 @@ public enum Cardinality implements LanguageForm {
      * <li>Soga (xog)</li>
      * </ul>
      */
-    FAMILY_1,
+    FAMILY_1(
+        (n) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -457,7 +529,22 @@ public enum Cardinality implements LanguageForm {
      * <li>Mandarin Chinese (zh)</li>
      * </ul>
      */
-    FAMILY_2,
+    FAMILY_2(
+        (n) -> {
+          // No cardinality rules for this family
+          return OTHER;
+        },
+        Sets.sortedSet(
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -478,7 +565,27 @@ public enum Cardinality implements LanguageForm {
      * <li>Yiddish (yi)</li>
      * </ul>
      */
-    FAMILY_3,
+    FAMILY_3(
+        (n) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -494,7 +601,27 @@ public enum Cardinality implements LanguageForm {
      * <li>Walloon (wa)</li>
      * </ul>
      */
-    FAMILY_4,
+    FAMILY_4(
+        (n) -> {
+          // n = 0..1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -510,7 +637,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Zulu (zu)</li>
      * </ul>
      */
-    FAMILY_5,
+    FAMILY_5(
+        (n) -> {
+          // i = 0 or n = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.0"), new BigDecimal("0.01"), new BigDecimal("0.02"), new BigDecimal("0.03"), new BigDecimal("0.04"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("1.9"), new BigDecimal("2.0"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -526,7 +674,32 @@ public enum Cardinality implements LanguageForm {
      * <li>Skolt Sami (sms)</li>
      * </ul>
      */
-    FAMILY_6,
+    FAMILY_6(
+        (n) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -537,7 +710,34 @@ public enum Cardinality implements LanguageForm {
      * <li>Serbian (sr)</li>
      * </ul>
      */
-    FAMILY_7,
+    FAMILY_7(
+        (n) -> {
+          // v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(2, 3, 4, 22, 23, 24, 32, 33, 34, 42, 43, 44, 52, 53, 54, 62, 102, 1002)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("1.1"), new BigDecimal("2.1"), new BigDecimal("3.1"), new BigDecimal("4.1"), new BigDecimal("5.1"), new BigDecimal("6.1"), new BigDecimal("7.1"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1"))),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("3.2"), new BigDecimal("3.3"), new BigDecimal("3.4"), new BigDecimal("4.2"), new BigDecimal("4.3"), new BigDecimal("4.4"), new BigDecimal("5.2"), new BigDecimal("10.2"), new BigDecimal("100.2"), new BigDecimal("1000.2"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("1.9"), new BigDecimal("2.0"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -548,7 +748,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Kabyle (kab)</li>
      * </ul>
      */
-    FAMILY_8,
+    FAMILY_8(
+        (n) -> {
+          // i = 0,1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("2.0"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7"), new BigDecimal("2.8"), new BigDecimal("2.9"), new BigDecimal("3.0"), new BigDecimal("3.1"), new BigDecimal("3.2"), new BigDecimal("3.3"), new BigDecimal("3.4"), new BigDecimal("3.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -557,7 +778,47 @@ public enum Cardinality implements LanguageForm {
      * <li>Najdi Arabic (ars)</li>
      * </ul>
      */
-    FAMILY_9,
+    FAMILY_9(
+        (n) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n % 100 = 3..10
+          if (false /* TODO */)
+            return FEW;
+          // n % 100 = 11..99
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ZERO,
+            ONE,
+            TWO,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ZERO, Range.ofFiniteValues(0)),
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(3, 4, 5, 6, 7, 8, 9, 10, 103, 104, 105, 106, 107, 108, 109, 110, 1003)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 111, 1011)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(100, 101, 102, 200, 201, 202, 300, 301, 302, 400, 401, 402, 500, 501, 502, 600, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("10.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -566,7 +827,36 @@ public enum Cardinality implements LanguageForm {
      * <li>Slovak (sk)</li>
      * </ul>
      */
-    FAMILY_10,
+    FAMILY_10(
+        (n) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // i = 2..4 and v = 0
+          if (false /* TODO */)
+            return FEW;
+          // v != 0
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.FEW, Range.ofFiniteValues(2, 3, 4)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -575,7 +865,40 @@ public enum Cardinality implements LanguageForm {
      * <li>Upper Sorbian (hsb)</li>
      * </ul>
      */
-    FAMILY_11,
+    FAMILY_11(
+        (n) -> {
+          // v = 0 and i % 100 = 1 or f % 100 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 100 = 2 or f % 100 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 3..4 or f % 100 = 3..4
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 101, 201, 301, 401, 501, 601, 701, 1001)),
+            MapEntry.of(Cardinality.TWO, Range.ofInfiniteValues(2, 102, 202, 302, 402, 502, 602, 702, 1002)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(3, 4, 103, 104, 203, 204, 303, 304, 403, 404, 503, 504, 603, 604, 703, 704, 1003)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("1.1"), new BigDecimal("2.1"), new BigDecimal("3.1"), new BigDecimal("4.1"), new BigDecimal("5.1"), new BigDecimal("6.1"), new BigDecimal("7.1"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1"))),
+            MapEntry.of(Cardinality.TWO, Range.ofInfiniteValues(new BigDecimal("0.2"), new BigDecimal("1.2"), new BigDecimal("2.2"), new BigDecimal("3.2"), new BigDecimal("4.2"), new BigDecimal("5.2"), new BigDecimal("6.2"), new BigDecimal("7.2"), new BigDecimal("10.2"), new BigDecimal("100.2"), new BigDecimal("1000.2"))),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("3.3"), new BigDecimal("3.4"), new BigDecimal("4.3"), new BigDecimal("4.4"), new BigDecimal("5.3"), new BigDecimal("5.4"), new BigDecimal("6.3"), new BigDecimal("6.4"), new BigDecimal("7.3"), new BigDecimal("7.4"), new BigDecimal("10.3"), new BigDecimal("100.3"), new BigDecimal("1000.3"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("1.9"), new BigDecimal("2.0"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -584,7 +907,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Tagalog (tl)</li>
      * </ul>
      */
-    FAMILY_12,
+    FAMILY_12(
+        (n) -> {
+          // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(0, 1, 2, 3, 5, 7, 8, 10, 11, 12, 13, 15, 17, 18, 20, 21, 100, 1000, 10000, 100000, 1000000)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(4, 6, 9, 14, 16, 19, 24, 26, 104, 1004))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.5"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.5"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("2.1"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.4"), new BigDecimal("0.6"), new BigDecimal("0.9"), new BigDecimal("1.4"), new BigDecimal("1.6"), new BigDecimal("1.9"), new BigDecimal("2.4"), new BigDecimal("2.6"), new BigDecimal("10.4"), new BigDecimal("100.4"), new BigDecimal("1000.4")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -593,7 +937,33 @@ public enum Cardinality implements LanguageForm {
      * <li>Prussian (prg)</li>
      * </ul>
      */
-    FAMILY_13,
+    FAMILY_13(
+        (n) -> {
+          // n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19
+          if (false /* TODO */)
+            return ZERO;
+          // n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ZERO,
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ZERO, Range.ofInfiniteValues(0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 30, 40, 50, 60, 100, 1000, 10000, 100000, 1000000)),
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 22, 23, 24, 25, 26, 27, 28, 29, 102, 1002))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("1.1"), new BigDecimal("2.1"), new BigDecimal("3.1"), new BigDecimal("4.1"), new BigDecimal("5.1"), new BigDecimal("6.1"), new BigDecimal("7.1"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("1.9"), new BigDecimal("10.2"), new BigDecimal("100.2"), new BigDecimal("1000.2")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -602,7 +972,32 @@ public enum Cardinality implements LanguageForm {
      * <li>Romanian (ro)</li>
      * </ul>
      */
-    FAMILY_14,
+    FAMILY_14(
+        (n) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // v != 0 or n = 0 or n != 1 and n % 100 = 1..19
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 101, 1001)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -611,7 +1006,36 @@ public enum Cardinality implements LanguageForm {
      * <li>Ukrainian (uk)</li>
      * </ul>
      */
-    FAMILY_15,
+    FAMILY_15(
+        (n) -> {
+          // v = 0 and i % 10 = 1 and i % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(2, 3, 4, 22, 23, 24, 32, 33, 34, 42, 43, 44, 52, 53, 54, 62, 102, 1002)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -619,7 +1043,36 @@ public enum Cardinality implements LanguageForm {
      * <li>Belarusian (be)</li>
      * </ul>
      */
-    FAMILY_16,
+    FAMILY_16(
+        (n) -> {
+          // n % 10 = 1 and n % 100 != 11
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2..4 and n % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(2, 3, 4, 22, 23, 24, 32, 33, 34, 42, 43, 44, 52, 53, 54, 62, 102, 1002)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -627,7 +1080,42 @@ public enum Cardinality implements LanguageForm {
      * <li>Breton (br)</li>
      * </ul>
      */
-    FAMILY_17,
+    FAMILY_17(
+        (n) -> {
+          // n % 10 = 1 and n % 100 != 11,71,91
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2 and n % 100 != 12,72,92
+          if (false /* TODO */)
+            return TWO;
+          // n % 10 = 3..4,9 and n % 100 != 10..19,70..79,90..99
+          if (false /* TODO */)
+            return FEW;
+          // n != 0 and n % 1000000 = 0
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 81, 101, 1001)),
+            MapEntry.of(Cardinality.TWO, Range.ofInfiniteValues(2, 22, 32, 42, 52, 62, 82, 102, 1002)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(3, 4, 9, 23, 24, 29, 33, 34, 39, 43, 44, 49, 103, 1003)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(1000000)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000, 10000, 100000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -635,7 +1123,47 @@ public enum Cardinality implements LanguageForm {
      * <li>Welsh (cy)</li>
      * </ul>
      */
-    FAMILY_18,
+    FAMILY_18(
+        (n) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n = 3
+          if (false /* TODO */)
+            return FEW;
+          // n = 6
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ZERO,
+            ONE,
+            TWO,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ZERO, Range.ofFiniteValues(0)),
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2)),
+            MapEntry.of(Cardinality.FEW, Range.ofFiniteValues(3)),
+            MapEntry.of(Cardinality.MANY, Range.ofFiniteValues(6)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -643,7 +1171,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Danish (da)</li>
      * </ul>
      */
-    FAMILY_19,
+    FAMILY_19(
+        (n) -> {
+          // n = 1 or t != 0 and i = 0,1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("2.0"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7"), new BigDecimal("2.8"), new BigDecimal("2.9"), new BigDecimal("3.0"), new BigDecimal("3.1"), new BigDecimal("3.2"), new BigDecimal("3.3"), new BigDecimal("3.4")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -651,7 +1200,42 @@ public enum Cardinality implements LanguageForm {
      * <li>Irish (ga)</li>
      * </ul>
      */
-    FAMILY_20,
+    FAMILY_20(
+        (n) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2
+          if (false /* TODO */)
+            return TWO;
+          // n = 3..6
+          if (false /* TODO */)
+            return FEW;
+          // n = 7..10
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2)),
+            MapEntry.of(Cardinality.FEW, Range.ofFiniteValues(3, 4, 5, 6)),
+            MapEntry.of(Cardinality.MANY, Range.ofFiniteValues(7, 8, 9, 10)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("10.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -659,7 +1243,37 @@ public enum Cardinality implements LanguageForm {
      * <li>Scottish Gaelic (gd)</li>
      * </ul>
      */
-    FAMILY_21,
+    FAMILY_21(
+        (n) -> {
+          // n = 1,11
+          if (false /* TODO */)
+            return ONE;
+          // n = 2,12
+          if (false /* TODO */)
+            return TWO;
+          // n = 3..10,13..19
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1, 11)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2, 12)),
+            MapEntry.of(Cardinality.FEW, Range.ofFiniteValues(3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 15, 16, 17, 18, 19)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("10.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -667,7 +1281,41 @@ public enum Cardinality implements LanguageForm {
      * <li>Manx (gv)</li>
      * </ul>
      */
-    FAMILY_22,
+    FAMILY_22(
+        (n) -> {
+          // v = 0 and i % 10 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 0,20,40,60,80
+          if (false /* TODO */)
+            return FEW;
+          // v != 0
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 11, 21, 31, 41, 51, 61, 71, 101, 1001)),
+            MapEntry.of(Cardinality.TWO, Range.ofInfiniteValues(2, 12, 22, 32, 42, 52, 62, 72, 102, 1002)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(0, 20, 40, 60, 80, 100, 120, 140, 1000, 10000, 100000, 1000000)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 15, 16, 17, 18, 19, 23, 103, 1003))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -675,7 +1323,37 @@ public enum Cardinality implements LanguageForm {
      * <li>Hebrew (he)</li>
      * </ul>
      */
-    FAMILY_23,
+    FAMILY_23(
+        (n) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // i = 2 and v = 0
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and n != 0..10 and n % 10 = 0
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.TWO, Range.ofFiniteValues(2)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(20, 30, 40, 50, 60, 70, 80, 90, 100, 1000, 10000, 100000, 1000000)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 101, 1001))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -683,7 +1361,27 @@ public enum Cardinality implements LanguageForm {
      * <li>Icelandic (is)</li>
      * </ul>
      */
-    FAMILY_24,
+    FAMILY_24(
+        (n) -> {
+          // t = 0 and i % 10 = 1 and i % 100 != 11 or t != 0
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -691,7 +1389,32 @@ public enum Cardinality implements LanguageForm {
      * <li>Colognian (ksh)</li>
      * </ul>
      */
-    FAMILY_25,
+    FAMILY_25(
+        (n) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ZERO,
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ZERO, Range.ofFiniteValues(0)),
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -699,7 +1422,33 @@ public enum Cardinality implements LanguageForm {
      * <li>Langi (lag)</li>
      * </ul>
      */
-    FAMILY_26,
+    FAMILY_26(
+        (n) -> {
+          // n = 0
+          if (false /* TODO */)
+            return ZERO;
+          // i = 0,1 and n != 0
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ZERO,
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ZERO, Range.ofFiniteValues(0)),
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("2.0"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7"), new BigDecimal("2.8"), new BigDecimal("2.9"), new BigDecimal("3.0"), new BigDecimal("3.1"), new BigDecimal("3.2"), new BigDecimal("3.3"), new BigDecimal("3.4"), new BigDecimal("3.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -707,7 +1456,36 @@ public enum Cardinality implements LanguageForm {
      * <li>Lithuanian (lt)</li>
      * </ul>
      */
-    FAMILY_27,
+    FAMILY_27(
+        (n) -> {
+          // n % 10 = 1 and n % 100 != 11..19
+          if (false /* TODO */)
+            return ONE;
+          // n % 10 = 2..9 and n % 100 != 11..19
+          if (false /* TODO */)
+            return FEW;
+          // f != 0
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 21, 31, 41, 51, 61, 71, 81, 101, 1001)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 22, 23, 24, 25, 26, 27, 28, 29, 102, 1002)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 30, 40, 50, 60, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -715,7 +1493,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Macedonian (mk)</li>
      * </ul>
      */
-    FAMILY_28,
+    FAMILY_28(
+        (n) -> {
+          // v = 0 and i % 10 = 1 or f % 10 = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 11, 21, 31, 41, 51, 61, 71, 101, 1001)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("1.1"), new BigDecimal("2.1"), new BigDecimal("3.1"), new BigDecimal("4.1"), new BigDecimal("5.1"), new BigDecimal("6.1"), new BigDecimal("7.1"), new BigDecimal("10.1"), new BigDecimal("100.1"), new BigDecimal("1000.1"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -723,7 +1522,37 @@ public enum Cardinality implements LanguageForm {
      * <li>Maltese (mt)</li>
      * </ul>
      */
-    FAMILY_29,
+    FAMILY_29(
+        (n) -> {
+          // n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 0 or n % 100 = 2..10
+          if (false /* TODO */)
+            return FEW;
+          // n % 100 = 11..19
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 102, 103, 104, 105, 106, 107, 1002)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(11, 12, 13, 14, 15, 16, 17, 18, 19, 111, 112, 113, 114, 115, 116, 117, 1011)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("10.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -731,7 +1560,36 @@ public enum Cardinality implements LanguageForm {
      * <li>Polish (pl)</li>
      * </ul>
      */
-    FAMILY_30,
+    FAMILY_30(
+        (n) -> {
+          // i = 1 and v = 0
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
+          if (false /* TODO */)
+            return FEW;
+          // v = 0 and i != 1 and i % 10 = 0..1 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 12..14
+          if (false /* TODO */)
+            return MANY;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            MANY,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(1)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(2, 3, 4, 22, 23, 24, 32, 33, 34, 42, 43, 44, 52, 53, 54, 62, 102, 1002)),
+            MapEntry.of(Cardinality.MANY, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -739,7 +1597,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Portuguese (pt)</li>
      * </ul>
      */
-    FAMILY_31,
+    FAMILY_31(
+        (n) -> {
+          // i = 0..1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("2.0"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7"), new BigDecimal("2.8"), new BigDecimal("2.9"), new BigDecimal("3.0"), new BigDecimal("3.1"), new BigDecimal("3.2"), new BigDecimal("3.3"), new BigDecimal("3.4"), new BigDecimal("3.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -747,7 +1626,33 @@ public enum Cardinality implements LanguageForm {
      * <li>Tachelhit (shi)</li>
      * </ul>
      */
-    FAMILY_32,
+    FAMILY_32(
+        (n) -> {
+          // i = 0 or n = 1
+          if (false /* TODO */)
+            return ONE;
+          // n = 2..10
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.FEW, Range.ofFiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.0"), new BigDecimal("0.01"), new BigDecimal("0.02"), new BigDecimal("0.03"), new BigDecimal("0.04"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8"), new BigDecimal("1.9"), new BigDecimal("2.1"), new BigDecimal("2.2"), new BigDecimal("2.3"), new BigDecimal("2.4"), new BigDecimal("2.5"), new BigDecimal("2.6"), new BigDecimal("2.7"), new BigDecimal("10.1")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -755,7 +1660,28 @@ public enum Cardinality implements LanguageForm {
      * <li>Sinhala (si)</li>
      * </ul>
      */
-    FAMILY_33,
+    FAMILY_33(
+        (n) -> {
+          // n = 0,1 or i = 0 and f = 1
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(new BigDecimal("0.0001"), new BigDecimal("0.001"), new BigDecimal("0.01"), new BigDecimal("0.1"))),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7"), new BigDecimal("1.8")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -763,7 +1689,37 @@ public enum Cardinality implements LanguageForm {
      * <li>Slovenian (sl)</li>
      * </ul>
      */
-    FAMILY_34,
+    FAMILY_34(
+        (n) -> {
+          // v = 0 and i % 100 = 1
+          if (false /* TODO */)
+            return ONE;
+          // v = 0 and i % 100 = 2
+          if (false /* TODO */)
+            return TWO;
+          // v = 0 and i % 100 = 3..4 or v != 0
+          if (false /* TODO */)
+            return FEW;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            TWO,
+            FEW,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofInfiniteValues(1, 101, 201, 301, 401, 501, 601, 701, 1001)),
+            MapEntry.of(Cardinality.TWO, Range.ofInfiniteValues(2, 102, 202, 302, 402, 502, 602, 702, 1002)),
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(3, 4, 103, 104, 203, 204, 303, 304, 403, 404, 503, 504, 603, 604, 703, 704, 1003)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(0, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 100, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.FEW, Range.ofInfiniteValues(new BigDecimal("0.0"), new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5")))
+        )
+    ),
+
     /**
      * Languages Include:
      * <p>
@@ -771,13 +1727,55 @@ public enum Cardinality implements LanguageForm {
      * <li>Central Atlas Tamazight (tzm)</li>
      * </ul>
      */
-    FAMILY_35;
+    FAMILY_35(
+        (n) -> {
+          // n = 0..1 or n = 11..99
+          if (false /* TODO */)
+            return ONE;
+
+          return OTHER;
+        },
+        Sets.sortedSet(
+            ONE,
+            OTHER
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.ONE, Range.ofFiniteValues(0, 1, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24)),
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(2, 3, 4, 5, 6, 7, 8, 9, 10, 100, 101, 102, 103, 104, 105, 106, 1000, 10000, 100000, 1000000))
+        ),
+        Maps.sortedMap(
+            MapEntry.of(Cardinality.OTHER, Range.ofInfiniteValues(new BigDecimal("0.1"), new BigDecimal("0.2"), new BigDecimal("0.3"), new BigDecimal("0.4"), new BigDecimal("0.5"), new BigDecimal("0.6"), new BigDecimal("0.7"), new BigDecimal("0.8"), new BigDecimal("0.9"), new BigDecimal("1.1"), new BigDecimal("1.2"), new BigDecimal("1.3"), new BigDecimal("1.4"), new BigDecimal("1.5"), new BigDecimal("1.6"), new BigDecimal("1.7")))
+        )
+    );
 
     @Nonnull
-    static final Map<CardinalityFamily, Function<BigDecimal, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY;
+    private static final Map<CardinalityFamily, Function<BigDecimal, Cardinality>> CARDINALITY_FUNCTIONS_BY_CARDINALITY_FAMILY;
+    @Nonnull
+    private static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_TAG;
 
     @Nonnull
-    static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_TAG;
+    private final Function<BigDecimal, Cardinality> cardinalityFunction;
+    @Nonnull
+    private final SortedSet<Cardinality> supportedCardinalities;
+    @Nonnull
+    private final SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality;
+    @Nonnull
+    private final SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality;
+
+    CardinalityFamily(@Nonnull Function<BigDecimal, Cardinality> cardinalityFunction,
+                      @Nonnull SortedSet<Cardinality> supportedCardinalities,
+                      @Nonnull SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality,
+                      @Nonnull SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality) {
+      requireNonNull(cardinalityFunction);
+      requireNonNull(supportedCardinalities);
+      requireNonNull(exampleIntegerValuesByCardinality);
+      requireNonNull(exampleDecimalValuesByCardinality);
+
+      this.cardinalityFunction = cardinalityFunction;
+      this.supportedCardinalities = supportedCardinalities;
+      this.exampleIntegerValuesByCardinality = exampleIntegerValuesByCardinality;
+      this.exampleDecimalValuesByCardinality = exampleDecimalValuesByCardinality;
+    }
 
     /**
      * Cardinality functions are driven by CLDR data.
@@ -1526,6 +2524,21 @@ public enum Cardinality implements LanguageForm {
         put("zh", CardinalityFamily.FAMILY_2); // Mandarin Chinese
         put("zu", CardinalityFamily.FAMILY_5); // Zulu
       }});
+    }
+
+    @Nonnull
+    SortedSet<Cardinality> getSupportedCardinalities() {
+      return supportedCardinalities;
+    }
+
+    @Nonnull
+    SortedMap<Cardinality, Range<Integer>> getExampleIntegerValuesByCardinality() {
+      return exampleIntegerValuesByCardinality;
+    }
+
+    @Nonnull
+    SortedMap<Cardinality, Range<BigDecimal>> getExampleDecimalValuesByCardinality() {
+      return exampleDecimalValuesByCardinality;
     }
 
     /**
