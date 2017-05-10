@@ -28,8 +28,10 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -340,7 +342,7 @@ public enum Cardinality implements LanguageForm {
     requireNonNull(locale);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
-    return cardinalityFamily.isPresent() ? Collections.emptySortedMap() : cardinalityFamily.get().getExampleIntegerValuesByCardinality();
+    return cardinalityFamily.isPresent() ? cardinalityFamily.get().getExampleIntegerValuesByCardinality() : Collections.emptySortedMap();
   }
 
   /**
@@ -356,7 +358,17 @@ public enum Cardinality implements LanguageForm {
     requireNonNull(locale);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
-    return cardinalityFamily.isPresent() ? Collections.emptySortedMap() : cardinalityFamily.get().getExampleDecimalValuesByCardinality();
+    return cardinalityFamily.isPresent() ? cardinalityFamily.get().getExampleDecimalValuesByCardinality() : Collections.emptySortedMap();
+  }
+
+  /**
+   * Gets the ISO 639 language codes for which cardinality operations are supported.
+   *
+   * @return the ISO 639 language codes for which cardinality operations are supported, not null
+   */
+  @Nonnull
+  public static Set<String> getSupportedLanguageCodes() {
+    return CardinalityFamily.getSupportedLanguageCodes();
   }
 
   /**
@@ -1131,7 +1143,7 @@ public enum Cardinality implements LanguageForm {
           // n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14
           if (n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_0)
               || (n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_5) >= 0 && n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_9) <= 0)
-              || (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_12) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_14) <= 0))
+              || (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_14) <= 0))
             return MANY;
 
           return OTHER;
@@ -1885,7 +1897,9 @@ public enum Cardinality implements LanguageForm {
     );
 
     @Nonnull
-    private static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_TAG;
+    private static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_CODE;
+    @Nonnull
+    private static final SortedSet<String> SUPPORTED_LANGUAGE_CODES;
 
     @Nonnull
     private final Function<BigDecimal, Cardinality> cardinalityFunction;
@@ -1912,7 +1926,7 @@ public enum Cardinality implements LanguageForm {
     }
 
     static {
-      CARDINALITY_FAMILIES_BY_LANGUAGE_TAG = Collections.unmodifiableMap(new HashMap<String, CardinalityFamily>() {{
+      CARDINALITY_FAMILIES_BY_LANGUAGE_CODE = Collections.unmodifiableMap(new HashMap<String, CardinalityFamily>() {{
         put("af", CardinalityFamily.FAMILY_1); // Afrikaans
         put("ak", CardinalityFamily.FAMILY_4); // Akan
         put("am", CardinalityFamily.FAMILY_5); // Amharic
@@ -2112,6 +2126,8 @@ public enum Cardinality implements LanguageForm {
         put("zh", CardinalityFamily.FAMILY_2); // Mandarin Chinese
         put("zu", CardinalityFamily.FAMILY_5); // Zulu
       }});
+
+      SUPPORTED_LANGUAGE_CODES = Collections.unmodifiableSortedSet(new TreeSet<>(CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.keySet()));
     }
 
     @Nonnull
@@ -2134,6 +2150,11 @@ public enum Cardinality implements LanguageForm {
       return exampleDecimalValuesByCardinality;
     }
 
+    @Nonnull
+    static SortedSet<String> getSupportedLanguageCodes() {
+      return SUPPORTED_LANGUAGE_CODES;
+    }
+
     /**
      * Gets an appropriate plural cardinality family for the given locale.
      *
@@ -2150,13 +2171,13 @@ public enum Cardinality implements LanguageForm {
       CardinalityFamily cardinalityFamily = null;
 
       if (language != null && country != null)
-        cardinalityFamily = CARDINALITY_FAMILIES_BY_LANGUAGE_TAG.get(format("%s-%s", language, country));
+        cardinalityFamily = CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.get(format("%s-%s", language, country));
 
       if (cardinalityFamily != null)
         return Optional.of(cardinalityFamily);
 
       if (language != null)
-        cardinalityFamily = CARDINALITY_FAMILIES_BY_LANGUAGE_TAG.get(language);
+        cardinalityFamily = CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.get(language);
 
       return Optional.ofNullable(cardinalityFamily);
     }

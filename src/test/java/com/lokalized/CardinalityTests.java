@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
+import java.util.Map.Entry;
 
 import static java.lang.String.format;
 
@@ -41,5 +42,23 @@ public class CardinalityTests {
         Cardinality.OTHER, Cardinality.forNumber(0, usEnglishLocale));
     Assert.assertEquals(format("Incorrect %s cardinality for 1.5", usEnglishLocale.toLanguageTag()),
         Cardinality.OTHER, Cardinality.forNumber(1.5, usEnglishLocale));
+  }
+
+  @Test
+  public void exampleIntegerValues() {
+    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
+      Locale locale = Locale.forLanguageTag(languageCode);
+
+      for (Entry<Cardinality, Range<Integer>> entry : Cardinality.exampleIntegerValuesForLocale(locale).entrySet()) {
+        Cardinality cardinality = entry.getKey();
+        Range<Integer> integers = entry.getValue();
+
+        for (Integer integer : integers) {
+          Cardinality calculatedCardinality = Cardinality.forNumber(integer, locale);
+          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), integer, integers), cardinality, calculatedCardinality);
+        }
+      }
+    }
   }
 }
