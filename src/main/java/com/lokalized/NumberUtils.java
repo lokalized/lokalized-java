@@ -59,12 +59,12 @@ class NumberUtils {
     if (number instanceof BigDecimal) {
       // Can determine trailing zeroes in this case
       BigDecimal numberAsBigDecimal = (BigDecimal) number;
-      return numberAsBigDecimal.scale();
+      return normalizedScale(numberAsBigDecimal);
     }
 
     // Cannot determine trailing zeroes in this case
     BigDecimal numberAsBigDecimal = toBigDecimal(number);
-    return Math.max(0, numberAsBigDecimal.stripTrailingZeros().scale());
+    return Math.max(0, normalizedScale(numberAsBigDecimal.stripTrailingZeros()));
   }
 
   /**
@@ -127,7 +127,7 @@ class NumberUtils {
       numberAsBigDecimal = toBigDecimal(number);
 
     return numberAsBigDecimal.remainder(BigDecimal.ONE)
-        .movePointRight(numberAsBigDecimal.scale())
+        .movePointRight(normalizedScale(numberAsBigDecimal))
         .abs()
         .toBigInteger();
   }
@@ -334,5 +334,24 @@ class NumberUtils {
     requireNonNull(maximum);
 
     return !(number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0);
+  }
+
+  /**
+   * Determines the "normalized" scale for the given number.
+   * <p>
+   * The standard behavior of {@link BigDecimal#scale()} is to return a negative number for each tens place,
+   * e.g. {@code 10} has scale of {@code -1} and {@code 100} has scale {@code -2}.
+   * <p>
+   * This method instead returns {@code 0} for any negative scale, which is usually the behavior we want for our calculations.
+   *
+   * @param number the number for which normalized scale is determined, not null
+   * @return the normalized scale, not null
+   */
+  @Nonnull
+  private static Integer normalizedScale(@Nonnull BigDecimal number) {
+    requireNonNull(number);
+
+    int scale = number.scale();
+    return scale < 0 ? 0 : scale;
   }
 }
