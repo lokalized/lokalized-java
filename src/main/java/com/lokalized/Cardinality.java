@@ -311,6 +311,14 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFamily.get().getCardinalityFunction().apply(numberAsBigDecimal);
   }
 
+  /**
+   * Gets the set of cardinalities supported for the given locale.
+   * <p>
+   * The empty set will be returned if the locale is not supported.
+   *
+   * @param locale the locale to use for lookup, not null
+   * @return the cardinalities supported by the given locale, not null
+   */
   @Nonnull
   public static SortedSet<Cardinality> supportedCardinalitiesForLocale(@Nonnull Locale locale) {
     requireNonNull(locale);
@@ -319,6 +327,14 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFamily.isPresent() ? cardinalityFamily.get().getSupportedCardinalities() : Collections.emptySortedSet();
   }
 
+  /**
+   * Gets a mapping of cardinalities to example integer values for the given locale.
+   * <p>
+   * The empty map will be returned if the locale is not supported or if no example values are available.
+   *
+   * @param locale the locale to use for lookup, not null
+   * @return a mapping of cardinalities to example integer values, not null
+   */
   @Nonnull
   public static SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesForLocale(@Nonnull Locale locale) {
     requireNonNull(locale);
@@ -327,6 +343,14 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFamily.isPresent() ? Collections.emptySortedMap() : cardinalityFamily.get().getExampleIntegerValuesByCardinality();
   }
 
+  /**
+   * Gets a mapping of cardinalities to example decimal values for the given locale.
+   * <p>
+   * The empty map will be returned if the locale is not supported or if no example values are available.
+   *
+   * @param locale the locale to use for lookup, not null
+   * @return a mapping of cardinalities to example decimal values, not null
+   */
   @Nonnull
   public static SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesForLocale(@Nonnull Locale locale) {
     requireNonNull(locale);
