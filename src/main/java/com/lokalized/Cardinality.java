@@ -515,7 +515,7 @@ public enum Cardinality implements LanguageForm {
     FAMILY_1(
         (n) -> {
           // n = 1
-          if (n.equals(BIG_DECIMAL_1))
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
@@ -611,7 +611,7 @@ public enum Cardinality implements LanguageForm {
           int v = NumberUtils.numberOfDecimalPlaces(n);
 
           // i = 1 and v = 0
-          if (i.equals(BIG_INTEGER_1) && v == 0)
+          if (equal(i, BIG_INTEGER_1) && v == 0)
             return ONE;
 
           return OTHER;
@@ -647,7 +647,7 @@ public enum Cardinality implements LanguageForm {
     FAMILY_4(
         (n) -> {
           // n = 0..1
-          if (n.compareTo(BIG_DECIMAL_0) >= 0 && n.compareTo(BIG_DECIMAL_1) <= 0)
+          if (inRange(n, BIG_DECIMAL_0, BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
@@ -685,7 +685,7 @@ public enum Cardinality implements LanguageForm {
           // i = 0 or n = 1
           BigInteger i = NumberUtils.integerComponent(n);
 
-          if (i.equals(BIG_INTEGER_0) || n.equals(BIG_DECIMAL_1))
+          if (equal(i, BIG_INTEGER_0) || equal(n, BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
@@ -722,10 +722,10 @@ public enum Cardinality implements LanguageForm {
     FAMILY_6(
         (n) -> {
           // n = 1
-          if (n.equals(BIG_DECIMAL_1))
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2
-          if (n.equals(BIG_DECIMAL_2))
+          if (equal(n, BIG_DECIMAL_2))
             return TWO;
 
           return OTHER;
@@ -762,15 +762,16 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11
-          if ((v == 0 && !i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
-              || (f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11)))
+          if ((v == 0 && equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_1) && notEqual(i.mod(BIG_INTEGER_100), BIG_INTEGER_11))
+              || (equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_1) && notEqual(f.mod(BIG_INTEGER_100), BIG_INTEGER_11)))
             return ONE;
           // v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14
           if ((v == 0
-              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
-              && !(i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
-              || (f.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0 && f.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
-              && !(f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0)))
+              && inRange(i.mod(BIG_INTEGER_10), BIG_INTEGER_2, BIG_INTEGER_4)
+              && notInRange(i.mod(BIG_INTEGER_100), BIG_INTEGER_12, BIG_INTEGER_14))
+              ||
+              (inRange(f.mod(BIG_INTEGER_10), BIG_INTEGER_2, BIG_INTEGER_4)
+                  && notInRange(f.mod(BIG_INTEGER_100), BIG_INTEGER_12, BIG_INTEGER_14)))
             return FEW;
 
           return OTHER;
@@ -807,7 +808,7 @@ public enum Cardinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // i = 0,1
-          if (i.equals(BIG_INTEGER_0) || i.equals(BIG_INTEGER_1))
+          if (equal(i, BIG_INTEGER_0) || equal(i, BIG_INTEGER_1))
             return ONE;
 
           return OTHER;
@@ -837,19 +838,19 @@ public enum Cardinality implements LanguageForm {
     FAMILY_9(
         (n) -> {
           // n = 0
-          if (n.equals(BIG_DECIMAL_0))
+          if (equal(n, BIG_DECIMAL_0))
             return ZERO;
           // n = 1
-          if (n.equals(BIG_DECIMAL_1))
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2
-          if (n.equals(BIG_DECIMAL_2))
+          if (equal(n, BIG_DECIMAL_2))
             return TWO;
           // n % 100 = 3..10
-          if (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_3) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_10) <= 0)
+          if (inRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_3, BIG_DECIMAL_10))
             return FEW;
           // n % 100 = 11..99
-          if (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_99) <= 0)
+          if (inRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11, BIG_DECIMAL_99))
             return MANY;
 
           return OTHER;
@@ -889,10 +890,10 @@ public enum Cardinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // i = 1 and v = 0
-          if (i.equals(BIG_INTEGER_1) && v == 0)
+          if (equal(i, BIG_INTEGER_1) && v == 0)
             return ONE;
           // i = 2..4 and v = 0
-          if (i.compareTo(BIG_INTEGER_2) >= 0 && i.compareTo(BIG_INTEGER_4) <= 0 && v == 0)
+          if (inRange(i, BIG_INTEGER_2, BIG_INTEGER_4) && v == 0)
             return FEW;
           // v != 0
           if (v != 0)
@@ -931,16 +932,16 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // v = 0 and i % 100 = 1 or f % 100 = 1
-          if ((v == 0 && i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_1))
-              || (f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_1)))
+          if ((v == 0 && equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_1))
+              || (equal(f.mod(BIG_INTEGER_100), BIG_INTEGER_1)))
             return ONE;
           // v = 0 and i % 100 = 2 or f % 100 = 2
-          if ((v == 0 && i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_2))
-              || (f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_2)))
+          if ((v == 0 && equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_2))
+              || equal(f.mod(BIG_INTEGER_100), BIG_INTEGER_2))
             return TWO;
           // v = 0 and i % 100 = 3..4 or f % 100 = 3..4
-          if ((v == 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_3) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_4) <= 0)
-              || (f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_3) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_4) <= 0))
+          if ((v == 0 && inRange(i.mod(BIG_INTEGER_100), BIG_INTEGER_3, BIG_INTEGER_4))
+              || inRange(f.mod(BIG_INTEGER_100), BIG_INTEGER_3, BIG_INTEGER_4))
             return FEW;
 
           return OTHER;
@@ -980,9 +981,9 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
-          if ((v == 0 && (i.equals(BIG_INTEGER_1) || i.equals(BIG_INTEGER_2) || i.equals(BIG_INTEGER_3)))
-              || (v == 0 && !(i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_4) || i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_5) || i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_6)))
-              || (v != 0 && !(f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_4) || f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_6) || f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_9))))
+          if ((v == 0 && (equal(i, BIG_INTEGER_1) || equal(i, BIG_INTEGER_2) || equal(i, BIG_INTEGER_3)))
+              || (v == 0 && !(equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_4) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_6) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_9)))
+              || (v != 0 && !(equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_4) || equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_6) || equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_9))))
             return ONE;
 
           return OTHER;
@@ -1015,14 +1016,14 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19
-          if (n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_0)
-              || (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_19) <= 0)
-              || (v == 2 && (f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_11) >= 0 && f.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_19) <= 0)))
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_0)
+              || inRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11, BIG_DECIMAL_19)
+              || (v == 2 && inRange(f.mod(BIG_INTEGER_100), BIG_INTEGER_11, BIG_INTEGER_19)))
             return ZERO;
           // n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1
-          if ((n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_1) && !n.remainder(BIG_DECIMAL_100).equals(BIG_DECIMAL_11))
-              || (v == 2 && f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !f.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
-              || (v != 2 && f.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1)))
+          if ((equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_1) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11))
+              || (v == 2 && equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_1) && notEqual(f.mod(BIG_INTEGER_100), BIG_INTEGER_11))
+              || (v != 2 && equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_1)))
             return ONE;
 
           return OTHER;
@@ -1057,12 +1058,12 @@ public enum Cardinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // i = 1 and v = 0
-          if (i.equals(BIG_INTEGER_1) && v == 0)
+          if (equal(i, BIG_INTEGER_1) && v == 0)
             return ONE;
           // v != 0 or n = 0 or n != 1 and n % 100 = 1..19
           if (v != 0
-              || n.equals(BIG_DECIMAL_0)
-              || (!n.equals(BIG_DECIMAL_1) && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_1) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_19) <= 0))
+              || equal(n, BIG_DECIMAL_0)
+              || (notEqual(n, BIG_DECIMAL_1) && inRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_1, BIG_DECIMAL_19)))
             return FEW;
 
           return OTHER;
@@ -1096,18 +1097,17 @@ public enum Cardinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // v = 0 and i % 10 = 1 and i % 100 != 11
-          if (v == 0 && i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_1) && !i.mod(BIG_INTEGER_100).equals(BIG_INTEGER_11))
+          if (v == 0 && equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_1) && notEqual(i.mod(BIG_INTEGER_100), BIG_INTEGER_11))
             return ONE;
           // v = 0 and i % 10 = 2..4 and i % 100 != 12..14
           if (v == 0
-              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_2) >= 0
-              && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_4) <= 0
-              && !(i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_12) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
+              && inRange(i.mod(BIG_INTEGER_10), BIG_INTEGER_2, BIG_INTEGER_4)
+              && notInRange(i.mod(BIG_INTEGER_100), BIG_INTEGER_12, BIG_INTEGER_14))
             return FEW;
           // v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14
-          if ((v == 0 && i.mod(BIG_INTEGER_10).equals(BIG_INTEGER_0))
-              || (v == 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_5) >= 0 && i.mod(BIG_INTEGER_10).compareTo(BIG_INTEGER_9) <= 0)
-              || (v == 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_11) >= 0 && i.mod(BIG_INTEGER_100).compareTo(BIG_INTEGER_14) <= 0))
+          if ((v == 0 && equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_0))
+              || (v == 0 && inRange(i.mod(BIG_INTEGER_10), BIG_INTEGER_5, BIG_INTEGER_9))
+              || (v == 0 && inRange(i.mod(BIG_INTEGER_100), BIG_INTEGER_11, BIG_INTEGER_14)))
             return MANY;
 
           return OTHER;
