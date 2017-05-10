@@ -147,4 +147,192 @@ class NumberUtils {
 
     return new BigDecimal(String.valueOf(number.doubleValue())).stripTrailingZeros();
   }
+
+  /**
+   * Are the given numbers equal?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the numbers are equal, not null
+   */
+  @Nonnull
+  static Boolean equal(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) == 0;
+  }
+
+  /**
+   * Are the given numbers not equal?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the numbers are not equal, not null
+   */
+  @Nonnull
+  static Boolean notEqual(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) != 0;
+  }
+
+  /**
+   * Is the first number less than the second number?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the first number is less than the second number, not null
+   */
+  @Nonnull
+  static Boolean lessThan(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) < 0;
+  }
+
+  /**
+   * Is the first number greater than the second number?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the first number is greater than the second number, not null
+   */
+  @Nonnull
+  static Boolean greaterThan(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) > 0;
+  }
+
+  /**
+   * Does the given number fall within the range defined by its minimum and maximum (inclusive)?
+   *
+   * @param number  the number to compare, not null
+   * @param minimum the low end of the range (inclusive), not null
+   * @param maximum the high end of the range (inclusive), not null
+   * @return true if the number falls within the range, not null
+   */
+  @Nonnull
+  static Boolean inRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
+    requireNonNull(number);
+    requireNonNull(minimum);
+    requireNonNull(maximum);
+
+    return number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0;
+  }
+
+  /**
+   * Does the given number not fall within the range defined by its minimum and maximum (inclusive)?
+   *
+   * @param number  the number to compare, not null
+   * @param minimum the low end of the range (inclusive), not null
+   * @param maximum the high end of the range (inclusive), not null
+   * @return true if the number falls within the range, not null
+   */
+  @Nonnull
+  static Boolean notInRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
+    requireNonNull(number);
+    requireNonNull(minimum);
+    requireNonNull(maximum);
+
+    return !(number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0);
+  }
+
+  /**
+   * Are the given numbers equal?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the numbers are equal, not null
+   */
+  @Nonnull
+  static Boolean equal(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) == 0;
+  }
+
+  /**
+   * Are the given numbers not equal?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the numbers are not equal, not null
+   */
+  @Nonnull
+  static Boolean notEqual(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) != 0;
+  }
+
+  /**
+   * Is the first number less than the second number?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the first number is less than the second number, not null
+   */
+  @Nonnull
+  static Boolean lessThan(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) < 0;
+  }
+
+  /**
+   * Is the first number greater than the second number?
+   *
+   * @param number1 the first number to compare, not null
+   * @param number2 the second number to compare, not null
+   * @return true if the first number is greater than the second number, not null
+   */
+  @Nonnull
+  static Boolean greaterThan(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+    requireNonNull(number1);
+    requireNonNull(number2);
+
+    return number1.compareTo(number2) > 0;
+  }
+
+  /**
+   * Does the given number fall within the range defined by its minimum and maximum (inclusive)?
+   *
+   * @param number  the number to compare, not null
+   * @param minimum the low end of the range (inclusive), not null
+   * @param maximum the high end of the range (inclusive), not null
+   * @return true if the number falls within the range, not null
+   */
+  @Nonnull
+  static Boolean inRange(@Nonnull BigInteger number, @Nonnull BigInteger minimum, @Nonnull BigInteger maximum) {
+    requireNonNull(number);
+    requireNonNull(minimum);
+    requireNonNull(maximum);
+
+    return number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0;
+  }
+
+  /**
+   * Does the given number not fall within the range defined by its minimum and maximum (inclusive)?
+   *
+   * @param number  the number to compare, not null
+   * @param minimum the low end of the range (inclusive), not null
+   * @param maximum the high end of the range (inclusive), not null
+   * @return true if the number falls within the range, not null
+   */
+  @Nonnull
+  static Boolean notInRange(@Nonnull BigInteger number, @Nonnull BigInteger minimum, @Nonnull BigInteger maximum) {
+    requireNonNull(number);
+    requireNonNull(minimum);
+    requireNonNull(maximum);
+
+    return !(number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0);
+  }
 }

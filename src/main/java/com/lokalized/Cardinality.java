@@ -35,6 +35,10 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lokalized.NumberUtils.equal;
+import static com.lokalized.NumberUtils.inRange;
+import static com.lokalized.NumberUtils.notEqual;
+import static com.lokalized.NumberUtils.notInRange;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -1134,16 +1138,16 @@ public enum Cardinality implements LanguageForm {
     FAMILY_16(
         (n) -> {
           // n % 10 = 1 and n % 100 != 11
-          if (n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_1) && !n.remainder(BIG_DECIMAL_100).equals(BIG_DECIMAL_11))
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_1) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11))
             return ONE;
           // n % 10 = 2..4 and n % 100 != 12..14
-          if (n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_2) >= 0 && n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_4) <= 0
-              && !(n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_12) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_14) <= 0))
+          if (inRange(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_2, BIG_DECIMAL_4)
+              && notInRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_12, BIG_DECIMAL_14))
             return FEW;
           // n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14
-          if (n.remainder(BIG_DECIMAL_10).equals(BIG_DECIMAL_0)
-              || (n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_5) >= 0 && n.remainder(BIG_DECIMAL_10).compareTo(BIG_DECIMAL_9) <= 0)
-              || (n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_11) >= 0 && n.remainder(BIG_DECIMAL_100).compareTo(BIG_DECIMAL_14) <= 0))
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_0)
+              || inRange(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_5, BIG_DECIMAL_9)
+              || inRange(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11, BIG_DECIMAL_14))
             return MANY;
 
           return OTHER;
