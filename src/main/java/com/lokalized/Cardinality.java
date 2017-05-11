@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.Collator;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -320,6 +321,8 @@ public enum Cardinality implements LanguageForm {
    * Gets the set of cardinalities supported for the given locale.
    * <p>
    * The empty set will be returned if the locale is not supported.
+   * <p>
+   * The set's values are sorted by the natural ordering of the {@link Cardinality} enumeration.
    *
    * @param locale the locale to use for lookup, not null
    * @return the cardinalities supported by the given locale, not null
@@ -336,6 +339,8 @@ public enum Cardinality implements LanguageForm {
    * Gets a mapping of cardinalities to example integer values for the given locale.
    * <p>
    * The empty map will be returned if the locale is not supported or if no example values are available.
+   * <p>
+   * The map's keys are sorted by the natural ordering of the {@link Cardinality} enumeration.
    *
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example integer values, not null
@@ -352,6 +357,8 @@ public enum Cardinality implements LanguageForm {
    * Gets a mapping of cardinalities to example decimal values for the given locale.
    * <p>
    * The empty map will be returned if the locale is not supported or if no example values are available.
+   * <p>
+   * The map's keys are sorted by the natural ordering of the {@link Cardinality} enumeration.
    *
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example decimal values, not null
@@ -366,6 +373,8 @@ public enum Cardinality implements LanguageForm {
 
   /**
    * Gets the ISO 639 language codes for which cardinality operations are supported.
+   * <p>
+   * The set's values are ISO 639 codes and therefore sorted using English collation.
    *
    * @return the ISO 639 language codes for which cardinality operations are supported, not null
    */
@@ -2128,29 +2137,76 @@ public enum Cardinality implements LanguageForm {
         put("zu", CardinalityFamily.FAMILY_5); // Zulu
       }});
 
-      SUPPORTED_LANGUAGE_CODES = Collections.unmodifiableSortedSet(new TreeSet<>(CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.keySet()));
+      // Language codes are in English - force collation for sorting
+      SortedSet<String> supportedLanguageCodes = new TreeSet<>(Collator.getInstance(Locale.ENGLISH));
+      supportedLanguageCodes.addAll(CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.keySet());
+
+      SUPPORTED_LANGUAGE_CODES = Collections.unmodifiableSortedSet(supportedLanguageCodes);
     }
 
+    /**
+     * Gets the cardinality-determining function for this cardinality family.
+     * <p>
+     * The function takes a numeric value as input and returns the appropriate cardinal form.
+     * <p>
+     * The function's input must not be null and its output is guaranteed non-null.
+     *
+     * @return the cardinality-determining function for this cardinality family, not null
+     */
     @Nonnull
     public Function<BigDecimal, Cardinality> getCardinalityFunction() {
       return cardinalityFunction;
     }
 
+    /**
+     * Gets the cardinalities supported by this cardinality family.
+     * <p>
+     * There will always be at least one value - {@link Cardinality#OTHER} - in the set.
+     * <p>
+     * The set's values are sorted by the natural ordering of the {@link Cardinality} enumeration.
+     *
+     * @return the cardinalities supported by this cardinality family, not null
+     */
     @Nonnull
     SortedSet<Cardinality> getSupportedCardinalities() {
       return supportedCardinalities;
     }
 
+    /**
+     * Gets a mapping of cardinalities to example integer values for this cardinality family.
+     * <p>
+     * The map may be empty.
+     * <p>
+     * The map's keys are sorted by the natural ordering of the {@link Cardinality} enumeration.
+     *
+     * @return a mapping of cardinalities to example integer values, not null
+     */
     @Nonnull
     SortedMap<Cardinality, Range<Integer>> getExampleIntegerValuesByCardinality() {
       return exampleIntegerValuesByCardinality;
     }
 
+    /**
+     * Gets a mapping of cardinalities to example decimal values for this cardinality family.
+     * <p>
+     * The map may be empty.
+     * <p>
+     * The map's keys are sorted by the natural ordering of the {@link Cardinality} enumeration.
+     *
+     * @return a mapping of cardinalities to example decimal values, not null
+     */
     @Nonnull
     SortedMap<Cardinality, Range<BigDecimal>> getExampleDecimalValuesByCardinality() {
       return exampleDecimalValuesByCardinality;
     }
 
+    /**
+     * Gets the ISO 639 language codes for which cardinality operations are supported.
+     * <p>
+     * The set's values are ISO 639 codes and therefore sorted using English collation.
+     *
+     * @return the ISO 639 language codes for which cardinality operations are supported, not null
+     */
     @Nonnull
     static SortedSet<String> getSupportedLanguageCodes() {
       return SUPPORTED_LANGUAGE_CODES;
