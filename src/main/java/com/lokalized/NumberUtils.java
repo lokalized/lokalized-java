@@ -21,6 +21,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -210,17 +211,32 @@ class NumberUtils {
 
   /**
    * Does the given number fall within the range defined by its minimum and maximum (inclusive)?
+   * <p>
+   * <strong>Note:</strong> the scale of the number must match the scale of the range.  That is, a range with minimum {@code 2}
+   * and maximum of {@code 5} would contain {@code 3} but <strong>not</strong> {@code 3.5}.
    *
    * @param number  the number to compare, not null
    * @param minimum the low end of the range (inclusive), not null
    * @param maximum the high end of the range (inclusive), not null
    * @return true if the number falls within the range, not null
+   * @throws IllegalArgumentException if the minimum and maximum values have mismatched scales
    */
   @Nonnull
   static Boolean inRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
     requireNonNull(number);
     requireNonNull(minimum);
     requireNonNull(maximum);
+
+    int minimumScale = normalizedScale(minimum);
+    int maximumScale = normalizedScale(maximum);
+
+    if (minimumScale != maximumScale)
+      throw new IllegalArgumentException(format("Minimum scale %d does not match maximum scale %d", minimumScale, maximumScale));
+
+    int numberScale = normalizedScale(number);
+
+    if (numberScale != minimumScale)
+      return false;
 
     return number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0;
   }
