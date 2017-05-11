@@ -38,7 +38,7 @@ import static java.util.Objects.requireNonNull;
  * Instead, you might supply a small representative range of values and specify the range is "infinite"
  * if it is understood that the value pattern repeats indefinitely.
  * <p>
- * For example, you might generate an infinite powers-of-ten range with the 4 values {@code 1, 10, 100, 1000}.
+ * For example, you might generate an infinite powers-of-ten range with the 4 values {@code 1, 10, 100, 1_000}.
  * <p>
  * Ranges are constructed via static methods.
  * <p>
