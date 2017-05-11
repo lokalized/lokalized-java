@@ -20,6 +20,7 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.math.BigDecimal;
 import java.util.Locale;
 import java.util.Map.Entry;
 
@@ -57,6 +58,24 @@ public class CardinalityTests {
           Cardinality calculatedCardinality = Cardinality.forNumber(integer, locale);
           Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
               locale.toLanguageTag(), integer, integers), cardinality, calculatedCardinality);
+        }
+      }
+    }
+  }
+
+  @Test
+  public void exampleDecimalValues() {
+    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
+      Locale locale = Locale.forLanguageTag(languageCode);
+
+      for (Entry<Cardinality, Range<BigDecimal>> entry : Cardinality.exampleDecimalValuesForLocale(locale).entrySet()) {
+        Cardinality cardinality = entry.getKey();
+        Range<BigDecimal> bigDecimals = entry.getValue();
+
+        for (BigDecimal bigDecimal : bigDecimals) {
+          Cardinality calculatedCardinality = Cardinality.forNumber(bigDecimal, locale);
+          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), bigDecimal, bigDecimals), cardinality, calculatedCardinality);
         }
       }
     }
