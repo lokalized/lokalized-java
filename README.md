@@ -487,14 +487,15 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 ##### English
 
-* `CARDINALITY_ONE`: Matches 1 (e.g. `1 book`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `256 books`)
+* `CARDINALITY_ONE`: Matches 1 (e.g. `1 dollar`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `256 dollars`)
 
 ##### Russian
 
-* `CARDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1 книга` or `171 книга`)
-* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 книг` or `53 книг`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `27 книги`, `1,5 книги`)
+* `CARDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1 рубль` or `51 рубль`)
+* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 рубля` or `53 рубля`)
+* `CARDINALITY_MANY`: Matches 0, 5-20, 25-30, 45-50, ... (e.g. `5 рублей` or `17 рублей`)
+* `CARDINALITY_OTHER`: Everything else (e.g. `0,3 руб`, `1,5 руб`)
 
 #### Ordinals
 
