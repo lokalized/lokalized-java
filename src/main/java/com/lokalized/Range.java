@@ -44,8 +44,8 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * Examples:
  * <ul>
- * <li>{@code Range.ofFiniteValues(1, 10, 12)}</li>
- * <li>{@code Range.ofInfiniteValues(1, 2, 3, 4, 5, 6)}</li>
+ * <li>{@code Range.ofFiniteValues("a", "b", "c")}</li>
+ * <li>{@code Range.ofInfiniteValues(1, 10, 100, 1_000, 10_000)}</li>
  * <li>{@code Range.emptyFiniteRange()}</li>
  * <li>{@code Range.emptyInfiniteRange()}</li>
  * </ul>
