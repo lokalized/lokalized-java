@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -371,7 +370,7 @@ public enum Cardinality implements LanguageForm {
    * @return the ISO 639 language codes for which cardinality operations are supported, not null
    */
   @Nonnull
-  public static Set<String> getSupportedLanguageCodes() {
+  public static SortedSet<String> getSupportedLanguageCodes() {
     return CardinalityFamily.getSupportedLanguageCodes();
   }
 
