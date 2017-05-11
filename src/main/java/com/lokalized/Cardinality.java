@@ -1920,6 +1920,14 @@ public enum Cardinality implements LanguageForm {
     @Nonnull
     private final SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality;
 
+    /**
+     * Constructs a cardinality family.
+     *
+     * @param cardinalityFunction               the cardinality-determining function for this cardinality family, not null
+     * @param supportedCardinalities            the cardinalities supported by this family sorted by the natural ordering of {@link Cardinality}, not null
+     * @param exampleIntegerValuesByCardinality a mapping of cardinalities to example integer values for this cardinality family sorted by the natural ordering of {@link Cardinality}, not null
+     * @param exampleDecimalValuesByCardinality a mapping of cardinalities to example decimal values for this cardinality family sorted by the natural ordering of {@link Cardinality}, not null
+     */
     CardinalityFamily(@Nonnull Function<BigDecimal, Cardinality> cardinalityFunction,
                       @Nonnull SortedSet<Cardinality> supportedCardinalities,
                       @Nonnull SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality,
