@@ -643,7 +643,7 @@ public enum Cardinality implements LanguageForm {
      * <ul>
      * <li>Akan (ak)</li>
      * <li>Bihari (bh)</li>
-     * <li>Gurenɛ (guw)</li>
+     * <li>Gun (guw)</li>
      * <li>Lingala (ln)</li>
      * <li>Malagasy (mg)</li>
      * <li>Northern Sotho (nso)</li>
@@ -1997,7 +1997,7 @@ public enum Cardinality implements LanguageForm {
         put("gl", CardinalityFamily.FAMILY_3); // Galician
         put("gsw", CardinalityFamily.FAMILY_1); // Swiss German
         put("gu", CardinalityFamily.FAMILY_5); // Gujarati
-        put("guw", CardinalityFamily.FAMILY_4); // Gurenɛ
+        put("guw", CardinalityFamily.FAMILY_4); // Gun
         put("gv", CardinalityFamily.FAMILY_22); // Manx
         put("ha", CardinalityFamily.FAMILY_1); // Hausa
         put("haw", CardinalityFamily.FAMILY_1); // Hawaiian
