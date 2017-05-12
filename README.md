@@ -158,7 +158,7 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
-// That is, it understands the 3 means CARDINALITY_OTHER ("books") in English
+// That is, it understands that 3 means CARDINALITY_OTHER ("books") in English
 String translation = strings.get("I read {{bookCount}} books.",
   new HashMap<String, Object>() {{
     put("bookCount", 3);
@@ -205,7 +205,7 @@ This English statement has 4 variants:
 * `He was the best baseball player.`
 * `She was the best baseball player.`
 
-In Spanish, we have the same number of variants (in a language like Russian or Polish there would be more!)
+In Spanish, we have the same number of variants (in a language like Russian or Arabic there would be more!)
 But notice how the statements must change to match gender - `uno` becomes `una`, `jugadores` becomes `jugadoras`, etc.
 
 * `Fue uno de los X mejores jugadores de béisbol.`
@@ -677,7 +677,7 @@ For example: `"screen.profile.books-read"`
 
 #### Or - Mix Both!
 
-It's possible to cherrypick and create a hybrid solution.  For example, you might mostly use natural language keys but switch to contextual for legalese and other special cases.
+It's possible to cherrypick and create a hybrid solution.  For example, you might use natural language keys in most cases but switch to contextual for legalese and other special cases.
 
 ## java.util.logging
 
