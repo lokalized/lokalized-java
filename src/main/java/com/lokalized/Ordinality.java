@@ -117,7 +117,7 @@ public enum Ordinality implements LanguageForm {
   @Nonnull
   private static final BigInteger BIG_INTEGER_7;
   @Nonnull
-  private static final BigInteger BIG_INTEGER_9;
+  private static final BigInteger BIG_INTEGER_8;
   @Nonnull
   private static final BigInteger BIG_INTEGER_10;
   @Nonnull
@@ -188,7 +188,7 @@ public enum Ordinality implements LanguageForm {
     BIG_INTEGER_5 = BigInteger.valueOf(5);
     BIG_INTEGER_6 = BigInteger.valueOf(6);
     BIG_INTEGER_7 = BigInteger.valueOf(7);
-    BIG_INTEGER_9 = BigInteger.valueOf(9);
+    BIG_INTEGER_8 = BigInteger.valueOf(8);
     BIG_INTEGER_10 = BigInteger.TEN;
     BIG_INTEGER_20 = BigInteger.valueOf(20);
     BIG_INTEGER_40 = BigInteger.valueOf(40);
