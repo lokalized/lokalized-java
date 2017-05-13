@@ -20,6 +20,7 @@ import com.lokalized.Maps.MapEntry;
 
 import javax.annotation.Nonnull;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.text.Collator;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static com.lokalized.NumberUtils.equal;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -99,9 +101,124 @@ public enum Ordinality implements LanguageForm {
   OTHER;
 
   @Nonnull
+  private static final BigInteger BIG_INTEGER_0;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_1;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_2;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_3;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_4;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_5;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_6;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_7;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_9;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_10;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_20;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_40;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_50;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_60;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_70;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_80;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_90;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_100;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_200;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_300;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_400;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_500;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_600;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_700;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_800;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_900;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_1_000;
+
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_1;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_2;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_3;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_4;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_5;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_6;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_7;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_8;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_9;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_10;
+
+  @Nonnull
   static final Map<String, Ordinality> ORDINALITIES_BY_NAME;
 
   static {
+    BIG_INTEGER_0 = BigInteger.ZERO;
+    BIG_INTEGER_1 = BigInteger.ONE;
+    BIG_INTEGER_2 = BigInteger.valueOf(2);
+    BIG_INTEGER_3 = BigInteger.valueOf(3);
+    BIG_INTEGER_4 = BigInteger.valueOf(4);
+    BIG_INTEGER_5 = BigInteger.valueOf(5);
+    BIG_INTEGER_6 = BigInteger.valueOf(6);
+    BIG_INTEGER_7 = BigInteger.valueOf(7);
+    BIG_INTEGER_9 = BigInteger.valueOf(9);
+    BIG_INTEGER_10 = BigInteger.TEN;
+    BIG_INTEGER_20 = BigInteger.valueOf(20);
+    BIG_INTEGER_40 = BigInteger.valueOf(40);
+    BIG_INTEGER_50 = BigInteger.valueOf(50);
+    BIG_INTEGER_60 = BigInteger.valueOf(60);
+    BIG_INTEGER_70 = BigInteger.valueOf(70);
+    BIG_INTEGER_80 = BigInteger.valueOf(80);
+    BIG_INTEGER_90 = BigInteger.valueOf(90);
+    BIG_INTEGER_100 = BigInteger.valueOf(100);
+    BIG_INTEGER_200 = BigInteger.valueOf(200);
+    BIG_INTEGER_300 = BigInteger.valueOf(300);
+    BIG_INTEGER_400 = BigInteger.valueOf(400);
+    BIG_INTEGER_500 = BigInteger.valueOf(500);
+    BIG_INTEGER_600 = BigInteger.valueOf(600);
+    BIG_INTEGER_700 = BigInteger.valueOf(700);
+    BIG_INTEGER_800 = BigInteger.valueOf(800);
+    BIG_INTEGER_900 = BigInteger.valueOf(900);
+    BIG_INTEGER_1_000 = BigInteger.valueOf(1_000);
+
+    BIG_DECIMAL_1 = BigDecimal.ONE;
+    BIG_DECIMAL_2 = BigDecimal.valueOf(2);
+    BIG_DECIMAL_3 = BigDecimal.valueOf(3);
+    BIG_DECIMAL_4 = BigDecimal.valueOf(4);
+    BIG_DECIMAL_5 = BigDecimal.valueOf(5);
+    BIG_DECIMAL_6 = BigDecimal.valueOf(6);
+    BIG_DECIMAL_7 = BigDecimal.valueOf(7);
+    BIG_DECIMAL_8 = BigDecimal.valueOf(8);
+    BIG_DECIMAL_9 = BigDecimal.valueOf(9);
+    BIG_DECIMAL_10 = BigDecimal.TEN;
+
     ORDINALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
         Ordinality.values()).collect(Collectors.toMap(ordinality -> ordinality.name(), ordinality -> ordinality)));
   }
@@ -407,7 +524,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_2(
         (n) -> {
           // n = 1
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
 
           return OTHER;
@@ -433,16 +550,16 @@ public enum Ordinality implements LanguageForm {
     FAMILY_3(
         (n) -> {
           // n = 1,5,7,8,9,10
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1) || equal(n, BIG_DECIMAL_5) || equal(n, BIG_DECIMAL_7) || equal(n, BIG_DECIMAL_8) || equal(n, BIG_DECIMAL_9) || equal(n, BIG_DECIMAL_10))
             return ONE;
           // n = 2,3
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_2) || equal(n, BIG_DECIMAL_3))
             return TWO;
           // n = 4
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_4))
             return FEW;
           // n = 6
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_6))
             return MANY;
 
           return OTHER;
@@ -474,16 +591,16 @@ public enum Ordinality implements LanguageForm {
     FAMILY_4(
         (n) -> {
           // n = 1
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2,3
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_2) || equal(n, BIG_DECIMAL_3))
             return TWO;
           // n = 4
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_4))
             return FEW;
           // n = 6
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_6))
             return MANY;
 
           return OTHER;
@@ -513,14 +630,20 @@ public enum Ordinality implements LanguageForm {
      */
     FAMILY_5(
         (n) -> {
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i % 10 = 1,2,5,7,8 or i % 100 = 20,50,70,80
-          if (false /* TODO */)
+          if ((equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_1) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_2) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_5) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_7) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_8))
+              || (equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_20) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_50) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_70) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_80)))
             return ONE;
           // i % 10 = 3,4 or i % 1000 = 100,200,300,400,500,600,700,800,900
-          if (false /* TODO */)
+          if ((equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_3) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_4))
+              || (equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_100) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_200) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_300) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_400) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_500) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_600) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_700) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_800) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_900)))
             return FEW;
           // i = 0 or i % 10 = 6 or i % 100 = 40,60,90
-          if (false /* TODO */)
+          if (equal(i, BIG_INTEGER_0)
+              || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_6)
+              || (equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_40) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_60) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_90)))
             return MANY;
 
           return OTHER;
