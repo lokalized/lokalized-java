@@ -37,8 +37,10 @@ import java.util.stream.Collectors;
 
 import static com.lokalized.NumberUtils.equal;
 import static com.lokalized.NumberUtils.inRange;
+import static com.lokalized.NumberUtils.inSet;
 import static com.lokalized.NumberUtils.notEqual;
 import static com.lokalized.NumberUtils.notInRange;
+import static com.lokalized.NumberUtils.notInSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -816,7 +818,7 @@ public enum Cardinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // i = 0,1
-          if (equal(i, BIG_INTEGER_0) || equal(i, BIG_INTEGER_1))
+          if (inSet(i, BIG_INTEGER_0, BIG_INTEGER_1))
             return ONE;
 
           return OTHER;
@@ -989,9 +991,9 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9
-          if ((v == 0 && (equal(i, BIG_INTEGER_1) || equal(i, BIG_INTEGER_2) || equal(i, BIG_INTEGER_3)))
-              || (v == 0 && !(equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_4) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_6) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_9)))
-              || (v != 0 && !(equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_4) || equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_6) || equal(f.mod(BIG_INTEGER_10), BIG_INTEGER_9))))
+          if ((v == 0 && inSet(i, BIG_INTEGER_1, BIG_INTEGER_2, BIG_INTEGER_3))
+              || (v == 0 && notInSet(i.mod(BIG_INTEGER_10), BIG_INTEGER_4, BIG_INTEGER_6, BIG_INTEGER_9))
+              || (v != 0 && notInSet(f.mod(BIG_INTEGER_10), BIG_INTEGER_4, BIG_INTEGER_6, BIG_INTEGER_9)))
             return ONE;
 
           return OTHER;
@@ -1187,11 +1189,11 @@ public enum Cardinality implements LanguageForm {
         (n) -> {
           // n % 10 = 1 and n % 100 != 11,71,91
           if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_1)
-              && !(equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11) || equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_71) || equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_91)))
+              && notInSet(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11, BIG_DECIMAL_71, BIG_DECIMAL_91))
             return ONE;
           // n % 10 = 2 and n % 100 != 12,72,92
           if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_2)
-              && !(equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_12) || equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_72) || equal(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_92)))
+              && notInSet(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_12, BIG_DECIMAL_72, BIG_DECIMAL_92))
             return TWO;
           // n % 10 = 3..4,9 and n % 100 != 10..19,70..79,90..99
           if ((inRange(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_3, BIG_DECIMAL_4) || equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_9))
@@ -1285,7 +1287,7 @@ public enum Cardinality implements LanguageForm {
           BigInteger t = NumberUtils.fractionalComponent(n.stripTrailingZeros());
 
           // n = 1 or t != 0 and i = 0,1
-          if (equal(n, BIG_DECIMAL_1) || (notEqual(t, BIG_INTEGER_0) && (equal(i, BIG_INTEGER_0) || equal(i, BIG_INTEGER_1))))
+          if (equal(n, BIG_DECIMAL_1) || (notEqual(t, BIG_INTEGER_0) && inSet(i, BIG_INTEGER_0, BIG_INTEGER_1)))
             return ONE;
 
           return OTHER;
@@ -1357,10 +1359,10 @@ public enum Cardinality implements LanguageForm {
     FAMILY_21(
         (n) -> {
           // n = 1,11
-          if (equal(n, BIG_DECIMAL_1) || equal(n, BIG_DECIMAL_11))
+          if (inSet(n, BIG_DECIMAL_1, BIG_DECIMAL_11))
             return ONE;
           // n = 2,12
-          if (equal(n, BIG_DECIMAL_2) || equal(n, BIG_DECIMAL_12))
+          if (inSet(n, BIG_DECIMAL_2, BIG_DECIMAL_12))
             return TWO;
           // n = 3..10,13..19
           if (inRange(n, BIG_DECIMAL_3, BIG_DECIMAL_10) || inRange(n, BIG_DECIMAL_13, BIG_DECIMAL_19))
@@ -1404,12 +1406,7 @@ public enum Cardinality implements LanguageForm {
           if (v == 0 && equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_2))
             return TWO;
           // v = 0 and i % 100 = 0,20,40,60,80
-          if (v == 0
-              && (equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_0)
-              || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_20))
-              || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_40)
-              || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_60)
-              || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_80))
+          if (v == 0 && inSet(i.mod(BIG_INTEGER_100), BIG_INTEGER_0, BIG_INTEGER_20, BIG_INTEGER_40, BIG_INTEGER_60, BIG_INTEGER_80))
             return FEW;
           // v != 0
           if (v != 0)
@@ -1558,7 +1555,7 @@ public enum Cardinality implements LanguageForm {
           if (equal(n, BIG_DECIMAL_0))
             return ZERO;
           // i = 0,1 and n != 0
-          if ((equal(i, BIG_INTEGER_0) || equal(i, BIG_INTEGER_1)) && notEqual(n, BIG_DECIMAL_0))
+          if (inSet(i, BIG_INTEGER_0, BIG_INTEGER_1) && notEqual(n, BIG_DECIMAL_0))
             return ONE;
 
           return OTHER;
@@ -1816,7 +1813,7 @@ public enum Cardinality implements LanguageForm {
           BigInteger f = NumberUtils.fractionalComponent(n);
 
           // n = 0,1 or i = 0 and f = 1
-          if ((equal(n, BIG_DECIMAL_0) || equal(n, BIG_DECIMAL_1))
+          if (inSet(n, BIG_DECIMAL_0, BIG_DECIMAL_1)
               || (equal(i, BIG_INTEGER_0) && equal(f, BIG_INTEGER_1)))
             return ONE;
 
