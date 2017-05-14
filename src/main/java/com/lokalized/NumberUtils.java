@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -173,10 +174,7 @@ class NumberUtils {
    */
   @Nonnull
   static Boolean notEqual(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
-    requireNonNull(number1);
-    requireNonNull(number2);
-
-    return number1.compareTo(number2) != 0;
+    return !equal(number1, number2);
   }
 
   /**
@@ -251,11 +249,40 @@ class NumberUtils {
    */
   @Nonnull
   static Boolean notInRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
-    requireNonNull(number);
-    requireNonNull(minimum);
-    requireNonNull(maximum);
+    return !inRange(number, minimum, maximum);
+  }
 
-    return !(number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0);
+  /**
+   * Is the given number in the set of values?
+   *
+   * @param number the number to compare, not null
+   * @param values the set of values against which to check, may be null
+   * @return true if the number is in the set of values
+   */
+  @Nonnull
+  static Boolean inSet(@Nonnull BigDecimal number, @Nullable BigDecimal... values) {
+    requireNonNull(number);
+
+    if (values == null || values.length == 0)
+      return false;
+
+    for (BigDecimal value : values)
+      if (equal(number, value))
+        return true;
+
+    return false;
+  }
+
+  /**
+   * Is the given number not in the set of values?
+   *
+   * @param number the number to compare, not null
+   * @param values the set of values against which to check, may be null
+   * @return true if the number is not in the set of values
+   */
+  @Nonnull
+  static Boolean notInSet(@Nonnull BigDecimal number, @Nullable BigDecimal... values) {
+    return !inSet(number, values);
   }
 
   /**
@@ -282,10 +309,7 @@ class NumberUtils {
    */
   @Nonnull
   static Boolean notEqual(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
-    requireNonNull(number1);
-    requireNonNull(number2);
-
-    return number1.compareTo(number2) != 0;
+    return !equal(number1, number2);
   }
 
   /**
@@ -345,11 +369,40 @@ class NumberUtils {
    */
   @Nonnull
   static Boolean notInRange(@Nonnull BigInteger number, @Nonnull BigInteger minimum, @Nonnull BigInteger maximum) {
-    requireNonNull(number);
-    requireNonNull(minimum);
-    requireNonNull(maximum);
+    return !inRange(number, minimum, maximum);
+  }
 
-    return !(number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0);
+  /**
+   * Is the given number in the set of values?
+   *
+   * @param number the number to compare, not null
+   * @param values the set of values against which to check, may be null
+   * @return true if the number is in the set of values
+   */
+  @Nonnull
+  static Boolean inSet(@Nonnull BigInteger number, @Nullable BigInteger... values) {
+    requireNonNull(number);
+
+    if (values == null || values.length == 0)
+      return false;
+
+    for (BigInteger value : values)
+      if (equal(number, value))
+        return true;
+
+    return false;
+  }
+
+  /**
+   * Is the given number not in the set of values?
+   *
+   * @param number the number to compare, not null
+   * @param values the set of values against which to check, may be null
+   * @return true if the number is not in the set of values
+   */
+  @Nonnull
+  static Boolean notInSet(@Nonnull BigInteger number, @Nullable BigInteger... values) {
+    return !inSet(number, values);
   }
 
   /**

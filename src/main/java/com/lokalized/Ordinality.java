@@ -35,6 +35,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lokalized.NumberUtils.equal;
+import static com.lokalized.NumberUtils.inSet;
+import static com.lokalized.NumberUtils.notEqual;
+import static com.lokalized.NumberUtils.notInSet;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -156,6 +159,8 @@ public enum Ordinality implements LanguageForm {
   private static final BigInteger BIG_INTEGER_1_000;
 
   @Nonnull
+  private static final BigDecimal BIG_DECIMAL_0;
+  @Nonnull
   private static final BigDecimal BIG_DECIMAL_1;
   @Nonnull
   private static final BigDecimal BIG_DECIMAL_2;
@@ -175,6 +180,14 @@ public enum Ordinality implements LanguageForm {
   private static final BigDecimal BIG_DECIMAL_9;
   @Nonnull
   private static final BigDecimal BIG_DECIMAL_10;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_11;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_12;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_13;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_100;
 
   @Nonnull
   static final Map<String, Ordinality> ORDINALITIES_BY_NAME;
@@ -208,6 +221,7 @@ public enum Ordinality implements LanguageForm {
     BIG_INTEGER_900 = BigInteger.valueOf(900);
     BIG_INTEGER_1_000 = BigInteger.valueOf(1_000);
 
+    BIG_DECIMAL_0 = BigDecimal.ZERO;
     BIG_DECIMAL_1 = BigDecimal.ONE;
     BIG_DECIMAL_2 = BigDecimal.valueOf(2);
     BIG_DECIMAL_3 = BigDecimal.valueOf(3);
@@ -218,6 +232,10 @@ public enum Ordinality implements LanguageForm {
     BIG_DECIMAL_8 = BigDecimal.valueOf(8);
     BIG_DECIMAL_9 = BigDecimal.valueOf(9);
     BIG_DECIMAL_10 = BigDecimal.TEN;
+    BIG_DECIMAL_11 = BigDecimal.valueOf(11);
+    BIG_DECIMAL_12 = BigDecimal.valueOf(12);
+    BIG_DECIMAL_13 = BigDecimal.valueOf(13);
+    BIG_DECIMAL_100 = BigDecimal.valueOf(100);
 
     ORDINALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
         Ordinality.values()).collect(Collectors.toMap(ordinality -> ordinality.name(), ordinality -> ordinality)));
@@ -550,10 +568,10 @@ public enum Ordinality implements LanguageForm {
     FAMILY_3(
         (n) -> {
           // n = 1,5,7,8,9,10
-          if (equal(n, BIG_DECIMAL_1) || equal(n, BIG_DECIMAL_5) || equal(n, BIG_DECIMAL_7) || equal(n, BIG_DECIMAL_8) || equal(n, BIG_DECIMAL_9) || equal(n, BIG_DECIMAL_10))
+          if (inSet(n, BIG_DECIMAL_1, BIG_DECIMAL_5, BIG_DECIMAL_7, BIG_DECIMAL_8, BIG_DECIMAL_9, BIG_DECIMAL_10))
             return ONE;
           // n = 2,3
-          if (equal(n, BIG_DECIMAL_2) || equal(n, BIG_DECIMAL_3))
+          if (inSet(n, BIG_DECIMAL_2, BIG_DECIMAL_3))
             return TWO;
           // n = 4
           if (equal(n, BIG_DECIMAL_4))
@@ -594,7 +612,7 @@ public enum Ordinality implements LanguageForm {
           if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2,3
-          if (equal(n, BIG_DECIMAL_2) || equal(n, BIG_DECIMAL_3))
+          if (inSet(n, BIG_DECIMAL_2, BIG_DECIMAL_3))
             return TWO;
           // n = 4
           if (equal(n, BIG_DECIMAL_4))
@@ -633,17 +651,17 @@ public enum Ordinality implements LanguageForm {
           BigInteger i = NumberUtils.integerComponent(n);
 
           // i % 10 = 1,2,5,7,8 or i % 100 = 20,50,70,80
-          if ((equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_1) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_2) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_5) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_7) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_8))
-              || (equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_20) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_50) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_70) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_80)))
+          if (inSet(i.mod(BIG_INTEGER_10), BIG_INTEGER_1, BIG_INTEGER_2, BIG_INTEGER_5, BIG_INTEGER_7, BIG_INTEGER_8)
+              || inSet(i.mod(BIG_INTEGER_100), BIG_INTEGER_20, BIG_INTEGER_50, BIG_INTEGER_70, BIG_INTEGER_80))
             return ONE;
           // i % 10 = 3,4 or i % 1000 = 100,200,300,400,500,600,700,800,900
-          if ((equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_3) || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_4))
-              || (equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_100) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_200) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_300) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_400) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_500) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_600) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_700) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_800) || equal(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_900)))
+          if (inSet(i.mod(BIG_INTEGER_10), BIG_INTEGER_3, BIG_INTEGER_4)
+              || inSet(i.mod(BIG_INTEGER_1_000), BIG_INTEGER_100, BIG_INTEGER_200, BIG_INTEGER_300, BIG_INTEGER_400, BIG_INTEGER_500, BIG_INTEGER_600, BIG_INTEGER_700, BIG_INTEGER_800, BIG_INTEGER_900))
             return FEW;
           // i = 0 or i % 10 = 6 or i % 100 = 40,60,90
           if (equal(i, BIG_INTEGER_0)
               || equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_6)
-              || (equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_40) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_60) || equal(i.mod(BIG_INTEGER_100), BIG_INTEGER_90)))
+              || inSet(i.mod(BIG_INTEGER_100), BIG_INTEGER_40, BIG_INTEGER_60, BIG_INTEGER_90))
             return MANY;
 
           return OTHER;
@@ -672,7 +690,8 @@ public enum Ordinality implements LanguageForm {
     FAMILY_6(
         (n) -> {
           // n % 10 = 2,3 and n % 100 != 12,13
-          if (false /* TODO */)
+          if (inSet(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_2, BIG_DECIMAL_3)
+              && notInSet(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_12, BIG_DECIMAL_13))
             return FEW;
 
           return OTHER;
@@ -697,13 +716,13 @@ public enum Ordinality implements LanguageForm {
     FAMILY_7(
         (n) -> {
           // n = 1,3
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_1, BIG_DECIMAL_3))
             return ONE;
           // n = 2
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_2))
             return TWO;
           // n = 4
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_4))
             return FEW;
 
           return OTHER;
@@ -732,19 +751,19 @@ public enum Ordinality implements LanguageForm {
     FAMILY_8(
         (n) -> {
           // n = 0,7,8,9
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_0, BIG_DECIMAL_7, BIG_DECIMAL_8, BIG_DECIMAL_9))
             return ZERO;
           // n = 1
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_2))
             return TWO;
           // n = 3,4
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_3, BIG_DECIMAL_4))
             return FEW;
           // n = 5,6
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_5, BIG_DECIMAL_6))
             return MANY;
 
           return OTHER;
@@ -777,13 +796,13 @@ public enum Ordinality implements LanguageForm {
     FAMILY_9(
         (n) -> {
           // n % 10 = 1 and n % 100 != 11
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_1) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11))
             return ONE;
           // n % 10 = 2 and n % 100 != 12
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_2) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_12))
             return TWO;
           // n % 10 = 3 and n % 100 != 13
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_3) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_13))
             return FEW;
 
           return OTHER;
@@ -812,7 +831,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_10(
         (n) -> {
           // n = 1,5
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_1, BIG_DECIMAL_5))
             return ONE;
 
           return OTHER;
