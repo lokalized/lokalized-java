@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
+import java.util.Map;
 
 import static java.lang.String.format;
 
@@ -45,5 +46,23 @@ public class OrdinalityTests {
         Ordinality.OTHER, Ordinality.forNumber(4, usEnglishLocale));
     Assert.assertEquals(format("Incorrect %s ordinality for 138", usEnglishLocale.toLanguageTag()),
         Ordinality.OTHER, Ordinality.forNumber(138, usEnglishLocale));
+  }
+
+  @Test
+  public void exampleIntegerValues() {
+    for (String languageCode : Ordinality.getSupportedLanguageCodes()) {
+      Locale locale = Locale.forLanguageTag(languageCode);
+
+      for (Map.Entry<Ordinality, Range<Integer>> entry : Ordinality.exampleIntegerValuesForLocale(locale).entrySet()) {
+        Ordinality ordinality = entry.getKey();
+        Range<Integer> integers = entry.getValue();
+
+        for (Integer integer : integers) {
+          Ordinality calculatedOrdinality = Ordinality.forNumber(integer, locale);
+          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), integer, integers), ordinality, calculatedOrdinality);
+        }
+      }
+    }
   }
 }

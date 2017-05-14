@@ -35,6 +35,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static com.lokalized.NumberUtils.equal;
+import static com.lokalized.NumberUtils.inRange;
 import static com.lokalized.NumberUtils.inSet;
 import static com.lokalized.NumberUtils.notEqual;
 import static com.lokalized.NumberUtils.notInSet;
@@ -124,6 +125,14 @@ public enum Ordinality implements LanguageForm {
   @Nonnull
   private static final BigInteger BIG_INTEGER_10;
   @Nonnull
+  private static final BigInteger BIG_INTEGER_11;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_12;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_17;
+  @Nonnull
+  private static final BigInteger BIG_INTEGER_18;
+  @Nonnull
   private static final BigInteger BIG_INTEGER_20;
   @Nonnull
   private static final BigInteger BIG_INTEGER_40;
@@ -187,7 +196,13 @@ public enum Ordinality implements LanguageForm {
   @Nonnull
   private static final BigDecimal BIG_DECIMAL_13;
   @Nonnull
+  private static final BigDecimal BIG_DECIMAL_14;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_80;
+  @Nonnull
   private static final BigDecimal BIG_DECIMAL_100;
+  @Nonnull
+  private static final BigDecimal BIG_DECIMAL_800;
 
   @Nonnull
   static final Map<String, Ordinality> ORDINALITIES_BY_NAME;
@@ -203,6 +218,10 @@ public enum Ordinality implements LanguageForm {
     BIG_INTEGER_7 = BigInteger.valueOf(7);
     BIG_INTEGER_8 = BigInteger.valueOf(8);
     BIG_INTEGER_10 = BigInteger.TEN;
+    BIG_INTEGER_11 = BigInteger.valueOf(11);
+    BIG_INTEGER_12 = BigInteger.valueOf(12);
+    BIG_INTEGER_17 = BigInteger.valueOf(17);
+    BIG_INTEGER_18 = BigInteger.valueOf(18);
     BIG_INTEGER_20 = BigInteger.valueOf(20);
     BIG_INTEGER_40 = BigInteger.valueOf(40);
     BIG_INTEGER_50 = BigInteger.valueOf(50);
@@ -235,7 +254,10 @@ public enum Ordinality implements LanguageForm {
     BIG_DECIMAL_11 = BigDecimal.valueOf(11);
     BIG_DECIMAL_12 = BigDecimal.valueOf(12);
     BIG_DECIMAL_13 = BigDecimal.valueOf(13);
+    BIG_DECIMAL_14 = BigDecimal.valueOf(14);
+    BIG_DECIMAL_80 = BigDecimal.valueOf(80);
     BIG_DECIMAL_100 = BigDecimal.valueOf(100);
+    BIG_DECIMAL_800 = BigDecimal.valueOf(800);
 
     ORDINALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
         Ordinality.values()).collect(Collectors.toMap(ordinality -> ordinality.name(), ordinality -> ordinality)));
@@ -856,7 +878,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_11(
         (n) -> {
           // n = 11,8,80,800
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_11, BIG_DECIMAL_8, BIG_DECIMAL_80, BIG_DECIMAL_800))
             return MANY;
 
           return OTHER;
@@ -880,11 +902,13 @@ public enum Ordinality implements LanguageForm {
      */
     FAMILY_12(
         (n) -> {
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i = 1
-          if (false /* TODO */)
+          if (equal(i, BIG_INTEGER_1))
             return ONE;
           // i = 0 or i % 100 = 2..20,40,60,80
-          if (false /* TODO */)
+          if (equal(i, BIG_INTEGER_0) || inRange(i.mod(BIG_INTEGER_100), BIG_INTEGER_2, BIG_INTEGER_20) || inSet(i.mod(BIG_INTEGER_100), BIG_INTEGER_40, BIG_INTEGER_60, BIG_INTEGER_80))
             return MANY;
 
           return OTHER;
@@ -911,7 +935,9 @@ public enum Ordinality implements LanguageForm {
     FAMILY_13(
         (n) -> {
           // n % 10 = 6 or n % 10 = 9 or n % 10 = 0 and n != 0
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_6)
+              || equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_9)
+              || (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_0) && notEqual(n, BIG_DECIMAL_0)))
             return MANY;
 
           return OTHER;
@@ -935,14 +961,16 @@ public enum Ordinality implements LanguageForm {
      */
     FAMILY_14(
         (n) -> {
+          BigInteger i = NumberUtils.integerComponent(n);
+
           // i % 10 = 1 and i % 100 != 11
-          if (false /* TODO */)
+          if (equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_1) && notEqual(i.mod(BIG_INTEGER_100), BIG_INTEGER_11))
             return ONE;
           // i % 10 = 2 and i % 100 != 12
-          if (false /* TODO */)
+          if (equal(i.mod(BIG_INTEGER_10), BIG_INTEGER_2) && notEqual(i.mod(BIG_INTEGER_100), BIG_INTEGER_12))
             return TWO;
           // i % 10 = 7,8 and i % 100 != 17,18
-          if (false /* TODO */)
+          if (inSet(i.mod(BIG_INTEGER_10), BIG_INTEGER_7, BIG_INTEGER_8) && notInSet(i.mod(BIG_INTEGER_100), BIG_INTEGER_17, BIG_INTEGER_18))
             return MANY;
 
           return OTHER;
@@ -971,13 +999,13 @@ public enum Ordinality implements LanguageForm {
     FAMILY_15(
         (n) -> {
           // n = 1
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n = 2,3
-          if (false /* TODO */)
+          if (inSet(n, BIG_DECIMAL_2, BIG_DECIMAL_3))
             return TWO;
           // n = 4
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_4))
             return FEW;
 
           return OTHER;
@@ -1006,7 +1034,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_16(
         (n) -> {
           // n = 1..4
-          if (false /* TODO */)
+          if (inRange(n, BIG_DECIMAL_1, BIG_DECIMAL_4))
             return ONE;
 
           return OTHER;
@@ -1031,10 +1059,10 @@ public enum Ordinality implements LanguageForm {
     FAMILY_17(
         (n) -> {
           // n = 1
-          if (false /* TODO */)
+          if (equal(n, BIG_DECIMAL_1))
             return ONE;
           // n % 10 = 4 and n % 100 != 14
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_4) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_14))
             return MANY;
 
           return OTHER;
@@ -1061,7 +1089,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_18(
         (n) -> {
           // n % 10 = 1,2 and n % 100 != 11,12
-          if (false /* TODO */)
+          if (inSet(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_1, BIG_DECIMAL_2) && notInSet(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_11, BIG_DECIMAL_12))
             return ONE;
 
           return OTHER;
@@ -1086,7 +1114,7 @@ public enum Ordinality implements LanguageForm {
     FAMILY_19(
         (n) -> {
           // n % 10 = 3 and n % 100 != 13
-          if (false /* TODO */)
+          if (equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_3) && notEqual(n.remainder(BIG_DECIMAL_100), BIG_DECIMAL_13))
             return FEW;
 
           return OTHER;
