@@ -400,7 +400,7 @@ public enum Cardinality implements LanguageForm {
    * <p>
    * Each family has a distinct cardinality calculation rule.
    * <p>
-   * For example, Germanic languages {@link CardinalityFamily#FAMILY_2} support two {@link Cardinality} types: {@link Cardinality#ONE} for {@code 1}
+   * For example, Germanic languages {@link CardinalityFamily#FAMILY_3} support two {@link Cardinality} types: {@link Cardinality#ONE} for {@code 1}
    * and {@link Cardinality#OTHER} for all other values.
    * <p>
    * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
