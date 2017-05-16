@@ -269,16 +269,16 @@ public class DefaultStrings implements Strings {
       String placeholderName = entry.getKey();
       LanguageFormTranslation languageFormTranslation = entry.getValue();
       Object value = null;
-      Object rangeValueStart = null;
-      Object rangeValueEnd = null;
+      Object rangeStart = null;
+      Object rangeEnd = null;
       Map<Cardinality, String> translationsByCardinality = new HashMap<>();
       Map<Ordinality, String> translationsByOrdinality = new HashMap<>();
       Map<Gender, String> translationsByGender = new HashMap<>();
 
       if (languageFormTranslation.getRange().isPresent()) {
         LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
-        rangeValueStart = immutableContext.get(languageFormTranslationRange.getStart());
-        rangeValueEnd = immutableContext.get(languageFormTranslationRange.getEnd());
+        rangeStart = immutableContext.get(languageFormTranslationRange.getStart());
+        rangeEnd = immutableContext.get(languageFormTranslationRange.getEnd());
       } else {
         value = immutableContext.get(languageFormTranslation.getValue().get());
       }
@@ -311,25 +311,25 @@ public class DefaultStrings implements Strings {
       if (translationsByCardinality.size() > 0) {
         // Special case: calculate range from min and max if this is a range-driven cardinality
         if (languageFormTranslation.getRange().isPresent()) {
-          if (rangeValueStart == null)
-            rangeValueStart = 0;
-          if (rangeValueEnd == null)
-            rangeValueEnd = 0;
+          if (rangeStart == null)
+            rangeStart = 0;
+          if (rangeEnd == null)
+            rangeEnd = 0;
 
-          if (!(rangeValueStart instanceof Number)) {
-            logger.warning(format("Range value start '%s' for '%s' is not a number, falling back to 0.",
-                rangeValueStart, languageFormTranslation.getValue()));
-            rangeValueStart = 0;
+          if (!(rangeStart instanceof Number)) {
+            logger.warning(format("Range start '%s' for '%s' is not a number, falling back to 0.",
+                rangeStart, languageFormTranslation.getValue()));
+            rangeStart = 0;
           }
 
-          if (!(rangeValueEnd instanceof Number)) {
+          if (!(rangeEnd instanceof Number)) {
             logger.warning(format("Range value end '%s' for '%s' is not a number, falling back to 0.",
-                rangeValueEnd, languageFormTranslation.getValue()));
-            rangeValueEnd = 0;
+                rangeEnd, languageFormTranslation.getValue()));
+            rangeEnd = 0;
           }
 
-          Cardinality startCardinality = Cardinality.forNumber((Number) rangeValueStart, locale);
-          Cardinality endCardinality = Cardinality.forNumber((Number) rangeValueEnd, locale);
+          Cardinality startCardinality = Cardinality.forNumber((Number) rangeStart, locale);
+          Cardinality endCardinality = Cardinality.forNumber((Number) rangeEnd, locale);
           Cardinality rangeCardinality = Cardinality.forRange(startCardinality, endCardinality, locale);
 
           String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
