@@ -293,14 +293,20 @@ public class LocalizedString {
   }
 
   /**
-   * Container for per-language-form (gender, plural) translation information.
+   * Container for per-language-form (gender, cardinal, ordinal) translation information.
+   * <p>
+   * Translations can be keyed either on a single value or a range of values (start and end) in the case of cardinality ranges.
+   * <p>
+   * It is required to have either a {@code value} or {@code range}, but not both.
    *
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
   public static class LanguageFormTranslation {
-    @Nonnull
+    @Nullable
     private final String value;
+    @Nullable
+    private final LanguageFormTranslationRange range;
     @Nonnull
     private final Map<LanguageForm, String> translationsByLanguageForm;
 
@@ -315,6 +321,22 @@ public class LocalizedString {
       requireNonNull(translationsByLanguageForm);
 
       this.value = value;
+      this.range = null;
+      this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+    }
+
+    /**
+     * Constructs a per-language-form translation set with the given placeholder range and mapping of translations by language form.
+     *
+     * @param range                      the placeholder range to compare against for translation, not null
+     * @param translationsByLanguageForm the possible translations keyed by language form, not null
+     */
+    public LanguageFormTranslation(@Nonnull LanguageFormTranslationRange range, @Nonnull Map<LanguageForm, String> translationsByLanguageForm) {
+      requireNonNull(range);
+      requireNonNull(translationsByLanguageForm);
+
+      this.value = null;
+      this.range = range;
       this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
     }
 
@@ -326,7 +348,10 @@ public class LocalizedString {
     @Override
     @Nonnull
     public String toString() {
-      return format("%s{value=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getValue(), getTranslationsByLanguageForm());
+      if (getRange().isPresent())
+        return format("%s{range=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getRange().get(), getTranslationsByLanguageForm());
+
+      return format("%s{value=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getValue().get(), getTranslationsByLanguageForm());
     }
 
     /**
@@ -346,6 +371,7 @@ public class LocalizedString {
       LanguageFormTranslation languageFormTranslation = (LanguageFormTranslation) other;
 
       return Objects.equals(getValue(), languageFormTranslation.getValue())
+          && Objects.equals(getRange(), languageFormTranslation.getRange())
           && Objects.equals(getTranslationsByLanguageForm(), languageFormTranslation.getTranslationsByLanguageForm());
     }
 
@@ -356,7 +382,7 @@ public class LocalizedString {
      */
     @Override
     public int hashCode() {
-      return Objects.hash(getValue(), getTranslationsByLanguageForm());
+      return Objects.hash(getValue(), getRange(), getTranslationsByLanguageForm());
     }
 
     /**
@@ -365,8 +391,18 @@ public class LocalizedString {
      * @return the value for this per-language-form translation set, not null
      */
     @Nonnull
-    public String getValue() {
-      return value;
+    public Optional<String> getValue() {
+      return Optional.ofNullable(value);
+    }
+
+    /**
+     * Gets the range for this per-language-form translation set.
+     *
+     * @return the range for this per-language-form translation set, not null
+     */
+    @Nonnull
+    public Optional<LanguageFormTranslationRange> getRange() {
+      return Optional.ofNullable(range);
     }
 
     /**
@@ -377,6 +413,94 @@ public class LocalizedString {
     @Nonnull
     public Map<LanguageForm, String> getTranslationsByLanguageForm() {
       return translationsByLanguageForm;
+    }
+  }
+
+  /**
+   * Container for per-language-form cardinality translation information over a range (start, end) of values.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   */
+  @Immutable
+  public static class LanguageFormTranslationRange {
+    @Nonnull
+    private String start;
+    @Nonnull
+    private String end;
+
+    /**
+     * Constructs a translation range with the given start and end values.
+     *
+     * @param start the start value of the range, not null
+     * @param end   the end value of the range, not null
+     */
+    public LanguageFormTranslationRange(@Nonnull String start, @Nonnull String end) {
+      requireNonNull(start);
+      requireNonNull(end);
+
+      this.start = start;
+      this.end = end;
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @Nonnull
+    public String toString() {
+      return format("%s{start=%s, end=%s", getClass().getSimpleName(), getStart(), getEnd());
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      LanguageFormTranslationRange languageFormTranslationRange = (LanguageFormTranslationRange) other;
+
+      return Objects.equals(getStart(), languageFormTranslationRange.getStart())
+          && Objects.equals(getEnd(), languageFormTranslationRange.getEnd());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getStart(), getEnd());
+    }
+
+    /**
+     * The start value for this range.
+     *
+     * @return the start value for this range, not null
+     */
+    @Nonnull
+    public String getStart() {
+      return start;
+    }
+
+    /**
+     * The end value for this range.
+     *
+     * @return the end value for this range, not null
+     */
+    @Nonnull
+    public String getEnd() {
+      return end;
     }
   }
 }

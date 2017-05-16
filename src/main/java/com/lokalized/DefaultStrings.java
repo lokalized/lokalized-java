@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import com.lokalized.LocalizedString.LanguageFormTranslation;
+import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -213,9 +214,9 @@ public class DefaultStrings implements Strings {
       LocalizedString localizedString = localizedStringSource.getLocalizedStringsByKey().get(key);
 
       if (localizedString == null) {
-        logger.finer(format("No match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
+        logger.finer(format("No match for '%s' was found in '%s'", key, localizedStringSource.getLocale().toLanguageTag()));
       } else {
-        logger.finer(format("A match for '%s' was found in %s", key, localizedStringSource.getLocale().toLanguageTag()));
+        logger.finer(format("A match for '%s' was found in '%s'", key, localizedStringSource.getLocale().toLanguageTag()));
         translation = getInternal(key, localizedString, mutableContext, immutableContext, localizedStringSource.getLocale()).orElse(null);
         break;
       }
@@ -267,10 +268,20 @@ public class DefaultStrings implements Strings {
     for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
       String placeholderName = entry.getKey();
       LanguageFormTranslation languageFormTranslation = entry.getValue();
-      Object value = immutableContext.get(languageFormTranslation.getValue());
+      Object value = null;
+      Object rangeValueStart = null;
+      Object rangeValueEnd = null;
       Map<Cardinality, String> translationsByCardinality = new HashMap<>();
       Map<Ordinality, String> translationsByOrdinality = new HashMap<>();
       Map<Gender, String> translationsByGender = new HashMap<>();
+
+      if (languageFormTranslation.getRange().isPresent()) {
+        LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
+        rangeValueStart = immutableContext.get(languageFormTranslationRange.getStart());
+        rangeValueEnd = immutableContext.get(languageFormTranslationRange.getEnd());
+      } else {
+        value = immutableContext.get(languageFormTranslation.getValue().get());
+      }
 
       for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
         LanguageForm languageForm = translationEntry.getKey();
@@ -298,23 +309,56 @@ public class DefaultStrings implements Strings {
 
       // Handle plural cardinalities
       if (translationsByCardinality.size() > 0) {
-        if (value == null)
-          value = 0;
+        // Special case: calculate range from min and max if this is a range-driven cardinality
+        if (languageFormTranslation.getRange().isPresent()) {
+          if (rangeValueStart == null)
+            rangeValueStart = 0;
+          if (rangeValueEnd == null)
+            rangeValueEnd = 0;
 
-        if (!(value instanceof Number)) {
-          logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
-              value, languageFormTranslation.getValue()));
-          value = 0;
+          if (!(rangeValueStart instanceof Number)) {
+            logger.warning(format("Range value start '%s' for '%s' is not a number, falling back to 0.",
+                rangeValueStart, languageFormTranslation.getValue()));
+            rangeValueStart = 0;
+          }
+
+          if (!(rangeValueEnd instanceof Number)) {
+            logger.warning(format("Range value end '%s' for '%s' is not a number, falling back to 0.",
+                rangeValueEnd, languageFormTranslation.getValue()));
+            rangeValueEnd = 0;
+          }
+
+          Cardinality startCardinality = Cardinality.forNumber((Number) rangeValueStart, locale);
+          Cardinality endCardinality = Cardinality.forNumber((Number) rangeValueEnd, locale);
+          Cardinality rangeCardinality = Cardinality.forRange(startCardinality, endCardinality, locale);
+
+          String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
+
+          if (cardinalityTranslation == null)
+            logger.warning(format("Unable to find %s translation for range cardinality %s (start was %s, end was %s). Localized string was %s",
+                Cardinality.class.getSimpleName(), rangeCardinality.name(), startCardinality.name(), endCardinality.name(), localizedString));
+
+          mutableContext.put(placeholderName, cardinalityTranslation);
+        } else {
+          // Normal "non-range" cardinality
+          if (value == null)
+            value = 0;
+
+          if (!(value instanceof Number)) {
+            logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
+                value, languageFormTranslation.getValue()));
+            value = 0;
+          }
+
+          Cardinality cardinality = Cardinality.forNumber((Number) value, locale);
+          String cardinalityTranslation = translationsByCardinality.get(cardinality);
+
+          if (cardinalityTranslation == null)
+            logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+                Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
+
+          mutableContext.put(placeholderName, cardinalityTranslation);
         }
-
-        Cardinality cardinality = Cardinality.forNumber((Number) value, locale);
-        String cardinalityTranslation = translationsByCardinality.get(cardinality);
-
-        if (cardinalityTranslation == null)
-          logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
-              Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
-
-        mutableContext.put(placeholderName, cardinalityTranslation);
       }
 
       // Handle plural ordinalities
@@ -372,25 +416,6 @@ public class DefaultStrings implements Strings {
   protected List<LocalizedStringSource> getLocalizedStringSourcesForLocale(@Nonnull Locale locale) {
     requireNonNull(locale);
 
-    /*
-    List<Locale> results = Locale.filter(getLanguageRangesSupplier().get().get(), getLocalizedStringsByLocale().keySet());
-
-    for (Locale possibleLocale : getLocalizedStringsByLocale().keySet())
-      System.out.println("Possible: " + possibleLocale.toLanguageTag());
-
-    for (LanguageRange languageRange : getLanguageRangesSupplier().get().get())
-      System.out.println("Range: " + languageRange.getRange());
-
-    for (Locale resultLocale : results) {
-      System.out.println("Matching: " + resultLocale.toLanguageTag());
-    }
-
-    // Uses RFC 4647
-    Locale lookupLocale = Locale.lookup(getLanguageRangesSupplier().get().get(), getLocalizedStringsByLocale().keySet());
-
-    System.out.println("Lookup locale: " + lookupLocale);
-*/
-
     return getLocalizedStringSourcesByLocale().computeIfAbsent(locale, (ignored) -> {
       String language = locale.getLanguage();
       String script = locale.getScript();
@@ -402,7 +427,7 @@ public class DefaultStrings implements Strings {
       List<LocalizedStringSource> localizedStringSources = new ArrayList<>(5);
 
       if (logger.isLoggable(Level.FINER))
-        logger.finer(format("Finding strings files that match locale %s...", locale.toLanguageTag()));
+        logger.finer(format("Finding strings files that match locale '%s'...", locale.toLanguageTag()));
 
       // Try most specific (matches all 5 criteria) and move back to least specific
       Locale.Builder extensionsLocaleBuilder =
@@ -419,7 +444,7 @@ public class DefaultStrings implements Strings {
         localizedStringSources.add(new LocalizedStringSource(extensionsLocale, getLocalizedStringsByKeyByLocale().get(extensionsLocale)));
 
         if (logger.isLoggable(Level.FINER))
-          logger.finer(format("A matching strings file for locale %s is %s", locale.toLanguageTag(),
+          logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
               extensionsLocale.toLanguageTag()));
       }
 
@@ -437,7 +462,7 @@ public class DefaultStrings implements Strings {
           localizedStringSources.add(new LocalizedStringSource(variantLocale, getLocalizedStringsByKeyByLocale().get(variantLocale)));
 
           if (logger.isLoggable(Level.FINER))
-            logger.finer(format("A matching strings file for locale %s is %s", locale.toLanguageTag(),
+            logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
                 variantLocale.toLanguageTag()));
         }
       }
@@ -454,7 +479,7 @@ public class DefaultStrings implements Strings {
           localizedStringSources.add(new LocalizedStringSource(regionLocale, getLocalizedStringsByKeyByLocale().get(regionLocale)));
 
           if (logger.isLoggable(Level.FINER))
-            logger.finer(format("A matching strings file for locale %s is %s", locale.toLanguageTag(),
+            logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
                 regionLocale.toLanguageTag()));
         }
       }
@@ -471,7 +496,7 @@ public class DefaultStrings implements Strings {
           localizedStringSources.add(new LocalizedStringSource(scriptLocale, getLocalizedStringsByKeyByLocale().get(scriptLocale)));
 
           if (logger.isLoggable(Level.FINER))
-            logger.finer(format("A matching strings file for locale %s is %s", locale.toLanguageTag(),
+            logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
                 scriptLocale.toLanguageTag()));
         }
       }
@@ -488,7 +513,7 @@ public class DefaultStrings implements Strings {
           localizedStringSources.add(new LocalizedStringSource(languageLocale, getLocalizedStringsByKeyByLocale().get(languageLocale)));
 
           if (logger.isLoggable(Level.FINER))
-            logger.finer(format("A matching strings file for locale %s is %s", locale.toLanguageTag(),
+            logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
                 languageLocale.toLanguageTag()));
         }
       }
@@ -505,7 +530,7 @@ public class DefaultStrings implements Strings {
           localizedStringSources.add(new LocalizedStringSource(fallbackLocale, getLocalizedStringsByKeyByLocale().get(fallbackLocale)));
 
           if (logger.isLoggable(Level.FINER))
-            logger.finer(format("A matching strings file for locale %s is fallback %s",
+            logger.finer(format("A matching strings file for locale '%s' is fallback '%s'",
                 locale.toLanguageTag(), fallbackLocale.toLanguageTag()));
         }
       }

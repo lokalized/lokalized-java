@@ -83,5 +83,19 @@
         }
       }
     }
+  },
+  "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
+    "translation" : "The meeting will be {{minHours}}-{{maxHours}} {{hours}} long.",
+    "placeholders" : {
+      "hours" : {
+        "range" : {
+          "start" : "minHours",
+          "end" : "maxHours"
+        },
+        "translations" : {
+          "CARDINALITY_OTHER" : "hours"
+        }
+      }
+    }
   }
 }

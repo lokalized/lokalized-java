@@ -333,4 +333,18 @@ public class StringsTests {
 
     Assert.assertEquals("Приветствую, мир", ru2Translation);
   }
+
+  @Test
+  public void cardinalityRanges() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).build();
+
+    String enTranslation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.", new HashMap<String, Object>() {{
+      put("minHours", 1.5);
+      put("maxHours", 2);
+    }});
+
+    Assert.assertEquals("The meeting will be 1.5-2 hours long.", enTranslation);
+  }
 }

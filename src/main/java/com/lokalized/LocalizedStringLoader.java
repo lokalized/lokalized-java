@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import com.lokalized.LocalizedString.LanguageFormTranslation;
+import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import com.lokalized.MinimalJson.Json;
 import com.lokalized.MinimalJson.JsonArray;
 import com.lokalized.MinimalJson.JsonObject;
@@ -355,29 +356,59 @@ public final class LocalizedStringLoader {
 
       if (placeholdersJsonValue != null && !placeholdersJsonValue.isNull()) {
         if (!placeholdersJsonValue.isObject())
-          throw new LocalizedStringLoadingException(format("%s: the placeholders value must be an object. Key was '%s'", canonicalPath, key));
+          throw new LocalizedStringLoadingException(format("%s: the placeholders value must be an object. Key is '%s'", canonicalPath, key));
 
         JsonObject placeholdersJsonObject = placeholdersJsonValue.asObject();
 
         for (Member placeholderMember : placeholdersJsonObject) {
           String placeholderKey = placeholderMember.getName();
           JsonValue placeholderJsonValue = placeholderMember.getValue();
-          String value;
+          String value = null;
+          LanguageFormTranslationRange rangeValue = null;
 
           if (!placeholderJsonValue.isObject())
-            throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key was '%s'", canonicalPath, key));
+            throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key is '%s'", canonicalPath, key));
 
           JsonObject placeholderJsonObject = placeholderJsonValue.asObject();
 
           JsonValue valueJsonValue = placeholderJsonObject.get("value");
+          JsonValue rangeJsonValue = placeholderJsonObject.get("range");
+          boolean hasValue = valueJsonValue != null && !valueJsonValue.isNull();
+          boolean hasRangeValue = rangeJsonValue != null && !rangeJsonValue.isNull();
 
-          if (valueJsonValue == null || valueJsonValue.isNull())
-            throw new LocalizedStringLoadingException(format("%s: a placeholder translation value is required. Key was '%s'", canonicalPath, key));
+          if (!hasValue && !hasRangeValue)
+            throw new LocalizedStringLoadingException(format("%s: a placeholder translation value or range is required. Key is '%s'", canonicalPath, key));
 
-          if (!valueJsonValue.isString())
-            throw new LocalizedStringLoadingException(format("%s: a placeholder translation value must be a string. Key was '%s'", canonicalPath, key));
+          if (hasValue && hasRangeValue)
+            throw new LocalizedStringLoadingException(format("%s: a placeholder translation cannot have both a value and a range. Key is '%s'", canonicalPath, key));
 
-          value = valueJsonValue.asString();
+          if (hasRangeValue) {
+            if (!rangeJsonValue.isObject())
+              throw new LocalizedStringLoadingException(format("%s: the placeholder translation range must be an object. Key is '%s'", canonicalPath, key));
+
+            JsonObject rangeJsonObject = rangeJsonValue.asObject();
+            JsonValue rangeValueStartJsonValue = rangeJsonObject.get("start");
+            JsonValue rangeValueEndJsonValue = rangeJsonObject.get("end");
+
+            if (rangeValueStartJsonValue == null || rangeValueStartJsonValue.isNull())
+              throw new LocalizedStringLoadingException(format("%s: a placeholder translation range start is required. Key is '%s'", canonicalPath, key));
+
+            if (rangeValueEndJsonValue == null || rangeValueEndJsonValue.isNull())
+              throw new LocalizedStringLoadingException(format("%s: a placeholder translation range end is required. Key is '%s'", canonicalPath, key));
+
+            if (!rangeValueStartJsonValue.isString())
+              throw new LocalizedStringLoadingException(format("%s: a placeholder translation range start must be a string. Key is '%s'", canonicalPath, key));
+
+            if (!rangeValueEndJsonValue.isString())
+              throw new LocalizedStringLoadingException(format("%s: a placeholder translation range end must be a string. Key is '%s'", canonicalPath, key));
+
+            rangeValue = new LanguageFormTranslationRange(rangeValueStartJsonValue.asString(), rangeValueEndJsonValue.asString());
+          } else {
+            if (!valueJsonValue.isString())
+              throw new LocalizedStringLoadingException(format("%s: a placeholder translation value must be a string. Key is '%s'", canonicalPath, key));
+
+            value = valueJsonValue.asString();
+          }
 
           JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
 
@@ -385,7 +416,7 @@ public final class LocalizedStringLoader {
             continue;
 
           if (!translationsJsonValue.isObject())
-            throw new LocalizedStringLoadingException(format("%s: the placeholder translations value must be an object. Key was '%s'", canonicalPath, key));
+            throw new LocalizedStringLoadingException(format("%s: the placeholder translations value must be an object. Key is '%s'", canonicalPath, key));
 
           Map<LanguageForm, String> translationsByLanguageForm = new LinkedHashMap<>();
 
@@ -397,17 +428,21 @@ public final class LocalizedStringLoader {
             LanguageForm languageForm = SUPPORTED_LANGUAGE_FORMS_BY_NAME.get(languageFormTranslationKey);
 
             if (languageForm == null)
-              throw new LocalizedStringLoadingException(format("%s: unexpected placeholder translation language form encountered. Key was '%s'. " +
+              throw new LocalizedStringLoadingException(format("%s: unexpected placeholder translation language form encountered. Key is '%s'. " +
                       "You provided '%s', valid values are [%s]", canonicalPath, key, languageFormTranslationKey,
                   SUPPORTED_LANGUAGE_FORMS_BY_NAME.keySet().stream().collect(Collectors.joining(", "))));
 
             if (!languageFormTranslationJsonValue.isString())
-              throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key was '%s'", canonicalPath, key));
+              throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key is '%s'", canonicalPath, key));
 
             translationsByLanguageForm.put(languageForm, languageFormTranslationJsonValue.asString());
           }
 
-          languageFormTranslationsByPlaceholder.put(placeholderKey, new LanguageFormTranslation(value, translationsByLanguageForm));
+          LanguageFormTranslation languageFormTranslation = rangeValue != null
+              ? new LanguageFormTranslation(rangeValue, translationsByLanguageForm)
+              : new LanguageFormTranslation(value, translationsByLanguageForm);
+
+          languageFormTranslationsByPlaceholder.put(placeholderKey, languageFormTranslation);
         }
       }
 
@@ -417,7 +452,7 @@ public final class LocalizedStringLoader {
 
       if (alternativesJsonValue != null && !alternativesJsonValue.isNull()) {
         if (!alternativesJsonValue.isArray())
-          throw new LocalizedStringLoadingException(format("%s: alternatives must be an array. Key was '%s'", canonicalPath, key));
+          throw new LocalizedStringLoadingException(format("%s: alternatives must be an array. Key is '%s'", canonicalPath, key));
 
         JsonArray alternativesJsonArray = alternativesJsonValue.asArray();
 
@@ -428,7 +463,7 @@ public final class LocalizedStringLoader {
           JsonObject outerJsonObject = alternativeJsonValue.asObject();
 
           if (!outerJsonObject.isObject())
-            throw new LocalizedStringLoadingException(format("%s: alternative value must be an object. Key was '%s'", canonicalPath, key));
+            throw new LocalizedStringLoadingException(format("%s: alternative value must be an object. Key is '%s'", canonicalPath, key));
 
           for (Member member : outerJsonObject) {
             String alternativeKey = member.getName();

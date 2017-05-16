@@ -319,6 +319,15 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFamily.get().getCardinalityFunction().apply(numberAsBigDecimal);
   }
 
+  @Nonnull
+  public static Cardinality forRange(@Nonnull Cardinality start, @Nonnull Cardinality end, @Nonnull Locale locale) {
+    requireNonNull(start);
+    requireNonNull(end);
+    requireNonNull(locale);
+
+    throw new UnsupportedOperationException();
+  }
+
   /**
    * Gets the set of cardinalities supported for the given locale.
    * <p>
