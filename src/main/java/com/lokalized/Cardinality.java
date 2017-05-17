@@ -319,13 +319,40 @@ public enum Cardinality implements LanguageForm {
     return cardinalityFamily.get().getCardinalityFunction().apply(numberAsBigDecimal);
   }
 
+  /**
+   * Gets an appropriate plural cardinality for the given range (start, end) and locale.
+   * <p>
+   * For example, a range might be {@code "1-3 hours"}.
+   * <p>
+   * Note that the cardinality of the end of the range does not necessarily
+   * determine the range's cardinality.  In English, we say {@code "0–1 days"} - the value {@code 1} is {@code CARDINALITY_ONE}
+   * but the range is {@code CARDINALITY_OTHER}.
+   * <p>
+   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * for further details.
+   *
+   * @param start  the cardinality for the start of the range, not null
+   * @param end    the cardinality for the end of the range, not null
+   * @param locale the locale that drives pluralization, not null
+   * @return an appropriate plural cardinality for the range, not null
+   * @throws UnsupportedLocaleException if the locale is not supported
+   */
   @Nonnull
   public static Cardinality forRange(@Nonnull Cardinality start, @Nonnull Cardinality end, @Nonnull Locale locale) {
     requireNonNull(start);
     requireNonNull(end);
     requireNonNull(locale);
 
-    throw new UnsupportedOperationException();
+    Optional<CardinalityRangeFamily> cardinalityRangeFamily = CardinalityRangeFamily.cardinalityRangeFamilyForLocale(locale);
+
+    // TODO: throwing an exception might not be the best solution here...need to think about it
+    if (!cardinalityRangeFamily.isPresent())
+      throw new UnsupportedLocaleException(locale);
+
+    CardinalityRange cardinalityRange = CardinalityRange.of(start, end);
+    Cardinality cardinality = cardinalityRangeFamily.get().getCardinalitiesByCardinalityRange().get(cardinalityRange);
+
+    return cardinality == null ? Cardinality.OTHER : cardinality;
   }
 
   /**
@@ -2168,7 +2195,7 @@ public enum Cardinality implements LanguageForm {
      * @return the cardinality-determining function for this cardinality family, not null
      */
     @Nonnull
-    public Function<BigDecimal, Cardinality> getCardinalityFunction() {
+    Function<BigDecimal, Cardinality> getCardinalityFunction() {
       return cardinalityFunction;
     }
 
@@ -2251,6 +2278,849 @@ public enum Cardinality implements LanguageForm {
         cardinalityFamily = CARDINALITY_FAMILIES_BY_LANGUAGE_CODE.get(language);
 
       return Optional.ofNullable(cardinalityFamily);
+    }
+  }
+
+
+  enum CardinalityRangeFamily {
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Akan (ak)</li>
+     * <li>Najdi Arabic (ars)</li>
+     * <li>Assamese (as)</li>
+     * <li>Asu (asa)</li>
+     * <li>Asturian (ast)</li>
+     * <li>Bemba (bem)</li>
+     * <li>Bena (bez)</li>
+     * <li>Bihari (bh)</li>
+     * <li>Bambara (bm)</li>
+     * <li>Tibetan (bo)</li>
+     * <li>Breton (br)</li>
+     * <li>Bodo (brx)</li>
+     * <li>Chechen (ce)</li>
+     * <li>Chiga (cgg)</li>
+     * <li>Cherokee (chr)</li>
+     * <li>Central Kurdish (ckb)</li>
+     * <li>Lower Sorbian (dsb)</li>
+     * <li>Divehi (dv)</li>
+     * <li>Dzongkha (dz)</li>
+     * <li>Ewe (ee)</li>
+     * <li>Esperanto (eo)</li>
+     * <li>Fulah (ff)</li>
+     * <li>Faroese (fo)</li>
+     * <li>Friulian (fur)</li>
+     * <li>Western Frisian (fy)</li>
+     * <li>Scottish Gaelic (gd)</li>
+     * <li>Gun (guw)</li>
+     * <li>Manx (gv)</li>
+     * <li>Hausa (ha)</li>
+     * <li>Hawaiian (haw)</li>
+     * <li>Upper Sorbian (hsb)</li>
+     * <li>Igbo (ig)</li>
+     * <li>Sichuan Yi (ii)</li>
+     * <li>Inuktitut (iu)</li>
+     * <li>Lojban (jbo)</li>
+     * <li>Ngomba (jgo)</li>
+     * <li>Machame (jmc)</li>
+     * <li>Javanese (jv)</li>
+     * <li>Javanese (jw)</li>
+     * <li>Kabyle (kab)</li>
+     * <li>Jju (kaj)</li>
+     * <li>Tyap (kcg)</li>
+     * <li>Makonde (kde)</li>
+     * <li>Kabuverdianu (kea)</li>
+     * <li>Kako (kkj)</li>
+     * <li>Kalaallisut (kl)</li>
+     * <li>Kashmiri (ks)</li>
+     * <li>Shambala (ksb)</li>
+     * <li>Colognian (ksh)</li>
+     * <li>Kurdish (ku)</li>
+     * <li>Cornish (kw)</li>
+     * <li>Langi (lag)</li>
+     * <li>Luxembourgish (lb)</li>
+     * <li>Ganda (lg)</li>
+     * <li>Lakota (lkt)</li>
+     * <li>Lingala (ln)</li>
+     * <li>Masai (mas)</li>
+     * <li>Malagasy (mg)</li>
+     * <li>Metaʼ (mgo)</li>
+     * <li>Moldovan (mo)</li>
+     * <li>Maltese (mt)</li>
+     * <li>Nahuatl (nah)</li>
+     * <li>Nama (naq)</li>
+     * <li>North Ndebele (nd)</li>
+     * <li>Norwegian Nynorsk (nn)</li>
+     * <li>Ngiemboon (nnh)</li>
+     * <li>Norwegian (no)</li>
+     * <li>N’Ko (nqo)</li>
+     * <li>South Ndebele (nr)</li>
+     * <li>Northern Sotho (nso)</li>
+     * <li>Nyanja (ny)</li>
+     * <li>Nyankole (nyn)</li>
+     * <li>Oromo (om)</li>
+     * <li>Odia (or)</li>
+     * <li>Ossetic (os)</li>
+     * <li>Papiamento (pap)</li>
+     * <li>Prussian (prg)</li>
+     * <li>Pushto (ps)</li>
+     * <li>Romansh (rm)</li>
+     * <li>Rombo (rof)</li>
+     * <li>Root (root)</li>
+     * <li>Rwa (rwk)</li>
+     * <li>Sakha (sah)</li>
+     * <li>Samburu (saq)</li>
+     * <li>Southern Kurdish (sdh)</li>
+     * <li>Northern Sami (se)</li>
+     * <li>Sena (seh)</li>
+     * <li>Koyraboro Senni (ses)</li>
+     * <li>Sango (sg)</li>
+     * <li>Serbo-Croatian (sh)</li>
+     * <li>Tachelhit (shi)</li>
+     * <li>Southern Sami (sma)</li>
+     * <li>Sami (smi)</li>
+     * <li>Lule Sami (smj)</li>
+     * <li>Inari Sami (smn)</li>
+     * <li>Skolt Sami (sms)</li>
+     * <li>Shona (sn)</li>
+     * <li>Somali (so)</li>
+     * <li>Swati (ss)</li>
+     * <li>Saho (ssy)</li>
+     * <li>Southern Sotho (st)</li>
+     * <li>Syriac (syr)</li>
+     * <li>Teso (teo)</li>
+     * <li>Tigrinya (ti)</li>
+     * <li>Tigre (tig)</li>
+     * <li>Turkmen (tk)</li>
+     * <li>Tagalog (tl)</li>
+     * <li>Tswana (tn)</li>
+     * <li>Tongan (to)</li>
+     * <li>Tsonga (ts)</li>
+     * <li>Central Atlas Tamazight (tzm)</li>
+     * <li>Venda (ve)</li>
+     * <li>Volapük (vo)</li>
+     * <li>Vunjo (vun)</li>
+     * <li>Walloon (wa)</li>
+     * <li>Walser (wae)</li>
+     * <li>Wolof (wo)</li>
+     * <li>Xhosa (xh)</li>
+     * <li>Soga (xog)</li>
+     * <li>Yiddish (yi)</li>
+     * <li>Yoruba (yo)</li>
+     * </ul>
+     */
+    FAMILY_1(
+        // There are no cardinality ranges for this family
+        Collections.emptySortedMap()
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Azeri (az)</li>
+     * <li>German (de)</li>
+     * <li>Greek (el)</li>
+     * <li>Galician (gl)</li>
+     * <li>Swiss German (gsw)</li>
+     * <li>Hungarian (hu)</li>
+     * <li>Italian (it)</li>
+     * <li>Kazakh (kk)</li>
+     * <li>Kirghiz (ky)</li>
+     * <li>Malayalam (ml)</li>
+     * <li>Mongolian (mn)</li>
+     * <li>Nepali (ne)</li>
+     * <li>Dutch (nl)</li>
+     * <li>Albanian (sq)</li>
+     * <li>Swahili (sw)</li>
+     * <li>Tamil (ta)</li>
+     * <li>Telugu (te)</li>
+     * <li>Turkish (tr)</li>
+     * <li>Uighur (ug)</li>
+     * <li>Uzbek (uz)</li>
+     * </ul>
+     */
+    FAMILY_2(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Afrikaans (af)</li>
+     * <li>Bulgarian (bg)</li>
+     * <li>Catalan (ca)</li>
+     * <li>English (en)</li>
+     * <li>Spanish (es)</li>
+     * <li>Estonian (et)</li>
+     * <li>Basque (eu)</li>
+     * <li>Finnish (fi)</li>
+     * <li>Norwegian Bokmål (nb)</li>
+     * <li>Swedish (sv)</li>
+     * <li>Urdu (ur)</li>
+     * </ul>
+     */
+    FAMILY_3(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Indonesian (id)</li>
+     * <li>Japanese (ja)</li>
+     * <li>Khmer (km)</li>
+     * <li>Korean (ko)</li>
+     * <li>Lao (lo)</li>
+     * <li>Malay (ms)</li>
+     * <li>Myanmar Language (my)</li>
+     * <li>Thai (th)</li>
+     * <li>Vietnamese (vi)</li>
+     * <li>Cantonese (yue)</li>
+     * <li>Mandarin Chinese (zh)</li>
+     * </ul>
+     */
+    FAMILY_4(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Amharic (am)</li>
+     * <li>Bangla (bn)</li>
+     * <li>French (fr)</li>
+     * <li>Gujarati (gu)</li>
+     * <li>Hindi (hi)</li>
+     * <li>Armenian (hy)</li>
+     * <li>Kannada (kn)</li>
+     * <li>Marathi (mr)</li>
+     * <li>Zulu (zu)</li>
+     * </ul>
+     */
+    FAMILY_5(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Danish (da)</li>
+     * <li>Filipino (fil)</li>
+     * <li>Icelandic (is)</li>
+     * <li>Punjabi (pa)</li>
+     * <li>Portuguese (pt)</li>
+     * </ul>
+     */
+    FAMILY_6(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Belarusian (be)</li>
+     * <li>Lithuanian (lt)</li>
+     * <li>Russian (ru)</li>
+     * <li>Ukrainian (uk)</li>
+     * </ul>
+     */
+    FAMILY_7(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(MANY, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(MANY, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Bosnian (bs)</li>
+     * <li>Croatian (hr)</li>
+     * <li>Serbian (sr)</li>
+     * </ul>
+     */
+    FAMILY_8(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Czech (cs)</li>
+     * <li>Polish (pl)</li>
+     * <li>Slovak (sk)</li>
+     * </ul>
+     */
+    FAMILY_9(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(MANY, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(MANY, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Arabic (ar)</li>
+     * </ul>
+     */
+    FAMILY_10(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ZERO, ONE), ZERO),
+            MapEntry.of(CardinalityRange.of(ZERO, TWO), ZERO),
+            MapEntry.of(CardinalityRange.of(ZERO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ZERO, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ZERO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, TWO), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(TWO, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(TWO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(MANY, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, TWO), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Welsh (cy)</li>
+     * </ul>
+     */
+    FAMILY_11(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ZERO, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ZERO, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(ZERO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ZERO, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ZERO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(TWO, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(TWO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Persian (fa)</li>
+     * </ul>
+     */
+    FAMILY_12(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Irish (ga)</li>
+     * </ul>
+     */
+    FAMILY_13(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(TWO, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(TWO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Hebrew (he)</li>
+     * </ul>
+     */
+    FAMILY_14(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, TWO), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, MANY), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(MANY, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(MANY, OTHER), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, TWO), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, MANY), MANY),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Georgian (ka)</li>
+     * </ul>
+     */
+    FAMILY_15(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Latvian (lv)</li>
+     * </ul>
+     */
+    FAMILY_16(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ZERO, ZERO), OTHER),
+            MapEntry.of(CardinalityRange.of(ZERO, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ZERO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, ZERO), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ZERO), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Macedonian (mk)</li>
+     * </ul>
+     */
+    FAMILY_17(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Romanian (ro)</li>
+     * </ul>
+     */
+    FAMILY_18(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, ONE), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Sinhala (si)</li>
+     * </ul>
+     */
+    FAMILY_19(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), ONE),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    ),
+
+    /**
+     * Languages Include:
+     * <p>
+     * <ul>
+     * <li>Slovenian (sl)</li>
+     * </ul>
+     */
+    FAMILY_20(
+        Maps.sortedMap(
+            MapEntry.of(CardinalityRange.of(ONE, ONE), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(ONE, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(ONE, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(TWO, ONE), FEW),
+            MapEntry.of(CardinalityRange.of(TWO, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(TWO, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(TWO, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(FEW, ONE), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(FEW, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(FEW, OTHER), OTHER),
+            MapEntry.of(CardinalityRange.of(OTHER, ONE), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, TWO), TWO),
+            MapEntry.of(CardinalityRange.of(OTHER, FEW), FEW),
+            MapEntry.of(CardinalityRange.of(OTHER, OTHER), OTHER)
+        )
+    );
+
+    @Nonnull
+    private static final Map<String, CardinalityRangeFamily> CARDINALITY_RANGE_FAMILIES_BY_LANGUAGE_CODE;
+
+    @Nonnull
+    private final SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange;
+
+    static {
+      CARDINALITY_RANGE_FAMILIES_BY_LANGUAGE_CODE = Collections.unmodifiableMap(new HashMap<String, CardinalityRangeFamily>() {
+        {
+          put("af", CardinalityRangeFamily.FAMILY_3); // Afrikaans
+          put("ak", CardinalityRangeFamily.FAMILY_1); // Akan
+          put("am", CardinalityRangeFamily.FAMILY_5); // Amharic
+          put("ar", CardinalityRangeFamily.FAMILY_10); // Arabic
+          put("ars", CardinalityRangeFamily.FAMILY_1); // Najdi Arabic
+          put("as", CardinalityRangeFamily.FAMILY_1); // Assamese
+          put("asa", CardinalityRangeFamily.FAMILY_1); // Asu
+          put("ast", CardinalityRangeFamily.FAMILY_1); // Asturian
+          put("az", CardinalityRangeFamily.FAMILY_2); // Azeri
+          put("be", CardinalityRangeFamily.FAMILY_7); // Belarusian
+          put("bem", CardinalityRangeFamily.FAMILY_1); // Bemba
+          put("bez", CardinalityRangeFamily.FAMILY_1); // Bena
+          put("bg", CardinalityRangeFamily.FAMILY_3); // Bulgarian
+          put("bh", CardinalityRangeFamily.FAMILY_1); // Bihari
+          put("bm", CardinalityRangeFamily.FAMILY_1); // Bambara
+          put("bn", CardinalityRangeFamily.FAMILY_5); // Bangla
+          put("bo", CardinalityRangeFamily.FAMILY_1); // Tibetan
+          put("br", CardinalityRangeFamily.FAMILY_1); // Breton
+          put("brx", CardinalityRangeFamily.FAMILY_1); // Bodo
+          put("bs", CardinalityRangeFamily.FAMILY_8); // Bosnian
+          put("ca", CardinalityRangeFamily.FAMILY_3); // Catalan
+          put("ce", CardinalityRangeFamily.FAMILY_1); // Chechen
+          put("cgg", CardinalityRangeFamily.FAMILY_1); // Chiga
+          put("chr", CardinalityRangeFamily.FAMILY_1); // Cherokee
+          put("ckb", CardinalityRangeFamily.FAMILY_1); // Central Kurdish
+          put("cs", CardinalityRangeFamily.FAMILY_9); // Czech
+          put("cy", CardinalityRangeFamily.FAMILY_11); // Welsh
+          put("da", CardinalityRangeFamily.FAMILY_6); // Danish
+          put("de", CardinalityRangeFamily.FAMILY_2); // German
+          put("dsb", CardinalityRangeFamily.FAMILY_1); // Lower Sorbian
+          put("dv", CardinalityRangeFamily.FAMILY_1); // Divehi
+          put("dz", CardinalityRangeFamily.FAMILY_1); // Dzongkha
+          put("ee", CardinalityRangeFamily.FAMILY_1); // Ewe
+          put("el", CardinalityRangeFamily.FAMILY_2); // Greek
+          put("en", CardinalityRangeFamily.FAMILY_3); // English
+          put("eo", CardinalityRangeFamily.FAMILY_1); // Esperanto
+          put("es", CardinalityRangeFamily.FAMILY_3); // Spanish
+          put("et", CardinalityRangeFamily.FAMILY_3); // Estonian
+          put("eu", CardinalityRangeFamily.FAMILY_3); // Basque
+          put("fa", CardinalityRangeFamily.FAMILY_12); // Persian
+          put("ff", CardinalityRangeFamily.FAMILY_1); // Fulah
+          put("fi", CardinalityRangeFamily.FAMILY_3); // Finnish
+          put("fil", CardinalityRangeFamily.FAMILY_6); // Filipino
+          put("fo", CardinalityRangeFamily.FAMILY_1); // Faroese
+          put("fr", CardinalityRangeFamily.FAMILY_5); // French
+          put("fur", CardinalityRangeFamily.FAMILY_1); // Friulian
+          put("fy", CardinalityRangeFamily.FAMILY_1); // Western Frisian
+          put("ga", CardinalityRangeFamily.FAMILY_13); // Irish
+          put("gd", CardinalityRangeFamily.FAMILY_1); // Scottish Gaelic
+          put("gl", CardinalityRangeFamily.FAMILY_2); // Galician
+          put("gsw", CardinalityRangeFamily.FAMILY_2); // Swiss German
+          put("gu", CardinalityRangeFamily.FAMILY_5); // Gujarati
+          put("guw", CardinalityRangeFamily.FAMILY_1); // Gun
+          put("gv", CardinalityRangeFamily.FAMILY_1); // Manx
+          put("ha", CardinalityRangeFamily.FAMILY_1); // Hausa
+          put("haw", CardinalityRangeFamily.FAMILY_1); // Hawaiian
+          put("he", CardinalityRangeFamily.FAMILY_14); // Hebrew
+          put("hi", CardinalityRangeFamily.FAMILY_5); // Hindi
+          put("hr", CardinalityRangeFamily.FAMILY_8); // Croatian
+          put("hsb", CardinalityRangeFamily.FAMILY_1); // Upper Sorbian
+          put("hu", CardinalityRangeFamily.FAMILY_2); // Hungarian
+          put("hy", CardinalityRangeFamily.FAMILY_5); // Armenian
+          put("id", CardinalityRangeFamily.FAMILY_4); // Indonesian
+          put("ig", CardinalityRangeFamily.FAMILY_1); // Igbo
+          put("ii", CardinalityRangeFamily.FAMILY_1); // Sichuan Yi
+          put("is", CardinalityRangeFamily.FAMILY_6); // Icelandic
+          put("it", CardinalityRangeFamily.FAMILY_2); // Italian
+          put("iu", CardinalityRangeFamily.FAMILY_1); // Inuktitut
+          put("ja", CardinalityRangeFamily.FAMILY_4); // Japanese
+          put("jbo", CardinalityRangeFamily.FAMILY_1); // Lojban
+          put("jgo", CardinalityRangeFamily.FAMILY_1); // Ngomba
+          put("jmc", CardinalityRangeFamily.FAMILY_1); // Machame
+          put("jv", CardinalityRangeFamily.FAMILY_1); // Javanese
+          put("jw", CardinalityRangeFamily.FAMILY_1); // Javanese
+          put("ka", CardinalityRangeFamily.FAMILY_15); // Georgian
+          put("kab", CardinalityRangeFamily.FAMILY_1); // Kabyle
+          put("kaj", CardinalityRangeFamily.FAMILY_1); // Jju
+          put("kcg", CardinalityRangeFamily.FAMILY_1); // Tyap
+          put("kde", CardinalityRangeFamily.FAMILY_1); // Makonde
+          put("kea", CardinalityRangeFamily.FAMILY_1); // Kabuverdianu
+          put("kk", CardinalityRangeFamily.FAMILY_2); // Kazakh
+          put("kkj", CardinalityRangeFamily.FAMILY_1); // Kako
+          put("kl", CardinalityRangeFamily.FAMILY_1); // Kalaallisut
+          put("km", CardinalityRangeFamily.FAMILY_4); // Khmer
+          put("kn", CardinalityRangeFamily.FAMILY_5); // Kannada
+          put("ko", CardinalityRangeFamily.FAMILY_4); // Korean
+          put("ks", CardinalityRangeFamily.FAMILY_1); // Kashmiri
+          put("ksb", CardinalityRangeFamily.FAMILY_1); // Shambala
+          put("ksh", CardinalityRangeFamily.FAMILY_1); // Colognian
+          put("ku", CardinalityRangeFamily.FAMILY_1); // Kurdish
+          put("kw", CardinalityRangeFamily.FAMILY_1); // Cornish
+          put("ky", CardinalityRangeFamily.FAMILY_2); // Kirghiz
+          put("lag", CardinalityRangeFamily.FAMILY_1); // Langi
+          put("lb", CardinalityRangeFamily.FAMILY_1); // Luxembourgish
+          put("lg", CardinalityRangeFamily.FAMILY_1); // Ganda
+          put("lkt", CardinalityRangeFamily.FAMILY_1); // Lakota
+          put("ln", CardinalityRangeFamily.FAMILY_1); // Lingala
+          put("lo", CardinalityRangeFamily.FAMILY_4); // Lao
+          put("lt", CardinalityRangeFamily.FAMILY_7); // Lithuanian
+          put("lv", CardinalityRangeFamily.FAMILY_16); // Latvian
+          put("mas", CardinalityRangeFamily.FAMILY_1); // Masai
+          put("mg", CardinalityRangeFamily.FAMILY_1); // Malagasy
+          put("mgo", CardinalityRangeFamily.FAMILY_1); // Metaʼ
+          put("mk", CardinalityRangeFamily.FAMILY_17); // Macedonian
+          put("ml", CardinalityRangeFamily.FAMILY_2); // Malayalam
+          put("mn", CardinalityRangeFamily.FAMILY_2); // Mongolian
+          put("mo", CardinalityRangeFamily.FAMILY_1); // Moldovan
+          put("mr", CardinalityRangeFamily.FAMILY_5); // Marathi
+          put("ms", CardinalityRangeFamily.FAMILY_4); // Malay
+          put("mt", CardinalityRangeFamily.FAMILY_1); // Maltese
+          put("my", CardinalityRangeFamily.FAMILY_4); // Myanmar Language
+          put("nah", CardinalityRangeFamily.FAMILY_1); // Nahuatl
+          put("naq", CardinalityRangeFamily.FAMILY_1); // Nama
+          put("nb", CardinalityRangeFamily.FAMILY_3); // Norwegian Bokmål
+          put("nd", CardinalityRangeFamily.FAMILY_1); // North Ndebele
+          put("ne", CardinalityRangeFamily.FAMILY_2); // Nepali
+          put("nl", CardinalityRangeFamily.FAMILY_2); // Dutch
+          put("nn", CardinalityRangeFamily.FAMILY_1); // Norwegian Nynorsk
+          put("nnh", CardinalityRangeFamily.FAMILY_1); // Ngiemboon
+          put("no", CardinalityRangeFamily.FAMILY_1); // Norwegian
+          put("nqo", CardinalityRangeFamily.FAMILY_1); // N’Ko
+          put("nr", CardinalityRangeFamily.FAMILY_1); // South Ndebele
+          put("nso", CardinalityRangeFamily.FAMILY_1); // Northern Sotho
+          put("ny", CardinalityRangeFamily.FAMILY_1); // Nyanja
+          put("nyn", CardinalityRangeFamily.FAMILY_1); // Nyankole
+          put("om", CardinalityRangeFamily.FAMILY_1); // Oromo
+          put("or", CardinalityRangeFamily.FAMILY_1); // Odia
+          put("os", CardinalityRangeFamily.FAMILY_1); // Ossetic
+          put("pa", CardinalityRangeFamily.FAMILY_6); // Punjabi
+          put("pap", CardinalityRangeFamily.FAMILY_1); // Papiamento
+          put("pl", CardinalityRangeFamily.FAMILY_9); // Polish
+          put("prg", CardinalityRangeFamily.FAMILY_1); // Prussian
+          put("ps", CardinalityRangeFamily.FAMILY_1); // Pushto
+          put("pt", CardinalityRangeFamily.FAMILY_6); // Portuguese
+          put("rm", CardinalityRangeFamily.FAMILY_1); // Romansh
+          put("ro", CardinalityRangeFamily.FAMILY_18); // Romanian
+          put("rof", CardinalityRangeFamily.FAMILY_1); // Rombo
+          put("root", CardinalityRangeFamily.FAMILY_1); // Root
+          put("ru", CardinalityRangeFamily.FAMILY_7); // Russian
+          put("rwk", CardinalityRangeFamily.FAMILY_1); // Rwa
+          put("sah", CardinalityRangeFamily.FAMILY_1); // Sakha
+          put("saq", CardinalityRangeFamily.FAMILY_1); // Samburu
+          put("sdh", CardinalityRangeFamily.FAMILY_1); // Southern Kurdish
+          put("se", CardinalityRangeFamily.FAMILY_1); // Northern Sami
+          put("seh", CardinalityRangeFamily.FAMILY_1); // Sena
+          put("ses", CardinalityRangeFamily.FAMILY_1); // Koyraboro Senni
+          put("sg", CardinalityRangeFamily.FAMILY_1); // Sango
+          put("sh", CardinalityRangeFamily.FAMILY_1); // Serbo-Croatian
+          put("shi", CardinalityRangeFamily.FAMILY_1); // Tachelhit
+          put("si", CardinalityRangeFamily.FAMILY_19); // Sinhala
+          put("sk", CardinalityRangeFamily.FAMILY_9); // Slovak
+          put("sl", CardinalityRangeFamily.FAMILY_20); // Slovenian
+          put("sma", CardinalityRangeFamily.FAMILY_1); // Southern Sami
+          put("smi", CardinalityRangeFamily.FAMILY_1); // Sami
+          put("smj", CardinalityRangeFamily.FAMILY_1); // Lule Sami
+          put("smn", CardinalityRangeFamily.FAMILY_1); // Inari Sami
+          put("sms", CardinalityRangeFamily.FAMILY_1); // Skolt Sami
+          put("sn", CardinalityRangeFamily.FAMILY_1); // Shona
+          put("so", CardinalityRangeFamily.FAMILY_1); // Somali
+          put("sq", CardinalityRangeFamily.FAMILY_2); // Albanian
+          put("sr", CardinalityRangeFamily.FAMILY_8); // Serbian
+          put("ss", CardinalityRangeFamily.FAMILY_1); // Swati
+          put("ssy", CardinalityRangeFamily.FAMILY_1); // Saho
+          put("st", CardinalityRangeFamily.FAMILY_1); // Southern Sotho
+          put("sv", CardinalityRangeFamily.FAMILY_3); // Swedish
+          put("sw", CardinalityRangeFamily.FAMILY_2); // Swahili
+          put("syr", CardinalityRangeFamily.FAMILY_1); // Syriac
+          put("ta", CardinalityRangeFamily.FAMILY_2); // Tamil
+          put("te", CardinalityRangeFamily.FAMILY_2); // Telugu
+          put("teo", CardinalityRangeFamily.FAMILY_1); // Teso
+          put("th", CardinalityRangeFamily.FAMILY_4); // Thai
+          put("ti", CardinalityRangeFamily.FAMILY_1); // Tigrinya
+          put("tig", CardinalityRangeFamily.FAMILY_1); // Tigre
+          put("tk", CardinalityRangeFamily.FAMILY_1); // Turkmen
+          put("tl", CardinalityRangeFamily.FAMILY_1); // Tagalog
+          put("tn", CardinalityRangeFamily.FAMILY_1); // Tswana
+          put("to", CardinalityRangeFamily.FAMILY_1); // Tongan
+          put("tr", CardinalityRangeFamily.FAMILY_2); // Turkish
+          put("ts", CardinalityRangeFamily.FAMILY_1); // Tsonga
+          put("tzm", CardinalityRangeFamily.FAMILY_1); // Central Atlas Tamazight
+          put("ug", CardinalityRangeFamily.FAMILY_2); // Uighur
+          put("uk", CardinalityRangeFamily.FAMILY_7); // Ukrainian
+          put("ur", CardinalityRangeFamily.FAMILY_3); // Urdu
+          put("uz", CardinalityRangeFamily.FAMILY_2); // Uzbek
+          put("ve", CardinalityRangeFamily.FAMILY_1); // Venda
+          put("vi", CardinalityRangeFamily.FAMILY_4); // Vietnamese
+          put("vo", CardinalityRangeFamily.FAMILY_1); // Volapük
+          put("vun", CardinalityRangeFamily.FAMILY_1); // Vunjo
+          put("wa", CardinalityRangeFamily.FAMILY_1); // Walloon
+          put("wae", CardinalityRangeFamily.FAMILY_1); // Walser
+          put("wo", CardinalityRangeFamily.FAMILY_1); // Wolof
+          put("xh", CardinalityRangeFamily.FAMILY_1); // Xhosa
+          put("xog", CardinalityRangeFamily.FAMILY_1); // Soga
+          put("yi", CardinalityRangeFamily.FAMILY_1); // Yiddish
+          put("yo", CardinalityRangeFamily.FAMILY_1); // Yoruba
+          put("yue", CardinalityRangeFamily.FAMILY_4); // Cantonese
+          put("zh", CardinalityRangeFamily.FAMILY_4); // Mandarin Chinese
+          put("zu", CardinalityRangeFamily.FAMILY_5); // Zulu
+        }
+      });
+    }
+
+    /**
+     * Gets an appropriate plural cardinality range family for the given locale.
+     *
+     * @param locale the locale to check, not null
+     * @return the appropriate plural cardinality range family (if one exists) for the given locale, not null
+     */
+    @Nonnull
+    static Optional<CardinalityRangeFamily> cardinalityRangeFamilyForLocale(@Nonnull Locale locale) {
+      requireNonNull(locale);
+
+      String language = locale.getLanguage();
+      String country = locale.getCountry();
+
+      CardinalityRangeFamily cardinalityRangeFamily = null;
+
+      if (language != null && country != null)
+        cardinalityRangeFamily = CARDINALITY_RANGE_FAMILIES_BY_LANGUAGE_CODE.get(format("%s-%s", language, country));
+
+      if (cardinalityRangeFamily != null)
+        return Optional.of(cardinalityRangeFamily);
+
+      if (language != null)
+        cardinalityRangeFamily = CARDINALITY_RANGE_FAMILIES_BY_LANGUAGE_CODE.get(language);
+
+      return Optional.ofNullable(cardinalityRangeFamily);
+    }
+
+    /**
+     * Constructs a cardinality range family.
+     *
+     * @param cardinalitiesByCardinalityRange a mapping of cardinalities to example integer values for this cardinality range family sorted by the natural ordering of {@link Cardinality}, not null
+     */
+    CardinalityRangeFamily(@Nonnull SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange) {
+      this.cardinalitiesByCardinalityRange = cardinalitiesByCardinalityRange;
+    }
+
+    @Nonnull
+    SortedMap<CardinalityRange, Cardinality> getCardinalitiesByCardinalityRange() {
+      return cardinalitiesByCardinalityRange;
     }
   }
 }
