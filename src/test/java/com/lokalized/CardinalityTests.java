@@ -16,13 +16,17 @@
 
 package com.lokalized;
 
+import com.lokalized.Cardinality.CardinalityRangeFamily;
 import org.junit.Assert;
 import org.junit.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.SortedMap;
 
 import static java.lang.String.format;
 
@@ -77,6 +81,34 @@ public class CardinalityTests {
           Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
               locale.toLanguageTag(), bigDecimal, bigDecimals), cardinality, calculatedCardinality);
         }
+      }
+    }
+  }
+
+  @Test
+  public void ranges() {
+    List<CardinalityRange> allCardinalityRanges = new ArrayList<>(Cardinality.values().length * Cardinality.values().length);
+
+    // Cartesian product
+    for (Cardinality start : Cardinality.values())
+      for (Cardinality end : Cardinality.values())
+        allCardinalityRanges.add(CardinalityRange.of(start, end));
+
+    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
+      Locale locale = Locale.forLanguageTag(languageCode);
+      CardinalityRangeFamily cardinalityRangeFamily = CardinalityRangeFamily.cardinalityRangeFamilyForLocale(locale).get();
+      SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange = cardinalityRangeFamily.getCardinalitiesByCardinalityRange();
+
+      for (CardinalityRange cardinalityRange : allCardinalityRanges) {
+        Cardinality expectedCardinality = cardinalitiesByCardinalityRange.get(cardinalityRange);
+
+        if (expectedCardinality == null)
+          expectedCardinality = Cardinality.OTHER;
+
+        Cardinality actualCardinality = Cardinality.forRange(cardinalityRange.getStart(), cardinalityRange.getEnd(), locale);
+
+        Assert.assertEquals(format("Mismatched cardinality for range %s and locale %s", cardinalityRange, locale.toLanguageTag()),
+            expectedCardinality, actualCardinality);
       }
     }
   }

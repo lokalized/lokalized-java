@@ -1433,7 +1433,7 @@ public enum Ordinality implements LanguageForm {
     static Optional<OrdinalityFamily> ordinalityFamilyForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
-      String language = locale.getLanguage();
+      String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
       String country = locale.getCountry();
 
       OrdinalityFamily ordinalityFamily = null;

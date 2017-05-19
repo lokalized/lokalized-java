@@ -1489,7 +1489,7 @@ public enum Cardinality implements LanguageForm {
           // v = 0 and n != 0..10 and n % 10 = 0
           if (v == 0
               && notInRange(n, BIG_DECIMAL_0, BIG_DECIMAL_10)
-              && notEqual(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_0))
+              && equal(n.remainder(BIG_DECIMAL_10), BIG_DECIMAL_0))
             return MANY;
 
           return OTHER;
@@ -2263,7 +2263,7 @@ public enum Cardinality implements LanguageForm {
     static Optional<CardinalityFamily> cardinalityFamilyForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
-      String language = locale.getLanguage();
+      String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
       String country = locale.getCountry();
 
       CardinalityFamily cardinalityFamily = null;
@@ -3092,7 +3092,7 @@ public enum Cardinality implements LanguageForm {
     static Optional<CardinalityRangeFamily> cardinalityRangeFamilyForLocale(@Nonnull Locale locale) {
       requireNonNull(locale);
 
-      String language = locale.getLanguage();
+      String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
       String country = locale.getCountry();
 
       CardinalityRangeFamily cardinalityRangeFamily = null;

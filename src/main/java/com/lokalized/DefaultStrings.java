@@ -417,7 +417,7 @@ public class DefaultStrings implements Strings {
     requireNonNull(locale);
 
     return getLocalizedStringSourcesByLocale().computeIfAbsent(locale, (ignored) -> {
-      String language = locale.getLanguage();
+      String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
       String script = locale.getScript();
       String country = locale.getCountry();
       String variant = locale.getVariant();
