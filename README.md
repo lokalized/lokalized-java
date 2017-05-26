@@ -1,8 +1,8 @@
 ## Lokalized
 
-Lokalized facilitates natural-sounding software translations.
+Lokalized facilitates natural-sounding software translations on the JVM.
 
-It is both a translation file format...
+It is both a file format...
 
 ```json
 {
@@ -67,14 +67,14 @@ assertEquals("I didn't read any books.", translation);
 ```xml
 <dependency>
   <groupId>com.lokalized</groupId>
-  <artifactId>lokalized</artifactId>
+  <artifactId>lokalized-java</artifactId>
   <version>1.0.0-SNAPSHOT</version>
 </dependency>
 ```
 
 #### Direct Download
 
-If you don't use Maven, you can drop [lokalized-1.0.0-SNAPSHOT.jar](http://central.maven.org/maven2/com/lokalized/lokalized/1.0.0-SNAPSHOT/lokalized-1.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-java-1.0.0-SNAPSHOT.jar](http://central.maven.org/maven2/com/lokalized/lokalized/1.0.0-SNAPSHOT/lokalized-1.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
@@ -516,7 +516,7 @@ Again, like cardinal values, ordinals do not necessarily map to the named number
 
 ##### Spanish
 
-* `ORDINALITY_OTHER`: Matches everything (this language has no plural form)
+* `ORDINALITY_OTHER`: Matches everything (this language has no ordinal form)
 
 ##### English
 
@@ -564,15 +564,12 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 
 #### Structure
 
-Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW`.
- 
-The file must contain a single toplevel JSON object.
-  
-The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
+* Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW`
+* The file must contain a single toplevel JSON object
+* The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
+* The value for a translation key can be a string (simple cases) or an object (complex cases)
 
-The value for a translation key can be a string (simple cases) or an object (complex cases).
-
-Let's return to our example `en-GB` strings file, which contains a single translation.  We can use the string shorthand to concisely express our intent:
+With formalities out of the way, let's return to our example `en-GB` strings file, which contains a single translation.  We can use the string form shorthand to concisely express our intent:
 
 ```json
 {
