@@ -501,7 +501,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Tyap (kcg)</li>
      * <li>Kazakh (kk)</li>
      * <li>Kako (kkj)</li>
-     * <li>Kalaallisut (kl)</li>
+     * <li>Greenlandic (kl)</li>
      * <li>Kashmiri (ks)</li>
      * <li>Shambala (ksb)</li>
      * <li>Kurdish (ku)</li>
@@ -524,7 +524,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Nyankole (nyn)</li>
      * <li>Oromo (om)</li>
      * <li>Odia (or)</li>
-     * <li>Ossetic (os)</li>
+     * <li>Ossetian (os)</li>
      * <li>Papiamento (pap)</li>
      * <li>Pushto (ps)</li>
      * <li>Romansh (rm)</li>
@@ -600,7 +600,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Lakota (lkt)</li>
      * <li>Lao (lo)</li>
      * <li>Malay (ms)</li>
-     * <li>Myanmar Language (my)</li>
+     * <li>Burmese (my)</li>
      * <li>N’Ko (nqo)</li>
      * <li>Root (root)</li>
      * <li>Sakha (sah)</li>
@@ -1840,7 +1840,7 @@ public enum Cardinality implements LanguageForm {
      * Languages Include:
      * <p>
      * <ul>
-     * <li>Sinhala (si)</li>
+     * <li>Sinhalese (si)</li>
      * </ul>
      */
     FAMILY_33(
@@ -2060,7 +2060,7 @@ public enum Cardinality implements LanguageForm {
         put("kea", CardinalityFamily.FAMILY_2); // Kabuverdianu
         put("kk", CardinalityFamily.FAMILY_1); // Kazakh
         put("kkj", CardinalityFamily.FAMILY_1); // Kako
-        put("kl", CardinalityFamily.FAMILY_1); // Kalaallisut
+        put("kl", CardinalityFamily.FAMILY_1); // Greenlandic
         put("km", CardinalityFamily.FAMILY_2); // Khmer
         put("kn", CardinalityFamily.FAMILY_5); // Kannada
         put("ko", CardinalityFamily.FAMILY_2); // Korean
@@ -2088,7 +2088,7 @@ public enum Cardinality implements LanguageForm {
         put("mr", CardinalityFamily.FAMILY_5); // Marathi
         put("ms", CardinalityFamily.FAMILY_2); // Malay
         put("mt", CardinalityFamily.FAMILY_29); // Maltese
-        put("my", CardinalityFamily.FAMILY_2); // Myanmar Language
+        put("my", CardinalityFamily.FAMILY_2); // Burmese
         put("nah", CardinalityFamily.FAMILY_1); // Nahuatl
         put("naq", CardinalityFamily.FAMILY_6); // Nama
         put("nb", CardinalityFamily.FAMILY_1); // Norwegian Bokmål
@@ -2105,7 +2105,7 @@ public enum Cardinality implements LanguageForm {
         put("nyn", CardinalityFamily.FAMILY_1); // Nyankole
         put("om", CardinalityFamily.FAMILY_1); // Oromo
         put("or", CardinalityFamily.FAMILY_1); // Odia
-        put("os", CardinalityFamily.FAMILY_1); // Ossetic
+        put("os", CardinalityFamily.FAMILY_1); // Ossetian
         put("pa", CardinalityFamily.FAMILY_4); // Punjabi
         put("pap", CardinalityFamily.FAMILY_1); // Papiamento
         put("pl", CardinalityFamily.FAMILY_30); // Polish
@@ -2127,7 +2127,7 @@ public enum Cardinality implements LanguageForm {
         put("sg", CardinalityFamily.FAMILY_2); // Sango
         put("sh", CardinalityFamily.FAMILY_7); // Serbo-Croatian
         put("shi", CardinalityFamily.FAMILY_32); // Tachelhit
-        put("si", CardinalityFamily.FAMILY_33); // Sinhala
+        put("si", CardinalityFamily.FAMILY_33); // Sinhalese
         put("sk", CardinalityFamily.FAMILY_10); // Slovak
         put("sl", CardinalityFamily.FAMILY_34); // Slovenian
         put("sma", CardinalityFamily.FAMILY_6); // Southern Sami
@@ -2332,7 +2332,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Makonde (kde)</li>
      * <li>Kabuverdianu (kea)</li>
      * <li>Kako (kkj)</li>
-     * <li>Kalaallisut (kl)</li>
+     * <li>Greenlandic (kl)</li>
      * <li>Kashmiri (ks)</li>
      * <li>Shambala (ksb)</li>
      * <li>Colognian (ksh)</li>
@@ -2361,7 +2361,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Nyankole (nyn)</li>
      * <li>Oromo (om)</li>
      * <li>Odia (or)</li>
-     * <li>Ossetic (os)</li>
+     * <li>Ossetian (os)</li>
      * <li>Papiamento (pap)</li>
      * <li>Prussian (prg)</li>
      * <li>Pushto (ps)</li>
@@ -2484,7 +2484,7 @@ public enum Cardinality implements LanguageForm {
      * <li>Korean (ko)</li>
      * <li>Lao (lo)</li>
      * <li>Malay (ms)</li>
-     * <li>Myanmar Language (my)</li>
+     * <li>Burmese (my)</li>
      * <li>Thai (th)</li>
      * <li>Vietnamese (vi)</li>
      * <li>Cantonese (yue)</li>
@@ -2831,7 +2831,7 @@ public enum Cardinality implements LanguageForm {
      * Languages Include:
      * <p>
      * <ul>
-     * <li>Sinhala (si)</li>
+     * <li>Sinhalese (si)</li>
      * </ul>
      */
     FAMILY_19(
@@ -2962,7 +2962,7 @@ public enum Cardinality implements LanguageForm {
           put("kea", CardinalityRangeFamily.FAMILY_1); // Kabuverdianu
           put("kk", CardinalityRangeFamily.FAMILY_2); // Kazakh
           put("kkj", CardinalityRangeFamily.FAMILY_1); // Kako
-          put("kl", CardinalityRangeFamily.FAMILY_1); // Kalaallisut
+          put("kl", CardinalityRangeFamily.FAMILY_1); // Greenlandic
           put("km", CardinalityRangeFamily.FAMILY_4); // Khmer
           put("kn", CardinalityRangeFamily.FAMILY_5); // Kannada
           put("ko", CardinalityRangeFamily.FAMILY_4); // Korean
@@ -2990,7 +2990,7 @@ public enum Cardinality implements LanguageForm {
           put("mr", CardinalityRangeFamily.FAMILY_5); // Marathi
           put("ms", CardinalityRangeFamily.FAMILY_4); // Malay
           put("mt", CardinalityRangeFamily.FAMILY_1); // Maltese
-          put("my", CardinalityRangeFamily.FAMILY_4); // Myanmar Language
+          put("my", CardinalityRangeFamily.FAMILY_4); // Burmese
           put("nah", CardinalityRangeFamily.FAMILY_1); // Nahuatl
           put("naq", CardinalityRangeFamily.FAMILY_1); // Nama
           put("nb", CardinalityRangeFamily.FAMILY_3); // Norwegian Bokmål
@@ -3007,7 +3007,7 @@ public enum Cardinality implements LanguageForm {
           put("nyn", CardinalityRangeFamily.FAMILY_1); // Nyankole
           put("om", CardinalityRangeFamily.FAMILY_1); // Oromo
           put("or", CardinalityRangeFamily.FAMILY_1); // Odia
-          put("os", CardinalityRangeFamily.FAMILY_1); // Ossetic
+          put("os", CardinalityRangeFamily.FAMILY_1); // Ossetian
           put("pa", CardinalityRangeFamily.FAMILY_6); // Punjabi
           put("pap", CardinalityRangeFamily.FAMILY_1); // Papiamento
           put("pl", CardinalityRangeFamily.FAMILY_9); // Polish
@@ -3029,7 +3029,7 @@ public enum Cardinality implements LanguageForm {
           put("sg", CardinalityRangeFamily.FAMILY_1); // Sango
           put("sh", CardinalityRangeFamily.FAMILY_1); // Serbo-Croatian
           put("shi", CardinalityRangeFamily.FAMILY_1); // Tachelhit
-          put("si", CardinalityRangeFamily.FAMILY_19); // Sinhala
+          put("si", CardinalityRangeFamily.FAMILY_19); // Sinhalese
           put("sk", CardinalityRangeFamily.FAMILY_9); // Slovak
           put("sl", CardinalityRangeFamily.FAMILY_20); // Slovenian
           put("sma", CardinalityRangeFamily.FAMILY_1); // Southern Sami

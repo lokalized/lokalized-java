@@ -426,7 +426,7 @@ public enum Ordinality implements LanguageForm {
      * <li>Makonde (kde) (no CLDR data available)</li>
      * <li>Kabuverdianu (kea) (no CLDR data available)</li>
      * <li>Kako (kkj) (no CLDR data available)</li>
-     * <li>Kalaallisut (kl) (no CLDR data available)</li>
+     * <li>Greenlandic (kl) (no CLDR data available)</li>
      * <li>Khmer (km)</li>
      * <li>Kannada (kn)</li>
      * <li>Korean (ko)</li>
@@ -449,7 +449,7 @@ public enum Ordinality implements LanguageForm {
      * <li>Malayalam (ml)</li>
      * <li>Mongolian (mn)</li>
      * <li>Maltese (mt) (no CLDR data available)</li>
-     * <li>Myanmar Language (my)</li>
+     * <li>Burmese (my)</li>
      * <li>Nahuatl (nah) (no CLDR data available)</li>
      * <li>Nama (naq) (no CLDR data available)</li>
      * <li>Norwegian Bokmål (nb)</li>
@@ -465,7 +465,7 @@ public enum Ordinality implements LanguageForm {
      * <li>Nyankole (nyn) (no CLDR data available)</li>
      * <li>Oromo (om) (no CLDR data available)</li>
      * <li>Odia (or) (no CLDR data available)</li>
-     * <li>Ossetic (os) (no CLDR data available)</li>
+     * <li>Ossetian (os) (no CLDR data available)</li>
      * <li>Punjabi (pa)</li>
      * <li>Papiamento (pap) (no CLDR data available)</li>
      * <li>Polish (pl)</li>
@@ -486,7 +486,7 @@ public enum Ordinality implements LanguageForm {
      * <li>Sango (sg) (no CLDR data available)</li>
      * <li>Serbo-Croatian (sh)</li>
      * <li>Tachelhit (shi) (no CLDR data available)</li>
-     * <li>Sinhala (si)</li>
+     * <li>Sinhalese (si)</li>
      * <li>Slovak (sk)</li>
      * <li>Slovenian (sl)</li>
      * <li>Southern Sami (sma) (no CLDR data available)</li>
@@ -1244,7 +1244,7 @@ public enum Ordinality implements LanguageForm {
         put("kea", OrdinalityFamily.FAMILY_1); // Kabuverdianu (no CLDR data available)
         put("kk", OrdinalityFamily.FAMILY_13); // Kazakh
         put("kkj", OrdinalityFamily.FAMILY_1); // Kako (no CLDR data available)
-        put("kl", OrdinalityFamily.FAMILY_1); // Kalaallisut (no CLDR data available)
+        put("kl", OrdinalityFamily.FAMILY_1); // Greenlandic (no CLDR data available)
         put("km", OrdinalityFamily.FAMILY_1); // Khmer
         put("kn", OrdinalityFamily.FAMILY_1); // Kannada
         put("ko", OrdinalityFamily.FAMILY_1); // Korean
@@ -1272,7 +1272,7 @@ public enum Ordinality implements LanguageForm {
         put("mr", OrdinalityFamily.FAMILY_15); // Marathi
         put("ms", OrdinalityFamily.FAMILY_2); // Malay
         put("mt", OrdinalityFamily.FAMILY_1); // Maltese (no CLDR data available)
-        put("my", OrdinalityFamily.FAMILY_1); // Myanmar Language
+        put("my", OrdinalityFamily.FAMILY_1); // Burmese
         put("nah", OrdinalityFamily.FAMILY_1); // Nahuatl (no CLDR data available)
         put("naq", OrdinalityFamily.FAMILY_1); // Nama (no CLDR data available)
         put("nb", OrdinalityFamily.FAMILY_1); // Norwegian Bokmål
@@ -1289,7 +1289,7 @@ public enum Ordinality implements LanguageForm {
         put("nyn", OrdinalityFamily.FAMILY_1); // Nyankole (no CLDR data available)
         put("om", OrdinalityFamily.FAMILY_1); // Oromo (no CLDR data available)
         put("or", OrdinalityFamily.FAMILY_1); // Odia (no CLDR data available)
-        put("os", OrdinalityFamily.FAMILY_1); // Ossetic (no CLDR data available)
+        put("os", OrdinalityFamily.FAMILY_1); // Ossetian (no CLDR data available)
         put("pa", OrdinalityFamily.FAMILY_1); // Punjabi
         put("pap", OrdinalityFamily.FAMILY_1); // Papiamento (no CLDR data available)
         put("pl", OrdinalityFamily.FAMILY_1); // Polish
@@ -1311,7 +1311,7 @@ public enum Ordinality implements LanguageForm {
         put("sg", OrdinalityFamily.FAMILY_1); // Sango (no CLDR data available)
         put("sh", OrdinalityFamily.FAMILY_1); // Serbo-Croatian
         put("shi", OrdinalityFamily.FAMILY_1); // Tachelhit (no CLDR data available)
-        put("si", OrdinalityFamily.FAMILY_1); // Sinhala
+        put("si", OrdinalityFamily.FAMILY_1); // Sinhalese
         put("sk", OrdinalityFamily.FAMILY_1); // Slovak
         put("sl", OrdinalityFamily.FAMILY_1); // Slovenian
         put("sma", OrdinalityFamily.FAMILY_1); // Southern Sami (no CLDR data available)
