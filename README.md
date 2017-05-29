@@ -497,6 +497,14 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 * `CARDINALITY_MANY`: Matches 0, 5-20, 25-30, 45-50, ... (e.g. `5 рублей` or `17 рублей`)
 * `CARDINALITY_OTHER`: Everything else (e.g. `0,3 руб`, `1,5 руб`)
 
+#### Cardinality Ranges
+
+#### French
+
+* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. 0–1 jour)
+* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. 0–2 jours)
+* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. 2–100 jours)
+
 #### Ordinals
 
 For example: `1st, 2nd, 3rd, 4th, ...`
