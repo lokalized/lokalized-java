@@ -499,11 +499,33 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 #### Cardinality Ranges
 
+For example: `0-1 hours, 1-2 hours, ...`
+
+The plural form of the range is determined by examining the cardinality of the start and end components of the range. 
+
+#### English
+
+* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `1–2 days`)
+* `CARDINALITY_OTHER` - `CARDINALITY_ONE` ⇒ `CARDINALITY_OTHER` (e.g. `0–1 days`)
+* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 days`)
+
 #### French
 
-* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. 0–1 jour)
-* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. 0–2 jours)
-* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. 2–100 jours)
+* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0–1 jour`)
+* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 jours`)
+* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `2–100 jours`)
+
+#### Latvian
+
+* `CARDINALITY_ZERO` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0–10 diennaktis`)
+* `CARDINALITY_ZERO` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0–1 diennakts`)
+* `CARDINALITY_ZERO` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 diennaktis`)
+* `CARDINALITY_ONE` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0,1–10 diennaktis`)
+* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0,1–1 diennakts`)
+* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0,1–2 diennaktis`)
+* `CARDINALITY_OTHER` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0,2–10 diennaktis`)
+* `CARDINALITY_OTHER` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0,2–1 diennakts`)
+* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0,2–2 diennaktis`)
 
 #### Ordinals
 
