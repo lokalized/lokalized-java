@@ -344,6 +344,14 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
+## Working With Cardinalities
+
+TODO
+
+## Working With Cardinality Ranges
+
+TODO
+
 ## Working With Ordinals
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
@@ -460,9 +468,9 @@ Gender rules vary across languages, but the general meaning is the same.
  
 Lokalized supports these values:
 
-* `MASCULINE`
-* `FEMININE`
-* `NEUTER`
+* [`GENDER_MASCULINE`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#MASCULINE)
+* [`GENDER_FEMININE`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#FEMININE)
+* [`GENDER_NEUTER`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#NEUTER)
 
 #### Plural Cardinality
 
@@ -472,60 +480,60 @@ Plural rules vary widely across languages.
 
 Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
 
-* `CARDINALITY_ZERO`
-* `CARDINALITY_ONE`
-* `CARDINALITY_TWO`
-* `CARDINALITY_FEW`
-* `CARDINALITY_MANY`
-* `CARDINALITY_OTHER` 
+* [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE)
+* [`CARDINALITY_TWO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#TWO)
+* [`CARDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#FEW)
+* [`CARDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#MANY)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) 
 
-Values do not necessarily map exactly to the named number, e.g. in some languages `CARDINALITY_ONE` might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by `CARDINALITY_OTHER` in those cases).
+Values do not necessarily map exactly to the named number, e.g. in some languages [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) in those cases).
 
 ##### Japanese
 
-* `CARDINALITY_OTHER`: Matches everything (this language has no plural form)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Matches everything (this language has no plural form)
 
 ##### English
 
-* `CARDINALITY_ONE`: Matches 1 (e.g. `1 dollar`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `256 dollars`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE): Matches 1 (e.g. `1 dollar`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Everything else (e.g. `256 dollars`)
 
 ##### Russian
 
-* `CARDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1 рубль` or `51 рубль`)
-* `CARDINALITY_FEW`: Matches 2-4, 22-24, 32-34, ... (e.g. `2 рубля` or `53 рубля`)
-* `CARDINALITY_MANY`: Matches 0, 5-20, 25-30, 45-50, ... (e.g. `5 рублей` or `17 рублей`)
-* `CARDINALITY_OTHER`: Everything else (e.g. `0,3 руб`, `1,5 руб`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE): Matches 1, 21, 31, ... (e.g. `1 рубль` or `51 рубль`)
+* [`CARDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#FEW): Matches 2-4, 22-24, 32-34, ... (e.g. `2 рубля` or `53 рубля`)
+* [`CARDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#MANY): Matches 0, 5-20, 25-30, 45-50, ... (e.g. `5 рублей` or `17 рублей`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Everything else (e.g. `0,3 руб`, `1,5 руб`)
 
-#### Cardinality Ranges
+#### Plural Cardinality Ranges
 
 For example: `0-1 hours, 1-2 hours, ...`
 
-The plural form of the range is determined by examining the cardinality of the start and end components of the range. 
+The plural form of the range is determined by examining the cardinality of its start and end components. 
 
 #### English
 
-* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `1–2 days`)
-* `CARDINALITY_OTHER` - `CARDINALITY_ONE` ⇒ `CARDINALITY_OTHER` (e.g. `0–1 days`)
-* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 days`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `1–2 days`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–1 days`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 days`)
 
 #### French
 
-* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0–1 jour`)
-* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 jours`)
-* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `2–100 jours`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 jour`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 jours`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `2–100 jours`)
 
 #### Latvian
 
-* `CARDINALITY_ZERO` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0–10 diennaktis`)
-* `CARDINALITY_ZERO` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0–1 diennakts`)
-* `CARDINALITY_ZERO` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0–2 diennaktis`)
-* `CARDINALITY_ONE` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0,1–10 diennaktis`)
-* `CARDINALITY_ONE` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0,1–1 diennakts`)
-* `CARDINALITY_ONE` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0,1–2 diennaktis`)
-* `CARDINALITY_OTHER` - `CARDINALITY_ZERO` ⇒ `CARDINALITY_OTHER` (e.g. `0,2–10 diennaktis`)
-* `CARDINALITY_OTHER` - `CARDINALITY_ONE` ⇒ `CARDINALITY_ONE` (e.g. `0,2–1 diennakts`)
-* `CARDINALITY_OTHER` - `CARDINALITY_OTHER` ⇒ `CARDINALITY_OTHER` (e.g. `0,2–2 diennaktis`)
+* [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–10 diennaktis`)
+* [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 diennakts`)
+* [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 diennaktis`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1–10 diennaktis`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0,1–1 diennakts`)
+* [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1–2 diennaktis`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–10 diennaktis`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0,2–1 diennakts`)
+* [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–2 diennaktis`)
 
 #### Ordinals
 
@@ -535,30 +543,30 @@ Similar to plural cardinality, ordinal rules very widely across languages.
 
 Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
 
-* `ORDINALITY_ZERO`
-* `ORDINALITY_ONE`
-* `ORDINALITY_TWO`
-* `ORDINALITY_FEW`
-* `ORDINALITY_MANY`
-* `ORDINALITY_OTHER`
+* [`ORDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ZERO)
+* [`ORDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ONE)
+* [`ORDINALITY_TWO`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#TWO)
+* [`ORDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#FEW)
+* [`ORDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#MANY)
+* [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER)
 
-Again, like cardinal values, ordinals do not necessarily map to the named number. For example, `ORDINALITY_ONE` might apply to any number that ends in `1`.
+Again, like cardinal values, ordinals do not necessarily map to the named number. For example, [`ORDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ONE) might apply to any number that ends in `1`.
 
 ##### Spanish
 
-* `ORDINALITY_OTHER`: Matches everything (this language has no ordinal form)
+* [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Matches everything (this language has no ordinal form)
 
 ##### English
 
-* `ORDINALITY_ONE`: Matches 1, 21, 31, ... (e.g. `1st prize`)
-* `ORDINALITY_TWO`: Matches 2, 22, 32, ... (e.g. `22nd prize`)
-* `ORDINALITY_FEW`: Matches 3, 23, 33, ... (e.g. `33rd prize`)
-* `ORDINALITY_OTHER`: Everything else (e.g. `12th prize`)
+* [`ORDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ONE): Matches 1, 21, 31, ... (e.g. `1st prize`)
+* [`ORDINALITY_TWO`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#TWO): Matches 2, 22, 32, ... (e.g. `22nd prize`)
+* [`ORDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#FEW): Matches 3, 23, 33, ... (e.g. `33rd prize`)
+* [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `12th prize`)
 
 ##### Italian
 
-* `ORDINALITY_MANY`: Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
-* `ORDINALITY_OTHER`: Everything else (e.g. `	Prendi la 7° a destra`)
+* [`ORDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#MANY): Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
+* [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `	Prendi la 7° a destra`)
 
 ## Alternative Expressions
 
@@ -640,7 +648,11 @@ A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PL
 
 You are free to add as many as you like to support your translation.
 
-##### TODO: finish up
+Placeholder values are initially specified by application code - they are the context that is passed in at string evaluation time.
+
+Your translation file may override passed-in placeholders if desired, but that is an uncommon use case.
+
+In the below example of an `en` strings file, the application code provides the `bookCount` value and the translation file introduces a `books` value to aid final translation.
 
 ```json
 {
@@ -658,6 +670,42 @@ You are free to add as many as you like to support your translation.
   }  
 }
 ```
+
+Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
+
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html), [`Ordinality`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html), or [`Gender`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html) or [`Ordinality`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html) according the language's rules  
+* `translations` is a set of language rules against which to evaluate `value` and provide a translation
+
+Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
+
+Supported values for `translations` are [`Cardinality`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html), [`Ordinality`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html), and [`Gender`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html) types.
+
+You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#MASCULINE).
+
+The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
+
+```json
+{
+  "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
+    "translation" : "The meeting will be {{minHours}}-{{maxHours}} {{hours}} long.",
+    "placeholders" : {
+      "hours" : {
+        "range" : {
+          "start" : "minHours",
+          "end" : "maxHours"
+        },
+        "translations" : {
+          "CARDINALITY_OTHER" : "hours"
+        }
+      }
+    }
+  }
+}
+```
+
+Here, the cardinalities of `minHours` and `maxHours` are evaluated to determine the overall cardinality of the range, which is used to select the appropriate value in `translations`.
+
+You are prohibited from supplying both `range` and `value` fields - use `range` only for cardinality ranges and `value` otherwise.
 
 #### Alternatives
 
