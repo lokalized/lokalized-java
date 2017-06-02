@@ -32,6 +32,8 @@ import java.util.List;
 /**
  * Embedded version of the <a href="https://github.com/ralfstx/minimal-json">minimal-json</a> library.
  * <p>
+ * This is from commit e7f9fe0 on master from Oct 25, 2016.
+ * <p>
  * We embed the library directly to avoid having an external dependency.
  * <p>
  * This is package-private since it is only intended for internal Lokalized usage.
