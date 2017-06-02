@@ -86,7 +86,7 @@ Perhaps most importantly, the Lokalized placeholder system and expression langua
 
 ## Getting Started
 
-We'll start with hands-on examples to illustrate key features.  More detailed documentation is available further down in this document.
+We'll start with hands-on examples to illustrate key features.
 
 #### 1. Create Localized Strings Files
 
@@ -344,7 +344,7 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
-## Working With Ordinals
+## An Ordinality Example
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
  
@@ -503,7 +503,7 @@ Lokalized provides a [`Cardinality`](https://www.lokalized.com/javadoc/com/lokal
 
 You may programmatically determine cardinality using [`Cardinality#forNumber(Number number, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#forNumber-java.lang.Number-java.util.Locale-) and [`Cardinality#forNumber(Number number, Integer visibleDecimalPlaces, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#forNumber-java.lang.Number-java.lang.Integer-java.util.Locale-) as shown below. 
 
-It is important to note that the number of visible decimal places can be important for some languages when performing cardinality evaluation.  For example, in English, `1` matches [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) but `1.0` matches [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER).  Even though the numbers' true values are identical (`1`) you would say `1 inch` and `1.0 inches` and therefore must take visible decimals into account.
+It is important to note that the number of visible decimal places can be important for some languages when performing cardinality evaluation.  For example, in English, `1` matches [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) but `1.0` matches [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER).  Even though the numbers' true values are identical, you would say `1 inch` and `1.0 inches` and therefore must take visible decimals into account.
 
 ```java
 // Basic case - a primitive number, no decimals
@@ -632,36 +632,6 @@ ordinality = Ordinality.forNumber(27, Locale.forLanguageTag("en"));
 assertEquals(Ordinality.OTHER, ordinality);
 ```
 
-## Alternative Expressions
-
-You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`.
-
-Expression recursion is supported. That is, each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`.
-
-A grammar for alternative expressions follows.
-
-```EBNF
-EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
-OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
-LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
-CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
-ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
-GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
-VARIABLE = { alphabetic character | digit } ;
-BOOLEAN_OPERATOR = "&&" | "||" ;
-COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
-```
-
-#### What Expressions Currently Support
-
-* Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
-* Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
-
-#### What Expressions Do Not Currently Support
-
-* The unary `!` operator
-* Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
-
 ## Localized Strings File Format
 
 #### Structure
@@ -773,7 +743,83 @@ You are prohibited from supplying both `range` and `value` fields - use `range` 
 
 #### Alternatives
 
-##### TODO: finish up
+You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`.
+
+Expression recursion is supported. That is, each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.  
+
+A somewhat contrived example of multiple levels of recursion follows.  The first level of recursion uses a full object, the second uses the string shorthand.
+
+```json
+{
+  "I read {{bookCount}} books." : {
+    "translation" : "I read {{bookCount}} books.",    
+    "alternatives" : [
+      {
+        "bookCount < 3" : {
+          "translation" : "I only read a few books. {{bookCount}}, in fact!",
+          "alternatives": [
+            {
+              "bookCount == 0" : "I'm ashamed to admit I didn't read anything."
+            }
+          ]
+        }        
+      }
+    ]
+  }  
+}
+```
+
+Evaluation works as you might expect.
+
+```java
+// Deepest recursion
+String translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 0);
+  }});
+
+assertEquals("I'm ashamed to admit I didn't read anything.", translation);
+
+// 1 level deep recursion
+translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 1);
+  }});
+
+assertEquals("I only read a few books. 1, in fact!", translation);
+
+// Normal case
+translation = strings.get("I read {{bookCount}} books.",
+  new HashMap<String, Object>() {{
+    put("bookCount", 3);
+  }});
+
+assertEquals("I read 3 books.", translation);
+```
+
+A grammar for alternative expressions follows.
+
+```EBNF
+EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
+OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
+CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
+ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
+GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
+VARIABLE = { alphabetic character | digit } ;
+BOOLEAN_OPERATOR = "&&" | "||" ;
+COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
+```
+
+##### What Expressions Currently Support
+
+* Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
+* Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
+
+##### What Expressions Do Not Currently Support
+
+* The unary `!` operator
+* Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
 
 ## Keying Strategy
 
@@ -799,7 +845,7 @@ For example: `"I read {{bookCount}} books."`
 
 #### Contextual Keys
 
-For example: `"screen.profile.books-read"`
+For example: `"SCREEN-PROFILE-BOOKS_READ"`
 
 ##### Pros
 
