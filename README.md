@@ -807,9 +807,32 @@ You are prohibited from supplying both `range` and `value` fields - use `range` 
 
 #### Alternatives
 
-You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like `gender == MASCULINE && (bookCount > 10 || magazineCount > 20)`.
+You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like this:
+ 
+```text
+gender == MASCULINE && (bookCount > 10 || magazineCount > 20)
+```
 
-Expression recursion is supported. That is, each value for `alternatives` can itself have a `translation`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.  
+Lokalized will automatically evaluate cardinality and ordinality for numbers if required by the expression.  For example, in English, if I were to supply `bookCount` of `50`, this expression would evalute to `true`:
+ 
+```text
+bookCount == CARDINALITY_OTHER
+``` 
+
+...and so would this:
+
+```text
+bookCount == 50
+``` 
+
+Note that the supported comparison operators for cardinality, ordinality, and gender forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
+
+Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `placeholders`, `commentary`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
+  
+Alternative evaluation follows these rules:
+
+* Deepest level of recursion is evaluated first
+* Expressions are evaluated according to their order in the list, halting at first matched expression 
 
 A somewhat contrived example of multiple levels of recursion follows.  The first level of recursion uses a full object, the second uses the string shorthand.
 
@@ -884,6 +907,7 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
+* A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
 
 ## Keying Strategy
 
