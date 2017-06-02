@@ -344,14 +344,6 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
-## Working With Cardinalities
-
-TODO
-
-## Working With Cardinality Ranges
-
-TODO
-
 ## Working With Ordinals
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
@@ -472,6 +464,8 @@ Lokalized supports these values:
 * [`GENDER_FEMININE`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#FEMININE)
 * [`GENDER_NEUTER`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html#NEUTER)
 
+Lokalized provides a [`Gender`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html) type which enumerates supported genders.
+
 #### Plural Cardinality
 
 For example: `1 book, 2 books, ...`
@@ -505,25 +499,56 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 * [`CARDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#MANY): Matches 0, 5-20, 25-30, 45-50, ... (e.g. `5 рублей` or `17 рублей`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Everything else (e.g. `0,3 руб`, `1,5 руб`)
 
+Lokalized provides a [`Cardinality`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html) type which encapsulates cardinal functionality.
+
+You may programmatically determine cardinality using [`Cardinality#forNumber(Number number, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#forNumber-java.lang.Number-java.util.Locale-) and [`Cardinality#forNumber(Number number, Integer visibleDecimalPlaces, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#forNumber-java.lang.Number-java.lang.Integer-java.util.Locale-) as shown below. 
+
+It is important to note that the number of visible decimal places can be important for some languages when performing cardinality evaluation.  For example, in English, `1` matches [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) but `1.0` matches [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER).  Even though the numbers' true values are identical (`1`) you would say `1 inch` and `1.0 inches` and therefore must take visible decimals into account.
+
+```java
+// Basic case - a primitive number, no decimals
+Cardinality cardinality = Cardinality.forNumber(1, Locale.forLanguageTag("en"));
+assertEquals(Cardinality.ONE, cardinality);
+
+// In the absence of an explicit number of visible decimals,
+// 1.0 evaluates to Cardinality.ONE since primitive 1 == primitive 1.0
+cardinality = Cardinality.forNumber(1.0, Locale.forLanguageTag("en"));
+assertEquals(Cardinality.ONE, cardinality);
+
+// With 1 visible decimal specified ("1.0"), we evaluate to Cardinality.OTHER
+cardinality = Cardinality.forNumber(1, 1, Locale.forLanguageTag("en"));
+assertEquals(Cardinality.OTHER, cardinality);
+
+// Let's try BigDecimal instead of a primitive...
+cardinality = Cardinality.forNumber(new BigDecimal("1"), Locale.forLanguageTag("en"));
+assertEquals(Cardinality.ONE, cardinality);
+
+// Using BigDecimal obviates the need to specify visible decimals
+// since they can be encoded directly in the number.
+// We evaluate to Cardinality.OTHER, as expected
+cardinality = Cardinality.forNumber(new BigDecimal("1.0"), Locale.forLanguageTag("en"));
+assertEquals(Cardinality.OTHER, cardinality);
+```  
+
 #### Plural Cardinality Ranges
 
 For example: `0-1 hours, 1-2 hours, ...`
 
 The plural form of the range is determined by examining the cardinality of its start and end components. 
 
-#### English
+##### English
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `1–2 days`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–1 days`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 days`)
 
-#### French
+##### French
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 jour`)
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 jours`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `2–100 jours`)
 
-#### Latvian
+##### Latvian
 
 * [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–10 diennaktis`)
 * [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 diennakts`)
@@ -534,6 +559,19 @@ The plural form of the range is determined by examining the cardinality of its s
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–10 diennaktis`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0,2–1 diennakts`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–2 diennaktis`)
+
+You may programmatically determine a range's cardinality using [`Cardinality#forRange(Cardinality start, Cardinality end, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#forRange-com.lokalized.Cardinality-com.lokalized.Cardinality-java.util.Locale-) as shown below.
+
+```java
+// Latvian has a number of interesting range rules.
+// ZERO-ZERO -> OTHER
+Cardinality cardinality = Cardinality.forRange(Cardinality.ZERO, Cardinality.ZERO, Locale.forLanguageTag("lv"));
+assertEquals(Cardinality.OTHER, cardinality);
+
+// ZERO-ONE -> ONE
+cardinality = Cardinality.forRange(Cardinality.ZERO, Cardinality.ONE, Locale.forLanguageTag("lv"));
+assertEquals(Cardinality.ONE, cardinality);
+```
 
 #### Ordinals
 
@@ -567,6 +605,32 @@ Again, like cardinal values, ordinals do not necessarily map to the named number
 
 * [`ORDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#MANY): Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
 * [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `	Prendi la 7° a destra`)
+
+Lokalized provides an [`Ordinality`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html) type which encapsulates ordinal functionality.
+
+You may programmatically determine ordinality using [`Ordinality#forNumber(Number number, Locale locale)`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#forNumber-java.lang.Number-java.util.Locale-) as shown below. 
+
+```java
+// e.g. "1st"
+Ordinality ordinality = Ordinality.forNumber(1, Locale.forLanguageTag("en"));
+assertEquals(Ordinality.ONE, ordinality);
+
+// e.g. "2nd"
+ordinality = Ordinality.forNumber(2, Locale.forLanguageTag("en"));
+assertEquals(Ordinality.TWO, ordinality);
+
+// e.g. "3rd"
+ordinality = Ordinality.forNumber(3, Locale.forLanguageTag("en"));
+assertEquals(Ordinality.FEW, ordinality);
+
+// e.g. "21st"
+ordinality = Ordinality.forNumber(21, Locale.forLanguageTag("en"));
+assertEquals(Ordinality.ONE, ordinality);
+
+// e.g. "27th"
+ordinality = Ordinality.forNumber(27, Locale.forLanguageTag("en"));
+assertEquals(Ordinality.OTHER, ordinality);
+```
 
 ## Alternative Expressions
 
@@ -631,7 +695,7 @@ All 4 are optional, with the stipulation that you must provide either a `transla
 
 #### Commentary
 
-This field is used to supply context for the translator, such as how and where the phrase is used in the application.
+This free-form field is used to supply context for the translator, such as how and where the phrase is used in the application.  It might also include documentation about the application-supplied placeholder values (names and types) so it's clear what data is available to perform the translation.
 
 ```json
 {
