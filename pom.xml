@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>com.lokalized</groupId>
     <artifactId>lokalized-java</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>Lokalized</name>
     <description>Lokalized facilitates natural-sounding software translations.</description>

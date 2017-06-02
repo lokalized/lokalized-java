@@ -68,13 +68,13 @@ assertEquals("I didn't read any books.", translation);
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized-java</artifactId>
-  <version>1.0.0-SNAPSHOT</version>
+  <version>1.0.0</version>
 </dependency>
 ```
 
 #### Direct Download
 
-If you don't use Maven, you can drop [lokalized-java-1.0.0-SNAPSHOT.jar](http://central.maven.org/maven2/com/lokalized/lokalized/1.0.0-SNAPSHOT/lokalized-1.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-java-1.0.0.jar](http://central.maven.org/maven2/com/lokalized/lokalized-java/1.0.0/lokalized-java-1.0.0.jar) directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
