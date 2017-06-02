@@ -344,6 +344,69 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
+## A Cardinality Range Example
+
+When expressing a range of values (`1-3 meters`, `2.5-3.5 hours`), the cardinality of the range is determined by applying per-language rules to its start and end cardinalities.
+  
+In English we don't think about this - all ranges are of the form [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - but many other languages have range-specific forms.
+
+#### French Translation File
+
+French ranges can be either [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) or  [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER).
+
+```json
+{
+  "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
+    "translation" : "La réunion aura une durée de {{minHours}} à {{maxHours}} {{heures}}.",
+    "placeholders" : {
+      "heures" : {
+        "range" : {
+          "start" : "minHours",
+          "end" : "maxHours"
+        },
+        "translations" : {
+          "CARDINALITY_ONE" : "heure",
+          "CARDINALITY_OTHER" : "heures"
+        }
+      }
+    }
+  }
+}
+```
+
+#### English Translation File
+
+All English range forms evaluate to [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) so the file can be kept simple.
+
+
+```json
+{
+  "The meeting will be {{minHours}}-{{maxHours}} hours long." : "The meeting will be {{minHours}}-{{maxHours}} hours long."
+}
+```
+
+#### Cardinality Ranges, Exercised
+
+```java
+// French CARDINALITY_OTHER case 
+String translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
+  new HashMap<String, Object>() {{
+    put("minHours", 1);
+    put("maxHours", 3);
+  }}, Locale.forLanguageTag("fr"));
+
+assertEquals("La réunion aura une durée de 1 à 3 heures.", translation);
+
+// French CARDINALITY_ONE case
+translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
+  new HashMap<String, Object>() {{
+    put("minHours", 0);
+    put("maxHours", 1);
+  }}, Locale.forLanguageTag("fr"));
+
+assertEquals("La réunion aura une durée de 0 à 1 heure.", translation);
+```
+
 ## An Ordinality Example
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
@@ -721,15 +784,16 @@ The placeholder structure is slightly different for cardinality ranges.  A `rang
 ```json
 {
   "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
-    "translation" : "The meeting will be {{minHours}}-{{maxHours}} {{hours}} long.",
+    "translation" : "La réunion aura une durée de {{minHours}} à {{maxHours}} {{heures}}.",
     "placeholders" : {
-      "hours" : {
+      "heures" : {
         "range" : {
           "start" : "minHours",
           "end" : "maxHours"
         },
         "translations" : {
-          "CARDINALITY_OTHER" : "hours"
+          "CARDINALITY_ONE" : "heure",
+          "CARDINALITY_OTHER" : "heures"
         }
       }
     }
