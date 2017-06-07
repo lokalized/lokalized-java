@@ -347,4 +347,21 @@ public class StringsTests {
 
     Assert.assertEquals("The meeting will be 1.5-2 hours long.", enTranslation);
   }
+
+  @Test
+  public void noTranslationKeyPlaceholderTest() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).build();
+
+    String translation = strings.get("There is no key for this");
+
+    Assert.assertEquals("There is no key for this", translation);
+
+    translation = strings.get("There is no key for {{this}}", new HashMap<String, Object>() {{
+      put("this", "that");
+    }});
+
+    Assert.assertEquals("There is no key for that", translation);
+  }
 }

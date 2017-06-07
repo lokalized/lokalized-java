@@ -224,7 +224,7 @@ public class DefaultStrings implements Strings {
 
     if (translation == null) {
       logger.finer(format("No match for '%s' was found in any strings file.", key));
-      translation = key;
+      translation = stringInterpolator.interpolate(key, mutableContext);
     }
 
     return translation;
