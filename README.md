@@ -1,7 +1,7 @@
 <a href="https://www.lokalized.com">
     <picture>
-        <source media="(prefers-color-scheme: dark)" srcset="https://cdn.lokalized.com/lokalized-gh-logo-dark-v4.png">
-        <img alt="Lokalized" src="https://cdn.lokalized.com/lokalized-gh-logo-light-v4.png" width="300" height="88">
+        <source media="(prefers-color-scheme: dark)" srcset="https://cdn.lokalized.com/lokalized-gh-logo-dark-v5.png">
+        <img alt="Lokalized" src="https://cdn.lokalized.com/lokalized-gh-logo-light-v5.png" width="300" height="93">
     </picture>
 </a>
 
