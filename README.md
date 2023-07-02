@@ -74,7 +74,7 @@ assertEquals("I didn't read any books.", translation);
 
 #### Direct Download
 
-If you don't use Maven, you can drop [lokalized-java-1.0.1.jar](http://central.maven.org/maven2/com/lokalized/lokalized-java/1.0.1/lokalized-java-1.0.1.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-java-1.0.1.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized-java/1.0.1/lokalized-java-1.0.1.jar) directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
@@ -991,7 +991,7 @@ Note: ```SLF4JBridgeHandler``` can impact performance.  You can mitigate that wi
 
 ## About
 
-Lokalized was created by [Mark Allen](https://www.revetkn.com) and sponsored by [Product Mog, LLC.](https://www.xmog.com)
+Lokalized was created by [Mark Allen](https://www.revetkn.com) and sponsored by [Transmogrify LLC](https://www.xmog.com) and [Revetware LLC](https://www.revetware.com).
 
 Development was aided by
 
