@@ -1,4 +1,9 @@
-## Lokalized
+<a href="https://www.lokalized.com">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://cdn.lokalized.com/lokalized-gh-logo-dark-v1.png">
+        <img alt="Lokalized" src="https://cdn.lokalized.com/lokalized-gh-logo-light-v1.png" width="300" height="79">
+    </picture>
+</a>
 
 Lokalized facilitates natural-sounding software translations on the JVM.
 
@@ -37,7 +42,7 @@ String translation = strings.get("I read {{bookCount}} books.",
 assertEquals("I didn't read any books.", translation);
 ```
 
-#### Design Goals
+## Design Goals
 
 * Complex translation rules can be expressed in a configuration file, not code
 * First-class support for gender and plural (cardinal, ordinal, range) language forms per latest CLDR specifications
@@ -46,23 +51,23 @@ assertEquals("I didn't read any books.", translation);
 * Immutability/thread-safety
 * No dependencies
 
-#### Design Non-Goals
+## Design Non-Goals
 
 * Support for date/time, number, percentage, and currency formatting/parsing
 * Support for collation
 * Support for Java 7 and below
 
-#### Roadmap
+## Roadmap
 
 * Static analysis tool to autogenerate/sync localized strings files
 * Additional Ports (JavaScript, Python, Android, Go, ...)
 * Webapp for translators
 
-#### License
+## License
 
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
 
-#### Maven Installation
+## Maven Installation
 
 ```xml
 <dependency>
@@ -72,7 +77,7 @@ assertEquals("I didn't read any books.", translation);
 </dependency>
 ```
 
-#### Direct Download
+## Direct Download
 
 If you don't use Maven, you can drop [lokalized-java-1.0.1.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized-java/1.0.1/lokalized-java-1.0.1.jar) directly into your project.  No other dependencies are required.
 
@@ -88,7 +93,7 @@ Perhaps most importantly, the Lokalized placeholder system and expression langua
 
 We'll start with hands-on examples to illustrate key features.
 
-#### 1. Create Localized Strings Files
+### 1. Create Localized Strings Files
 
 Filenames must conform to the IETF BCP 47 language tag format.
 
@@ -127,7 +132,7 @@ Here is a British English (`en-GB`) localized strings file:
 
 Lokalized performs locale matching and falls back to less-specific locales as appropriate, so there is no need to duplicate all the `en` translations in `en-GB` - it is sufficient to specify only the dialect-specific differences. 
 
-#### 2. Create a Strings Instance
+### 2. Create a Strings Instance
    
 ```java
 // Your "native" fallback strings file, used in case no specific locale match is found.
@@ -154,7 +159,7 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
   .build();
 ```
 
-#### 3. Ask Strings Instance For Translations
+### 3. Ask Strings Instance For Translations
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
@@ -213,7 +218,7 @@ But notice how the statements must change to match gender - `uno` becomes `una`,
 * `Él era el mejor jugador de béisbol.`
 * `Ella era la mejor jugadora de béisbol.`
 
-#### English Translation File
+### English Translation File
 
 English is a little simpler than Spanish because gender only affects the `He` or `She` component of the sentence. 
 
@@ -242,7 +247,7 @@ English is a little simpler than Spanish because gender only affects the `He` or
 }
 ```
 
-#### Spanish Translation File
+### Spanish Translation File
 
 Note that we define our own placeholders in `translation` and drive them off of the `heOrShe` value to support gender-based word changes.
 
@@ -285,9 +290,9 @@ Note that we define our own placeholders in `translation` and drive them off of 
 }
 ```
 
-#### The Rules, Exercised
+### The Rules, Exercised
 
-Again, we keep the gender and plural logic out of our code entirely and leave rule processing to the translation configuration.
+Notice that we keep the gender and plural logic out of our code entirely and leave rule processing to the translation configuration.
 
 ```java
 // "Normal" translation
@@ -319,7 +324,7 @@ translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best basebal
 assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
 ```
 
-#### Recursive Alternatives
+### Recursive Alternatives
 
 You can exploit the recursive nature of alternative expressions to reduce logic duplication.  Here, we define a toplevel alternative for `groupSize <= 1` which itself has alternatives for `MASCULINE` and `FEMININE` cases.  This is equivalent to the alternative rules defined above but might be a more "comfortable" way to express behavior for some.
 
@@ -344,13 +349,13 @@ Note that this is just a snippet to illustrate functionality - the other portion
 }
 ```
 
-## A Cardinality Range Example
+## Cardinality Ranges
 
 When expressing a range of values (`1-3 meters`, `2.5-3.5 hours`), the cardinality of the range is determined by applying per-language rules to its start and end cardinalities.
   
 In English we don't think about this - all ranges are of the form [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - but many other languages have range-specific forms.
 
-#### French Translation File
+### French Translation File
 
 French ranges can be either [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) or  [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER).
 
@@ -374,7 +379,7 @@ French ranges can be either [`CARDINALITY_ONE`](https://www.lokalized.com/javado
 }
 ```
 
-#### English Translation File
+### English Translation File
 
 All English range forms evaluate to [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) so the file can be kept simple.
 
@@ -385,7 +390,7 @@ All English range forms evaluate to [`CARDINALITY_OTHER`](https://www.lokalized.
 }
 ```
 
-#### Cardinality Ranges, Exercised
+### Cardinality Ranges, Exercised
 
 ```java
 // French CARDINALITY_OTHER case 
@@ -407,7 +412,7 @@ translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours l
 assertEquals("La réunion aura une durée de 0 à 1 heure.", translation);
 ```
 
-## An Ordinality Example
+## Ordinal Forms
 
 Many languages have special forms called _ordinals_ to express a "ranking" in a sequence of numbers.  For example, in English we might say
  
@@ -417,7 +422,7 @@ Many languages have special forms called _ordinals_ to express a "ranking" in a 
 
 Let's look at an example related to birthdays.
 
-#### English Translation File
+### English Translation File
 
 English has 4 ordinals.
 
@@ -447,7 +452,7 @@ English has 4 ordinals.
 }
 ```
 
-#### Spanish Translation File
+### Spanish Translation File
 
 Spanish doesn't have ordinals, so we can disregard them.  But we do have a few special cases - a first birthday and a quinceañera for girls.
 
@@ -467,7 +472,7 @@ Spanish doesn't have ordinals, so we can disregard them.  But we do have a few s
 }
 ```
 
-#### Ordinals, Exercised
+### Ordinals, Exercised
 
 ```java
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
@@ -517,7 +522,7 @@ assertEquals("Su quinceañera es la próxima semana.", translation);
 
 ## Language Forms
 
-#### Gender
+### Gender
 
 Gender rules vary across languages, but the general meaning is the same.
  
@@ -529,7 +534,7 @@ Lokalized supports these values:
 
 Lokalized provides a [`Gender`](https://www.lokalized.com/javadoc/com/lokalized/Gender.html) type which enumerates supported genders.
 
-#### Plural Cardinality
+### Plural Cardinality
 
 For example: `1 book, 2 books, ...`
 
@@ -546,16 +551,16 @@ Lokalized supports these values according to [CLDR rules](http://www.unicode.org
 
 Values do not necessarily map exactly to the named number, e.g. in some languages [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) might mean any number ending in `1`, not just `1`.  Most languages only support a few plural forms, some have none at all (represented by [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) in those cases).
 
-##### Japanese
+#### Japanese
 
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Matches everything (this language has no plural form)
 
-##### English
+#### English
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE): Matches 1 (e.g. `1 dollar`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER): Everything else (e.g. `256 dollars`)
 
-##### Russian
+#### Russian
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE): Matches 1, 21, 31, ... (e.g. `1 рубль` or `51 рубль`)
 * [`CARDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#FEW): Matches 2-4, 22-24, 32-34, ... (e.g. `2 рубля` or `53 рубля`)
@@ -593,25 +598,25 @@ cardinality = Cardinality.forNumber(new BigDecimal("1.0"), Locale.forLanguageTag
 assertEquals(Cardinality.OTHER, cardinality);
 ```  
 
-#### Plural Cardinality Ranges
+### Plural Cardinality Ranges
 
 For example: `0-1 hours, 1-2 hours, ...`
 
 The plural form of the range is determined by examining the cardinality of its start and end components. 
 
-##### English
+#### English
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `1–2 days`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–1 days`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 days`)
 
-##### French
+#### French
 
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 jour`)
 * [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 jours`)
 * [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `2–100 jours`)
 
-##### Latvian
+#### Latvian
 
 * [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#OTHER) (e.g. `0–10 diennaktis`)
 * [`CARDINALITY_ZERO`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 diennakts`)
@@ -636,7 +641,7 @@ cardinality = Cardinality.forRange(Cardinality.ZERO, Cardinality.ONE, Locale.for
 assertEquals(Cardinality.ONE, cardinality);
 ```
 
-#### Ordinals
+### Ordinals
 
 For example: `1st, 2nd, 3rd, 4th, ...`
 
@@ -653,18 +658,18 @@ Lokalized supports these values according to [CLDR rules](http://www.unicode.org
 
 Again, like cardinal values, ordinals do not necessarily map to the named number. For example, [`ORDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ONE) might apply to any number that ends in `1`.
 
-##### Spanish
+#### Spanish
 
 * [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Matches everything (this language has no ordinal form)
 
-##### English
+#### English
 
 * [`ORDINALITY_ONE`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#ONE): Matches 1, 21, 31, ... (e.g. `1st prize`)
 * [`ORDINALITY_TWO`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#TWO): Matches 2, 22, 32, ... (e.g. `22nd prize`)
 * [`ORDINALITY_FEW`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#FEW): Matches 3, 23, 33, ... (e.g. `33rd prize`)
 * [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `12th prize`)
 
-##### Italian
+#### Italian
 
 * [`ORDINALITY_MANY`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#MANY): Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
 * [`ORDINALITY_OTHER`](https://www.lokalized.com/javadoc/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `	Prendi la 7° a destra`)
@@ -697,7 +702,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 ## Localized Strings File Format
 
-#### Structure
+### Structure
 
 * Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW`
 * The file must contain a single toplevel JSON object
@@ -726,7 +731,7 @@ In addition to `translation`, each object form supports 3 additional keys: `comm
 
 All 4 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
 
-#### Commentary
+### Commentary
 
 This free-form field is used to supply context for the translator, such as how and where the phrase is used in the application.  It might also include documentation about the application-supplied placeholder values (names and types) so it's clear what data is available to perform the translation.
 
@@ -739,7 +744,7 @@ This free-form field is used to supply context for the translator, such as how a
 }
 ```
 
-#### Placeholders
+### Placeholders
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
 
@@ -805,7 +810,7 @@ Here, the cardinalities of `minHours` and `maxHours` are evaluated to determine 
 
 You are prohibited from supplying both `range` and `value` fields - use `range` only for cardinality ranges and `value` otherwise.
 
-#### Alternatives
+### Alternatives
 
 You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like this:
  
@@ -898,12 +903,12 @@ BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
 
-##### What Expressions Currently Support
+#### What Expressions Currently Support
 
 * Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
 * Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
 
-##### What Expressions Do Not Currently Support
+#### What Expressions Do Not Currently Support
 
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
@@ -915,40 +920,40 @@ Ultimately, it is up to you and your team how best to name your localization key
   
 There are two common approaches - natural language and contextual. Some benefits and drawbacks of each are listed below to help you make the best decision for your situation.
  
-#### Natural Language Keys
+### Natural Language Keys
 
 For example: `"I read {{bookCount}} books."`
 
-##### Pros
+#### Pros
 
 * Any developer can create a key by writing a phrase in her native language - no need to coordinate with others or choose arbitrary names
 * Placeholders are encoded directly in the key and serve as "automatic" documentation for translators
 * There is always a sensible default fallback in the event that a translation is missing
 
-##### Cons
+#### Cons
 
 * Context is lost; the same text on one screen might have a completely different meaning on another
 * Not suited for large amounts of text, like a software licensing agreement
 * Small changes to text require updating every strings file since keys are not "constant"
 
-#### Contextual Keys
+### Contextual Keys
 
 For example: `"SCREEN-PROFILE-BOOKS_READ"`
 
-##### Pros
+#### Pros
 
 * It is possible to specifically target app components, which enforces translation context
 * Perfect for big chunks of text like legal disclaimers
 * "Constant" keys means translations can change without affecting code
 
-##### Cons
+#### Cons
 
 * You must come up with names for every key and cross-reference in your localized strings files
 * Placeholders are not encoded in the key and must be communicated to translators through some other mechanism
 * Requires diligent recordkeeping and inter-team communication ("are our iOS and Android apps using the same keys or are we duplicating effort?")
 * There is no default language fallback if no translation is present; users will see your contextual key onscreen 
 
-#### Or - Mix Both!
+### Or - Mix Both!
 
 It's possible to cherrypick and create a hybrid solution.  For example, you might use natural language keys in most cases but switch to contextual for legalese and other special cases.
 
@@ -992,9 +997,3 @@ Note: ```SLF4JBridgeHandler``` can impact performance.  You can mitigate that wi
 ## About
 
 Lokalized was created by [Mark Allen](https://www.revetkn.com) and sponsored by [Transmogrify LLC](https://www.xmog.com) and [Revetware LLC](https://www.revetware.com).
-
-Development was aided by
-
-* [SomaFM](http://somafm.com)
-* [Scared of Chaka](https://www.youtube.com/watch?v=lYSa2U2St54)
-* [Dog Party](https://www.youtube.com/watch?v=GIn0SCdCu5I)
