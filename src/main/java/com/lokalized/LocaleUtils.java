@@ -57,7 +57,7 @@ class LocaleUtils {
 
     String language = locale.getLanguage();
 
-    if (language == null || "".equals(language))
+    if (language == null || "".equals(language) || "*".equals(language))
       return Optional.empty();
 
     if ("iw".equals(language))
