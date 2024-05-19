@@ -364,4 +364,17 @@ public class StringsTests {
 
     Assert.assertEquals("There is no key for that", translation);
   }
+
+  @Test
+  public void specialCharacterPlaceholderTest() {
+    Strings strings = new DefaultStrings.Builder("en", () ->
+        LocalizedStringLoader.loadFromClasspath("strings")
+    ).build();
+
+    String translation = strings.get("We were unable to charge {{amount}} to your credit card.", new HashMap<String, Object>() {{
+      put("amount", "$24.99");
+    }});
+
+    Assert.assertEquals("We were unable to charge $24.99 to your credit card.", translation);
+  }
 }
