@@ -93,7 +93,7 @@ public interface Strings {
 	 * 		.build();
 	 * }</pre>
 	 * <p>
-	 * The result of {@code strings.bestMatchForLocale(Locale.forLanguageTag("pt-AO")} would be
+	 * The result of {@code strings.bestMatchForLocale(Locale.forLanguageTag("pt-AO"))} would be
 	 * {@code Locale.forLanguageTag("pt-BR")} because it's first in the list for {@code pt}.
 	 *
 	 * @param locale the locale for which to find the best match.
