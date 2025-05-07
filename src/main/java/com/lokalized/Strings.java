@@ -80,6 +80,29 @@ public interface Strings {
 	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders, @Nullable Locale locale);
 
 	/**
+	 * Given a locale, determine the best-matching localized strings file's locale.
+	 * <p>
+	 * For example, given the following:
+	 * <p>
+	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+	 * 		.fallbackLocalesByLanguageCode(Map.of(
+	 * 	    "en", List.of(Locale.forLanguageTag("en-US")),
+	 * 			"pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
+	 * 		))
+	 * 		.build();
+	 * }</pre>
+	 * <p>
+	 * The result of {@code strings.bestMatchForLocale(Locale.forLanguageTag("pt-AO")} would be
+	 * {@code Locale.forLanguageTag("pt-BR")} because it's first in the list for {@code pt}.
+	 *
+	 * @param locale the locale for which to find the best match.
+	 * @return the best-matching locale, not null
+	 */
+	@Nonnull
+	Locale bestMatchForLocale(@Nonnull Locale locale);
+
+	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
 	 * <p>
 	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))

@@ -552,6 +552,13 @@ public class DefaultStrings implements Strings {
 		});
 	}
 
+	@Nonnull
+	@Override
+	public Locale bestMatchForLocale(@Nonnull Locale locale) {
+		requireNonNull(locale);
+		throw new UnsupportedOperationException("TODO");
+	}
+
 	/**
 	 * Gets the set of localized strings for each locale.
 	 *
