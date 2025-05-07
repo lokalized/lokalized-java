@@ -65,6 +65,8 @@ public class DefaultStrings implements Strings {
 	@Nullable
 	private final Supplier<List<LanguageRange>> languageRangesSupplier;
 	@Nonnull
+	private final Map<Locale, List<Locale>> fallbackLocalesByLocale;
+	@Nonnull
 	private final FailureMode failureMode;
 	@Nonnull
 	private final Locale fallbackLocale;
@@ -115,12 +117,14 @@ public class DefaultStrings implements Strings {
 	 * @param localizedStringSupplier supplier of localized strings, not null
 	 * @param localeSupplier          locale supplier, may be null
 	 * @param languageRangesSupplier  language ranges supplier, may be null
+	 * @param fallbackLocalesByLocale "tiebreaker" fallbacks, may be null
 	 * @param failureMode             strategy for dealing with lookup failures, may be null
 	 */
 	protected DefaultStrings(@Nonnull Locale fallbackLocale,
 													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
 													 @Nullable Supplier<Locale> localeSupplier,
 													 @Nullable Supplier<List<LanguageRange>> languageRangesSupplier,
+													 @Nullable Map<Locale, List<Locale>> fallbackLocalesByLocale,
 													 @Nullable FailureMode failureMode) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
@@ -146,6 +150,7 @@ public class DefaultStrings implements Strings {
 		this.fallbackLocale = fallbackLocale;
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.languageRangesSupplier = languageRangesSupplier;
+		this.fallbackLocalesByLocale = fallbackLocalesByLocale == null ? Collections.emptyMap() : fallbackLocalesByLocale;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();
 		this.expressionEvaluator = new ExpressionEvaluator();
@@ -578,6 +583,16 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the mapping of a locale to its ordered "tiebreaker" fallback locales.
+	 *
+	 * @return the per-locale fallback locales, not null
+	 */
+	@Nonnull
+	public Map<Locale, List<Locale>> getFallbackLocalesByLocale() {
+		return this.fallbackLocalesByLocale;
+	}
+
+	/**
 	 * Gets the strategy for handling string lookup failures.
 	 *
 	 * @return the strategy for handling string lookup failures, not null
@@ -775,6 +790,8 @@ public class DefaultStrings implements Strings {
 		@Nullable
 		private Supplier<List<LanguageRange>> languageRangesSupplier;
 		@Nullable
+		private Map<Locale, List<Locale>> fallbackLocalesByLocale;
+		@Nullable
 		private FailureMode failureMode;
 
 		/**
@@ -829,6 +846,18 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
+		 * Applies a mapping of a locale to its ordered "tiebreaker" fallback locales to this builder.
+		 *
+		 * @param fallbackLocalesByLocale language ranges supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@Nonnull
+		public Builder fallbackLocalesByLocale(@Nullable Map<Locale, List<Locale>> fallbackLocalesByLocale) {
+			this.fallbackLocalesByLocale = fallbackLocalesByLocale;
+			return this;
+		}
+
+		/**
 		 * Applies a failure mode to this builder.
 		 *
 		 * @param failureMode strategy for dealing with lookup failures, may be null
@@ -847,7 +876,7 @@ public class DefaultStrings implements Strings {
 		 */
 		@Nonnull
 		public DefaultStrings build() {
-			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, languageRangesSupplier, failureMode);
+			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, languageRangesSupplier, fallbackLocalesByLocale, failureMode);
 		}
 	}
 }
