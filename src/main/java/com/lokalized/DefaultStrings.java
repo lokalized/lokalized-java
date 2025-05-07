@@ -59,8 +59,6 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 public class DefaultStrings implements Strings {
 	@Nonnull
-	private final String fallbackLanguageCode;
-	@Nonnull
 	private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
 	@Nullable
 	private final Supplier<Locale> localeSupplier;
@@ -97,24 +95,35 @@ public class DefaultStrings implements Strings {
 	private final ConcurrentHashMap<Locale, List<LocalizedStringSource>> localizedStringSourcesByLocale;
 
 	/**
-	 * Constructs a localized string provider with builder-supplied data.
+	 * Vends a builder suitable for constructing {@link DefaultStrings) instances.
 	 * <p>
-	 * The fallback language code must be an ISO 639 alpha-2 or alpha-3 language code.
-	 * When a language has both an alpha-2 code and an alpha-3 code, the alpha-2 code must be used.
+	 * This method is package-private and designed to be invoked via {@link Strings#withFallbackLocale(Locale)}.
 	 *
-	 * @param fallbackLanguageCode    fallback language code, not null
+	 * @param fallbackLocale the fallback locale used if no others match, not null
+	 * @return the builder, not null
+	 */
+	@Nonnull
+	static Builder withFallbackLocale(@Nonnull Locale fallbackLocale) {
+		requireNonNull(fallbackLocale);
+		return new Builder(fallbackLocale);
+	}
+
+	/**
+	 * Constructs a localized string provider with builder-supplied data.
+	 *
+	 * @param fallbackLocale          fallback locale, not null
 	 * @param localizedStringSupplier supplier of localized strings, not null
 	 * @param localeSupplier          locale supplier, may be null
 	 * @param languageRangesSupplier  language ranges supplier, may be null
 	 * @param failureMode             strategy for dealing with lookup failures, may be null
 	 */
-	protected DefaultStrings(@Nonnull String fallbackLanguageCode,
+	protected DefaultStrings(@Nonnull Locale fallbackLocale,
 													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
 													 @Nullable Supplier<Locale> localeSupplier,
 													 @Nullable Supplier<List<LanguageRange>> languageRangesSupplier,
 													 @Nullable FailureMode failureMode) {
-		requireNonNull(fallbackLanguageCode);
-		requireNonNull(localizedStringSupplier);
+		requireNonNull(fallbackLocale);
+		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
 
 		this.logger = Logger.getLogger(LoggerType.STRINGS.getLoggerName());
 
@@ -134,8 +143,7 @@ public class DefaultStrings implements Strings {
 						}
 				));
 
-		this.fallbackLocale = Locale.forLanguageTag(fallbackLanguageCode);
-		this.fallbackLanguageCode = fallbackLanguageCode;
+		this.fallbackLocale = fallbackLocale;
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.languageRangesSupplier = languageRangesSupplier;
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
@@ -156,8 +164,8 @@ public class DefaultStrings implements Strings {
 		this.localizedStringSourcesByLocale = new ConcurrentHashMap<>();
 
 		if (!localizedStringsByLocale.containsKey(getFallbackLocale()))
-			throw new IllegalArgumentException(format("Specified fallback language code is '%s' but no matching " +
-							"localized strings locale was found. Known locales: [%s]", fallbackLanguageCode,
+			throw new IllegalArgumentException(format("Specified fallback locale is '%s' but no matching " +
+							"localized strings locale was found. Known locales: [%s]", fallbackLocale.toLanguageTag(),
 					localizedStringsByLocale.keySet().stream()
 							.map(locale -> locale.toLanguageTag())
 							.sorted()
@@ -540,16 +548,6 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Gets the fallback language code.
-	 *
-	 * @return the fallback language code, not null
-	 */
-	@Nonnull
-	public String getFallbackLanguageCode() {
-		return fallbackLanguageCode;
-	}
-
-	/**
 	 * Gets the set of localized strings for each locale.
 	 *
 	 * @return the set of localized strings for each locale, not null
@@ -769,9 +767,9 @@ public class DefaultStrings implements Strings {
 	@NotThreadSafe
 	public static class Builder {
 		@Nonnull
-		private final String fallbackLanguageCode;
-		@Nonnull
-		private final Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier;
+		private final Locale fallbackLocale;
+		@Nullable
+		private Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier;
 		@Nullable
 		private Supplier<Locale> localeSupplier;
 		@Nullable
@@ -780,20 +778,30 @@ public class DefaultStrings implements Strings {
 		private FailureMode failureMode;
 
 		/**
-		 * Constructs a strings builder with a default language code and localized string supplier.
+		 * Constructs a strings builder with a default locale.
 		 * <p>
 		 * The fallback language code must be an ISO 639 alpha-2 or alpha-3 language code.
 		 * When a language has both an alpha-2 code and an alpha-3 code, the alpha-2 code must be used.
 		 *
-		 * @param fallbackLanguageCode    fallback language code, not null
-		 * @param localizedStringSupplier supplier of localized strings, not null
+		 * @param fallbackLocale fallback locale, not null
 		 */
-		public Builder(@Nonnull String fallbackLanguageCode, @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
-			requireNonNull(fallbackLanguageCode);
-			requireNonNull(localizedStringSupplier);
+		protected Builder(@Nonnull Locale fallbackLocale) {
+			requireNonNull(fallbackLocale);
 
-			this.fallbackLanguageCode = fallbackLanguageCode;
+			this.fallbackLocale = fallbackLocale;
 			this.localizedStringSupplier = localizedStringSupplier;
+		}
+
+		/**
+		 * Applies a localized string supplier to this builder.
+		 *
+		 * @param localizedStringSupplier localized string supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@Nonnull
+		public Builder localizedStringSupplier(@Nullable Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
+			this.localizedStringSupplier = localizedStringSupplier;
+			return this;
 		}
 
 		/**
@@ -839,7 +847,7 @@ public class DefaultStrings implements Strings {
 		 */
 		@Nonnull
 		public DefaultStrings build() {
-			return new DefaultStrings(fallbackLanguageCode, localizedStringSupplier, localeSupplier, languageRangesSupplier, failureMode);
+			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, languageRangesSupplier, failureMode);
 		}
 	}
 }

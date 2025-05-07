@@ -21,6 +21,8 @@ import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Map;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * Contract for localized string providers - given a key and placeholders, return a localized string.
  * <p>
@@ -29,51 +31,69 @@ import java.util.Map;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public interface Strings {
-  /**
-   * Gets a localized string for the given key.
-   * <p>
-   * If no localized string is available, the key is returned.
-   *
-   * @param key the localization key, not null
-   * @return a localized string for the key, not null
-   */
-  @Nonnull
-  String get(@Nonnull String key);
+	/**
+	 * Gets a localized string for the given key.
+	 * <p>
+	 * If no localized string is available, the key is returned.
+	 *
+	 * @param key the localization key, not null
+	 * @return a localized string for the key, not null
+	 */
+	@Nonnull
+	String get(@Nonnull String key);
 
-  /**
-   * Gets a localized string for the given key.
-   * <p>
-   * If no localized string is available, the key is returned.
-   *
-   * @param key    the localization key, not null
-   * @param locale the preferred locale for the string, may be null
-   * @return a localized string for the key, not null
-   */
-  @Nonnull
-  String get(@Nonnull String key, @Nullable Locale locale);
+	/**
+	 * Gets a localized string for the given key.
+	 * <p>
+	 * If no localized string is available, the key is returned.
+	 *
+	 * @param key    the localization key, not null
+	 * @param locale the preferred locale for the string, may be null
+	 * @return a localized string for the key, not null
+	 */
+	@Nonnull
+	String get(@Nonnull String key, @Nullable Locale locale);
 
-  /**
-   * Gets a localized string for the given key.
-   * <p>
-   * If no localized string is available, the key is returned.
-   *
-   * @param key          the localization key, not null
-   * @param placeholders the placeholders to insert into the string, may be null
-   * @return a localized string for the key, not null
-   */
-  @Nonnull
-  String get(@Nonnull String key, @Nullable Map<String, Object> placeholders);
+	/**
+	 * Gets a localized string for the given key.
+	 * <p>
+	 * If no localized string is available, the key is returned.
+	 *
+	 * @param key          the localization key, not null
+	 * @param placeholders the placeholders to insert into the string, may be null
+	 * @return a localized string for the key, not null
+	 */
+	@Nonnull
+	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders);
 
-  /**
-   * Gets a localized string for the given key.
-   * <p>
-   * If no localized string is available, the key is returned.
-   *
-   * @param key          the localization key, not null
-   * @param placeholders the placeholders to insert into the string, may be null
-   * @param locale       the preferred locale for the string, may be null
-   * @return a localized string for the key, not null
-   */
-  @Nonnull
-  String get(@Nonnull String key, @Nullable Map<String, Object> placeholders, @Nullable Locale locale);
+	/**
+	 * Gets a localized string for the given key.
+	 * <p>
+	 * If no localized string is available, the key is returned.
+	 *
+	 * @param key          the localization key, not null
+	 * @param placeholders the placeholders to insert into the string, may be null
+	 * @param locale       the preferred locale for the string, may be null
+	 * @return a localized string for the key, not null
+	 */
+	@Nonnull
+	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders, @Nullable Locale locale);
+
+	/**
+	 * Vends a {@link Strings} instance builder for the specified fallback locale.
+	 * <p>
+	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+	 * 		.localeSupplier(() -> Locale.forLanguageTag("en-GB"))
+	 * 		.build();
+	 * }</pre>
+	 *
+	 * @param fallbackLocale the fallback locale, not null
+	 * @return a builder for a {@link Strings} instance, not null
+	 */
+	@Nonnull
+	static DefaultStrings.Builder withFallbackLocale(@Nonnull Locale fallbackLocale) {
+		requireNonNull(fallbackLocale);
+		return new DefaultStrings.Builder(fallbackLocale);
+	}
 }
