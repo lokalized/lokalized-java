@@ -554,9 +554,40 @@ public class DefaultStrings implements Strings {
 
 	@Nonnull
 	@Override
+	public Locale bestMatchForLanguageRange(@Nonnull LanguageRange languageRange) {
+		requireNonNull(languageRange);
+		throw new UnsupportedOperationException("TODO");
+	}
+
+	@Nonnull
+	@Override
 	public Locale bestMatchForLocale(@Nonnull Locale locale) {
 		requireNonNull(locale);
-		throw new UnsupportedOperationException("TODO");
+
+		// Exact match?  Use it
+		if (getLocalizedStringsByLocale().containsKey(locale))
+			return locale;
+
+		String language = locale.getLanguage();
+
+		// Next, consult tiebreakers
+		List<Locale> tiebreakerLocales = getFallbackLocalesByLanguageCode().getOrDefault(language, Collections.emptyList());
+
+		for (Locale tiebreakerLocale : tiebreakerLocales)
+			if (getLocalizedStringsByLocale().containsKey(tiebreakerLocale))
+				return tiebreakerLocale;
+
+		// If LanguageRangeSupplier is specified, go that route
+//		if (getLanguageRangesSupplier() != null) {
+//			List<LanguageRange> languageRanges = getLanguageRangesSupplier().get().get();
+//			Locale matchingLocale = Locale.lookup(languageRanges, new ArrayList<>(getLocalizedStringsByLocale().keySet()));
+//
+//			if (matchingLocale != null)
+//				return matchingLocale;
+//		}
+
+		// Last resort: global fallback
+		return getFallbackLocale();
 	}
 
 	/**

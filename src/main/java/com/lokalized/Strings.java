@@ -103,6 +103,15 @@ public interface Strings {
 	Locale bestMatchForLocale(@Nonnull Locale locale);
 
 	/**
+	 * Given a language range, determine the best-matching localized strings file's locale.
+	 *
+	 * @param languageRange the language range for which to find the best match.
+	 * @return the best-matching locale, not null
+	 */
+	@Nonnull
+	Locale bestMatchForLanguageRange(@Nonnull Locale.LanguageRange languageRange);
+
+	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
 	 * <p>
 	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
