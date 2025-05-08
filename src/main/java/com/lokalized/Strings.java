@@ -86,8 +86,7 @@ public interface Strings {
 	 * <p>
 	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-	 * 		.fallbackLocalesByLanguageCode(Map.of(
-	 * 	    "en", List.of(Locale.forLanguageTag("en-US")),
+	 * 		.tiebreakerLocalesByLanguageCode(Map.of(
 	 * 			"pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
 	 * 		))
 	 * 		.build();

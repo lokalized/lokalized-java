@@ -89,6 +89,9 @@ public class StringsTests {
 	public void basicLanguageSpecificityTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.localeSupplier(() -> Locale.forLanguageTag("en-GB"))
 				.build();
 
@@ -101,6 +104,9 @@ public class StringsTests {
 	public void cardinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("I read {{bookCount}} books",
@@ -136,6 +142,9 @@ public class StringsTests {
 	public void ordinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
@@ -182,6 +191,9 @@ public class StringsTests {
 	public void genderPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("{{heOrShe}} is a good actor.",
@@ -231,6 +243,9 @@ public class StringsTests {
 	public void alternativesTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("I read {{bookCount}} books",
@@ -245,6 +260,9 @@ public class StringsTests {
 	public void complexTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		// English
@@ -330,6 +348,9 @@ public class StringsTests {
 	public void missingPlaceholders() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("I read {{bookCount}} books");
@@ -341,6 +362,9 @@ public class StringsTests {
 	public void languageRange() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25"))
 				.build();
 
@@ -350,6 +374,9 @@ public class StringsTests {
 
 		Strings enGbStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.languageRangesSupplier(() -> LanguageRange.parse("en-GB;q=1.0,en;q=0.75,en-US;q=0.5,fr-FR;q=0.25"))
 				.build();
 
@@ -359,6 +386,9 @@ public class StringsTests {
 
 		Strings enUsStrings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25"))
 				.build();
 
@@ -368,6 +398,9 @@ public class StringsTests {
 
 		Strings ruStrings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25"))
 				.build();
 
@@ -377,6 +410,9 @@ public class StringsTests {
 
 		Strings ru2Strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25")).build();
 
 		String ru2Translation = ru2Strings.get("Hello, world!");
@@ -388,6 +424,9 @@ public class StringsTests {
 	public void cardinalityRanges() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String enTranslation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.", new HashMap<String, Object>() {{
@@ -402,6 +441,9 @@ public class StringsTests {
 	public void noTranslationKeyPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("There is no key for this");
@@ -419,6 +461,9 @@ public class StringsTests {
 	public void specialCharacterPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
 				.build();
 
 		String translation = strings.get("We were unable to charge {{amount}} to your credit card.", new HashMap<String, Object>() {{
