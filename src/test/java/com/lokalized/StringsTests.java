@@ -40,6 +40,19 @@ public class StringsTests {
 	}
 
 	@Test
+	public void configurationVerificationTest() {
+		try {
+			Strings.withFallbackLocale(Locale.forLanguageTag("fake"))
+					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.build();
+
+			Assert.fail("Should not be able to construct a DefaultStrings instance with a fallback locale that doesn't have a corresponding strings file");
+		} catch (IllegalArgumentException expected) {
+			// Nothing to do
+		}
+	}
+
+	@Test
 	public void basicLanguageSpecificityTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
