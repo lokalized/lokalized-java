@@ -22,6 +22,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.text.Collator;
 import java.util.Arrays;
 import java.util.Collections;
@@ -301,10 +302,10 @@ public enum Cardinality implements LanguageForm {
     // We cannot know the number of trailing zeroes otherwise - onus is on caller to explicitly specify if she cares about this
     if (visibleDecimalPlaces == null && !numberIsBigDecimal) {
       numberAsBigDecimal = NumberUtils.toBigDecimal(number);
-      numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), BigDecimal.ROUND_FLOOR);
+      numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.FLOOR);
     } else if (visibleDecimalPlaces != null && numberIsBigDecimal) {
       numberAsBigDecimal = (BigDecimal) number;
-      numberAsBigDecimal.setScale(visibleDecimalPlaces, BigDecimal.ROUND_FLOOR);
+      numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.FLOOR);
     }
 
     if (numberAsBigDecimal == null)

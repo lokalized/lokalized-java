@@ -320,6 +320,7 @@ public class Range<T> implements Collection<T> {
    * @deprecated Unsupported operation; this type is immutable.
    */
   @Override
+  @Deprecated
   public boolean retainAll(@Nullable Collection<?> c) {
     throw new UnsupportedOperationException();
   }
