@@ -26,6 +26,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -151,10 +152,64 @@ public class DefaultStrings implements Strings {
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 		this.languageRangesSupplier = languageRangesSupplier;
 
-		// TODO: forced verification of the following:
-		// 1. For the set of language codes in localized files, there must be tiebreakers if > 1 locale exists
-		// 2. For each tiebreaker, ensure that a corresponding localized strings file exists
-		this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode == null ? Collections.emptyMap() : tiebreakerLocalesByLanguageCode;
+		// Make our own mapping of tiebreakers based on the provided mapping.
+		// First, defensive copy, then add to the map as needed below.
+		Map<String, List<Locale>> internalTiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode == null ? new HashMap<>() : new HashMap<>(tiebreakerLocalesByLanguageCode);
+
+		// Verify tiebreakers are provided to support locale resolution when ambiguity exists.
+		// For each language code, if there is more than 1 localized strings file that matches it, tiebreakers must be provided.
+		Map<String, Set<Locale>> supportedLocalesByLanguageCode = new HashMap<>(localizedStringsByLocale.size());
+
+		for (Locale supportedLocale : localizedStringsByLocale.keySet()) {
+			String languageCode = supportedLocale.getLanguage();
+			Set<Locale> locales = supportedLocalesByLanguageCode.get(languageCode);
+
+			if (locales == null) {
+				locales = new HashSet<>();
+				supportedLocalesByLanguageCode.put(languageCode, locales);
+			}
+
+			locales.add(supportedLocale);
+		}
+
+		for (Entry<String, Set<Locale>> entry : supportedLocalesByLanguageCode.entrySet()) {
+			String languageCode = entry.getKey();
+			List<Locale> locales = entry.getValue().stream()
+					.sorted(Comparator.comparing(Locale::toLanguageTag))
+					.collect(Collectors.toList());
+
+			if (locales.size() == 1) {
+				// If there is exactly 1 locale for the language code, it's its own "identity" tiebreaker.
+				internalTiebreakerLocalesByLanguageCode.put(languageCode, locales);
+			} else if (locales.size() > 1) {
+				// We need to provide tiebreakers if a locale has more than 1 strings file.
+				List<Locale> providedTiebreakerLocales = internalTiebreakerLocalesByLanguageCode.get(languageCode);
+
+				if (providedTiebreakerLocales == null || providedTiebreakerLocales.size() == 0) {
+					throw new IllegalArgumentException(format("You must specify tiebreaker locales via 'tiebreakerLocalesByLanguageCode' to resolve ambiguity for language code '%s' because localized strings exist for the following locale[s]: %s",
+							languageCode, locales.stream().map(locale -> locale.toLanguageTag()).collect(Collectors.toList())));
+				} else {
+					List<Locale> missingLocales = new ArrayList<>(locales.size());
+
+					for (Locale locale : locales)
+						if (!providedTiebreakerLocales.contains(locale))
+							missingLocales.add(locale);
+
+					if (missingLocales.size() > 0)
+						throw new IllegalArgumentException(format("Your 'tiebreakerLocalesByLanguageCode' specifies locale[s] %s for language code '%s', but you are missing entries for the following locale[s]: %s",
+								providedTiebreakerLocales.stream().map(providedTiebreakerLocale -> providedTiebreakerLocale.toLanguageTag()).collect(Collectors.toList()),
+								languageCode,
+								missingLocales.stream().map(missingLocale -> missingLocale.toLanguageTag()).collect(Collectors.toList())));
+				}
+
+				internalTiebreakerLocalesByLanguageCode.put(languageCode, locales);
+			} else {
+				// Should never occur
+				throw new IllegalStateException("No locales match language code");
+			}
+		}
+
+		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(internalTiebreakerLocalesByLanguageCode);
 
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();

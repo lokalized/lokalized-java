@@ -23,8 +23,10 @@ import org.junit.Test;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
+import java.util.Map;
 import java.util.logging.Level;
 
 /**
@@ -50,6 +52,37 @@ public class StringsTests {
 		} catch (IllegalArgumentException expected) {
 			// Nothing to do
 		}
+
+		try {
+			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.build();
+
+			Assert.fail("Should not be able to construct a DefaultStrings instance with missing tiebreaker information");
+		} catch (IllegalArgumentException expected) {
+			// Nothing to do
+		}
+
+		try {
+			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.tiebreakerLocalesByLanguageCode(Map.of(
+							"en", List.of(Locale.forLanguageTag("en"))
+					))
+					.build();
+
+			Assert.fail("Should not be able to construct a DefaultStrings instance with incomplete tiebreaker information");
+		} catch (IllegalArgumentException expected) {
+			// Nothing to do
+		}
+
+		// This is a legal construction because it provides all necessary fallbacks
+		Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
 	}
 
 	@Test
