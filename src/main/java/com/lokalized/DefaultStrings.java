@@ -626,7 +626,7 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Gets the mapping of a mapping of an ISO 639-1 alpha-2 language code to its ordered "tiebreaker" fallback locales.
+	 * Gets the mapping of a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales.
 	 *
 	 * @return the per-language-code "tiebreaker" locales, not null
 	 */
@@ -839,8 +839,6 @@ public class DefaultStrings implements Strings {
 
 		/**
 		 * Constructs a strings builder with a default locale.
-		 * <p>
-		 * The fallback language code must be an ISO 639-1 alpha-2 language code.
 		 *
 		 * @param fallbackLocale fallback locale, not null
 		 */
@@ -886,7 +884,7 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
-		 * Applies a mapping of an ISO 639-1 alpha-2 language code to its ordered "tiebreaker" fallback locales to this builder.
+		 * Applies a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales to this builder.
 		 *
 		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
 		 * @return this builder instance, useful for chaining. not null
