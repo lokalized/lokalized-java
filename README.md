@@ -55,7 +55,7 @@ assertEquals("I didn't read any books.", translation);
 
 * Support for date/time, number, percentage, and currency formatting/parsing
 * Support for collation
-* Support for Java 7 and below
+* Support for Java 8 and below
 
 ## Roadmap
 
@@ -73,13 +73,13 @@ assertEquals("I didn't read any books.", translation);
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized-java</artifactId>
-  <version>1.0.3</version>
+  <version>1.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven, you can drop [lokalized-java-1.0.3.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized-java/1.0.3/lokalized-java-1.0.3.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-java-1.1.0-SNAPSHOT.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized-java/1.1.0-SNAPSHOT/lokalized-java-1.1.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
