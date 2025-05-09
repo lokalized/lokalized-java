@@ -158,6 +158,57 @@ translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0))
 assertEquals("I didn't read any books.", translation);
 ```
 
+#### 4. Ensure Determinism via Tiebreakers
+
+Suppose you have two translation files for Portuguese - Brazilian (`pt-BR`) and European (`pt-PT`).
+
+A user who prefers only Angolan Portuguese (`pt-AO`) as defined by their `Accept-Language` HTTP request header then accesses your webapp.
+
+Lokalized needs to know how to consistently "break the tie" to provide the Angolan user with a `pt` translation.
+
+To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects that you have more than one translation file per ISO 639 language code.
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeSupplier((matcher) -> {
+    Locale locale = MyWebContext.getHttpServletRequest().getLocale();
+    return matcher.bestMatchFor(locale);
+  })
+  // Declare your tiebreakers where ambiguity exists.
+  // Lokalized will automatically detect ambiguities and require you to resolve them here -
+  // an exception will be thrown with detailed instructions to that effect.
+  // Here, we express that if there's a language preference for Portuguese but no exact locale match,
+  // we should provide the user with a Brazilian Portuguese translation  
+  .tiebreakerLocalesByLanguageCode(Map.of(
+    "pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
+  ))
+  .build();
+```
+
+#### 5. Respect User Language Preferences
+
+Here's a common scenario: a user visits your webapp, and their browser automatically populates the `Accept-Language` HTTP request header with
+an [RFC 3282](https://datatracker.ietf.org/doc/html/rfc3282) ordered set of language range values like `en-GB;q=1.0,en;q=0.75,fr-FR;q=0.25`.
+
+That one says: "I prefer British English, then other forms of English, then French (from France) - in that order."
+
+Lokalized offers "best match" functionality which evaluates the combination of your available localized strings files and
+a set of language range values to pick the most appropriate localization that your application supports for that user. 
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  // Drive locale selection via List<LanguageRange> parsed from Accept-Language header
+  .localeSupplier((matcher) -> {
+    HttpServletRequest request = MyWebContext.getHttpServletRequest();
+    String acceptLanguage = request.getHeader("Accept-Language");
+    List<LanguageRange> languageRanges = LanguageRange.parse(acceptLanguage);
+    return matcher.bestMatchFor(languageRanges);
+  })
+  .build();
+```
+
 ## A More Complex Example
 
 Lokalized's strength is handling phrases that must be rewritten in different ways according to language rules. Suppose we introduce gender alongside plural forms.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
