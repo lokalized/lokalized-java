@@ -24,13 +24,13 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Contract for localized string providers - given a key and placeholders, return a localized string.
+ * Contract for localized string providers - given a key and optional placeholders, return a localized string.
  * <p>
  * Format is {@code "You are missing {{requiredFieldCount}} required fields."}
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public interface Strings {
+public interface Strings extends LocaleMatcher {
 	/**
 	 * Gets a localized string for the given key.
 	 * <p>
@@ -47,68 +47,12 @@ public interface Strings {
 	 * <p>
 	 * If no localized string is available, the key is returned.
 	 *
-	 * @param key    the localization key, not null
-	 * @param locale the preferred locale for the string, may be null
-	 * @return a localized string for the key, not null
-	 */
-	@Nonnull
-	String get(@Nonnull String key, @Nullable Locale locale);
-
-	/**
-	 * Gets a localized string for the given key.
-	 * <p>
-	 * If no localized string is available, the key is returned.
-	 *
 	 * @param key          the localization key, not null
 	 * @param placeholders the placeholders to insert into the string, may be null
 	 * @return a localized string for the key, not null
 	 */
 	@Nonnull
 	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders);
-
-	/**
-	 * Gets a localized string for the given key.
-	 * <p>
-	 * If no localized string is available, the key is returned.
-	 *
-	 * @param key          the localization key, not null
-	 * @param placeholders the placeholders to insert into the string, may be null
-	 * @param locale       the preferred locale for the string, may be null
-	 * @return a localized string for the key, not null
-	 */
-	@Nonnull
-	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders, @Nullable Locale locale);
-
-	/**
-	 * Given a locale, determine the best-matching localized strings file's locale.
-	 * <p>
-	 * For example, given the following:
-	 * <p>
-	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
-	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-	 * 		.tiebreakerLocalesByLanguageCode(Map.of(
-	 * 			"pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
-	 * 		))
-	 * 		.build();
-	 * }</pre>
-	 * <p>
-	 * The result of {@code strings.bestMatchForLocale(Locale.forLanguageTag("pt-AO"))} would be
-	 * {@code Locale.forLanguageTag("pt-BR")} because it's first in the list for {@code pt}.
-	 *
-	 * @param locale the locale for which to find the best match.
-	 * @return the best-matching locale, not null
-	 */
-	@Nonnull
-	Locale bestMatchForLocale(@Nonnull Locale locale);
-
-	/**
-	 * Given a language range, determine the best-matching localized strings file's locale.
-	 *
-	 * @param languageRange the language range for which to find the best match.
-	 * @return the best-matching locale, not null
-	 */
-	@Nonnull
-	Locale bestMatchForLanguageRange(@Nonnull Locale.LanguageRange languageRange);
 
 	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.

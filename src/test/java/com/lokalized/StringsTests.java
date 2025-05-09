@@ -46,6 +46,7 @@ public class StringsTests {
 		try {
 			Strings.withFallbackLocale(Locale.forLanguageTag("fake"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
 
 			Assert.fail("Should not be able to construct a DefaultStrings instance with a fallback locale that doesn't have a corresponding strings file");
@@ -56,6 +57,7 @@ public class StringsTests {
 		try {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
 
 			Assert.fail("Should not be able to construct a DefaultStrings instance with missing tiebreaker information");
@@ -66,6 +68,7 @@ public class StringsTests {
 		try {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.tiebreakerLocalesByLanguageCode(Map.of(
 							"en", List.of(Locale.forLanguageTag("en"))
 					))
@@ -79,6 +82,7 @@ public class StringsTests {
 		try {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.tiebreakerLocalesByLanguageCode(Map.of(
 							"en", List.of(Locale.forLanguageTag("ja-JA"))
 					))
@@ -92,6 +96,7 @@ public class StringsTests {
 		// This is a legal construction because it provides all necessary fallbacks
 		Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -105,7 +110,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.localeSupplier(() -> Locale.forLanguageTag("en-GB"))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-GB"))
 				.build();
 
 		String translation = strings.get("I am going on vacation");
@@ -117,6 +122,7 @@ public class StringsTests {
 	public void cardinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -143,10 +149,19 @@ public class StringsTests {
 
 		Assert.assertEquals("I read 1.0 books", translation);
 
+		// Switch to Russian
+		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("ru")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
 		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 3);
-				}}, Locale.forLanguageTag("ru"));
+				}});
 
 		Assert.assertEquals("I прочитал 3 книг", translation);
 	}
@@ -155,6 +170,7 @@ public class StringsTests {
 	public void ordinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -176,18 +192,27 @@ public class StringsTests {
 
 		Assert.assertEquals("Her 21st birthday party is next week.", translation);
 
+		// Switch to Spanish
+		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("es")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
 		translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
 				new HashMap<String, Object>() {{
 					put("hisOrHer", Gender.MASCULINE);
 					put("year", 18);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
 
 		translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
 				new HashMap<String, Object>() {{
 					put("year", 1);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
 
@@ -195,7 +220,7 @@ public class StringsTests {
 				new HashMap<String, Object>() {{
 					put("hisOrHer", Gender.FEMININE);
 					put("year", 15);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Su quinceañera es la próxima semana.", translation);
 	}
@@ -204,6 +229,7 @@ public class StringsTests {
 	public void genderPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -223,31 +249,40 @@ public class StringsTests {
 
 		Assert.assertEquals("She is a good actress.", translation);
 
+		// Switch to Spanish
+		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("es")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
 		translation = strings.get("{{heOrShe}} is a good actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.MASCULINE);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Él es un buen actor.", translation);
 
 		translation = strings.get("{{heOrShe}} is a good actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Ella es una buena actriz.", translation);
 
 		translation = strings.get("{{heOrShe}} is a great actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.MASCULINE);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Él es un gran actor.", translation);
 
 		translation = strings.get("{{heOrShe}} is a great actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Ella es una gran actriz.", translation);
 	}
@@ -256,6 +291,7 @@ public class StringsTests {
 	public void alternativesTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -273,6 +309,7 @@ public class StringsTests {
 	public void complexTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -317,7 +354,14 @@ public class StringsTests {
 
 		Assert.assertEquals("She was the best baseball player.", translation);
 
-		// Spanish
+		// Switch to Spanish
+		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("es")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
 
 		// Fue uno de los 10 mejores jugadores de béisbol.
 		// Fue una de las 10 mejores jugadoras de béisbol.
@@ -328,7 +372,7 @@ public class StringsTests {
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.MASCULINE);
 					put("groupSize", 10);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Fue uno de los 10 mejores jugadores de béisbol.", translation);
 
@@ -336,7 +380,7 @@ public class StringsTests {
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.MASCULINE);
 					put("groupSize", 1);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Él era el mejor jugador de béisbol.", translation);
 
@@ -344,7 +388,7 @@ public class StringsTests {
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
 					put("groupSize", 10);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Fue una de las 10 mejores jugadoras de béisbol.", translation);
 
@@ -352,7 +396,7 @@ public class StringsTests {
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
 					put("groupSize", 1);
-				}}, Locale.forLanguageTag("es"));
+				}});
 
 		Assert.assertEquals("Ella era la mejor jugadora de béisbol.", translation);
 	}
@@ -361,6 +405,7 @@ public class StringsTests {
 	public void missingPlaceholders() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -378,7 +423,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25")))
 				.build();
 
 		String translation = strings.get("I am going on vacation");
@@ -390,7 +435,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.languageRangesSupplier(() -> LanguageRange.parse("en-GB;q=1.0,en;q=0.75,en-US;q=0.5,fr-FR;q=0.25"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(LanguageRange.parse("en-GB;q=1.0,en;q=0.75,en-US;q=0.5,fr-FR;q=0.25")))
 				.build();
 
 		String enGbTranslation = enGbStrings.get("I am going on vacation");
@@ -402,7 +447,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.languageRangesSupplier(() -> LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(LanguageRange.parse("en-US;q=1.0,en-GB;q=0.5,fr-FR;q=0.25")))
 				.build();
 
 		String enUsTranslation = enUsStrings.get("I am going on vacation");
@@ -414,7 +459,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(LanguageRange.parse("fr;q=1.0,ru;q=0.25")))
 				.build();
 
 		String ruTranslation = ruStrings.get("I am going on vacation - MISSING KEY");
@@ -426,7 +471,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.languageRangesSupplier(() -> LanguageRange.parse("fr;q=1.0,ru;q=0.25")).build();
+				.localeSupplier((matcher) -> matcher.bestMatchFor(LanguageRange.parse("fr;q=1.0,ru;q=0.25"))).build();
 
 		String ru2Translation = ru2Strings.get("Hello, world!");
 
@@ -437,6 +482,7 @@ public class StringsTests {
 	public void cardinalityRanges() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -454,6 +500,7 @@ public class StringsTests {
 	public void noTranslationKeyPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
@@ -474,6 +521,7 @@ public class StringsTests {
 	public void specialCharacterPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
