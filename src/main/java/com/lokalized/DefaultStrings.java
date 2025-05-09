@@ -54,7 +54,8 @@ import static java.util.Objects.requireNonNull;
  * It is recommended to use a single instance of this class across your entire application.
  * <p>
  * In multi-tenant systems like a web application where each user might have a different locale,
- * your {@code localeSupplier} might return the locale specified by current request.
+ * your {@code localeSupplier} might return the locale specified by the current request, e.g.
+ * from a set of {@link LanguageRange} parsed from the {@code Accept-Language} header.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -846,8 +847,6 @@ public class DefaultStrings implements Strings {
 
 	/**
 	 * Builder used to construct instances of {@link DefaultStrings}.
-	 * <p>
-	 * You cannot provide both a {@code localeSupplier} and a {@code languageRangesSupplier} - you must choose one or neither.
 	 * <p>
 	 * This class is intended for use by a single thread.
 	 *

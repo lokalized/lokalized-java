@@ -22,7 +22,7 @@ import java.util.Locale;
 import java.util.Locale.LanguageRange;
 
 /**
- * Contract for matching an input {@link Locale} or {@code List<}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
+ * Contract for matching an input {@link Locale} or {@link List}{@code <}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
