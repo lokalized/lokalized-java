@@ -1,0 +1,43 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.lokalized</groupId>
+    <artifactId>lokalized-java</artifactId>
+    <version>1.1.0</version>
+    <packaging>pom</packaging>
+    <name>Lokalized</name>
+    <description>Lokalized facilitates natural-sounding software translations.</description>
+    <url>https://www.lokalized.com</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Mark Allen</name>
+            <email>mark@revetware.com</email>
+            <organization>Revetware LLC</organization>
+            <organizationUrl>https://www.revetware.com</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git@github.com:lokalized/lokalized-java.git</connection>
+        <developerConnection>scm:git:git@github.com:lokalized/lokalized-java.git</developerConnection>
+        <url>git@github.com:lokalized/lokalized-java.git</url>
+    </scm>
+
+    <distributionManagement>
+        <relocation>
+            <groupId>com.lokalized</groupId>
+            <artifactId>lokalized</artifactId>
+            <version>1.1.0</version>
+            <message>Renamed artifact from legacy "lokalized-java" to new "lokalized"</message>
+        </relocation>
+    </distributionManagement>
+
+</project>
