@@ -34,11 +34,7 @@ It is both a file format...
 ...and a library that operates on it. 
 
 ```java
-String translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 0);
-  }});
-
+String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
 assertEquals("I didn't read any books.", translation);
 ```
 
@@ -97,11 +93,10 @@ We'll start with hands-on examples to illustrate key features.
 
 Filenames must conform to the IETF BCP 47 language tag format.
 
-Here is a generic English (`en`) localized strings file which handles two localizations:
+Here is a US English (`en-US`) localized strings file which handles two localizations:
 
 ```json
 {
-  "I am going on vacation" : "I am going on vacation.",
   "I read {{bookCount}} books." : {
     "translation" : "I read {{bookCount}} {{books}}.",    
     "placeholders" : {
@@ -122,40 +117,27 @@ Here is a generic English (`en`) localized strings file which handles two locali
 }
 ```
 
-Here is a British English (`en-GB`) localized strings file:
-
-```json
-{
-  "I am going on vacation." : "I am going on holiday."
-}
-```
-
-Lokalized performs locale matching and falls back to less-specific locales as appropriate, so there is no need to duplicate all the `en` translations in `en-GB` - it is sufficient to specify only the dialect-specific differences. 
-
 ### 2. Create a Strings Instance
    
 ```java
 // Your "native" fallback strings file, used in case no specific locale match is found.
-// ISO 639 alpha-2 or alpha-3 language code
-final String FALLBACK_LANGUAGE_CODE = "en";
+final Locale FALLBACK_LOCALE = Locale.forLanguageTag("en-US");
 
 // Creates a Strings instance which loads localized strings files from the given directory.
 // Normally you'll only need a single shared instance to support your entire application,
 // even for multitenant/concurrent usage, e.g. a Servlet container
-Strings strings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
-    () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
-  .build();
-```
-
-You may also provide the builder with a locale-supplying lambda, which is useful for
-environments like webapps where each request can have a different locale.
-
-```java
-// "Smart" locale selection which queries the current web request for locale data.
-// MyWebContext is a class you might write yourself, perhaps using a ThreadLocal internally
-Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
-    () -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my/strings/directory")))
-  .localeSupplier(() -> MyWebContext.getHttpServletRequest().getLocale())
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  // Looks in 'my-directory' for localized strings files
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  // Provides Lokalized with the appropriate locale to use for fetching translations
+  .localeSupplier((matcher) -> {
+    // "Smart" locale selection which queries the current web request for locale data.
+    // MyWebContext is a class you might write yourself, perhaps using a ThreadLocal internally		
+    Locale locale = MyWebContext.getHttpServletRequest().getLocale();
+    // Lokalized gives you a matcher, which knows the most appropriate translation file to use.
+    // The matcher also supports language range sets, e.g. `Accept-Language` HTTP request header
+    return matcher.bestMatchFor(locale);
+  })
   .build();
 ```
 
@@ -164,39 +146,16 @@ Strings webappStrings = new DefaultStrings.Builder(FALLBACK_LANGUAGE_CODE,
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
 // That is, it understands that 3 means CARDINALITY_OTHER ("books") in English
-String translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 3);
-  }});
-
+String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
 assertEquals("I read 3 books.", translation);
 
 // 1 means CARDINALITY_ONE ("book") in English
-translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 1);
-  }});
-
+translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
 assertEquals("I read 1 book.", translation);
 
 // A special alternative rule is applied when bookCount == 0
-translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 0);
-  }});
-
+translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
 assertEquals("I didn't read any books.", translation);
-
-// Here we force British English.
-// Note that providing an explicit locale is an uncommon use case -
-// standard practice is to specify a localeSupplier when constructing your 
-// Strings instance and Lokalized will use it to pick the appropriate locale, e.g. 
-// the locale specified by the current web request's Accept-Language header
-translation = strings.get("I am going on vacation.", Locale.forLanguageTag("en-GB"));
-
-// We have an exact match for this key in the en-GB file, so that translation is applied.
-// If none were found, we would fall back to "en" and try there instead
-assertEquals("I am going on holiday.", translation);
 ```
 
 ## A More Complex Example
@@ -297,28 +256,28 @@ Notice that we keep the gender and plural logic out of our code entirely and lea
 ```java
 // "Normal" translation
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.MASCULINE);
-    put("groupSize", 10);
-  }});
+  Map.of(
+    "heOrShe", Gender.MASCULINE,
+    "groupSize", 10
+  ));
 
 assertEquals("He was one of the 10 best baseball players.", translation);
 
 // Alternative expression triggered
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.MASCULINE);
-    put("groupSize", 1);
-  }});
+  Map.of(
+    "heOrShe", Gender.MASCULINE,
+    "groupSize", 1
+  ));
 
 assertEquals("He was the best baseball player.", translation);
 
-// Let's try Spanish
+// ...now, here's what a Mexican Spanish (`es-MX`) user might see: 
 translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
-  new HashMap<String, Object>() {{
-    put("heOrShe", Gender.FEMININE);
-    put("groupSize", 3);
-  }}, Locale.forLanguageTag("es"));
+  Map.of(
+    "heOrShe", Gender.FEMININE,
+    "groupSize", 3
+  ));
 
 // Note that the correct feminine forms were applied
 assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
@@ -395,19 +354,19 @@ All English range forms evaluate to [`CARDINALITY_OTHER`](https://www.lokalized.
 ```java
 // French CARDINALITY_OTHER case 
 String translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
-  new HashMap<String, Object>() {{
-    put("minHours", 1);
-    put("maxHours", 3);
-  }}, Locale.forLanguageTag("fr"));
+  Map.of(
+    "minHours", 1,
+    "maxHours", 3
+  ));
 
 assertEquals("La réunion aura une durée de 1 à 3 heures.", translation);
 
 // French CARDINALITY_ONE case
 translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
-  new HashMap<String, Object>() {{
-    put("minHours", 0);
-    put("maxHours", 1);
-  }}, Locale.forLanguageTag("fr"));
+  Map.of(
+    "minHours", 0,
+    "maxHours", 1
+  ));
 
 assertEquals("La réunion aura une durée de 0 à 1 heure.", translation);
 ```
@@ -475,48 +434,48 @@ Spanish doesn't have ordinals, so we can disregard them.  But we do have a few s
 ### Ordinals, Exercised
 
 ```java
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-  new HashMap<String, Object>() {{
-    put("hisOrHer", Gender.MASCULINE);
-    put("year", 18);
-  }});
-
 // The ORDINALITY_OTHER rule is applied for 18 in English
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+  Map.of(
+    "hisOrHer", Gender.MASCULINE,
+    "year", 18
+  ));
+
 assertEquals("His 18th birthday party is next week.", translation);
 
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-  new HashMap<String, Object>() {{
-    put("hisOrHer", Gender.FEMININE);
-    put("year", 21);
-  }});
-
 // The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 11, 21, ...) in English
+translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+  Map.of(
+    "hisOrHer", Gender.FEMININE,
+    "year", 21
+  ));
+
 assertEquals("Her 21st birthday party is next week.", translation);
 
+// Spanish - normal case
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-  new HashMap<String, Object>() {{
-    put("hisOrHer", Gender.MASCULINE);
-    put("year", 18);
-  }}, Locale.forLanguageTag("es"));
+  Map.of(
+    "hisOrHer", Gender.MASCULINE,
+    "year", 18
+  ));
 
-// Normal case
 assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
 
+// Spanish - special case for first birthday
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-  new HashMap<String, Object>() {{
-    put("year", 1);
-  }}, Locale.forLanguageTag("es"));
+  Map.of(
+    "year", 1
+  ));
 
-// Special case for first birthday
 assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
 
+// Spanish - special case for a girl's 15th birthday
 translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
-  new HashMap<String, Object>() {{
-    put("hisOrHer", Gender.FEMININE);
-    put("year", 15);
-  }}, Locale.forLanguageTag("es"));
+  Map.of(
+    "hisOrHer", Gender.FEMININE,
+    "year", 15
+  ));
 
-// Special case for a girl's 15th birthday
 assertEquals("Su quinceañera es la próxima semana.", translation);
 ```
 
@@ -709,7 +668,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 * The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
 * The value for a translation key can be a string (simple cases) or an object (complex cases)
 
-With formalities out of the way, let's return to our example `en-GB` strings file, which contains a single translation.  We can use the string form shorthand to concisely express our intent:
+With formalities out of the way, let's examine an example UK English (`en-GB`) strings file, which contains a single translation.  We can use the string form shorthand to concisely express our intent:
 
 ```json
 {
@@ -865,27 +824,15 @@ Evaluation works as you might expect.
 
 ```java
 // Deepest recursion
-String translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 0);
-  }});
-
+String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
 assertEquals("I'm ashamed to admit I didn't read anything.", translation);
 
 // 1 level deep recursion
-translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 1);
-  }});
-
+translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
 assertEquals("I only read a few books. 1, in fact!", translation);
 
 // Normal case
-translation = strings.get("I read {{bookCount}} books.",
-  new HashMap<String, Object>() {{
-    put("bookCount", 3);
-  }});
-
+translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
 assertEquals("I read 3 books.", translation);
 ```
 
