@@ -90,7 +90,7 @@
                     </additionalOptions>
                     <linksource>true</linksource>
                     <show>public</show>
-                    <bottom><![CDATA[Copyright 2017-2022 <a href="https://www.xmog.com" target="_blank">Transmogrify LLC<a>, 2022-2025 <a href="https://www.revetware.com" target="_blank">Revetware LLC<a>.]]></bottom>
+                    <bottom><![CDATA[Copyright 2017-2022 Product Mog LLC, 2022-2025 <a href="https://www.revetware.com" target="_blank">Revetware LLC<a>.]]></bottom>
                     <source>${project.java.version}</source>
                 </configuration>
                 <executions>
