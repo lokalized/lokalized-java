@@ -38,10 +38,8 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -85,17 +83,6 @@ public class DefaultStrings implements Strings {
 	 */
 	@Nonnull
 	private final Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale;
-
-	/**
-	 * Cache of best-matching strings for the given locale (populated on-demand per request at runtime).
-	 * <p>
-	 * List elements are ordered by most to least specific, e.g. if your locale is {@code en-US}, the first list element
-	 * might be {@code en-US} strings and the second would be {@code en} strings.
-	 * <p>
-	 * There will always be at least one element in the list - the fallback locale.
-	 */
-	@Nonnull
-	private final ConcurrentHashMap<Locale, List<LocalizedStringSource>> localizedStringSourcesByLocale;
 
 	/**
 	 * Vends a builder suitable for constructing {@link DefaultStrings) instances.
@@ -233,8 +220,6 @@ public class DefaultStrings implements Strings {
 												)
 										)))));
 
-		this.localizedStringSourcesByLocale = new ConcurrentHashMap<>();
-
 		if (!localizedStringsByLocale.containsKey(getFallbackLocale()))
 			throw new IllegalArgumentException(format("Specified fallback locale is '%s' but no matching " +
 							"localized strings locale was found. Known locales: [%s]", fallbackLocale.toLanguageTag(),
@@ -271,26 +256,37 @@ public class DefaultStrings implements Strings {
 		if (placeholders == null)
 			placeholders = Collections.emptyMap();
 
-		String translation = null;
+		Locale finalLocale = locale;
 		Map<String, Object> mutableContext = new HashMap<>(placeholders);
 		Map<String, Object> immutableContext = Collections.unmodifiableMap(placeholders);
-		List<LocalizedStringSource> localizedStringSources = getLocalizedStringSourcesForLocale(locale);
 
-		for (LocalizedStringSource localizedStringSource : localizedStringSources) {
-			LocalizedString localizedString = localizedStringSource.getLocalizedStringsByKey().get(key);
+		Map<String, LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
 
-			if (localizedString == null) {
-				logger.finer(format("No match for '%s' was found in '%s'", key, localizedStringSource.getLocale().toLanguageTag()));
-			} else {
-				logger.finer(format("A match for '%s' was found in '%s'", key, localizedStringSource.getLocale().toLanguageTag()));
-				translation = getInternal(key, localizedString, mutableContext, immutableContext, localizedStringSource.getLocale()).orElse(null);
-				break;
-			}
+		if (localizedStrings == null) {
+			finalLocale = getFallbackLocale();
+			localizedStrings = getLocalizedStringsByKeyByLocale().get(getFallbackLocale());
 		}
 
+		// Should never occur
+		if (localizedStrings == null)
+			throw new IllegalStateException(format("Unable to find strings file for both '%s' and fallback locale '%s'",
+					locale.toLanguageTag(), getFallbackLocale().toLanguageTag()));
+
+		LocalizedString localizedString = localizedStrings.get(key);
+		String translation = null;
+
+		if (localizedString != null)
+			translation = getInternal(key, localizedString, mutableContext, immutableContext, finalLocale).orElse(null);
+
 		if (translation == null) {
-			logger.finer(format("No match for '%s' was found in any strings file.", key));
-			translation = stringInterpolator.interpolate(key, mutableContext);
+			String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
+			logger.finer(message);
+
+			if (getFailureMode() == FailureMode.FAIL_FAST)
+				throw new MissingTranslationException(message, key, placeholders, locale);
+
+			// Not fail-fast?  Merge against the key itself in hopes that the key is a meaningful natural-language value
+			translation = getStringInterpolator().interpolate(key, mutableContext);
 		}
 
 		return translation;
@@ -479,133 +475,6 @@ public class DefaultStrings implements Strings {
 	}
 
 	@Nonnull
-	protected List<LocalizedStringSource> getLocalizedStringSourcesForLocale(@Nonnull Locale locale) {
-		requireNonNull(locale);
-
-		return getLocalizedStringSourcesByLocale().computeIfAbsent(locale, (ignored) -> {
-			String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
-			String script = locale.getScript();
-			String country = locale.getCountry();
-			String variant = locale.getVariant();
-			Set<Character> extensionKeys = locale.hasExtensions() ? locale.getExtensionKeys() : Collections.emptySet();
-			Set<LocalizedString> localizedStrings;
-			Set<Locale> matchingLocales = new HashSet<>(5);
-			List<LocalizedStringSource> localizedStringSources = new ArrayList<>(5);
-
-			if (logger.isLoggable(Level.FINER))
-				logger.finer(format("Finding strings files that match locale '%s'...", locale.toLanguageTag()));
-
-			// Try most specific (matches all 5 criteria) and move back to least specific
-			Locale.Builder extensionsLocaleBuilder =
-					new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).setVariant(variant);
-
-			for (Character extensionKey : extensionKeys)
-				extensionsLocaleBuilder.setExtension(extensionKey, locale.getExtension(extensionKey));
-
-			Locale extensionsLocale = extensionsLocaleBuilder.build();
-			matchingLocales.add(extensionsLocale);
-			localizedStrings = getLocalizedStringsByLocale().get(extensionsLocale);
-
-			if (localizedStrings != null) {
-				localizedStringSources.add(new LocalizedStringSource(extensionsLocale, getLocalizedStringsByKeyByLocale().get(extensionsLocale)));
-
-				if (logger.isLoggable(Level.FINER))
-					logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
-							extensionsLocale.toLanguageTag()));
-			}
-
-			// Variant (4)
-			Locale variantLocale =
-					new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).setVariant(variant)
-							.build();
-
-			if (!matchingLocales.contains(variantLocale)) {
-				matchingLocales.add(variantLocale);
-
-				localizedStrings = getLocalizedStringsByLocale().get(variantLocale);
-
-				if (localizedStrings != null) {
-					localizedStringSources.add(new LocalizedStringSource(variantLocale, getLocalizedStringsByKeyByLocale().get(variantLocale)));
-
-					if (logger.isLoggable(Level.FINER))
-						logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
-								variantLocale.toLanguageTag()));
-				}
-			}
-
-			// Region (3)
-			Locale regionLocale = new Locale.Builder().setLanguage(language).setScript(script).setRegion(country).build();
-
-			if (!matchingLocales.contains(regionLocale)) {
-				matchingLocales.add(regionLocale);
-
-				localizedStrings = getLocalizedStringsByLocale().get(regionLocale);
-
-				if (localizedStrings != null) {
-					localizedStringSources.add(new LocalizedStringSource(regionLocale, getLocalizedStringsByKeyByLocale().get(regionLocale)));
-
-					if (logger.isLoggable(Level.FINER))
-						logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
-								regionLocale.toLanguageTag()));
-				}
-			}
-
-			// Script (2)
-			Locale scriptLocale = new Locale.Builder().setLanguage(language).setScript(script).build();
-
-			if (!matchingLocales.contains(scriptLocale)) {
-				matchingLocales.add(scriptLocale);
-
-				localizedStrings = getLocalizedStringsByLocale().get(scriptLocale);
-
-				if (localizedStrings != null) {
-					localizedStringSources.add(new LocalizedStringSource(scriptLocale, getLocalizedStringsByKeyByLocale().get(scriptLocale)));
-
-					if (logger.isLoggable(Level.FINER))
-						logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
-								scriptLocale.toLanguageTag()));
-				}
-			}
-
-			// Language (1)
-			Locale languageLocale = new Locale.Builder().setLanguage(language).build();
-
-			if (!matchingLocales.contains(languageLocale)) {
-				matchingLocales.add(languageLocale);
-
-				localizedStrings = getLocalizedStringsByLocale().get(languageLocale);
-
-				if (localizedStrings != null) {
-					localizedStringSources.add(new LocalizedStringSource(languageLocale, getLocalizedStringsByKeyByLocale().get(languageLocale)));
-
-					if (logger.isLoggable(Level.FINER))
-						logger.finer(format("A matching strings file for locale '%s' is '%s'", locale.toLanguageTag(),
-								languageLocale.toLanguageTag()));
-				}
-			}
-
-			// Finally, add the default locale if necessary
-			Locale fallbackLocale = getFallbackLocale();
-
-			if (!matchingLocales.contains(fallbackLocale)) {
-				matchingLocales.add(fallbackLocale);
-
-				localizedStrings = getLocalizedStringsByLocale().get(fallbackLocale);
-
-				if (localizedStrings != null) {
-					localizedStringSources.add(new LocalizedStringSource(fallbackLocale, getLocalizedStringsByKeyByLocale().get(fallbackLocale)));
-
-					if (logger.isLoggable(Level.FINER))
-						logger.finer(format("A matching strings file for locale '%s' is fallback '%s'",
-								locale.toLanguageTag(), fallbackLocale.toLanguageTag()));
-				}
-			}
-
-			return Collections.unmodifiableList(localizedStringSources);
-		});
-	}
-
-	@Nonnull
 	@Override
 	public Locale bestMatchFor(@Nonnull Locale locale) {
 		requireNonNull(locale);
@@ -736,16 +605,6 @@ public class DefaultStrings implements Strings {
 	@Nonnull
 	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
-	}
-
-	/**
-	 * Get the "runtime" generated map of locales to localized string sources.
-	 *
-	 * @return the map of locales to localized string sources, not null
-	 */
-	@Nonnull
-	protected ConcurrentHashMap<Locale, List<LocalizedStringSource>> getLocalizedStringSourcesByLocale() {
-		return localizedStringSourcesByLocale;
 	}
 
 	/**
