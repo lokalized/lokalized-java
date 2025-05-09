@@ -68,7 +68,7 @@ assertEquals("I didn't read any books.", translation);
 ```xml
 <dependency>
   <groupId>com.lokalized</groupId>
-  <artifactId>lokalized-java</artifactId>
+  <artifactId>lokalized</artifactId>
   <version>1.1.0-SNAPSHOT</version>
 </dependency>
 ```
