@@ -189,6 +189,15 @@ public class DefaultStrings implements Strings {
 					throw new IllegalArgumentException(format("You must specify tiebreaker locales via 'tiebreakerLocalesByLanguageCode' to resolve ambiguity for language code '%s' because localized strings exist for the following locale[s]: %s",
 							languageCode, locales.stream().map(locale -> locale.toLanguageTag()).collect(Collectors.toList())));
 				} else {
+					// First, verify that all tiebreakers actually exist
+					Set<Locale> supportedLocales = localizedStringsByLocale.keySet();
+
+					for (Locale providedTiebreakerLocale : providedTiebreakerLocales)
+						if (!supportedLocales.contains(providedTiebreakerLocale))
+							throw new IllegalArgumentException(format("Tiebreaker locale '%s' specified in 'tiebreakerLocalesByLanguageCode' does not have a localized strings file. Supported locales are: %s",
+									providedTiebreakerLocale.toLanguageTag(), supportedLocales.stream().map(supportedLocale -> supportedLocale.toLanguageTag()).sorted().collect(Collectors.toList())));
+
+					// Next, verify that tiebreakers are exhaustively specified
 					List<Locale> missingLocales = new ArrayList<>(locales.size());
 
 					for (Locale locale : locales)
@@ -197,9 +206,9 @@ public class DefaultStrings implements Strings {
 
 					if (missingLocales.size() > 0)
 						throw new IllegalArgumentException(format("Your 'tiebreakerLocalesByLanguageCode' specifies locale[s] %s for language code '%s', but you are missing entries for the following locale[s]: %s",
-								providedTiebreakerLocales.stream().map(providedTiebreakerLocale -> providedTiebreakerLocale.toLanguageTag()).collect(Collectors.toList()),
+								providedTiebreakerLocales.stream().map(providedTiebreakerLocale -> providedTiebreakerLocale.toLanguageTag()).sorted().collect(Collectors.toList()),
 								languageCode,
-								missingLocales.stream().map(missingLocale -> missingLocale.toLanguageTag()).collect(Collectors.toList())));
+								missingLocales.stream().map(missingLocale -> missingLocale.toLanguageTag()).sorted().collect(Collectors.toList())));
 				}
 
 				internalTiebreakerLocalesByLanguageCode.put(languageCode, locales);

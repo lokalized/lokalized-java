@@ -76,6 +76,19 @@ public class StringsTests {
 			// Nothing to do
 		}
 
+		try {
+			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+					.tiebreakerLocalesByLanguageCode(Map.of(
+							"en", List.of(Locale.forLanguageTag("ja-JA"))
+					))
+					.build();
+
+			Assert.fail("Should not be able to construct a DefaultStrings instance with invalid tiebreaker information");
+		} catch (IllegalArgumentException expected) {
+			// Nothing to do
+		}
+
 		// This is a legal construction because it provides all necessary fallbacks
 		Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
