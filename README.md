@@ -93,7 +93,7 @@ We'll start with hands-on examples to illustrate key features.
 
 Filenames must conform to the IETF BCP 47 language tag format.
 
-Here is a US English (`en-US`) localized strings file which handles two localizations:
+Here is a US English (`en-US`) localized strings file which includes a single localization:
 
 ```json
 {
