@@ -119,6 +119,21 @@ public class StringsTests {
 	}
 
 	@Test
+	public void tiebreakerOrderIsRespected() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en-GB"), Locale.forLanguageTag("en"))
+				))
+				.build();
+
+		Locale bestMatch = strings.bestMatchFor(Locale.forLanguageTag("en-US"));
+
+		Assert.assertEquals(Locale.forLanguageTag("en-GB"), bestMatch);
+	}
+
+	@Test
 	public void cardinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

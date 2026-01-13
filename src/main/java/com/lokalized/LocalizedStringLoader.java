@@ -50,6 +50,7 @@ import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -64,18 +65,14 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 public final class LocalizedStringLoader {
   @Nonnull
-  private static final Set<String> SUPPORTED_LANGUAGE_TAGS;
-  @Nonnull
   private static final Map<String, LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
   @Nonnull
   private static final Logger LOGGER;
+  @Nonnull
+  private static final Pattern LANGUAGE_TAG_PATTERN;
 
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
-
-    SUPPORTED_LANGUAGE_TAGS = Collections.unmodifiableSet(Arrays.stream(Locale.getAvailableLocales())
-        .map(locale -> locale.toLanguageTag())
-        .collect(Collectors.toSet()));
 
     Set<LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
@@ -109,6 +106,7 @@ public final class LocalizedStringLoader {
     }
 
     SUPPORTED_LANGUAGE_FORMS_BY_NAME = Collections.unmodifiableMap(supportedLanguageFormsByName);
+    LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
   }
 
   private LocalizedStringLoader() {
@@ -227,7 +225,7 @@ public final class LocalizedStringLoader {
       for (File file : files) {
         String languageTag = file.getName();
 
-        if (SUPPORTED_LANGUAGE_TAGS.contains(languageTag)) {
+        if (isLanguageTag(languageTag)) {
           LOGGER.fine(format("Loading localized strings file '%s'...", languageTag));
           Locale locale = Locale.forLanguageTag(file.getName());
           localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
@@ -279,7 +277,7 @@ public final class LocalizedStringLoader {
           if ("".equals(relativeName) || relativeName.contains("/"))
             continue;
 
-          if (SUPPORTED_LANGUAGE_TAGS.contains(relativeName)) {
+          if (isLanguageTag(relativeName)) {
             LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
             Locale locale = Locale.forLanguageTag(relativeName);
 
@@ -303,6 +301,19 @@ public final class LocalizedStringLoader {
   @Nonnull
   private static Map<Locale, Set<LocalizedString>> createLocaleMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+  }
+
+  private static boolean isLanguageTag(@Nonnull String languageTag) {
+    requireNonNull(languageTag);
+
+    if (!LANGUAGE_TAG_PATTERN.matcher(languageTag).matches())
+      return false;
+
+    Locale locale = Locale.forLanguageTag(languageTag);
+    if (!"".equals(locale.getLanguage()))
+      return true;
+
+    return languageTag.toLowerCase(Locale.ROOT).startsWith("x-");
   }
 
   /**

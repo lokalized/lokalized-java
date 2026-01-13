@@ -74,7 +74,7 @@ public class LocalizedString {
       this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
     } else {
       // Defensive copy to unmodifiable map
-      this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(languageFormTranslationsByPlaceholder);
+      this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(new LinkedHashMap<>(languageFormTranslationsByPlaceholder));
     }
 
     // Defensive copy to unmodifiable list

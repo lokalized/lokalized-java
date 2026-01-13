@@ -139,7 +139,15 @@ public class DefaultStrings implements Strings {
 
 		// Make our own mapping of tiebreakers based on the provided mapping.
 		// First, defensive copy, then add to the map as needed below.
-		Map<String, List<Locale>> internalTiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode == null ? new HashMap<>() : new HashMap<>(tiebreakerLocalesByLanguageCode);
+		Map<String, List<Locale>> internalTiebreakerLocalesByLanguageCode = new HashMap<>();
+
+		if (tiebreakerLocalesByLanguageCode != null) {
+			for (Entry<String, List<Locale>> entry : tiebreakerLocalesByLanguageCode.entrySet()) {
+				List<Locale> locales = entry.getValue();
+				internalTiebreakerLocalesByLanguageCode.put(entry.getKey(),
+						locales == null ? null : new ArrayList<>(locales));
+			}
+		}
 
 		// Verify tiebreakers are provided to support locale resolution when ambiguity exists.
 		// For each language code, if there is more than 1 localized strings file that matches it, tiebreakers must be provided.
@@ -165,7 +173,7 @@ public class DefaultStrings implements Strings {
 
 			if (locales.size() == 1) {
 				// If there is exactly 1 locale for the language code, it's its own "identity" tiebreaker.
-				internalTiebreakerLocalesByLanguageCode.put(languageCode, locales);
+				internalTiebreakerLocalesByLanguageCode.put(languageCode, new ArrayList<>(locales));
 			} else if (locales.size() > 1) {
 				// We need to provide tiebreakers if a locale has more than 1 strings file.
 				List<Locale> providedTiebreakerLocales = internalTiebreakerLocalesByLanguageCode.get(languageCode);
@@ -196,14 +204,22 @@ public class DefaultStrings implements Strings {
 								missingLocales.stream().map(missingLocale -> missingLocale.toLanguageTag()).sorted().collect(Collectors.toList())));
 				}
 
-				internalTiebreakerLocalesByLanguageCode.put(languageCode, locales);
+				internalTiebreakerLocalesByLanguageCode.put(languageCode, new ArrayList<>(providedTiebreakerLocales));
 			} else {
 				// Should never occur
 				throw new IllegalStateException("No locales match language code");
 			}
 		}
 
-		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(internalTiebreakerLocalesByLanguageCode);
+		Map<String, List<Locale>> finalizedTiebreakerLocalesByLanguageCode = new HashMap<>(internalTiebreakerLocalesByLanguageCode.size());
+
+		for (Entry<String, List<Locale>> entry : internalTiebreakerLocalesByLanguageCode.entrySet()) {
+			List<Locale> locales = entry.getValue();
+			finalizedTiebreakerLocalesByLanguageCode.put(entry.getKey(),
+					locales == null ? null : Collections.unmodifiableList(new ArrayList<>(locales)));
+		}
+
+		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(finalizedTiebreakerLocalesByLanguageCode);
 
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();

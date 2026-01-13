@@ -34,6 +34,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.nio.charset.StandardCharsets;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -53,6 +54,23 @@ public class LocalizedStringLoaderTests {
   @Test
   public void testFilesystemLoading() {
     verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
+  }
+
+  @Test
+  public void testFilesystemLoadingAcceptsNonJreTagsAndCase() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Path lowercaseRegion = tempDirectory.resolve("en-gb");
+    Path privateUse = tempDirectory.resolve("x-private");
+
+    Files.write(lowercaseRegion, "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(privateUse, "{\"hi\":\"there\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-GB")));
+    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("x-private")));
   }
 
   @Test
