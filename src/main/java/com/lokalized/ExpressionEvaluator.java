@@ -440,6 +440,13 @@ class ExpressionEvaluator {
 
       // Cardinality (operators: ==, !=)
       if (lhsOperandType == OperandType.CARDINALITY || rhsOperandType == OperandType.CARDINALITY) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing cardinality comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
         Cardinality lhsValue = cardinalityFromOperand(leftHandOperand, context, locale);
         Cardinality rhsValue = cardinalityFromOperand(rightHandOperand, context, locale);
 
@@ -455,6 +462,13 @@ class ExpressionEvaluator {
 
       // Ordinality (operators: ==, !=)
       if (lhsOperandType == OperandType.ORDINALITY || rhsOperandType == OperandType.ORDINALITY) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing ordinality comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
         Ordinality lhsValue = ordinalityFromOperand(leftHandOperand, context, locale);
         Ordinality rhsValue = ordinalityFromOperand(rightHandOperand, context, locale);
 
@@ -488,8 +502,10 @@ class ExpressionEvaluator {
     requireNonNull(token);
 
     if (COMPARISON_OPERATOR_TOKEN_TYPES.contains(token.getTokenType()))
+      return 2;
+    if (token.getTokenType() == TokenType.AND)
       return 1;
-    if (BOOLEAN_OPERATOR_TOKEN_TYPES.contains(token.getTokenType()))
+    if (token.getTokenType() == TokenType.OR)
       return 0;
 
     throw new ExpressionEvaluationException(format("Cannot determine precedence for '%s'", token.getSymbol()));

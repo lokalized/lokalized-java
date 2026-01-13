@@ -36,7 +36,7 @@ class StringInterpolator {
   private static final Pattern PLACEHOLDER_PATTERN;
 
   static {
-    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{\\p{Alnum}+}}");
+    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{[\\p{Alnum}_-]+}}");
   }
 
   @Nonnull
@@ -57,16 +57,8 @@ class StringInterpolator {
       if (value == null) {
         matcher.appendReplacement(stringBuffer, format("{{%s}}", name));
       } else {
-        String valueAsString = "";
-
-        if (value != null) {
-          valueAsString = value.toString();
-          // Make sure special characters (e.g. the '$' in '$24.99') don't affect matching.
-          // See https://stackoverflow.com/a/56299793
-          valueAsString = valueAsString.replaceAll("[\\W]", "\\\\$0");
-        }
-
-        matcher.appendReplacement(stringBuffer, valueAsString);
+        String valueAsString = value.toString();
+        matcher.appendReplacement(stringBuffer, Matcher.quoteReplacement(valueAsString));
       }
     }
 

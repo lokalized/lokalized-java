@@ -150,26 +150,26 @@ public final class LocalizedStringLoader {
     requireNonNull(classpathPackage);
     requireNonNull(classLoader);
 
-    URL url = classLoader.getResource(classpathPackage);
+    Enumeration<URL> urls;
 
-    if (url == null)
-      throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
-
-    String protocol = url.getProtocol();
-
-    if ("file".equals(protocol)) {
-      try {
-        return loadFromDirectory(Paths.get(url.toURI()).toFile());
-      } catch (URISyntaxException e) {
-        throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
-      }
+    try {
+      urls = classLoader.getResources(classpathPackage);
+    } catch (IOException e) {
+      throw new LocalizedStringLoadingException(format("Unable to search classpath for '%s'", classpathPackage), e);
     }
 
-    if ("jar".equals(protocol))
-      return loadFromJar(url, classpathPackage);
+    if (!urls.hasMoreElements())
+      throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
-    throw new LocalizedStringLoadingException(format("Unsupported classpath protocol '%s' for location '%s'",
-        protocol, url));
+    Map<Locale, Map<String, LocalizedString>> mergedByLocale = createLocaleKeyMap();
+
+    while (urls.hasMoreElements()) {
+      URL url = urls.nextElement();
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
+      mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
+    }
+
+    return toLocalizedStringsByLocale(mergedByLocale);
   }
 
   /**
@@ -239,6 +239,28 @@ public final class LocalizedStringLoader {
   }
 
   @Nonnull
+  private static Map<Locale, Set<LocalizedString>> loadFromUrl(@Nonnull URL url, @Nonnull String classpathPackage) {
+    requireNonNull(url);
+    requireNonNull(classpathPackage);
+
+    String protocol = url.getProtocol();
+
+    if ("file".equals(protocol)) {
+      try {
+        return loadFromDirectory(Paths.get(url.toURI()).toFile());
+      } catch (URISyntaxException e) {
+        throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
+      }
+    }
+
+    if ("jar".equals(protocol))
+      return loadFromJar(url, classpathPackage);
+
+    throw new LocalizedStringLoadingException(format("Unsupported classpath protocol '%s' for location '%s'",
+        protocol, url));
+  }
+
+  @Nonnull
   private static Map<Locale, Set<LocalizedString>> loadFromJar(@Nonnull URL jarUrl,
                                                                @Nonnull String classpathPackage) {
     requireNonNull(jarUrl);
@@ -301,6 +323,53 @@ public final class LocalizedStringLoader {
   @Nonnull
   private static Map<Locale, Set<LocalizedString>> createLocaleMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+  }
+
+  @Nonnull
+  private static Map<Locale, Map<String, LocalizedString>> createLocaleKeyMap() {
+    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+  }
+
+  private static void mergeLocalizedStrings(@Nonnull Map<Locale, Map<String, LocalizedString>> target,
+                                            @Nonnull Map<Locale, Set<LocalizedString>> source) {
+    requireNonNull(target);
+    requireNonNull(source);
+
+    for (Map.Entry<Locale, Set<LocalizedString>> entry : source.entrySet()) {
+      Locale locale = entry.getKey();
+      Map<String, LocalizedString> localizedStringsByKey = target.get(locale);
+
+      if (localizedStringsByKey == null) {
+        localizedStringsByKey = new LinkedHashMap<>();
+        target.put(locale, localizedStringsByKey);
+      }
+
+      for (LocalizedString localizedString : entry.getValue()) {
+        String key = localizedString.getKey();
+        LocalizedString existing = localizedStringsByKey.get(key);
+
+        if (existing != null)
+          throw new LocalizedStringLoadingException(format("Duplicate localized string key '%s' found for locale '%s' while merging classpath resources",
+              key, locale.toLanguageTag()));
+
+        localizedStringsByKey.put(key, localizedString);
+      }
+    }
+  }
+
+  @Nonnull
+  private static Map<Locale, Set<LocalizedString>> toLocalizedStringsByLocale(
+      @Nonnull Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale) {
+    requireNonNull(localizedStringsByKeyByLocale);
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
+
+    for (Map.Entry<Locale, Map<String, LocalizedString>> entry : localizedStringsByKeyByLocale.entrySet()) {
+      localizedStringsByLocale.put(entry.getKey(),
+          Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue().values())));
+    }
+
+    return Collections.unmodifiableMap(localizedStringsByLocale);
   }
 
   private static boolean isLanguageTag(@Nonnull String languageTag) {

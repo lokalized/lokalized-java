@@ -82,6 +82,10 @@ public class LocalizedStringLoaderTests {
 
     try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar));
          DirectoryStream<Path> directoryStream = Files.newDirectoryStream(stringsPath)) {
+      JarEntry directoryEntry = new JarEntry("strings/");
+      jarOutputStream.putNextEntry(directoryEntry);
+      jarOutputStream.closeEntry();
+
       for (Path filePath : directoryStream) {
         if (!Files.isRegularFile(filePath))
           continue;
@@ -93,8 +97,43 @@ public class LocalizedStringLoaderTests {
       }
     }
 
-    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()})) {
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
       verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingMergesResources() throws IOException {
+    Path tempJar1 = Files.createTempFile("lokalized-strings-one", ".jar");
+    Path tempJar2 = Files.createTempFile("lokalized-strings-two", ".jar");
+    tempJar1.toFile().deleteOnExit();
+    tempJar2.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar1, "strings/en", "{\"hello\":\"world\"}");
+    writeJarEntry(tempJar2, "strings/en", "{\"goodbye\":\"world\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{
+        tempJar1.toUri().toURL(),
+        tempJar2.toUri().toURL()
+    }, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+      Set<LocalizedString> localizedStrings = localizedStringsByLocale.get(Locale.forLanguageTag("en"));
+
+      Assert.assertNotNull(localizedStrings);
+      Assert.assertEquals(2, localizedStrings.size());
+    }
+  }
+
+  private void writeJarEntry(Path jarPath, String entryName, String json) throws IOException {
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
+      JarEntry directoryEntry = new JarEntry("strings/");
+      jarOutputStream.putNextEntry(directoryEntry);
+      jarOutputStream.closeEntry();
+
+      JarEntry entry = new JarEntry(entryName);
+      jarOutputStream.putNextEntry(entry);
+      jarOutputStream.write(json.getBytes(StandardCharsets.UTF_8));
+      jarOutputStream.closeEntry();
     }
   }
 

@@ -91,6 +91,43 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void operatorPrecedence() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		boolean result = expressionEvaluator.evaluate("a == 1 || b == 1 && c == 1", Map.of(
+				"a", 1,
+				"b", 0,
+				"c", 0
+		), LOCALE);
+
+		Assert.assertTrue("Expected && to bind tighter than ||", result);
+	}
+
+	@Test
+	public void invalidCardinalityOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		try {
+			expressionEvaluator.evaluate("CARDINALITY_ONE < CARDINALITY_TWO", LOCALE);
+			Assert.fail("Expected invalid cardinality operator to throw");
+		} catch (ExpressionEvaluationException expected) {
+			// Expected
+		}
+	}
+
+	@Test
+	public void invalidOrdinalityOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		try {
+			expressionEvaluator.evaluate("ORDINALITY_ONE > ORDINALITY_TWO", LOCALE);
+			Assert.fail("Expected invalid ordinality operator to throw");
+		} catch (ExpressionEvaluationException expected) {
+			// Expected
+		}
+	}
+
+	@Test
 	public void customTokenizerIsUsed() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(new ExpressionTokenizer() {
 			@Override
