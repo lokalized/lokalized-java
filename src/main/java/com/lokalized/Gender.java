@@ -43,7 +43,7 @@ public enum Gender implements LanguageForm {
   NEUTER;
 
   @NonNull
-  private static final Map<String, Gender> GENDERS_BY_NAME;
+  private static final Map<@NonNull String, @NonNull Gender> GENDERS_BY_NAME;
 
   static {
     GENDERS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
@@ -56,7 +56,7 @@ public enum Gender implements LanguageForm {
    * @return the mapping of gender names to gender values, not null
    */
   @NonNull
-  static Map<String, Gender> getGendersByName() {
+  static Map<@NonNull String, @NonNull Gender> getGendersByName() {
     return GENDERS_BY_NAME;
   }
 }

@@ -66,7 +66,7 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 public final class LocalizedStringLoader {
   @NonNull
-  private static final Map<String, LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
+  private static final Map<@NonNull String, @NonNull LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
   @NonNull
   private static final Logger LOGGER;
   @NonNull
@@ -77,12 +77,12 @@ public final class LocalizedStringLoader {
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
 
-    Set<LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
+    Set<@NonNull LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
     supportedLanguageForms.addAll(Arrays.asList(Cardinality.values()));
     supportedLanguageForms.addAll(Arrays.asList(Ordinality.values()));
 
-    Map<String, LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
+    Map<@NonNull String, @NonNull LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
 
     for (LanguageForm languageForm : supportedLanguageForms) {
       if (!languageForm.getClass().isEnum())
@@ -146,12 +146,12 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
   @NonNull
-  public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
     return loadFromClasspath(LocalizedStringLoader.class.getClassLoader(), classpathPackage);
   }
 
   @NonNull
-  static Map<Locale, Set<LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
+  static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
                                                              @NonNull String classpathPackage) {
     requireNonNull(classpathPackage);
     requireNonNull(classLoader);
@@ -167,11 +167,11 @@ public final class LocalizedStringLoader {
     if (!urls.hasMoreElements())
       throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
-    Map<Locale, Map<String, LocalizedString>> mergedByLocale = createLocaleKeyMap();
+    Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> mergedByLocale = createLocaleKeyMap();
 
     while (urls.hasMoreElements()) {
       URL url = urls.nextElement();
-      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
+      Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
       mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
     }
 
@@ -199,7 +199,7 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
   @NonNull
-  public static Map<Locale, Set<LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
     requireNonNull(directory);
     return loadFromDirectory(directory.toFile());
   }
@@ -214,7 +214,7 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
   @NonNull
-  private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@NonNull File directory) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull File directory) {
     requireNonNull(directory);
 
     if (!directory.exists())
@@ -225,7 +225,7 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Location '%s' exists but is not a directory",
           directory));
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
     File[] files = directory.listFiles();
 
@@ -253,7 +253,7 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<Locale, Set<LocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
     requireNonNull(url);
     requireNonNull(classpathPackage);
 
@@ -275,12 +275,12 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<Locale, Set<LocalizedString>> loadFromJar(@NonNull URL jarUrl,
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromJar(@NonNull URL jarUrl,
                                                                @NonNull String classpathPackage) {
     requireNonNull(jarUrl);
     requireNonNull(classpathPackage);
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
     try {
       JarURLConnection connection = (JarURLConnection) jarUrl.openConnection();
@@ -341,23 +341,24 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<Locale, Set<LocalizedString>> createLocaleMap() {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> createLocaleMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
   @NonNull
-  private static Map<Locale, Map<String, LocalizedString>> createLocaleKeyMap() {
+  private static Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> createLocaleKeyMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
-  private static void mergeLocalizedStrings(@NonNull Map<Locale, Map<String, LocalizedString>> target,
-                                            @NonNull Map<Locale, Set<LocalizedString>> source) {
+  private static void mergeLocalizedStrings(
+      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> target,
+      @NonNull Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> source) {
     requireNonNull(target);
     requireNonNull(source);
 
-    for (Map.Entry<Locale, Set<LocalizedString>> entry : source.entrySet()) {
+    for (Map.Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : source.entrySet()) {
       Locale locale = entry.getKey();
-      Map<String, LocalizedString> localizedStringsByKey = target.get(locale);
+      Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey = target.get(locale);
 
       if (localizedStringsByKey == null) {
         localizedStringsByKey = new LinkedHashMap<>();
@@ -378,13 +379,13 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<Locale, Set<LocalizedString>> toLocalizedStringsByLocale(
-      @NonNull Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> toLocalizedStringsByLocale(
+      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale) {
     requireNonNull(localizedStringsByKeyByLocale);
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
-    for (Map.Entry<Locale, Map<String, LocalizedString>> entry : localizedStringsByKeyByLocale.entrySet()) {
+    for (Map.Entry<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> entry : localizedStringsByKeyByLocale.entrySet()) {
       localizedStringsByLocale.put(entry.getKey(),
           Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue().values())));
     }
@@ -425,7 +426,7 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static Set<LocalizedString> parseLocalizedStringsFile(@NonNull File file) {
+  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull File file) {
     requireNonNull(file);
 
     String canonicalPath;
@@ -453,7 +454,7 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Set<LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
+  private static Set<@NonNull LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
                                                             @NonNull String localizedStringsFileContents) {
     requireNonNull(canonicalPath);
     requireNonNull(localizedStringsFileContents);
@@ -461,7 +462,7 @@ public final class LocalizedStringLoader {
     if ("".equals(localizedStringsFileContents))
       return Collections.emptySet();
 
-    Set<LocalizedString> localizedStrings = new HashSet<>();
+    Set<@NonNull LocalizedString> localizedStrings = new HashSet<>();
     JsonValue outerJsonValue = Json.parse(localizedStringsFileContents);
 
     if (!outerJsonValue.isObject())
@@ -562,7 +563,7 @@ public final class LocalizedStringLoader {
         commentary = commentaryJsonValue.asString();
       }
 
-      Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
+      Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
 
       JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
 
@@ -630,7 +631,7 @@ public final class LocalizedStringLoader {
           if (!translationsJsonValue.isObject())
             throw new LocalizedStringLoadingException(format("%s: the placeholder translations value must be an object. Key is '%s'", canonicalPath, key));
 
-          Map<LanguageForm, String> translationsByLanguageForm = new LinkedHashMap<>();
+          Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm = new LinkedHashMap<>();
 
           JsonObject translationsJsonObject = translationsJsonValue.asObject();
 
@@ -658,7 +659,7 @@ public final class LocalizedStringLoader {
         }
       }
 
-      List<LocalizedString> alternatives = new ArrayList<>();
+      List<@NonNull LocalizedString> alternatives = new ArrayList<>();
 
       JsonValue alternativesJsonValue = localizedStringObject.get("alternatives");
 

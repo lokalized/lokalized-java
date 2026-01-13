@@ -44,5 +44,5 @@ public interface LocaleMatcher {
 	 * @return the best-matching locale, not null
 	 */
 	@NonNull
-	Locale bestMatchFor(@NonNull List<LanguageRange> languageRanges);
+	Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges);
 }

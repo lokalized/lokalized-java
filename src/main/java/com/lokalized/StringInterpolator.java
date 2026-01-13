@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
@@ -41,7 +42,7 @@ class StringInterpolator {
   }
 
   @NonNull
-  public String interpolate(@NonNull String string, @NonNull Map<String, Object> context) {
+  public String interpolate(@NonNull String string, @NonNull Map<@NonNull String, @Nullable Object> context) {
     Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
 
     // Matcher#appendReplacement only accepts StringBuffer, not StringBuilder

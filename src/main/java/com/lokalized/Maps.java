@@ -48,11 +48,12 @@ final class Maps {
    * @return an immutable sorted map, not null
    */
   @NonNull
-  static <K, V> SortedMap<K, V> sortedMap(@Nullable MapEntry<K, V>... mapEntries) {
+  static <K, V> SortedMap<@NonNull K, @NonNull V> sortedMap(
+      @NonNull MapEntry<@NonNull K, @NonNull V> @Nullable ... mapEntries) {
     if (mapEntries == null || mapEntries.length == 0)
       return Collections.emptySortedMap();
 
-    SortedMap<K, V> sortedMap = new TreeMap<>();
+    SortedMap<@NonNull K, @NonNull V> sortedMap = new TreeMap<>();
 
     for (MapEntry<K, V> mapEntry : mapEntries)
       sortedMap.put(mapEntry.getKey(), mapEntry.getValue());

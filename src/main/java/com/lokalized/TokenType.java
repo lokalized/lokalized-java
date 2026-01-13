@@ -61,11 +61,11 @@ enum TokenType {
   @Nullable
   private final String symbol;
   @NonNull
-  private static final Set<TokenType> TOKEN_TYPES_WITH_DEFINED_SYMBOL;
+  private static final Set<@NonNull TokenType> TOKEN_TYPES_WITH_DEFINED_SYMBOL;
   @NonNull
-  private static final Set<TokenType> TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
+  private static final Set<@NonNull TokenType> TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
   @NonNull
-  private static final Map<String, TokenType> TOKEN_TYPES_BY_SYMBOL;
+  private static final Map<@NonNull String, @NonNull TokenType> TOKEN_TYPES_BY_SYMBOL;
 
   static {
     TOKEN_TYPES_WITH_DEFINED_SYMBOL = Collections.unmodifiableSet(Arrays.asList(TokenType.values()).stream()
@@ -90,17 +90,17 @@ enum TokenType {
   }
 
   @NonNull
-  public static Set<TokenType> getTokenTypesWithDefinedSymbol() {
+  public static Set<@NonNull TokenType> getTokenTypesWithDefinedSymbol() {
     return TOKEN_TYPES_WITH_DEFINED_SYMBOL;
   }
 
   @NonNull
-  public static Set<TokenType> getTokenTypesWithUndefinedSymbol() {
+  public static Set<@NonNull TokenType> getTokenTypesWithUndefinedSymbol() {
     return TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
   }
 
   @NonNull
-  public static Map<String, TokenType> getTokenTypesBySymbol() {
+  public static Map<@NonNull String, @NonNull TokenType> getTokenTypesBySymbol() {
     return TOKEN_TYPES_BY_SYMBOL;
   }
 }

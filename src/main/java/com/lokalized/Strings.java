@@ -53,7 +53,7 @@ public interface Strings extends LocaleMatcher {
 	 * @return a localized string for the key, not null
 	 */
 	@NonNull
-	String get(@NonNull String key, @Nullable Map<String, Object> placeholders);
+	String get(@NonNull String key, @Nullable Map<@NonNull String, @Nullable Object> placeholders);
 
 	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.

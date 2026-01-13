@@ -60,11 +60,11 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 public class DefaultStrings implements Strings {
 	@NonNull
-	private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
+	private final Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale;
 	@Nullable
 	private final Function<LocaleMatcher, Locale> localeSupplier;
 	@NonNull
-	private final Map<String, List<Locale>> tiebreakerLocalesByLanguageCode;
+	private final Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 	@NonNull
 	private final FailureMode failureMode;
 	@NonNull
@@ -82,7 +82,7 @@ public class DefaultStrings implements Strings {
 	 * This is our "master" reference localized string storage that other data structures will point to.
 	 */
 	@NonNull
-	private final Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale;
+	private final Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale;
 
 	/**
 	 * Vends a builder suitable for constructing {@link DefaultStrings) instances.
@@ -108,9 +108,9 @@ public class DefaultStrings implements Strings {
 	 * @param failureMode                     strategy for dealing with lookup failures, may be null
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-													 @NonNull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
+													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
 													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
-													 @Nullable Map<String, List<Locale>> tiebreakerLocalesByLanguageCode,
+													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable FailureMode failureMode) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
@@ -118,17 +118,17 @@ public class DefaultStrings implements Strings {
 
 		this.logger = Logger.getLogger(LoggerType.STRINGS.getLoggerName());
 
-		Map<Locale, ? extends Iterable<LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
+		Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
 
 		if (suppliedLocalizedStringsByLocale == null)
 			suppliedLocalizedStringsByLocale = Collections.emptyMap();
 
 		// Defensive copy of iterator to unmodifiable set
-		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
+		Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
 				.collect(Collectors.toMap(
 						entry -> entry.getKey(),
 						entry -> {
-							Set<LocalizedString> localizedStrings = new LinkedHashSet<>();
+							Set<@NonNull LocalizedString> localizedStrings = new LinkedHashSet<>();
 							entry.getValue().forEach(localizedStrings::add);
 							return Collections.unmodifiableSet(localizedStrings);
 						}
@@ -139,11 +139,11 @@ public class DefaultStrings implements Strings {
 
 		// Make our own mapping of tiebreakers based on the provided mapping.
 		// First, defensive copy, then add to the map as needed below.
-		Map<String, List<Locale>> internalTiebreakerLocalesByLanguageCode = new HashMap<>();
+		Map<@NonNull String, @Nullable List<@NonNull Locale>> internalTiebreakerLocalesByLanguageCode = new HashMap<>();
 
 		if (tiebreakerLocalesByLanguageCode != null) {
-			for (Entry<String, List<Locale>> entry : tiebreakerLocalesByLanguageCode.entrySet()) {
-				List<Locale> locales = entry.getValue();
+			for (Entry<@NonNull String, @Nullable List<@NonNull Locale>> entry : tiebreakerLocalesByLanguageCode.entrySet()) {
+				@Nullable List<@NonNull Locale> locales = entry.getValue();
 				internalTiebreakerLocalesByLanguageCode.put(entry.getKey(),
 						locales == null ? null : new ArrayList<>(locales));
 			}
@@ -151,11 +151,11 @@ public class DefaultStrings implements Strings {
 
 		// Verify tiebreakers are provided to support locale resolution when ambiguity exists.
 		// For each language code, if there is more than 1 localized strings file that matches it, tiebreakers must be provided.
-		Map<String, Set<Locale>> supportedLocalesByLanguageCode = new HashMap<>(localizedStringsByLocale.size());
+		Map<@NonNull String, @NonNull Set<@NonNull Locale>> supportedLocalesByLanguageCode = new HashMap<>(localizedStringsByLocale.size());
 
 		for (Locale supportedLocale : localizedStringsByLocale.keySet()) {
 			String languageCode = supportedLocale.getLanguage();
-			Set<Locale> locales = supportedLocalesByLanguageCode.get(languageCode);
+			Set<@NonNull Locale> locales = supportedLocalesByLanguageCode.get(languageCode);
 
 			if (locales == null) {
 				locales = new HashSet<>();
@@ -165,9 +165,9 @@ public class DefaultStrings implements Strings {
 			locales.add(supportedLocale);
 		}
 
-		for (Entry<String, Set<Locale>> entry : supportedLocalesByLanguageCode.entrySet()) {
+		for (Entry<@NonNull String, @NonNull Set<@NonNull Locale>> entry : supportedLocalesByLanguageCode.entrySet()) {
 			String languageCode = entry.getKey();
-			List<Locale> locales = entry.getValue().stream()
+			List<@NonNull Locale> locales = entry.getValue().stream()
 					.sorted(Comparator.comparing(Locale::toLanguageTag))
 					.collect(Collectors.toList());
 
@@ -176,14 +176,14 @@ public class DefaultStrings implements Strings {
 				internalTiebreakerLocalesByLanguageCode.put(languageCode, new ArrayList<>(locales));
 			} else if (locales.size() > 1) {
 				// We need to provide tiebreakers if a locale has more than 1 strings file.
-				List<Locale> providedTiebreakerLocales = internalTiebreakerLocalesByLanguageCode.get(languageCode);
+				@Nullable List<@NonNull Locale> providedTiebreakerLocales = internalTiebreakerLocalesByLanguageCode.get(languageCode);
 
 				if (providedTiebreakerLocales == null || providedTiebreakerLocales.size() == 0) {
 					throw new IllegalArgumentException(format("You must specify tiebreaker locales via 'tiebreakerLocalesByLanguageCode' to resolve ambiguity for language code '%s' because localized strings exist for the following locale[s]: %s",
 							languageCode, locales.stream().map(locale -> locale.toLanguageTag()).collect(Collectors.toList())));
 				} else {
 					// First, verify that all tiebreakers actually exist
-					Set<Locale> supportedLocales = localizedStringsByLocale.keySet();
+					Set<@NonNull Locale> supportedLocales = localizedStringsByLocale.keySet();
 
 					for (Locale providedTiebreakerLocale : providedTiebreakerLocales)
 						if (!supportedLocales.contains(providedTiebreakerLocale))
@@ -191,7 +191,7 @@ public class DefaultStrings implements Strings {
 									providedTiebreakerLocale.toLanguageTag(), supportedLocales.stream().map(supportedLocale -> supportedLocale.toLanguageTag()).sorted().collect(Collectors.toList())));
 
 					// Next, verify that tiebreakers are exhaustively specified
-					List<Locale> missingLocales = new ArrayList<>(locales.size());
+					List<@NonNull Locale> missingLocales = new ArrayList<>(locales.size());
 
 					for (Locale locale : locales)
 						if (!providedTiebreakerLocales.contains(locale))
@@ -211,10 +211,10 @@ public class DefaultStrings implements Strings {
 			}
 		}
 
-		Map<String, List<Locale>> finalizedTiebreakerLocalesByLanguageCode = new HashMap<>(internalTiebreakerLocalesByLanguageCode.size());
+		Map<@NonNull String, @Nullable List<@NonNull Locale>> finalizedTiebreakerLocalesByLanguageCode = new HashMap<>(internalTiebreakerLocalesByLanguageCode.size());
 
-		for (Entry<String, List<Locale>> entry : internalTiebreakerLocalesByLanguageCode.entrySet()) {
-			List<Locale> locales = entry.getValue();
+		for (Entry<@NonNull String, @Nullable List<@NonNull Locale>> entry : internalTiebreakerLocalesByLanguageCode.entrySet()) {
+			@Nullable List<@NonNull Locale> locales = entry.getValue();
 			finalizedTiebreakerLocalesByLanguageCode.put(entry.getKey(),
 					locales == null ? null : Collections.unmodifiableList(new ArrayList<>(locales)));
 		}
@@ -257,14 +257,14 @@ public class DefaultStrings implements Strings {
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
-										@Nullable Map<String, Object> placeholders) {
+										@Nullable Map<@NonNull String, @Nullable Object> placeholders) {
 		requireNonNull(key);
 		return get(key, placeholders, getLocaleSupplier().apply(this));
 	}
 
 	@NonNull
 	protected String get(@NonNull String key,
-											 @Nullable Map<String, Object> placeholders,
+											 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
 											 @NonNull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(locale);
@@ -273,10 +273,10 @@ public class DefaultStrings implements Strings {
 			placeholders = Collections.emptyMap();
 
 		Locale finalLocale = locale;
-		Map<String, Object> mutableContext = new HashMap<>(placeholders);
-		Map<String, Object> immutableContext = Collections.unmodifiableMap(placeholders);
+		Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
+		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(placeholders);
 
-		Map<String, LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
+		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
 
 		if (localizedStrings == null) {
 			finalLocale = getFallbackLocale();
@@ -320,7 +320,8 @@ public class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	protected Optional<String> getInternal(@NonNull String key, @NonNull LocalizedString localizedString,
-																				 @NonNull Map<String, Object> mutableContext, @NonNull Map<String, Object> immutableContext,
+																				 @NonNull Map<@NonNull String, @Nullable Object> mutableContext,
+																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
 																				 @NonNull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
@@ -343,15 +344,15 @@ public class DefaultStrings implements Strings {
 
 		String translation = localizedString.getTranslation().get();
 
-		for (Entry<String, LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+		for (Entry<@NonNull String, @NonNull LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
 			String placeholderName = entry.getKey();
 			LanguageFormTranslation languageFormTranslation = entry.getValue();
 			Object value = null;
 			Object rangeStart = null;
 			Object rangeEnd = null;
-			Map<Cardinality, String> translationsByCardinality = new HashMap<>();
-			Map<Ordinality, String> translationsByOrdinality = new HashMap<>();
-			Map<Gender, String> translationsByGender = new HashMap<>();
+			Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
+			Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
+			Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
 
 			if (languageFormTranslation.getRange().isPresent()) {
 				LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
@@ -361,7 +362,7 @@ public class DefaultStrings implements Strings {
 				value = immutableContext.get(languageFormTranslation.getValue().get());
 			}
 
-			for (Entry<LanguageForm, String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
+			for (Entry<@NonNull LanguageForm, @NonNull String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
 				LanguageForm languageForm = translationEntry.getKey();
 				String translatedLanguageForm = translationEntry.getValue();
 
@@ -499,7 +500,7 @@ public class DefaultStrings implements Strings {
 
 	@NonNull
 	@Override
-	public Locale bestMatchFor(@NonNull List<LanguageRange> languageRanges) {
+	public Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
 
 		if (languageRanges.isEmpty())
@@ -520,7 +521,7 @@ public class DefaultStrings implements Strings {
 
 			// Primary‐tag match (e.g. range="pt" or "pt-XX")
 			String primary = range.split("-")[0]; // e.g. "pt"
-			List<Locale> candidates = getLocalizedStringsByLocale().keySet().stream()
+			List<@NonNull Locale> candidates = getLocalizedStringsByLocale().keySet().stream()
 					.filter(locale -> locale.getLanguage().equalsIgnoreCase(primary))
 					.collect(Collectors.toList());
 
@@ -531,7 +532,7 @@ public class DefaultStrings implements Strings {
 				return candidates.get(0);
 
 			// Tie‐breaker list for this primary tag?
-			List<Locale> tiebreakers = getTiebreakerLocalesByLanguageCode().get(primary);
+			@Nullable List<@NonNull Locale> tiebreakers = getTiebreakerLocalesByLanguageCode().get(primary);
 
 			if (tiebreakers != null)
 				for (Locale tiebreaker : tiebreakers)
@@ -549,7 +550,7 @@ public class DefaultStrings implements Strings {
 	 * @return the set of localized strings for each locale, not null
 	 */
 	@NonNull
-	public Map<Locale, Set<LocalizedString>> getLocalizedStringsByLocale() {
+	public Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> getLocalizedStringsByLocale() {
 		return localizedStringsByLocale;
 	}
 
@@ -569,7 +570,7 @@ public class DefaultStrings implements Strings {
 	 * @return the per-language-code "tiebreaker" locales, not null
 	 */
 	@NonNull
-	public Map<String, List<Locale>> getTiebreakerLocalesByLanguageCode() {
+	public Map<@NonNull String, @Nullable List<@NonNull Locale>> getTiebreakerLocalesByLanguageCode() {
 		return this.tiebreakerLocalesByLanguageCode;
 	}
 
@@ -619,7 +620,7 @@ public class DefaultStrings implements Strings {
 	 * @return the cache of localized strings by key by locale, not null
 	 */
 	@NonNull
-	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByLocale() {
+	protected Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
 	}
 
@@ -633,7 +634,7 @@ public class DefaultStrings implements Strings {
 		@NonNull
 		private final Locale locale;
 		@NonNull
-		private final Map<String, LocalizedString> localizedStringsByKey;
+		private final Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey;
 
 		/**
 		 * Constructs a localized string source with the given locale and map of keys to localized strings.
@@ -641,7 +642,7 @@ public class DefaultStrings implements Strings {
 		 * @param locale                the locale for these localized strings, not null
 		 * @param localizedStringsByKey localized strings by translation key, not null
 		 */
-		public LocalizedStringSource(@NonNull Locale locale, @NonNull Map<String, LocalizedString> localizedStringsByKey) {
+		public LocalizedStringSource(@NonNull Locale locale, @NonNull Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey) {
 			requireNonNull(locale);
 			requireNonNull(localizedStringsByKey);
 
@@ -696,7 +697,7 @@ public class DefaultStrings implements Strings {
 		}
 
 		@NonNull
-		public Map<String, LocalizedString> getLocalizedStringsByKey() {
+		public Map<@NonNull String, @NonNull LocalizedString> getLocalizedStringsByKey() {
 			return localizedStringsByKey;
 		}
 	}
@@ -732,13 +733,13 @@ public class DefaultStrings implements Strings {
 		@NonNull
 		private final Locale fallbackLocale;
 		@Nullable
-		private Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier;
+		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
 		@Nullable
 		private Function<LocaleMatcher, Locale> localeSupplier;
 		@Nullable
-		private Supplier<List<LanguageRange>> languageRangesSupplier;
+		private Supplier<List<@NonNull LanguageRange>> languageRangesSupplier;
 		@Nullable
-		private Map<String, List<Locale>> tiebreakerLocalesByLanguageCode;
+		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
 		private FailureMode failureMode;
 
@@ -759,7 +760,7 @@ public class DefaultStrings implements Strings {
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
-		public Builder localizedStringSupplier(@Nullable Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
+		public Builder localizedStringSupplier(@Nullable Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier) {
 			this.localizedStringSupplier = localizedStringSupplier;
 			return this;
 		}
@@ -783,7 +784,7 @@ public class DefaultStrings implements Strings {
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
-		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<String, List<Locale>> tiebreakerLocalesByLanguageCode) {
+		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode) {
 			this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode;
 			return this;
 		}

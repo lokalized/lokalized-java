@@ -205,7 +205,7 @@ public enum Ordinality implements LanguageForm {
   private static final BigDecimal BIG_DECIMAL_800;
 
   @NonNull
-  static final Map<String, Ordinality> ORDINALITIES_BY_NAME;
+  static final Map<@NonNull String, @NonNull Ordinality> ORDINALITIES_BY_NAME;
 
   static {
     BIG_INTEGER_0 = BigInteger.ZERO;
@@ -301,7 +301,7 @@ public enum Ordinality implements LanguageForm {
    * @return the ordinalities supported by the given locale, not null
    */
   @NonNull
-  public static SortedSet<Ordinality> supportedOrdinalitiesForLocale(@NonNull Locale locale) {
+  public static SortedSet<@NonNull Ordinality> supportedOrdinalitiesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<OrdinalityFamily> ordinalityFamily = OrdinalityFamily.ordinalityFamilyForLocale(locale);
@@ -319,7 +319,7 @@ public enum Ordinality implements LanguageForm {
    * @return a mapping of ordinalities to example integer values, not null
    */
   @NonNull
-  public static SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {
+  public static SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<OrdinalityFamily> ordinalityFamily = OrdinalityFamily.ordinalityFamilyForLocale(locale);
@@ -334,7 +334,7 @@ public enum Ordinality implements LanguageForm {
    * @return the ISO 639 language codes for which ordinality operations are supported, not null
    */
   @NonNull
-  public static SortedSet<String> getSupportedLanguageCodes() {
+  public static SortedSet<@NonNull String> getSupportedLanguageCodes() {
     return OrdinalityFamily.getSupportedLanguageCodes();
   }
 
@@ -344,7 +344,7 @@ public enum Ordinality implements LanguageForm {
    * @return the mapping of ordinality names to values, not null
    */
   @NonNull
-  static Map<String, Ordinality> getOrdinalitiesByName() {
+  static Map<@NonNull String, @NonNull Ordinality> getOrdinalitiesByName() {
     return ORDINALITIES_BY_NAME;
   }
 
@@ -1130,16 +1130,16 @@ public enum Ordinality implements LanguageForm {
     );
 
     @NonNull
-    private static final Map<String, OrdinalityFamily> ORDINALITY_FAMILIES_BY_LANGUAGE_CODE;
+    private static final Map<@NonNull String, @NonNull OrdinalityFamily> ORDINALITY_FAMILIES_BY_LANGUAGE_CODE;
     @NonNull
-    private static final SortedSet<String> SUPPORTED_LANGUAGE_CODES;
+    private static final SortedSet<@NonNull String> SUPPORTED_LANGUAGE_CODES;
 
     @NonNull
     private final Function<BigDecimal, Ordinality> ordinalityFunction;
     @NonNull
-    private final SortedSet<Ordinality> supportedOrdinalities;
+    private final SortedSet<@NonNull Ordinality> supportedOrdinalities;
     @NonNull
-    private final SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesByOrdinality;
+    private final SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> exampleIntegerValuesByOrdinality;
 
     /**
      * Constructs an ordinality family.
@@ -1149,8 +1149,8 @@ public enum Ordinality implements LanguageForm {
      * @param exampleIntegerValuesByOrdinality a mapping of ordinalities to example integer values for this ordinality family sorted by the natural ordering of {@link Ordinality}, not null
      */
     OrdinalityFamily(@NonNull Function<BigDecimal, Ordinality> ordinalityFunction,
-                     @NonNull SortedSet<Ordinality> supportedOrdinalities,
-                     @NonNull SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesByOrdinality) {
+                     @NonNull SortedSet<@NonNull Ordinality> supportedOrdinalities,
+                     @NonNull SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> exampleIntegerValuesByOrdinality) {
       requireNonNull(ordinalityFunction);
       requireNonNull(supportedOrdinalities);
       requireNonNull(exampleIntegerValuesByOrdinality);
@@ -1161,7 +1161,7 @@ public enum Ordinality implements LanguageForm {
     }
 
     static {
-      ORDINALITY_FAMILIES_BY_LANGUAGE_CODE = Collections.unmodifiableMap(new HashMap<String, OrdinalityFamily>() {{
+      ORDINALITY_FAMILIES_BY_LANGUAGE_CODE = Collections.unmodifiableMap(new HashMap<@NonNull String, @NonNull OrdinalityFamily>() {{
         put("af", OrdinalityFamily.FAMILY_1); // Afrikaans
         put("ak", OrdinalityFamily.FAMILY_1); // Akan (no CLDR data available)
         put("am", OrdinalityFamily.FAMILY_1); // Amharic
@@ -1363,7 +1363,7 @@ public enum Ordinality implements LanguageForm {
       }});
 
       // Language codes are in English - force collation for sorting
-      SortedSet<String> supportedLanguageCodes = new TreeSet<>(Collator.getInstance(Locale.ENGLISH));
+      SortedSet<@NonNull String> supportedLanguageCodes = new TreeSet<>(Collator.getInstance(Locale.ENGLISH));
       supportedLanguageCodes.addAll(ORDINALITY_FAMILIES_BY_LANGUAGE_CODE.keySet());
 
       SUPPORTED_LANGUAGE_CODES = Collections.unmodifiableSortedSet(supportedLanguageCodes);
@@ -1393,7 +1393,7 @@ public enum Ordinality implements LanguageForm {
      * @return the ordinalities supported by this ordinality family, not null
      */
     @NonNull
-    SortedSet<Ordinality> getSupportedOrdinalities() {
+    SortedSet<@NonNull Ordinality> getSupportedOrdinalities() {
       return supportedOrdinalities;
     }
 
@@ -1407,7 +1407,7 @@ public enum Ordinality implements LanguageForm {
      * @return a mapping of ordinalities to example integer values, not null
      */
     @NonNull
-    SortedMap<Ordinality, Range<Integer>> getExampleIntegerValuesByOrdinality() {
+    SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> getExampleIntegerValuesByOrdinality() {
       return exampleIntegerValuesByOrdinality;
     }
 
@@ -1419,7 +1419,7 @@ public enum Ordinality implements LanguageForm {
      * @return the ISO 639 language codes for which ordinality operations are supported, not null
      */
     @NonNull
-    static SortedSet<String> getSupportedLanguageCodes() {
+    static SortedSet<@NonNull String> getSupportedLanguageCodes() {
       return SUPPORTED_LANGUAGE_CODES;
     }
 

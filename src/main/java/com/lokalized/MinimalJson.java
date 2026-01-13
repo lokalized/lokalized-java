@@ -16,6 +16,8 @@
 
 package com.lokalized;
 
+import org.jspecify.annotations.NonNull;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Reader;
@@ -446,15 +448,15 @@ final class MinimalJson {
    * </p>
    */
   @SuppressWarnings("serial") // use default serial UID
-  public static class JsonArray extends JsonValue implements Iterable<JsonValue> {
+  public static class JsonArray extends JsonValue implements Iterable<@NonNull JsonValue> {
 
-    private final List<JsonValue> values;
+    private final List<@NonNull JsonValue> values;
 
     /**
      * Creates a new empty JsonArray.
      */
     public JsonArray() {
-      values = new ArrayList<JsonValue>();
+      values = new ArrayList<@NonNull JsonValue>();
     }
 
     /**
@@ -473,7 +475,7 @@ final class MinimalJson {
       if (unmodifiable) {
         values = Collections.unmodifiableList(array.values);
       } else {
-        values = new ArrayList<JsonValue>(array.values);
+        values = new ArrayList<@NonNull JsonValue>(array.values);
       }
     }
 
@@ -768,7 +770,7 @@ final class MinimalJson {
      *
      * @return a list of the values in this array
      */
-    public List<JsonValue> values() {
+    public List<@NonNull JsonValue> values() {
       return Collections.unmodifiableList(values);
     }
 
@@ -778,9 +780,9 @@ final class MinimalJson {
      *
      * @return an iterator over the values of this array
      */
-    public Iterator<JsonValue> iterator() {
-      final Iterator<JsonValue> iterator = values.iterator();
-      return new Iterator<JsonValue>() {
+    public Iterator<@NonNull JsonValue> iterator() {
+      final Iterator<@NonNull JsonValue> iterator = values.iterator();
+      return new Iterator<@NonNull JsonValue>() {
 
         public boolean hasNext() {
           return iterator.hasNext();
@@ -1255,18 +1257,18 @@ final class MinimalJson {
    * </p>
    */
   @SuppressWarnings("serial") // use default serial UID
-  public static class JsonObject extends JsonValue implements Iterable<JsonObject.Member> {
+  public static class JsonObject extends JsonValue implements Iterable<@NonNull JsonObject.Member> {
 
-    private final List<String> names;
-    private final List<JsonValue> values;
+    private final List<@NonNull String> names;
+    private final List<@NonNull JsonValue> values;
     private transient HashIndexTable table;
 
     /**
      * Creates a new empty JsonObject.
      */
     public JsonObject() {
-      names = new ArrayList<String>();
-      values = new ArrayList<JsonValue>();
+      names = new ArrayList<@NonNull String>();
+      values = new ArrayList<@NonNull JsonValue>();
       table = new HashIndexTable();
     }
 
@@ -1287,8 +1289,8 @@ final class MinimalJson {
         names = Collections.unmodifiableList(object.names);
         values = Collections.unmodifiableList(object.values);
       } else {
-        names = new ArrayList<String>(object.names);
-        values = new ArrayList<JsonValue>(object.values);
+        names = new ArrayList<@NonNull String>(object.names);
+        values = new ArrayList<@NonNull JsonValue>(object.values);
       }
       table = new HashIndexTable();
       updateHashIndex();
@@ -1832,7 +1834,7 @@ final class MinimalJson {
      *
      * @return a list of the names in this object
      */
-    public List<String> names() {
+    public List<@NonNull String> names() {
       return Collections.unmodifiableList(names);
     }
 
@@ -1842,9 +1844,9 @@ final class MinimalJson {
      *
      * @return an iterator over the members of this object
      */
-    public Iterator<Member> iterator() {
-      final Iterator<String> namesIterator = names.iterator();
-      final Iterator<JsonValue> valuesIterator = values.iterator();
+    public Iterator<@NonNull Member> iterator() {
+      final Iterator<@NonNull String> namesIterator = names.iterator();
+      final Iterator<@NonNull JsonValue> valuesIterator = values.iterator();
       return new Iterator<JsonObject.Member>() {
 
         public boolean hasNext() {

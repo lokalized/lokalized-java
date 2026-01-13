@@ -41,9 +41,9 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 class ExpressionTokenizer {
   @NonNull
-  private static final Map<TokenType, String> PATTERNS_BY_TOKEN_TYPE;
+  private static final Map<@NonNull TokenType, @NonNull String> PATTERNS_BY_TOKEN_TYPE;
   @NonNull
-  private static final Map<TokenType, String> GROUP_NAMES_BY_TOKEN_TYPE;
+  private static final Map<@NonNull TokenType, @NonNull String> GROUP_NAMES_BY_TOKEN_TYPE;
   @NonNull
   private static final Pattern TOKEN_PATTERN;
   @NonNull
@@ -113,10 +113,10 @@ class ExpressionTokenizer {
    * @return the tokens that comprise the expression
    * @throws ExpressionEvaluationException if an error occurs while extracting tokens
    */
-  public List<Token> extractTokens(@NonNull String expression) {
+  public List<@NonNull Token> extractTokens(@NonNull String expression) {
     requireNonNull(expression);
 
-    List<Token> tokens = new ArrayList<>();
+    List<@NonNull Token> tokens = new ArrayList<>();
     Matcher matcher = TOKEN_PATTERN.matcher(expression);
 
     while (matcher.find()) {

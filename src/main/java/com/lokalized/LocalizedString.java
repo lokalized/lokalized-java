@@ -49,9 +49,9 @@ public class LocalizedString {
   @Nullable
   private final String commentary;
   @NonNull
-  private final Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder;
+  private final Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
   @NonNull
-  private final List<LocalizedString> alternatives;
+  private final List<@NonNull LocalizedString> alternatives;
 
   /**
    * Constructs a localized string with a key, default translation, and additional translation rules.
@@ -63,8 +63,8 @@ public class LocalizedString {
    * @param alternatives                          alternative expression-driven translations for this string, may be null
    */
   protected LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
-                            @Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder,
-                            @Nullable List<LocalizedString> alternatives) {
+                            @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
+                            @Nullable List<@NonNull LocalizedString> alternatives) {
     requireNonNull(key);
 
     this.key = key;
@@ -94,7 +94,7 @@ public class LocalizedString {
   @Override
   @NonNull
   public String toString() {
-    List<String> components = new ArrayList<>(5);
+    List<@NonNull String> components = new ArrayList<>(5);
 
     components.add(format("key=%s", getKey()));
 
@@ -184,7 +184,7 @@ public class LocalizedString {
    * @return per-language-form translations that correspond to a placeholder value, not null
    */
   @NonNull
-  public Map<String, LanguageFormTranslation> getLanguageFormTranslationsByPlaceholder() {
+  public Map<@NonNull String, @NonNull LanguageFormTranslation> getLanguageFormTranslationsByPlaceholder() {
     return languageFormTranslationsByPlaceholder;
   }
 
@@ -198,7 +198,7 @@ public class LocalizedString {
    * @return alternative expression-driven translations for this string, not null
    */
   @NonNull
-  public List<LocalizedString> getAlternatives() {
+  public List<@NonNull LocalizedString> getAlternatives() {
     return alternatives;
   }
 
@@ -219,9 +219,9 @@ public class LocalizedString {
     @Nullable
     private String commentary;
     @Nullable
-    private Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder;
+    private Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
     @Nullable
-    private List<LocalizedString> alternatives;
+    private List<@NonNull LocalizedString> alternatives;
 
     /**
      * Constructs a localized string builder with the given key.
@@ -265,7 +265,7 @@ public class LocalizedString {
      */
     @NonNull
     public Builder languageFormTranslationsByPlaceholder(
-        @Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
+        @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
       this.languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder;
       return this;
     }
@@ -277,7 +277,7 @@ public class LocalizedString {
      * @return this builder instance, useful for chaining. not null
      */
     @NonNull
-    public Builder alternatives(@Nullable List<LocalizedString> alternatives) {
+    public Builder alternatives(@Nullable List<@NonNull LocalizedString> alternatives) {
       this.alternatives = alternatives;
       return this;
     }
@@ -309,7 +309,7 @@ public class LocalizedString {
     @Nullable
     private final LanguageFormTranslationRange range;
     @NonNull
-    private final Map<LanguageForm, String> translationsByLanguageForm;
+    private final Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm;
 
     /**
      * Constructs a per-language-form translation set with the given placeholder value and mapping of translations by language form.
@@ -317,7 +317,7 @@ public class LocalizedString {
      * @param value                      the placeholder value to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
      */
-    public LanguageFormTranslation(@NonNull String value, @NonNull Map<LanguageForm, String> translationsByLanguageForm) {
+    public LanguageFormTranslation(@NonNull String value, @NonNull Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm) {
       requireNonNull(value);
       requireNonNull(translationsByLanguageForm);
 
@@ -332,7 +332,7 @@ public class LocalizedString {
      * @param range                      the placeholder range to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
      */
-    public LanguageFormTranslation(@NonNull LanguageFormTranslationRange range, @NonNull Map<LanguageForm, String> translationsByLanguageForm) {
+    public LanguageFormTranslation(@NonNull LanguageFormTranslationRange range, @NonNull Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm) {
       requireNonNull(range);
       requireNonNull(translationsByLanguageForm);
 
@@ -412,7 +412,7 @@ public class LocalizedString {
      * @return the translations by language form for this per-language-form translation set, not null
      */
     @NonNull
-    public Map<LanguageForm, String> getTranslationsByLanguageForm() {
+    public Map<@NonNull LanguageForm, @NonNull String> getTranslationsByLanguageForm() {
       return translationsByLanguageForm;
     }
   }

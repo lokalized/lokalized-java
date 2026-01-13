@@ -54,14 +54,14 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
-public class Range<T> implements Collection<T> {
+public class Range<T> implements Collection<@NonNull T> {
   @NonNull
   private static final Range<?> EMPTY_FINITE_RANGE;
   @NonNull
   private static final Range<?> EMPTY_INFINITE_RANGE;
 
   @NonNull
-  private final List<T> values;
+  private final List<@NonNull T> values;
   @NonNull
   private final Boolean infinite;
 
@@ -78,7 +78,7 @@ public class Range<T> implements Collection<T> {
    * @return an infinite range, not null
    */
   @NonNull
-  public static <T> Range<T> ofInfiniteValues(@NonNull Collection<T> values) {
+  public static <T> Range<T> ofInfiniteValues(@NonNull Collection<@NonNull T> values) {
     requireNonNull(values);
     return values.size() == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
@@ -91,7 +91,7 @@ public class Range<T> implements Collection<T> {
    * @return an infinite range, not null
    */
   @NonNull
-  public static <T> Range<T> ofInfiniteValues(@Nullable T... values) {
+  public static <T> Range<T> ofInfiniteValues(@NonNull T @Nullable ... values) {
     return values == null || values.length == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
 
@@ -103,7 +103,7 @@ public class Range<T> implements Collection<T> {
    * @return a finite range, not null
    */
   @NonNull
-  public static <T> Range<T> ofFiniteValues(@NonNull Collection<T> values) {
+  public static <T> Range<T> ofFiniteValues(@NonNull Collection<@NonNull T> values) {
     requireNonNull(values);
     return values.size() == 0 ? emptyFiniteRange() : new Range(values, false);
   }
@@ -116,7 +116,7 @@ public class Range<T> implements Collection<T> {
    * @return a finite range, not null
    */
   @NonNull
-  public static <T> Range<T> ofFiniteValues(@Nullable T... values) {
+  public static <T> Range<T> ofFiniteValues(@NonNull T @Nullable ... values) {
     return values == null || values.length == 0 ? emptyFiniteRange() : new Range(values, false);
   }
 
@@ -146,7 +146,7 @@ public class Range<T> implements Collection<T> {
    * @param values   the values that comprise this range, not null
    * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  private Range(@NonNull Collection<T> values, @NonNull Boolean infinite) {
+  private Range(@NonNull Collection<@NonNull T> values, @NonNull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
@@ -160,7 +160,7 @@ public class Range<T> implements Collection<T> {
    * @param values   the values that comprise this range, may be null
    * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  private Range(@Nullable T[] values, @NonNull Boolean infinite) {
+  private Range(@NonNull T @NonNull [] values, @NonNull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
@@ -210,7 +210,7 @@ public class Range<T> implements Collection<T> {
    */
   @NonNull
   @Override
-  public Iterator<T> iterator() {
+  public Iterator<@NonNull T> iterator() {
     return getValues().iterator();
   }
 
@@ -279,7 +279,7 @@ public class Range<T> implements Collection<T> {
    * @return true if this range contains all of the elements of the specified collection
    */
   @Override
-  public boolean containsAll(@NonNull Collection<?> c) {
+  public boolean containsAll(@NonNull Collection<@Nullable ?> c) {
     requireNonNull(c);
     return getValues().containsAll(c);
   }
@@ -294,7 +294,7 @@ public class Range<T> implements Collection<T> {
    */
   @Override
   @Deprecated
-  public boolean addAll(@Nullable Collection<? extends T> c) {
+  public boolean addAll(@Nullable Collection<? extends @NonNull T> c) {
     throw new UnsupportedOperationException();
   }
 
@@ -308,7 +308,7 @@ public class Range<T> implements Collection<T> {
    */
   @Override
   @Deprecated
-  public boolean removeAll(@Nullable Collection<?> c) {
+  public boolean removeAll(@Nullable Collection<@Nullable ?> c) {
     throw new UnsupportedOperationException();
   }
 
@@ -322,7 +322,7 @@ public class Range<T> implements Collection<T> {
    */
   @Override
   @Deprecated
-  public boolean retainAll(@Nullable Collection<?> c) {
+  public boolean retainAll(@Nullable Collection<@Nullable ?> c) {
     throw new UnsupportedOperationException();
   }
 
@@ -387,7 +387,7 @@ public class Range<T> implements Collection<T> {
    * @return the values that comprise this range, not null
    */
   @NonNull
-  public List<T> getValues() {
+  public List<@NonNull T> getValues() {
     return values;
   }
 

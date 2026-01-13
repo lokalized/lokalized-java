@@ -43,11 +43,11 @@ final class Sets {
    * @return an immutable sorted set, not null
    */
   @NonNull
-  static <T> SortedSet<T> sortedSet(@Nullable T... values) {
+  static <T> SortedSet<@NonNull T> sortedSet(@NonNull T @Nullable ... values) {
     if (values == null || values.length == 0)
       return Collections.emptySortedSet();
 
-    SortedSet<T> sortedSet = new TreeSet<>();
+    SortedSet<@NonNull T> sortedSet = new TreeSet<>();
 
     for (T value : values)
       sortedSet.add(value);

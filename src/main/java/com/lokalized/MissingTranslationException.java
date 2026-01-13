@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Collections;
@@ -42,7 +43,7 @@ public class MissingTranslationException extends RuntimeException {
 	@NonNull
 	private final Locale locale;
 	@NonNull
-	private final Map<String, Object> placeholders;
+	private final Map<@NonNull String, @Nullable Object> placeholders;
 
 	/**
 	 * Constructs a new exception with the unsupported locale.
@@ -51,7 +52,7 @@ public class MissingTranslationException extends RuntimeException {
 	 */
 	public MissingTranslationException(@NonNull String message,
 																		 @NonNull String key,
-																		 @NonNull Map<String, Object> placeholders,
+																		 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
 																		 @NonNull Locale locale) {
 		super(requireNonNull(message));
 
@@ -80,7 +81,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @return the placeholders, not null
 	 */
 	@NonNull
-	public Map<String, Object> getPlaceholders() {
+	public Map<@NonNull String, @Nullable Object> getPlaceholders() {
 		return this.placeholders;
 	}
 

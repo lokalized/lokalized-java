@@ -57,19 +57,19 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 class ExpressionEvaluator {
   @NonNull
-  private static final Set<TokenType> CARDINALITY_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> CARDINALITY_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> ORDINALITY_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> ORDINALITY_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> GENDER_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> GENDER_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> COMPARISON_OPERATOR_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> COMPARISON_OPERATOR_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> BOOLEAN_OPERATOR_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> BOOLEAN_OPERATOR_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> OPERAND_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> OPERAND_TOKEN_TYPES;
   @NonNull
-  private static final Set<TokenType> OPERATOR_TOKEN_TYPES;
+  private static final Set<@NonNull TokenType> OPERATOR_TOKEN_TYPES;
   @NonNull
   private static final Token TRUE_RESULT_TOKEN;
   @NonNull
@@ -127,7 +127,7 @@ class ExpressionEvaluator {
       }
     });
 
-    Set<TokenType> operandTokenTypes = new HashSet<>();
+    Set<@NonNull TokenType> operandTokenTypes = new HashSet<>();
     operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(ORDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
@@ -136,7 +136,7 @@ class ExpressionEvaluator {
 
     OPERAND_TOKEN_TYPES = Collections.unmodifiableSet(operandTokenTypes);
 
-    Set<TokenType> operatorTokenTypes = new HashSet<>();
+    Set<@NonNull TokenType> operatorTokenTypes = new HashSet<>();
     operatorTokenTypes.addAll(COMPARISON_OPERATOR_TOKEN_TYPES);
     operatorTokenTypes.addAll(BOOLEAN_OPERATOR_TOKEN_TYPES);
 
@@ -192,14 +192,16 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
    */
   @NonNull
-  public Boolean evaluate(@NonNull String expression, @Nullable Map<String, Object> context, @NonNull Locale locale) {
+  public Boolean evaluate(@NonNull String expression,
+                          @Nullable Map<@NonNull String, @Nullable Object> context,
+                          @NonNull Locale locale) {
     requireNonNull(expression);
     requireNonNull(locale);
 
     if (context == null)
       context = Collections.emptyMap();
 
-    List<Token> tokens = getExpressionTokenizer().extractTokens(expression);
+    List<@NonNull Token> tokens = getExpressionTokenizer().extractTokens(expression);
     tokens = convertTokensToReversePolishNotation(tokens);
     return evaluateReversePolishNotationTokens(tokens, context, locale);
   }
@@ -216,10 +218,10 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if an error occurs while converting to RPN
    */
   @NonNull
-  protected List<Token> convertTokensToReversePolishNotation(@NonNull List<Token> tokens) {
+  protected List<@NonNull Token> convertTokensToReversePolishNotation(@NonNull List<@NonNull Token> tokens) {
     requireNonNull(tokens);
 
-    List<Token> outputTokens = new ArrayList<>(tokens.size());
+    List<@NonNull Token> outputTokens = new ArrayList<>(tokens.size());
     Deque<Token> operatorStack = new ArrayDeque<>();
 
     // Perform Dijkstra's shunting-yard algorithm
@@ -290,8 +292,9 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
    */
   @NonNull
-  protected Boolean evaluateReversePolishNotationTokens(@NonNull List<Token> tokens,
-                                                        @NonNull Map<String, Object> context, @NonNull Locale locale) {
+  protected Boolean evaluateReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens,
+                                                        @NonNull Map<@NonNull String, @Nullable Object> context,
+                                                        @NonNull Locale locale) {
     requireNonNull(tokens);
     requireNonNull(context);
     requireNonNull(locale);
@@ -356,8 +359,11 @@ class ExpressionEvaluator {
    * @return the result of the binary operator evaluation (magic TRUE_RESULT_TOKEN or FALSE_RESULT_TOKEN), not null
    * @throws ExpressionEvaluationException if an error occurs while evaluating the operator
    */
-  protected Token evaluateBinaryOperator(@NonNull Token leftHandOperand, @NonNull Token operator, @NonNull Token rightHandOperand,
-                                         @NonNull Map<String, Object> context, @NonNull Locale locale) {
+  protected Token evaluateBinaryOperator(@NonNull Token leftHandOperand,
+                                         @NonNull Token operator,
+                                         @NonNull Token rightHandOperand,
+                                         @NonNull Map<@NonNull String, @Nullable Object> context,
+                                         @NonNull Locale locale) {
     requireNonNull(leftHandOperand);
     requireNonNull(operator);
     requireNonNull(rightHandOperand);
@@ -616,7 +622,7 @@ class ExpressionEvaluator {
    * @return the type of the operand (or {@link OperandType#UNKNOWN} if indeterminate), not null
    */
   @NonNull
-  protected OperandType operandType(@NonNull Token operand, @NonNull Map<String, Object> context) {
+  protected OperandType operandType(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
     requireNonNull(operand);
     requireNonNull(context);
 
@@ -659,7 +665,7 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if unable to determine double value (operand is of invalid type, etc.)
    */
   @NonNull
-  protected Double doubleFromOperand(@NonNull Token operand, @NonNull Map<String, Object> context) {
+  protected Double doubleFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
     requireNonNull(operand);
     requireNonNull(context);
 
@@ -688,7 +694,7 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if unable to determine gender value (operand is of invalid type, etc.)
    */
   @NonNull
-  protected Gender genderFromOperand(@NonNull Token operand, @NonNull Map<String, Object> context) {
+  protected Gender genderFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
     requireNonNull(operand);
     requireNonNull(context);
 
@@ -719,7 +725,9 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if unable to determine plural cardinality value (operand is of invalid type, etc.)
    */
   @NonNull
-  protected Cardinality cardinalityFromOperand(@NonNull Token operand, @NonNull Map<String, Object> context, @NonNull Locale locale) {
+  protected Cardinality cardinalityFromOperand(@NonNull Token operand,
+                                               @NonNull Map<@NonNull String, @Nullable Object> context,
+                                               @NonNull Locale locale) {
     requireNonNull(operand);
     requireNonNull(context);
     requireNonNull(locale);
@@ -756,7 +764,9 @@ class ExpressionEvaluator {
    * @throws ExpressionEvaluationException if unable to determine plural ordinality value (operand is of invalid type, etc.)
    */
   @NonNull
-  protected Ordinality ordinalityFromOperand(@NonNull Token operand, @NonNull Map<String, Object> context, @NonNull Locale locale) {
+  protected Ordinality ordinalityFromOperand(@NonNull Token operand,
+                                             @NonNull Map<@NonNull String, @Nullable Object> context,
+                                             @NonNull Locale locale) {
     requireNonNull(operand);
     requireNonNull(context);
     requireNonNull(locale);
