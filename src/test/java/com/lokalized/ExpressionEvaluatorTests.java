@@ -104,6 +104,15 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void hyphenatedVariableExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		Assert.assertTrue("Hyphenated variable comparison failed", expressionEvaluator.evaluate("user-name == 2", Map.of(
+				"user-name", 2
+		), LOCALE));
+	}
+
+	@Test
 	public void invalidCardinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

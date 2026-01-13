@@ -91,7 +91,7 @@ We'll start with hands-on examples to illustrate key features.
 
 ### 1. Create Localized Strings Files
 
-Filenames must conform to the IETF BCP 47 language tag format.
+Filenames must conform to the IETF BCP 47 language tag format, optionally suffixed with `.json`.
 
 Here is a US English (`en-US`) localized strings file which includes a single localization:
 
@@ -714,7 +714,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 ### Structure
 
-* Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW`
+* Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW` (an optional `.json` suffix like `en.json` is also accepted; do not provide both for the same locale)
 * The file must contain a single toplevel JSON object
 * The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
 * The value for a translation key can be a string (simple cases) or an object (complex cases)
@@ -757,6 +757,8 @@ This free-form field is used to supply context for the translator, such as how a
 ### Placeholders
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
+
+Placeholder names may contain letters, digits, underscores, and hyphens.
 
 You are free to add as many as you like to support your translation.
 
@@ -828,6 +830,8 @@ You may specify parenthesized expressions of arbitrary complexity in `alternativ
 gender == MASCULINE && (bookCount > 10 || magazineCount > 20)
 ```
 
+Standard boolean operator precedence applies: `&&` binds tighter than `||`.
+
 Lokalized will automatically evaluate cardinality and ordinality for numbers if required by the expression.  For example, in English, if I were to supply `bookCount` of `50`, this expression would evalute to `true`:
  
 ```text
@@ -896,7 +900,7 @@ LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
 GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
-VARIABLE = { alphabetic character | digit } ;
+VARIABLE = ( alphabetic character | digit | "_" ) { alphabetic character | digit | "_" | "-" } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```

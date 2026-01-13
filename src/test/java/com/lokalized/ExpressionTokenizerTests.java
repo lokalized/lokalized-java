@@ -189,6 +189,18 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void hyphenatedVariableTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("user-name == 1");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "user-name"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.NUMBER, "1"));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void shortInvalidTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("== example");
 
