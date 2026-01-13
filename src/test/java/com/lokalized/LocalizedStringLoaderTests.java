@@ -74,6 +74,19 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingJsonExtension() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Path jsonFile = tempDirectory.resolve("en-US.json");
+    Files.write(jsonFile, "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
+  }
+
+  @Test
   public void testClasspathLoadingFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
     tempJar.toFile().deleteOnExit();
@@ -99,6 +112,19 @@ public class LocalizedStringLoaderTests {
 
     try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
       verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingJsonExtensionFromJar() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-json", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar, "strings/en-US.json", "{\"hello\":\"world\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+      Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
     }
   }
 

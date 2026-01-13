@@ -25,6 +25,7 @@ import com.lokalized.MinimalJson.JsonObject.Member;
 import com.lokalized.MinimalJson.JsonValue;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
@@ -70,6 +71,8 @@ public final class LocalizedStringLoader {
   private static final Logger LOGGER;
   @Nonnull
   private static final Pattern LANGUAGE_TAG_PATTERN;
+  @Nonnull
+  private static final String JSON_EXTENSION;
 
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
@@ -107,6 +110,7 @@ public final class LocalizedStringLoader {
 
     SUPPORTED_LANGUAGE_FORMS_BY_NAME = Collections.unmodifiableMap(supportedLanguageFormsByName);
     LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
+    JSON_EXTENSION = ".json";
   }
 
   private LocalizedStringLoader() {
@@ -116,12 +120,14 @@ public final class LocalizedStringLoader {
   /**
    * Loads all localized string files present in the specified package on the classpath.
    * <p>
-   * Filenames must correspond to the IETF BCP 47 language tag format.
+   * Filenames must correspond to the IETF BCP 47 language tag format, optionally suffixed with {@code .json}.
    * <p>
    * Example filenames:
    * <ul>
    * <li>{@code en}</li>
+   * <li>{@code en.json}</li>
    * <li>{@code es-MX}</li>
+   * <li>{@code es-MX.json}</li>
    * <li>{@code nan-Hant-TW}</li>
    * </ul>
    * <p>
@@ -175,12 +181,14 @@ public final class LocalizedStringLoader {
   /**
    * Loads all localized string files present in the specified directory.
    * <p>
-   * Filenames must correspond to the IETF BCP 47 language tag format.
+   * Filenames must correspond to the IETF BCP 47 language tag format, optionally suffixed with {@code .json}.
    * <p>
    * Example filenames:
    * <ul>
    * <li>{@code en}</li>
+   * <li>{@code en.json}</li>
    * <li>{@code es-MX}</li>
+   * <li>{@code es-MX.json}</li>
    * <li>{@code nan-Hant-TW}</li>
    * </ul>
    * <p>
@@ -223,14 +231,20 @@ public final class LocalizedStringLoader {
 
     if (files != null) {
       for (File file : files) {
-        String languageTag = file.getName();
+        String fileName = file.getName();
+        String languageTag = languageTagForFileName(fileName);
 
-        if (isLanguageTag(languageTag)) {
-          LOGGER.fine(format("Loading localized strings file '%s'...", languageTag));
-          Locale locale = Locale.forLanguageTag(file.getName());
+        if (languageTag != null) {
+          LOGGER.fine(format("Loading localized strings file '%s'...", fileName));
+          Locale locale = Locale.forLanguageTag(languageTag);
+
+          if (localizedStringsByLocale.containsKey(locale))
+            throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found at '%s'",
+                locale.toLanguageTag(), file.getPath()));
+
           localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
         } else {
-          LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", languageTag));
+          LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
       }
     }
@@ -299,9 +313,15 @@ public final class LocalizedStringLoader {
           if ("".equals(relativeName) || relativeName.contains("/"))
             continue;
 
-          if (isLanguageTag(relativeName)) {
+          String languageTag = languageTagForFileName(relativeName);
+
+          if (languageTag != null) {
             LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
-            Locale locale = Locale.forLanguageTag(relativeName);
+            Locale locale = Locale.forLanguageTag(languageTag);
+
+            if (localizedStringsByLocale.containsKey(locale))
+              throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in %s",
+                  locale.toLanguageTag(), jarFile.getName()));
 
             try (InputStream inputStream = jarFile.getInputStream(entry)) {
               String contents = new String(inputStream.readAllBytes(), UTF_8).trim();
@@ -383,6 +403,18 @@ public final class LocalizedStringLoader {
       return true;
 
     return languageTag.toLowerCase(Locale.ROOT).startsWith("x-");
+  }
+
+  @Nullable
+  private static String languageTagForFileName(@Nonnull String fileName) {
+    requireNonNull(fileName);
+
+    String languageTag = fileName;
+
+    if (fileName.endsWith(JSON_EXTENSION))
+      languageTag = fileName.substring(0, fileName.length() - JSON_EXTENSION.length());
+
+    return isLanguageTag(languageTag) ? languageTag : null;
   }
 
   /**
