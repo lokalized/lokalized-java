@@ -231,6 +231,9 @@ public final class LocalizedStringLoader {
 
     if (files != null) {
       for (File file : files) {
+        if (file.isDirectory())
+          continue;
+
         String fileName = file.getName();
         String languageTag = languageTagForFileName(fileName);
 
@@ -469,9 +472,14 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("%s: a localized strings file must be comprised of a single JSON object", canonicalPath));
 
     JsonObject outerJsonObject = outerJsonValue.asObject();
+    Set<String> keys = new HashSet<>();
 
     for (Member member : outerJsonObject) {
       String key = member.getName();
+
+      if (!keys.add(key))
+        throw new LocalizedStringLoadingException(format("%s: duplicate localized string key '%s' encountered", canonicalPath, key));
+
       JsonValue value = member.getValue();
       localizedStrings.add(parseLocalizedString(canonicalPath, key, value));
     }
@@ -673,10 +681,10 @@ public final class LocalizedStringLoader {
           if (alternativeJsonValue == null || alternativeJsonValue.isNull())
             continue;
 
-          JsonObject outerJsonObject = alternativeJsonValue.asObject();
-
-          if (!outerJsonObject.isObject())
+          if (!alternativeJsonValue.isObject())
             throw new LocalizedStringLoadingException(format("%s: alternative value must be an object. Key is '%s'", canonicalPath, key));
+
+          JsonObject outerJsonObject = alternativeJsonValue.asObject();
 
           for (Member member : outerJsonObject) {
             String alternativeKey = member.getName();

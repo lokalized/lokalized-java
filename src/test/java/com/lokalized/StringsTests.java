@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
 import java.util.Map;
+import java.util.Optional;
 import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -286,6 +287,31 @@ public class StringsTests {
 				}});
 
 		assertEquals("Ella es una gran actriz.", translation);
+	}
+
+	@Test
+	public void optionalPlaceholderValuesAreUnwrapped() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
+		String translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", Optional.of(1));
+				}});
+
+		assertEquals("I read 1 book", translation);
+
+		translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Optional.of(Gender.MASCULINE));
+				}});
+
+		assertEquals("He is a good actor.", translation);
 	}
 
 	@Test

@@ -61,7 +61,7 @@ import static java.util.Objects.requireNonNull;
 public class DefaultStrings implements Strings {
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale;
-	@Nullable
+	@NonNull
 	private final Function<LocaleMatcher, Locale> localeSupplier;
 	@NonNull
 	private final Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
@@ -274,7 +274,7 @@ public class DefaultStrings implements Strings {
 
 		Locale finalLocale = locale;
 		Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
-		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(placeholders);
+		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 
 		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
 
@@ -356,10 +356,10 @@ public class DefaultStrings implements Strings {
 
 			if (languageFormTranslation.getRange().isPresent()) {
 				LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
-				rangeStart = immutableContext.get(languageFormTranslationRange.getStart());
-				rangeEnd = immutableContext.get(languageFormTranslationRange.getEnd());
+				rangeStart = unwrapOptional(immutableContext.get(languageFormTranslationRange.getStart()));
+				rangeEnd = unwrapOptional(immutableContext.get(languageFormTranslationRange.getEnd()));
 			} else {
-				value = immutableContext.get(languageFormTranslation.getValue().get());
+				value = unwrapOptional(immutableContext.get(languageFormTranslation.getValue().get()));
 			}
 
 			for (Entry<@NonNull LanguageForm, @NonNull String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
@@ -506,6 +506,8 @@ public class DefaultStrings implements Strings {
 		if (languageRanges.isEmpty())
 			return getFallbackLocale();
 
+		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
+
 		// Walk through each LanguageRange in preference order
 		for (LanguageRange languageRange : languageRanges) {
 			String range = languageRange.getRange(); // e.g. "pt" or "pt-PT"
@@ -514,19 +516,33 @@ public class DefaultStrings implements Strings {
 			if (weight <= 0)
 				continue;
 
+			if ("*".equals(range))
+				return getFallbackLocale();
+
 			// Exact tag match?
-			for (Locale locale : getLocalizedStringsByLocale().keySet())
+			for (Locale locale : availableLocales)
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
 					return locale;
 
-			// Primary‐tag match (e.g. range="pt" or "pt-XX")
+			// Primary-tag candidates (e.g. "pt" or "pt-XX")
 			String primary = range.split("-")[0]; // e.g. "pt"
-			List<@NonNull Locale> candidates = getLocalizedStringsByLocale().keySet().stream()
+			List<@NonNull Locale> candidates = availableLocales.stream()
 					.filter(locale -> locale.getLanguage().equalsIgnoreCase(primary))
 					.collect(Collectors.toList());
 
 			if (candidates.isEmpty())
 				continue; // try the next LanguageRange
+
+			List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), candidates,
+					Locale.FilteringMode.EXTENDED_FILTERING);
+
+			if (!filteredCandidates.isEmpty()) {
+				boolean hasSpecificMatch = filteredCandidates.stream()
+						.anyMatch(locale -> !locale.toLanguageTag().equalsIgnoreCase(locale.getLanguage()));
+
+				if (hasSpecificMatch)
+					candidates = filteredCandidates;
+			}
 
 			if (candidates.size() == 1)
 				return candidates.get(0);
@@ -538,10 +554,20 @@ public class DefaultStrings implements Strings {
 				for (Locale tiebreaker : tiebreakers)
 					if (candidates.contains(tiebreaker))
 						return tiebreaker;
+
+			return candidates.get(0);
 		}
 
 		// 4) Nothing matched at all
 		return getFallbackLocale();
+	}
+
+	@Nullable
+	private static Object unwrapOptional(@Nullable Object value) {
+		if (value instanceof Optional)
+			return ((Optional<?>) value).orElse(null);
+
+		return value;
 	}
 
 	/**

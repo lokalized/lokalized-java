@@ -295,21 +295,17 @@ public enum Cardinality implements LanguageForm {
     requireNonNull(locale);
 
     boolean numberIsBigDecimal = number instanceof BigDecimal;
-    BigDecimal numberAsBigDecimal = null;
+    BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
 
     // If number of visible decimal places is not specified, compute the number of decimal places.
     // If the number is a BigDecimal, then we have access to trailing zeroes.
     // We cannot know the number of trailing zeroes otherwise - onus is on caller to explicitly specify if she cares about this
-    if (visibleDecimalPlaces == null && !numberIsBigDecimal) {
-      numberAsBigDecimal = NumberUtils.toBigDecimal(number);
-      numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.FLOOR);
-    } else if (visibleDecimalPlaces != null && numberIsBigDecimal) {
-      numberAsBigDecimal = (BigDecimal) number;
+    if (visibleDecimalPlaces == null) {
+      if (!numberIsBigDecimal)
+        numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.FLOOR);
+    } else {
       numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.FLOOR);
     }
-
-    if (numberAsBigDecimal == null)
-      numberAsBigDecimal = NumberUtils.toBigDecimal(number);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
 

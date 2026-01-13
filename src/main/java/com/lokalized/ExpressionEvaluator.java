@@ -20,6 +20,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.math.BigDecimal;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -402,22 +403,23 @@ class ExpressionEvaluator {
 
       // Number (operators: any)
       if (lhsOperandType == OperandType.NUMBER && rhsOperandType == OperandType.NUMBER) {
-        double lhsValue = doubleFromOperand(leftHandOperand, context);
-        double rhsValue = doubleFromOperand(rightHandOperand, context);
+        BigDecimal lhsValue = bigDecimalFromOperand(leftHandOperand, context);
+        BigDecimal rhsValue = bigDecimalFromOperand(rightHandOperand, context);
+        int comparison = lhsValue.compareTo(rhsValue);
         boolean result = false;
 
         if (operator.getTokenType() == TokenType.LESS_THAN)
-          result = lhsValue < rhsValue;
+          result = comparison < 0;
         else if (operator.getTokenType() == TokenType.LESS_THAN_OR_EQUAL_TO)
-          result = lhsValue <= rhsValue;
+          result = comparison <= 0;
         else if (operator.getTokenType() == TokenType.GREATER_THAN)
-          result = lhsValue > rhsValue;
+          result = comparison > 0;
         else if (operator.getTokenType() == TokenType.GREATER_THAN_OR_EQUAL_TO)
-          result = lhsValue >= rhsValue;
+          result = comparison >= 0;
         else if (operator.getTokenType() == TokenType.EQUAL_TO)
-          result = lhsValue == rhsValue;
+          result = comparison == 0;
         else if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
-          result = lhsValue != rhsValue;
+          result = comparison != 0;
         else
           throw new ExpressionEvaluationException(format("Encountered unexpected operator '%s'", operator.getSymbol()));
 
@@ -657,20 +659,20 @@ class ExpressionEvaluator {
   }
 
   /**
-   * Determines the double value of an operand.
+   * Determines the decimal value of an operand.
    *
    * @param operand the operand to examine, not null
    * @param context the context for the expression, not null
-   * @return the double value of the operand, not null
-   * @throws ExpressionEvaluationException if unable to determine double value (operand is of invalid type, etc.)
+   * @return the decimal value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine decimal value (operand is of invalid type, etc.)
    */
   @NonNull
-  protected Double doubleFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+  protected BigDecimal bigDecimalFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
     requireNonNull(operand);
     requireNonNull(context);
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Double.parseDouble(operand.getSymbol());
+      return new BigDecimal(operand.getSymbol());
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -679,7 +681,7 @@ class ExpressionEvaluator {
         value = ((Optional<?>) value).orElse(null);
 
       if (value instanceof Number)
-        return ((Number) value).doubleValue();
+        return NumberUtils.toBigDecimal((Number) value);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract numeric value from '%s'", operand.getSymbol()));
@@ -736,7 +738,7 @@ class ExpressionEvaluator {
       return Cardinality.getCardinalitiesByName().get(LocalizedStringUtils.cardinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Cardinality.forNumber(doubleFromOperand(operand, context), locale);
+      return Cardinality.forNumber(bigDecimalFromOperand(operand, context), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -775,7 +777,7 @@ class ExpressionEvaluator {
       return Ordinality.getOrdinalitiesByName().get(LocalizedStringUtils.ordinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Ordinality.forNumber(doubleFromOperand(operand, context), locale);
+      return Ordinality.forNumber(bigDecimalFromOperand(operand, context), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());

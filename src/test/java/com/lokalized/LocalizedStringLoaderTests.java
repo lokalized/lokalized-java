@@ -38,7 +38,9 @@ import java.util.jar.JarOutputStream;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -86,6 +88,33 @@ public class LocalizedStringLoaderTests {
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
+  }
+
+  @Test
+  public void testFilesystemLoadingSkipsDirectories() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.createDirectory(tempDirectory.resolve("en"));
+    Files.write(tempDirectory.resolve("en-GB"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-GB")));
+    assertFalse(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsDuplicateKeys() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        "{\"hello\":\"world\",\"hello\":\"again\"}".getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected duplicate translation keys in a single file to throw");
   }
 
   @Test

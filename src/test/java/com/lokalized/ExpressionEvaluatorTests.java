@@ -63,6 +63,16 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void largeIntegerComparisonsPreservePrecision() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertFalse(expressionEvaluator.evaluate("9007199254740993 == 9007199254740992", LOCALE),
+				"Large integer equality should not lose precision");
+		assertTrue(expressionEvaluator.evaluate("9007199254740993 > 9007199254740992", LOCALE),
+				"Large integer comparisons should preserve precision");
+	}
+
+	@Test
 	public void contextualExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

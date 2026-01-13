@@ -350,9 +350,9 @@ public class LocalizedString {
     @NonNull
     public String toString() {
       if (getRange().isPresent())
-        return format("%s{range=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getRange().get(), getTranslationsByLanguageForm());
+        return format("%s{range=%s, translationsByLanguageForm=%s}", getClass().getSimpleName(), getRange().get(), getTranslationsByLanguageForm());
 
-      return format("%s{value=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getValue().get(), getTranslationsByLanguageForm());
+      return format("%s{value=%s, translationsByLanguageForm=%s}", getClass().getSimpleName(), getValue().get(), getTranslationsByLanguageForm());
     }
 
     /**
@@ -451,7 +451,7 @@ public class LocalizedString {
     @Override
     @NonNull
     public String toString() {
-      return format("%s{start=%s, end=%s", getClass().getSimpleName(), getStart(), getEnd());
+      return format("%s{start=%s, end=%s}", getClass().getSimpleName(), getStart(), getEnd());
     }
 
     /**

@@ -148,7 +148,10 @@ class NumberUtils {
     if (number instanceof BigDecimal)
       return (BigDecimal) number;
 
-    return new BigDecimal(String.valueOf(number.doubleValue())).stripTrailingZeros();
+    if (number instanceof BigInteger)
+      return new BigDecimal((BigInteger) number);
+
+    return new BigDecimal(number.toString()).stripTrailingZeros();
   }
 
   /**

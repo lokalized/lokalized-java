@@ -50,6 +50,14 @@ public class CardinalityTests {
   }
 
   @Test
+  public void visibleDecimalPlacesAreHonoredForNonBigDecimal() {
+    Locale usEnglishLocale = Locale.forLanguageTag("en-US");
+
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, 2, usEnglishLocale),
+        "Expected visible decimal places to affect cardinality for non-BigDecimal inputs");
+  }
+
+  @Test
   public void exampleIntegerValues() {
     for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
       Locale locale = Locale.forLanguageTag(languageCode);
