@@ -21,11 +21,19 @@ import org.junit.Test;
 
 import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
+import java.nio.file.DirectoryStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.jar.JarEntry;
+import java.util.jar.JarOutputStream;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -45,6 +53,31 @@ public class LocalizedStringLoaderTests {
   @Test
   public void testFilesystemLoading() {
     verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
+  }
+
+  @Test
+  public void testClasspathLoadingFromJar() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    Path stringsPath = Paths.get("src/test/resources/strings");
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar));
+         DirectoryStream<Path> directoryStream = Files.newDirectoryStream(stringsPath)) {
+      for (Path filePath : directoryStream) {
+        if (!Files.isRegularFile(filePath))
+          continue;
+
+        JarEntry entry = new JarEntry("strings/" + filePath.getFileName().toString());
+        jarOutputStream.putNextEntry(entry);
+        jarOutputStream.write(Files.readAllBytes(filePath));
+        jarOutputStream.closeEntry();
+      }
+    }
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()})) {
+      verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+    }
   }
 
   protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {

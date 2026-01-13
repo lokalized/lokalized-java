@@ -161,7 +161,7 @@ class ExpressionEvaluator {
    * @param expressionTokenizer the expression tokenizer to use, may be null
    */
   public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer) {
-    this.expressionTokenizer = expressionTokenizer == null ? new ExpressionTokenizer() : null;
+    this.expressionTokenizer = expressionTokenizer == null ? new ExpressionTokenizer() : expressionTokenizer;
   }
 
   /**
@@ -744,7 +744,7 @@ class ExpressionEvaluator {
     requireNonNull(context);
     requireNonNull(locale);
 
-    if (isCardinality(operand))
+    if (isOrdinality(operand))
       return Ordinality.getOrdinalitiesByName().get(LocalizedStringUtils.ordinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)

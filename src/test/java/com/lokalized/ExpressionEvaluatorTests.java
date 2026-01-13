@@ -21,6 +21,7 @@ import org.junit.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -78,5 +79,26 @@ public class ExpressionEvaluatorTests {
 		Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("CARDINALITY_ONE == exactlyOne", Map.of(
 				"exactlyOne", 1
 		), LOCALE));
+	}
+
+	@Test
+	public void ordinalityExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		Assert.assertTrue("Ordinality identity failed", expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_ONE", LOCALE));
+		Assert.assertFalse("Unequal ordinalities evaluate as equal", expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_OTHER", LOCALE));
+		Assert.assertTrue("Unequal ordinalities evaluate as equal", expressionEvaluator.evaluate("ORDINALITY_ONE != ORDINALITY_OTHER", LOCALE));
+	}
+
+	@Test
+	public void customTokenizerIsUsed() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(new ExpressionTokenizer() {
+			@Override
+		public List<Token> extractTokens(String expression) {
+				return List.of(new Token(TokenType.NUMBER, "1"), new Token(TokenType.EQUAL_TO), new Token(TokenType.NUMBER, "1"));
+			}
+		});
+
+		Assert.assertTrue("Custom tokenizer output should be evaluated", expressionEvaluator.evaluate("ignored", LOCALE));
 	}
 }

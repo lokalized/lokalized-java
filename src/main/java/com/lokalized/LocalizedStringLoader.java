@@ -28,12 +28,17 @@ import javax.annotation.Nonnull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.JarURLConnection;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -43,6 +48,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Logger;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -136,15 +143,35 @@ public final class LocalizedStringLoader {
    */
   @Nonnull
   public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull String classpathPackage) {
-    requireNonNull(classpathPackage);
+    return loadFromClasspath(LocalizedStringLoader.class.getClassLoader(), classpathPackage);
+  }
 
-    ClassLoader classLoader = LocalizedStringLoader.class.getClassLoader();
+  @Nonnull
+  static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull ClassLoader classLoader,
+                                                             @Nonnull String classpathPackage) {
+    requireNonNull(classpathPackage);
+    requireNonNull(classLoader);
+
     URL url = classLoader.getResource(classpathPackage);
 
     if (url == null)
       throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
-    return loadFromDirectory(new File(url.getFile()));
+    String protocol = url.getProtocol();
+
+    if ("file".equals(protocol)) {
+      try {
+        return loadFromDirectory(Paths.get(url.toURI()).toFile());
+      } catch (URISyntaxException e) {
+        throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
+      }
+    }
+
+    if ("jar".equals(protocol))
+      return loadFromJar(url, classpathPackage);
+
+    throw new LocalizedStringLoadingException(format("Unsupported classpath protocol '%s' for location '%s'",
+        protocol, url));
   }
 
   /**
@@ -192,8 +219,7 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Location '%s' exists but is not a directory",
           directory));
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
-        new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
     File[] files = directory.listFiles();
 
@@ -212,6 +238,71 @@ public final class LocalizedStringLoader {
     }
 
     return Collections.unmodifiableMap(localizedStringsByLocale);
+  }
+
+  @Nonnull
+  private static Map<Locale, Set<LocalizedString>> loadFromJar(@Nonnull URL jarUrl,
+                                                               @Nonnull String classpathPackage) {
+    requireNonNull(jarUrl);
+    requireNonNull(classpathPackage);
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
+
+    try {
+      JarURLConnection connection = (JarURLConnection) jarUrl.openConnection();
+      connection.setUseCaches(false);
+
+      try (JarFile jarFile = connection.getJarFile()) {
+        String packagePath = connection.getEntryName();
+
+        if (packagePath == null || packagePath.isEmpty())
+          packagePath = classpathPackage;
+
+        if (!packagePath.endsWith("/"))
+          packagePath = packagePath + "/";
+
+        Enumeration<JarEntry> entries = jarFile.entries();
+
+        while (entries.hasMoreElements()) {
+          JarEntry entry = entries.nextElement();
+
+          if (entry.isDirectory())
+            continue;
+
+          String entryName = entry.getName();
+
+          if (!entryName.startsWith(packagePath))
+            continue;
+
+          String relativeName = entryName.substring(packagePath.length());
+
+          if ("".equals(relativeName) || relativeName.contains("/"))
+            continue;
+
+          if (SUPPORTED_LANGUAGE_TAGS.contains(relativeName)) {
+            LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
+            Locale locale = Locale.forLanguageTag(relativeName);
+
+            try (InputStream inputStream = jarFile.getInputStream(entry)) {
+              String contents = new String(inputStream.readAllBytes(), UTF_8).trim();
+              String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
+              localizedStringsByLocale.put(locale, parseLocalizedStrings(canonicalPath, contents));
+            }
+          } else {
+            LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", relativeName));
+          }
+        }
+      }
+    } catch (IOException e) {
+      throw new LocalizedStringLoadingException(format("Unable to load localized strings from '%s'", jarUrl), e);
+    }
+
+    return Collections.unmodifiableMap(localizedStringsByLocale);
+  }
+
+  @Nonnull
+  private static Map<Locale, Set<LocalizedString>> createLocaleMap() {
+    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
   /**
@@ -245,6 +336,15 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Unable to load localized strings file contents for %s",
           canonicalPath), e);
     }
+
+    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents);
+  }
+
+  @Nonnull
+  private static Set<LocalizedString> parseLocalizedStrings(@Nonnull String canonicalPath,
+                                                            @Nonnull String localizedStringsFileContents) {
+    requireNonNull(canonicalPath);
+    requireNonNull(localizedStringsFileContents);
 
     if ("".equals(localizedStringsFileContents))
       return Collections.emptySet();
