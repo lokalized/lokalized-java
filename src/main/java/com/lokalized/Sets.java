@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -41,7 +42,7 @@ final class Sets {
    * @param <T>    the type of values in the set
    * @return an immutable sorted set, not null
    */
-  @Nonnull
+  @NonNull
   static <T> SortedSet<T> sortedSet(@Nullable T... values) {
     if (values == null || values.length == 0)
       return Collections.emptySortedSet();

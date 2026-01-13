@@ -16,7 +16,7 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -29,9 +29,9 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 final class LocalizedStringUtils {
-  @Nonnull
+  @NonNull
   private static final String CARDINALITY_NAME_PREFIX;
-  @Nonnull
+  @NonNull
   private static final String ORDINALITY_NAME_PREFIX;
 
   static {
@@ -49,8 +49,8 @@ final class LocalizedStringUtils {
    * @param cardinalityName the cardinality name to massage, not null
    * @return the localized strings file representation of a cardinality name, not null
    */
-  @Nonnull
-  static String localizedStringNameForCardinalityName(@Nonnull String cardinalityName) {
+  @NonNull
+  static String localizedStringNameForCardinalityName(@NonNull String cardinalityName) {
     requireNonNull(cardinalityName);
     return format("%s%s", CARDINALITY_NAME_PREFIX, cardinalityName);
   }
@@ -62,8 +62,8 @@ final class LocalizedStringUtils {
    * @return the cardinality name of the localized strings file representation, not null
    * @throws IllegalArgumentException if the localized strings name is malformed
    */
-  @Nonnull
-  static String cardinalityNameForLocalizedStringName(@Nonnull String localizedStringName) {
+  @NonNull
+  static String cardinalityNameForLocalizedStringName(@NonNull String localizedStringName) {
     requireNonNull(localizedStringName);
 
     if (!localizedStringName.startsWith(CARDINALITY_NAME_PREFIX))
@@ -79,8 +79,8 @@ final class LocalizedStringUtils {
    * @param ordinalityName the ordinality name to massage, not null
    * @return the localized strings file representation of an ordinality name, not null
    */
-  @Nonnull
-  static String localizedStringNameForOrdinalityName(@Nonnull String ordinalityName) {
+  @NonNull
+  static String localizedStringNameForOrdinalityName(@NonNull String ordinalityName) {
     requireNonNull(ordinalityName);
     return format("%s%s", ORDINALITY_NAME_PREFIX, ordinalityName);
   }
@@ -92,8 +92,8 @@ final class LocalizedStringUtils {
    * @return the ordinality name of the localized strings file representation, not null
    * @throws IllegalArgumentException if the localized strings name is malformed
    */
-  @Nonnull
-  static String ordinalityNameForLocalizedStringName(@Nonnull String localizedStringName) {
+  @NonNull
+  static String ordinalityNameForLocalizedStringName(@NonNull String localizedStringName) {
     requireNonNull(localizedStringName);
 
     if (!localizedStringName.startsWith(ORDINALITY_NAME_PREFIX))

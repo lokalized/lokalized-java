@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -59,11 +60,11 @@ enum TokenType {
 
   @Nullable
   private final String symbol;
-  @Nonnull
+  @NonNull
   private static final Set<TokenType> TOKEN_TYPES_WITH_DEFINED_SYMBOL;
-  @Nonnull
+  @NonNull
   private static final Set<TokenType> TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
-  @Nonnull
+  @NonNull
   private static final Map<String, TokenType> TOKEN_TYPES_BY_SYMBOL;
 
   static {
@@ -83,22 +84,22 @@ enum TokenType {
     this.symbol = symbol;
   }
 
-  @Nonnull
+  @NonNull
   public Optional<String> getSymbol() {
     return Optional.ofNullable(symbol);
   }
 
-  @Nonnull
+  @NonNull
   public static Set<TokenType> getTokenTypesWithDefinedSymbol() {
     return TOKEN_TYPES_WITH_DEFINED_SYMBOL;
   }
 
-  @Nonnull
+  @NonNull
   public static Set<TokenType> getTokenTypesWithUndefinedSymbol() {
     return TOKEN_TYPES_WITH_UNDEFINED_SYMBOL;
   }
 
-  @Nonnull
+  @NonNull
   public static Map<String, TokenType> getTokenTypesBySymbol() {
     return TOKEN_TYPES_BY_SYMBOL;
   }

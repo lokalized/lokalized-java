@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import java.util.Locale;
 import java.util.Map;
 
@@ -39,8 +40,8 @@ public interface Strings extends LocaleMatcher {
 	 * @param key the localization key, not null
 	 * @return a localized string for the key, not null
 	 */
-	@Nonnull
-	String get(@Nonnull String key);
+	@NonNull
+	String get(@NonNull String key);
 
 	/**
 	 * Gets a localized string for the given key.
@@ -51,8 +52,8 @@ public interface Strings extends LocaleMatcher {
 	 * @param placeholders the placeholders to insert into the string, may be null
 	 * @return a localized string for the key, not null
 	 */
-	@Nonnull
-	String get(@Nonnull String key, @Nullable Map<String, Object> placeholders);
+	@NonNull
+	String get(@NonNull String key, @Nullable Map<String, Object> placeholders);
 
 	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
@@ -66,8 +67,8 @@ public interface Strings extends LocaleMatcher {
 	 * @param fallbackLocale the fallback locale, not null
 	 * @return a builder for a {@link Strings} instance, not null
 	 */
-	@Nonnull
-	static DefaultStrings.Builder withFallbackLocale(@Nonnull Locale fallbackLocale) {
+	@NonNull
+	static DefaultStrings.Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
 		requireNonNull(fallbackLocale);
 		return new DefaultStrings.Builder(fallbackLocale);
 	}

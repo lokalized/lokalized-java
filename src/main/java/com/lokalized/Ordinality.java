@@ -17,8 +17,8 @@
 package com.lokalized;
 
 import com.lokalized.Maps.MapEntry;
+import org.jspecify.annotations.NonNull;
 
-import javax.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.Collator;
@@ -104,107 +104,107 @@ public enum Ordinality implements LanguageForm {
    */
   OTHER;
 
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_0;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_1;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_2;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_3;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_4;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_5;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_6;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_7;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_8;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_10;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_11;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_12;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_17;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_18;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_20;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_40;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_50;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_60;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_70;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_80;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_90;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_100;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_200;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_300;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_400;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_500;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_600;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_700;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_800;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_900;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_1_000;
 
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_0;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_1;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_2;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_3;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_4;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_5;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_6;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_7;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_8;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_9;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_10;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_11;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_12;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_13;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_14;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_80;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_100;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_800;
 
-  @Nonnull
+  @NonNull
   static final Map<String, Ordinality> ORDINALITIES_BY_NAME;
 
   static {
@@ -274,8 +274,8 @@ public enum Ordinality implements LanguageForm {
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    */
-  @Nonnull
-  public static Ordinality forNumber(@Nonnull Number number, @Nonnull Locale locale) {
+  @NonNull
+  public static Ordinality forNumber(@NonNull Number number, @NonNull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
@@ -300,8 +300,8 @@ public enum Ordinality implements LanguageForm {
    * @param locale the locale to use for lookup, not null
    * @return the ordinalities supported by the given locale, not null
    */
-  @Nonnull
-  public static SortedSet<Ordinality> supportedOrdinalitiesForLocale(@Nonnull Locale locale) {
+  @NonNull
+  public static SortedSet<Ordinality> supportedOrdinalitiesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<OrdinalityFamily> ordinalityFamily = OrdinalityFamily.ordinalityFamilyForLocale(locale);
@@ -318,8 +318,8 @@ public enum Ordinality implements LanguageForm {
    * @param locale the locale to use for lookup, not null
    * @return a mapping of ordinalities to example integer values, not null
    */
-  @Nonnull
-  public static SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesForLocale(@Nonnull Locale locale) {
+  @NonNull
+  public static SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<OrdinalityFamily> ordinalityFamily = OrdinalityFamily.ordinalityFamilyForLocale(locale);
@@ -333,7 +333,7 @@ public enum Ordinality implements LanguageForm {
    *
    * @return the ISO 639 language codes for which ordinality operations are supported, not null
    */
-  @Nonnull
+  @NonNull
   public static SortedSet<String> getSupportedLanguageCodes() {
     return OrdinalityFamily.getSupportedLanguageCodes();
   }
@@ -343,7 +343,7 @@ public enum Ordinality implements LanguageForm {
    *
    * @return the mapping of ordinality names to values, not null
    */
-  @Nonnull
+  @NonNull
   static Map<String, Ordinality> getOrdinalitiesByName() {
     return ORDINALITIES_BY_NAME;
   }
@@ -1129,16 +1129,16 @@ public enum Ordinality implements LanguageForm {
         )
     );
 
-    @Nonnull
+    @NonNull
     private static final Map<String, OrdinalityFamily> ORDINALITY_FAMILIES_BY_LANGUAGE_CODE;
-    @Nonnull
+    @NonNull
     private static final SortedSet<String> SUPPORTED_LANGUAGE_CODES;
 
-    @Nonnull
+    @NonNull
     private final Function<BigDecimal, Ordinality> ordinalityFunction;
-    @Nonnull
+    @NonNull
     private final SortedSet<Ordinality> supportedOrdinalities;
-    @Nonnull
+    @NonNull
     private final SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesByOrdinality;
 
     /**
@@ -1148,9 +1148,9 @@ public enum Ordinality implements LanguageForm {
      * @param supportedOrdinalities            the ordinalities supported by this family sorted by the natural ordering of {@link Ordinality}, not null
      * @param exampleIntegerValuesByOrdinality a mapping of ordinalities to example integer values for this ordinality family sorted by the natural ordering of {@link Ordinality}, not null
      */
-    OrdinalityFamily(@Nonnull Function<BigDecimal, Ordinality> ordinalityFunction,
-                     @Nonnull SortedSet<Ordinality> supportedOrdinalities,
-                     @Nonnull SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesByOrdinality) {
+    OrdinalityFamily(@NonNull Function<BigDecimal, Ordinality> ordinalityFunction,
+                     @NonNull SortedSet<Ordinality> supportedOrdinalities,
+                     @NonNull SortedMap<Ordinality, Range<Integer>> exampleIntegerValuesByOrdinality) {
       requireNonNull(ordinalityFunction);
       requireNonNull(supportedOrdinalities);
       requireNonNull(exampleIntegerValuesByOrdinality);
@@ -1378,7 +1378,7 @@ public enum Ordinality implements LanguageForm {
      *
      * @return the ordinality-determining function for this ordinality family, not null
      */
-    @Nonnull
+    @NonNull
     public Function<BigDecimal, Ordinality> getOrdinalityFunction() {
       return ordinalityFunction;
     }
@@ -1392,7 +1392,7 @@ public enum Ordinality implements LanguageForm {
      *
      * @return the ordinalities supported by this ordinality family, not null
      */
-    @Nonnull
+    @NonNull
     SortedSet<Ordinality> getSupportedOrdinalities() {
       return supportedOrdinalities;
     }
@@ -1406,7 +1406,7 @@ public enum Ordinality implements LanguageForm {
      *
      * @return a mapping of ordinalities to example integer values, not null
      */
-    @Nonnull
+    @NonNull
     SortedMap<Ordinality, Range<Integer>> getExampleIntegerValuesByOrdinality() {
       return exampleIntegerValuesByOrdinality;
     }
@@ -1418,7 +1418,7 @@ public enum Ordinality implements LanguageForm {
      *
      * @return the ISO 639 language codes for which ordinality operations are supported, not null
      */
-    @Nonnull
+    @NonNull
     static SortedSet<String> getSupportedLanguageCodes() {
       return SUPPORTED_LANGUAGE_CODES;
     }
@@ -1429,8 +1429,8 @@ public enum Ordinality implements LanguageForm {
      * @param locale the locale to check, not null
      * @return the appropriate plural ordinality family (if one exists) for the given locale, not null
      */
-    @Nonnull
-    static Optional<OrdinalityFamily> ordinalityFamilyForLocale(@Nonnull Locale locale) {
+    @NonNull
+    static Optional<OrdinalityFamily> ordinalityFamilyForLocale(@NonNull Locale locale) {
       requireNonNull(locale);
 
       String language = LocaleUtils.normalizedLanguage(locale).orElse(null);

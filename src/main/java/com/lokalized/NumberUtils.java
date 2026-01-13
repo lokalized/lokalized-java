@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -54,8 +55,8 @@ class NumberUtils {
    * @param number the number for which we are counting decimal places, not null
    * @return the number of decimal places, not null
    */
-  @Nonnull
-  static Integer numberOfDecimalPlaces(@Nonnull Number number) {
+  @NonNull
+  static Integer numberOfDecimalPlaces(@NonNull Number number) {
     requireNonNull(number);
 
     if (number instanceof BigDecimal) {
@@ -84,8 +85,8 @@ class NumberUtils {
    * @param number the number for which we are determining the integer component, not null
    * @return the integer component, not null
    */
-  @Nonnull
-  static BigInteger integerComponent(@Nonnull Number number) {
+  @NonNull
+  static BigInteger integerComponent(@NonNull Number number) {
     requireNonNull(number);
 
     if (number instanceof BigDecimal) {
@@ -117,8 +118,8 @@ class NumberUtils {
    * @param number the number for which we are determining the fractional component, not null
    * @return the fractional component, not null
    */
-  @Nonnull
-  static BigInteger fractionalComponent(@Nonnull Number number) {
+  @NonNull
+  static BigInteger fractionalComponent(@NonNull Number number) {
     requireNonNull(number);
 
     BigDecimal numberAsBigDecimal = null;
@@ -140,8 +141,8 @@ class NumberUtils {
    * @param number the number to represent as a {@code BigDecimal}, not null
    * @return a {@code BigDecimal} representation of the given number, not null
    */
-  @Nonnull
-  static BigDecimal toBigDecimal(@Nonnull Number number) {
+  @NonNull
+  static BigDecimal toBigDecimal(@NonNull Number number) {
     requireNonNull(number);
 
     if (number instanceof BigDecimal)
@@ -157,8 +158,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the numbers are equal, not null
    */
-  @Nonnull
-  static Boolean equal(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+  @NonNull
+  static Boolean equal(@NonNull BigDecimal number1, @NonNull BigDecimal number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -172,8 +173,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the numbers are not equal, not null
    */
-  @Nonnull
-  static Boolean notEqual(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+  @NonNull
+  static Boolean notEqual(@NonNull BigDecimal number1, @NonNull BigDecimal number2) {
     return !equal(number1, number2);
   }
 
@@ -184,8 +185,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the first number is less than the second number, not null
    */
-  @Nonnull
-  static Boolean lessThan(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+  @NonNull
+  static Boolean lessThan(@NonNull BigDecimal number1, @NonNull BigDecimal number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -199,8 +200,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the first number is greater than the second number, not null
    */
-  @Nonnull
-  static Boolean greaterThan(@Nonnull BigDecimal number1, @Nonnull BigDecimal number2) {
+  @NonNull
+  static Boolean greaterThan(@NonNull BigDecimal number1, @NonNull BigDecimal number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -219,8 +220,8 @@ class NumberUtils {
    * @return true if the number falls within the range, not null
    * @throws IllegalArgumentException if the minimum and maximum values have mismatched scales
    */
-  @Nonnull
-  static Boolean inRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
+  @NonNull
+  static Boolean inRange(@NonNull BigDecimal number, @NonNull BigDecimal minimum, @NonNull BigDecimal maximum) {
     requireNonNull(number);
     requireNonNull(minimum);
     requireNonNull(maximum);
@@ -247,8 +248,8 @@ class NumberUtils {
    * @param maximum the high end of the range (inclusive), not null
    * @return true if the number falls within the range, not null
    */
-  @Nonnull
-  static Boolean notInRange(@Nonnull BigDecimal number, @Nonnull BigDecimal minimum, @Nonnull BigDecimal maximum) {
+  @NonNull
+  static Boolean notInRange(@NonNull BigDecimal number, @NonNull BigDecimal minimum, @NonNull BigDecimal maximum) {
     return !inRange(number, minimum, maximum);
   }
 
@@ -259,8 +260,8 @@ class NumberUtils {
    * @param values the set of values against which to check, may be null
    * @return true if the number is in the set of values
    */
-  @Nonnull
-  static Boolean inSet(@Nonnull BigDecimal number, @Nullable BigDecimal... values) {
+  @NonNull
+  static Boolean inSet(@NonNull BigDecimal number, @Nullable BigDecimal... values) {
     requireNonNull(number);
 
     if (values == null || values.length == 0)
@@ -280,8 +281,8 @@ class NumberUtils {
    * @param values the set of values against which to check, may be null
    * @return true if the number is not in the set of values
    */
-  @Nonnull
-  static Boolean notInSet(@Nonnull BigDecimal number, @Nullable BigDecimal... values) {
+  @NonNull
+  static Boolean notInSet(@NonNull BigDecimal number, @Nullable BigDecimal... values) {
     return !inSet(number, values);
   }
 
@@ -292,8 +293,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the numbers are equal, not null
    */
-  @Nonnull
-  static Boolean equal(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+  @NonNull
+  static Boolean equal(@NonNull BigInteger number1, @NonNull BigInteger number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -307,8 +308,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the numbers are not equal, not null
    */
-  @Nonnull
-  static Boolean notEqual(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+  @NonNull
+  static Boolean notEqual(@NonNull BigInteger number1, @NonNull BigInteger number2) {
     return !equal(number1, number2);
   }
 
@@ -319,8 +320,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the first number is less than the second number, not null
    */
-  @Nonnull
-  static Boolean lessThan(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+  @NonNull
+  static Boolean lessThan(@NonNull BigInteger number1, @NonNull BigInteger number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -334,8 +335,8 @@ class NumberUtils {
    * @param number2 the second number to compare, not null
    * @return true if the first number is greater than the second number, not null
    */
-  @Nonnull
-  static Boolean greaterThan(@Nonnull BigInteger number1, @Nonnull BigInteger number2) {
+  @NonNull
+  static Boolean greaterThan(@NonNull BigInteger number1, @NonNull BigInteger number2) {
     requireNonNull(number1);
     requireNonNull(number2);
 
@@ -350,8 +351,8 @@ class NumberUtils {
    * @param maximum the high end of the range (inclusive), not null
    * @return true if the number falls within the range, not null
    */
-  @Nonnull
-  static Boolean inRange(@Nonnull BigInteger number, @Nonnull BigInteger minimum, @Nonnull BigInteger maximum) {
+  @NonNull
+  static Boolean inRange(@NonNull BigInteger number, @NonNull BigInteger minimum, @NonNull BigInteger maximum) {
     requireNonNull(number);
     requireNonNull(minimum);
     requireNonNull(maximum);
@@ -367,8 +368,8 @@ class NumberUtils {
    * @param maximum the high end of the range (inclusive), not null
    * @return true if the number falls within the range, not null
    */
-  @Nonnull
-  static Boolean notInRange(@Nonnull BigInteger number, @Nonnull BigInteger minimum, @Nonnull BigInteger maximum) {
+  @NonNull
+  static Boolean notInRange(@NonNull BigInteger number, @NonNull BigInteger minimum, @NonNull BigInteger maximum) {
     return !inRange(number, minimum, maximum);
   }
 
@@ -379,8 +380,8 @@ class NumberUtils {
    * @param values the set of values against which to check, may be null
    * @return true if the number is in the set of values
    */
-  @Nonnull
-  static Boolean inSet(@Nonnull BigInteger number, @Nullable BigInteger... values) {
+  @NonNull
+  static Boolean inSet(@NonNull BigInteger number, @Nullable BigInteger... values) {
     requireNonNull(number);
 
     if (values == null || values.length == 0)
@@ -400,8 +401,8 @@ class NumberUtils {
    * @param values the set of values against which to check, may be null
    * @return true if the number is not in the set of values
    */
-  @Nonnull
-  static Boolean notInSet(@Nonnull BigInteger number, @Nullable BigInteger... values) {
+  @NonNull
+  static Boolean notInSet(@NonNull BigInteger number, @Nullable BigInteger... values) {
     return !inSet(number, values);
   }
 
@@ -416,8 +417,8 @@ class NumberUtils {
    * @param number the number for which normalized scale is determined, not null
    * @return the normalized scale, not null
    */
-  @Nonnull
-  private static Integer normalizedScale(@Nonnull BigDecimal number) {
+  @NonNull
+  private static Integer normalizedScale(@NonNull BigDecimal number) {
     requireNonNull(number);
 
     int scale = number.scale();

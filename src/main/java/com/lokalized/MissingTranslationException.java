@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,11 +37,11 @@ import static java.util.Objects.requireNonNull;
  */
 @NotThreadSafe
 public class MissingTranslationException extends RuntimeException {
-	@Nonnull
+	@NonNull
 	private final String key;
-	@Nonnull
+	@NonNull
 	private final Locale locale;
-	@Nonnull
+	@NonNull
 	private final Map<String, Object> placeholders;
 
 	/**
@@ -48,10 +49,10 @@ public class MissingTranslationException extends RuntimeException {
 	 *
 	 * @param locale the unsupported locale which triggered this exception, not null
 	 */
-	public MissingTranslationException(@Nonnull String message,
-																		 @Nonnull String key,
-																		 @Nonnull Map<String, Object> placeholders,
-																		 @Nonnull Locale locale) {
+	public MissingTranslationException(@NonNull String message,
+																		 @NonNull String key,
+																		 @NonNull Map<String, Object> placeholders,
+																		 @NonNull Locale locale) {
 		super(requireNonNull(message));
 
 		requireNonNull(key);
@@ -68,7 +69,7 @@ public class MissingTranslationException extends RuntimeException {
 	 *
 	 * @return the translation key, not null
 	 */
-	@Nonnull
+	@NonNull
 	public String getKey() {
 		return this.key;
 	}
@@ -78,7 +79,7 @@ public class MissingTranslationException extends RuntimeException {
 	 *
 	 * @return the placeholders, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Map<String, Object> getPlaceholders() {
 		return this.placeholders;
 	}
@@ -88,7 +89,7 @@ public class MissingTranslationException extends RuntimeException {
 	 *
 	 * @return the locale, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Locale getLocale() {
 		return this.locale;
 	}

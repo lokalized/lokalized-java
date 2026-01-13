@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collections;
@@ -46,7 +47,7 @@ final class Maps {
    * @param <V>        type type of values in the map
    * @return an immutable sorted map, not null
    */
-  @Nonnull
+  @NonNull
   static <K, V> SortedMap<K, V> sortedMap(@Nullable MapEntry<K, V>... mapEntries) {
     if (mapEntries == null || mapEntries.length == 0)
       return Collections.emptySortedMap();
@@ -67,9 +68,9 @@ final class Maps {
    */
   @Immutable
   static class MapEntry<K, V> {
-    @Nonnull
+    @NonNull
     private final K key;
-    @Nonnull
+    @NonNull
     private final V value;
 
     /**
@@ -81,8 +82,8 @@ final class Maps {
      * @param <V>
      * @return a map entry, not null
      */
-    @Nonnull
-    public static <K, V> MapEntry<K, V> of(@Nonnull K key, @Nonnull V value) {
+    @NonNull
+    public static <K, V> MapEntry<K, V> of(@NonNull K key, @NonNull V value) {
       requireNonNull(key);
       requireNonNull(value);
 
@@ -95,7 +96,7 @@ final class Maps {
      * @param key   the key for this map entry, not null
      * @param value the value for this map entry, not null
      */
-    private MapEntry(@Nonnull K key, @Nonnull V value) {
+    private MapEntry(@NonNull K key, @NonNull V value) {
       requireNonNull(key);
       requireNonNull(value);
 
@@ -109,7 +110,7 @@ final class Maps {
      * @return a string representation of this object, not null
      */
     @Override
-    @Nonnull
+    @NonNull
     public String toString() {
       return String.format("%s{key=%s, value=%s}", getClass().getSimpleName(), getKey(), getValue());
     }
@@ -150,7 +151,7 @@ final class Maps {
      *
      * @return the key, not null
      */
-    @Nonnull
+    @NonNull
     public K getKey() {
       return key;
     }
@@ -160,7 +161,7 @@ final class Maps {
      *
      * @return the value, not null
      */
-    @Nonnull
+    @NonNull
     public V getValue() {
       return value;
     }

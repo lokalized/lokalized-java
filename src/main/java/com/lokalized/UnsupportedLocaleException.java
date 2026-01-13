@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Locale;
 
@@ -32,7 +33,7 @@ import static java.util.Objects.requireNonNull;
  */
 @NotThreadSafe
 public class UnsupportedLocaleException extends RuntimeException {
-  @Nonnull
+  @NonNull
   private final Locale locale;
 
   /**
@@ -40,7 +41,7 @@ public class UnsupportedLocaleException extends RuntimeException {
    *
    * @param locale the unsupported locale which triggered this exception, not null
    */
-  public UnsupportedLocaleException(@Nonnull Locale locale) {
+  public UnsupportedLocaleException(@NonNull Locale locale) {
     super(format("Unsupported locale '%s' was provided", requireNonNull(locale).toLanguageTag()));
     this.locale = locale;
   }
@@ -50,7 +51,7 @@ public class UnsupportedLocaleException extends RuntimeException {
    *
    * @return the unsupported locale, not null
    */
-  @Nonnull
+  @NonNull
   public Locale getLocale() {
     return locale;
   }

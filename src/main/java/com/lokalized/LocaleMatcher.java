@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
@@ -33,8 +34,8 @@ public interface LocaleMatcher {
 	 * @param locale the locale for which to find the best match.
 	 * @return the best-matching locale, not null
 	 */
-	@Nonnull
-	Locale bestMatchFor(@Nonnull Locale locale);
+	@NonNull
+	Locale bestMatchFor(@NonNull Locale locale);
 
 	/**
 	 * Given a list of language ranges (e.g. as parsed from an {@code Accept-Language} HTTP request header), determine the best-matching localized strings file's locale.
@@ -42,6 +43,6 @@ public interface LocaleMatcher {
 	 * @param languageRanges the ordered list of language ranges for which to find the best match.
 	 * @return the best-matching locale, not null
 	 */
-	@Nonnull
-	Locale bestMatchFor(@Nonnull List<LanguageRange> languageRanges);
+	@NonNull
+	Locale bestMatchFor(@NonNull List<LanguageRange> languageRanges);
 }

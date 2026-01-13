@@ -23,9 +23,9 @@ import com.lokalized.MinimalJson.JsonArray;
 import com.lokalized.MinimalJson.JsonObject;
 import com.lokalized.MinimalJson.JsonObject.Member;
 import com.lokalized.MinimalJson.JsonValue;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.File;
 import java.io.IOException;
@@ -48,9 +48,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.logging.Logger;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -65,13 +65,13 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 public final class LocalizedStringLoader {
-  @Nonnull
+  @NonNull
   private static final Map<String, LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
-  @Nonnull
+  @NonNull
   private static final Logger LOGGER;
-  @Nonnull
+  @NonNull
   private static final Pattern LANGUAGE_TAG_PATTERN;
-  @Nonnull
+  @NonNull
   private static final String JSON_EXTENSION;
 
   static {
@@ -145,14 +145,14 @@ public final class LocalizedStringLoader {
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
-  @Nonnull
-  public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull String classpathPackage) {
+  @NonNull
+  public static Map<Locale, Set<LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
     return loadFromClasspath(LocalizedStringLoader.class.getClassLoader(), classpathPackage);
   }
 
-  @Nonnull
-  static Map<Locale, Set<LocalizedString>> loadFromClasspath(@Nonnull ClassLoader classLoader,
-                                                             @Nonnull String classpathPackage) {
+  @NonNull
+  static Map<Locale, Set<LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
+                                                             @NonNull String classpathPackage) {
     requireNonNull(classpathPackage);
     requireNonNull(classLoader);
 
@@ -198,8 +198,8 @@ public final class LocalizedStringLoader {
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
-  @Nonnull
-  public static Map<Locale, Set<LocalizedString>> loadFromFilesystem(@Nonnull Path directory) {
+  @NonNull
+  public static Map<Locale, Set<LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
     requireNonNull(directory);
     return loadFromDirectory(directory.toFile());
   }
@@ -213,8 +213,8 @@ public final class LocalizedStringLoader {
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
-  @Nonnull
-  private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@Nonnull File directory) {
+  @NonNull
+  private static Map<Locale, Set<LocalizedString>> loadFromDirectory(@NonNull File directory) {
     requireNonNull(directory);
 
     if (!directory.exists())
@@ -252,8 +252,8 @@ public final class LocalizedStringLoader {
     return Collections.unmodifiableMap(localizedStringsByLocale);
   }
 
-  @Nonnull
-  private static Map<Locale, Set<LocalizedString>> loadFromUrl(@Nonnull URL url, @Nonnull String classpathPackage) {
+  @NonNull
+  private static Map<Locale, Set<LocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
     requireNonNull(url);
     requireNonNull(classpathPackage);
 
@@ -274,9 +274,9 @@ public final class LocalizedStringLoader {
         protocol, url));
   }
 
-  @Nonnull
-  private static Map<Locale, Set<LocalizedString>> loadFromJar(@Nonnull URL jarUrl,
-                                                               @Nonnull String classpathPackage) {
+  @NonNull
+  private static Map<Locale, Set<LocalizedString>> loadFromJar(@NonNull URL jarUrl,
+                                                               @NonNull String classpathPackage) {
     requireNonNull(jarUrl);
     requireNonNull(classpathPackage);
 
@@ -340,18 +340,18 @@ public final class LocalizedStringLoader {
     return Collections.unmodifiableMap(localizedStringsByLocale);
   }
 
-  @Nonnull
+  @NonNull
   private static Map<Locale, Set<LocalizedString>> createLocaleMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
-  @Nonnull
+  @NonNull
   private static Map<Locale, Map<String, LocalizedString>> createLocaleKeyMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
-  private static void mergeLocalizedStrings(@Nonnull Map<Locale, Map<String, LocalizedString>> target,
-                                            @Nonnull Map<Locale, Set<LocalizedString>> source) {
+  private static void mergeLocalizedStrings(@NonNull Map<Locale, Map<String, LocalizedString>> target,
+                                            @NonNull Map<Locale, Set<LocalizedString>> source) {
     requireNonNull(target);
     requireNonNull(source);
 
@@ -377,9 +377,9 @@ public final class LocalizedStringLoader {
     }
   }
 
-  @Nonnull
+  @NonNull
   private static Map<Locale, Set<LocalizedString>> toLocalizedStringsByLocale(
-      @Nonnull Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale) {
+      @NonNull Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale) {
     requireNonNull(localizedStringsByKeyByLocale);
 
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = createLocaleMap();
@@ -392,7 +392,7 @@ public final class LocalizedStringLoader {
     return Collections.unmodifiableMap(localizedStringsByLocale);
   }
 
-  private static boolean isLanguageTag(@Nonnull String languageTag) {
+  private static boolean isLanguageTag(@NonNull String languageTag) {
     requireNonNull(languageTag);
 
     if (!LANGUAGE_TAG_PATTERN.matcher(languageTag).matches())
@@ -406,7 +406,7 @@ public final class LocalizedStringLoader {
   }
 
   @Nullable
-  private static String languageTagForFileName(@Nonnull String fileName) {
+  private static String languageTagForFileName(@NonNull String fileName) {
     requireNonNull(fileName);
 
     String languageTag = fileName;
@@ -424,8 +424,8 @@ public final class LocalizedStringLoader {
    * @return the set of localized strings contained in the file, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
-  @Nonnull
-  private static Set<LocalizedString> parseLocalizedStringsFile(@Nonnull File file) {
+  @NonNull
+  private static Set<LocalizedString> parseLocalizedStringsFile(@NonNull File file) {
     requireNonNull(file);
 
     String canonicalPath;
@@ -452,9 +452,9 @@ public final class LocalizedStringLoader {
     return parseLocalizedStrings(canonicalPath, localizedStringsFileContents);
   }
 
-  @Nonnull
-  private static Set<LocalizedString> parseLocalizedStrings(@Nonnull String canonicalPath,
-                                                            @Nonnull String localizedStringsFileContents) {
+  @NonNull
+  private static Set<LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
+                                                            @NonNull String localizedStringsFileContents) {
     requireNonNull(canonicalPath);
     requireNonNull(localizedStringsFileContents);
 
@@ -489,8 +489,8 @@ public final class LocalizedStringLoader {
    * @return a localized string instance, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
-  @Nonnull
-  private static LocalizedString parseLocalizedString(@Nonnull String canonicalPath, @Nonnull String key, @Nonnull JsonValue jsonValue) {
+  @NonNull
+  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key, @NonNull JsonValue jsonValue) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(jsonValue);

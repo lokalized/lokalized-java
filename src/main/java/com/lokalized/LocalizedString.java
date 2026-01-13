@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
@@ -41,15 +42,15 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 public class LocalizedString {
-  @Nonnull
+  @NonNull
   private final String key;
   @Nullable
   private final String translation;
   @Nullable
   private final String commentary;
-  @Nonnull
+  @NonNull
   private final Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder;
-  @Nonnull
+  @NonNull
   private final List<LocalizedString> alternatives;
 
   /**
@@ -61,7 +62,7 @@ public class LocalizedString {
    * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
    * @param alternatives                          alternative expression-driven translations for this string, may be null
    */
-  protected LocalizedString(@Nonnull String key, @Nullable String translation, @Nullable String commentary,
+  protected LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
                             @Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder,
                             @Nullable List<LocalizedString> alternatives) {
     requireNonNull(key);
@@ -91,7 +92,7 @@ public class LocalizedString {
    * @return a string representation of this object, not null
    */
   @Override
-  @Nonnull
+  @NonNull
   public String toString() {
     List<String> components = new ArrayList<>(5);
 
@@ -150,7 +151,7 @@ public class LocalizedString {
    *
    * @return this string's translation key, not null
    */
-  @Nonnull
+  @NonNull
   public String getKey() {
     return key;
   }
@@ -160,7 +161,7 @@ public class LocalizedString {
    *
    * @return this string's default translation, not null
    */
-  @Nonnull
+  @NonNull
   public Optional<String> getTranslation() {
     return Optional.ofNullable(translation);
   }
@@ -170,7 +171,7 @@ public class LocalizedString {
    *
    * @return this string's commentary, not null
    */
-  @Nonnull
+  @NonNull
   public Optional<String> getCommentary() {
     return Optional.ofNullable(commentary);
   }
@@ -182,7 +183,7 @@ public class LocalizedString {
    *
    * @return per-language-form translations that correspond to a placeholder value, not null
    */
-  @Nonnull
+  @NonNull
   public Map<String, LanguageFormTranslation> getLanguageFormTranslationsByPlaceholder() {
     return languageFormTranslationsByPlaceholder;
   }
@@ -196,7 +197,7 @@ public class LocalizedString {
    *
    * @return alternative expression-driven translations for this string, not null
    */
-  @Nonnull
+  @NonNull
   public List<LocalizedString> getAlternatives() {
     return alternatives;
   }
@@ -211,7 +212,7 @@ public class LocalizedString {
    */
   @NotThreadSafe
   public static class Builder {
-    @Nonnull
+    @NonNull
     private final String key;
     @Nullable
     private String translation;
@@ -227,7 +228,7 @@ public class LocalizedString {
      *
      * @param key this string's translation key, not null
      */
-    public Builder(@Nonnull String key) {
+    public Builder(@NonNull String key) {
       requireNonNull(key);
       this.key = key;
     }
@@ -238,7 +239,7 @@ public class LocalizedString {
      * @param translation a default translation, may be null
      * @return this builder instance, useful for chaining. not null
      */
-    @Nonnull
+    @NonNull
     public Builder translation(@Nullable String translation) {
       this.translation = translation;
       return this;
@@ -250,7 +251,7 @@ public class LocalizedString {
      * @param commentary commentary (usage/translation notes), may be null
      * @return this builder instance, useful for chaining. not null
      */
-    @Nonnull
+    @NonNull
     public Builder commentary(@Nullable String commentary) {
       this.commentary = commentary;
       return this;
@@ -262,7 +263,7 @@ public class LocalizedString {
      * @param languageFormTranslationsByPlaceholder per-language-form translations, may be null
      * @return this builder instance, useful for chaining. not null
      */
-    @Nonnull
+    @NonNull
     public Builder languageFormTranslationsByPlaceholder(
         @Nullable Map<String, LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
       this.languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder;
@@ -275,7 +276,7 @@ public class LocalizedString {
      * @param alternatives alternative expression-driven translations, may be null
      * @return this builder instance, useful for chaining. not null
      */
-    @Nonnull
+    @NonNull
     public Builder alternatives(@Nullable List<LocalizedString> alternatives) {
       this.alternatives = alternatives;
       return this;
@@ -286,7 +287,7 @@ public class LocalizedString {
      *
      * @return an instance of {@link LocalizedString}, not null
      */
-    @Nonnull
+    @NonNull
     public LocalizedString build() {
       return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives);
     }
@@ -307,7 +308,7 @@ public class LocalizedString {
     private final String value;
     @Nullable
     private final LanguageFormTranslationRange range;
-    @Nonnull
+    @NonNull
     private final Map<LanguageForm, String> translationsByLanguageForm;
 
     /**
@@ -316,7 +317,7 @@ public class LocalizedString {
      * @param value                      the placeholder value to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
      */
-    public LanguageFormTranslation(@Nonnull String value, @Nonnull Map<LanguageForm, String> translationsByLanguageForm) {
+    public LanguageFormTranslation(@NonNull String value, @NonNull Map<LanguageForm, String> translationsByLanguageForm) {
       requireNonNull(value);
       requireNonNull(translationsByLanguageForm);
 
@@ -331,7 +332,7 @@ public class LocalizedString {
      * @param range                      the placeholder range to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
      */
-    public LanguageFormTranslation(@Nonnull LanguageFormTranslationRange range, @Nonnull Map<LanguageForm, String> translationsByLanguageForm) {
+    public LanguageFormTranslation(@NonNull LanguageFormTranslationRange range, @NonNull Map<LanguageForm, String> translationsByLanguageForm) {
       requireNonNull(range);
       requireNonNull(translationsByLanguageForm);
 
@@ -346,7 +347,7 @@ public class LocalizedString {
      * @return a string representation of this object, not null
      */
     @Override
-    @Nonnull
+    @NonNull
     public String toString() {
       if (getRange().isPresent())
         return format("%s{range=%s, translationsByLanguageForm=%s", getClass().getSimpleName(), getRange().get(), getTranslationsByLanguageForm());
@@ -390,7 +391,7 @@ public class LocalizedString {
      *
      * @return the value for this per-language-form translation set, not null
      */
-    @Nonnull
+    @NonNull
     public Optional<String> getValue() {
       return Optional.ofNullable(value);
     }
@@ -400,7 +401,7 @@ public class LocalizedString {
      *
      * @return the range for this per-language-form translation set, not null
      */
-    @Nonnull
+    @NonNull
     public Optional<LanguageFormTranslationRange> getRange() {
       return Optional.ofNullable(range);
     }
@@ -410,7 +411,7 @@ public class LocalizedString {
      *
      * @return the translations by language form for this per-language-form translation set, not null
      */
-    @Nonnull
+    @NonNull
     public Map<LanguageForm, String> getTranslationsByLanguageForm() {
       return translationsByLanguageForm;
     }
@@ -423,9 +424,9 @@ public class LocalizedString {
    */
   @Immutable
   public static class LanguageFormTranslationRange {
-    @Nonnull
+    @NonNull
     private String start;
-    @Nonnull
+    @NonNull
     private String end;
 
     /**
@@ -434,7 +435,7 @@ public class LocalizedString {
      * @param start the start value of the range, not null
      * @param end   the end value of the range, not null
      */
-    public LanguageFormTranslationRange(@Nonnull String start, @Nonnull String end) {
+    public LanguageFormTranslationRange(@NonNull String start, @NonNull String end) {
       requireNonNull(start);
       requireNonNull(end);
 
@@ -448,7 +449,7 @@ public class LocalizedString {
      * @return a string representation of this object, not null
      */
     @Override
-    @Nonnull
+    @NonNull
     public String toString() {
       return format("%s{start=%s, end=%s", getClass().getSimpleName(), getStart(), getEnd());
     }
@@ -488,7 +489,7 @@ public class LocalizedString {
      *
      * @return the start value for this range, not null
      */
-    @Nonnull
+    @NonNull
     public String getStart() {
       return start;
     }
@@ -498,7 +499,7 @@ public class LocalizedString {
      *
      * @return the end value for this range, not null
      */
-    @Nonnull
+    @NonNull
     public String getEnd() {
       return end;
     }

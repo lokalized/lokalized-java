@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
 
@@ -33,9 +34,9 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 final class Token {
-  @Nonnull
+  @NonNull
   private final TokenType tokenType;
-  @Nonnull
+  @NonNull
   private final String symbol;
 
   /**
@@ -44,7 +45,7 @@ final class Token {
    * @param tokenType what kind of token this is, not null
    * @throws IllegalArgumentException if the token type does not have a predefined symbol
    */
-  public Token(@Nonnull TokenType tokenType) {
+  public Token(@NonNull TokenType tokenType) {
     requireNonNull(tokenType);
 
     if (TokenType.getTokenTypesWithUndefinedSymbol().contains(tokenType))
@@ -62,7 +63,7 @@ final class Token {
    * @param symbol    the symbol for this token, not null
    * @throws IllegalArgumentException if the token type has a predefined symbol that does not match the provided symbol
    */
-  public Token(@Nonnull TokenType tokenType, @Nonnull String symbol) {
+  public Token(@NonNull TokenType tokenType, @NonNull String symbol) {
     requireNonNull(tokenType);
     requireNonNull(symbol);
 
@@ -80,7 +81,7 @@ final class Token {
    * @return a string representation of this object, not null
    */
   @Override
-  @Nonnull
+  @NonNull
   public String toString() {
     return format("%s{tokenType=%s, symbol=%s}", getClass().getSimpleName(), getTokenType().name(), getSymbol());
   }
@@ -120,7 +121,7 @@ final class Token {
    *
    * @return the type of this token, not null
    */
-  @Nonnull
+  @NonNull
   public TokenType getTokenType() {
     return tokenType;
   }
@@ -130,7 +131,7 @@ final class Token {
    *
    * @return the symbol for this token, not null
    */
-  @Nonnull
+  @NonNull
   public String getSymbol() {
     return symbol;
   }

@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
@@ -41,7 +42,7 @@ public enum Gender implements LanguageForm {
    */
   NEUTER;
 
-  @Nonnull
+  @NonNull
   private static final Map<String, Gender> GENDERS_BY_NAME;
 
   static {
@@ -54,7 +55,7 @@ public enum Gender implements LanguageForm {
    *
    * @return the mapping of gender names to gender values, not null
    */
-  @Nonnull
+  @NonNull
   static Map<String, Gender> getGendersByName() {
     return GENDERS_BY_NAME;
   }

@@ -18,9 +18,9 @@ package com.lokalized;
 
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
@@ -59,21 +59,21 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 public class DefaultStrings implements Strings {
-	@Nonnull
+	@NonNull
 	private final Map<Locale, Set<LocalizedString>> localizedStringsByLocale;
 	@Nullable
 	private final Function<LocaleMatcher, Locale> localeSupplier;
-	@Nonnull
+	@NonNull
 	private final Map<String, List<Locale>> tiebreakerLocalesByLanguageCode;
-	@Nonnull
+	@NonNull
 	private final FailureMode failureMode;
-	@Nonnull
+	@NonNull
 	private final Locale fallbackLocale;
-	@Nonnull
+	@NonNull
 	private final StringInterpolator stringInterpolator;
-	@Nonnull
+	@NonNull
 	private final ExpressionEvaluator expressionEvaluator;
-	@Nonnull
+	@NonNull
 	private final Logger logger;
 
 	/**
@@ -81,7 +81,7 @@ public class DefaultStrings implements Strings {
 	 * <p>
 	 * This is our "master" reference localized string storage that other data structures will point to.
 	 */
-	@Nonnull
+	@NonNull
 	private final Map<Locale, Map<String, LocalizedString>> localizedStringsByKeyByLocale;
 
 	/**
@@ -92,8 +92,8 @@ public class DefaultStrings implements Strings {
 	 * @param fallbackLocale the fallback locale used if no others match, not null
 	 * @return the builder, not null
 	 */
-	@Nonnull
-	static Builder withFallbackLocale(@Nonnull Locale fallbackLocale) {
+	@NonNull
+	static Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
 		requireNonNull(fallbackLocale);
 		return new Builder(fallbackLocale);
 	}
@@ -107,9 +107,9 @@ public class DefaultStrings implements Strings {
 	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
 	 * @param failureMode                     strategy for dealing with lookup failures, may be null
 	 */
-	protected DefaultStrings(@Nonnull Locale fallbackLocale,
-													 @Nonnull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
-													 @Nonnull Function<LocaleMatcher, Locale> localeSupplier,
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+													 @NonNull Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier,
+													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
 													 @Nullable Map<String, List<Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable FailureMode failureMode) {
 		requireNonNull(fallbackLocale);
@@ -247,25 +247,25 @@ public class DefaultStrings implements Strings {
 		this.localeSupplier = localeSupplier;
 	}
 
-	@Nonnull
+	@NonNull
 	@Override
-	public String get(@Nonnull String key) {
+	public String get(@NonNull String key) {
 		requireNonNull(key);
 		return get(key, null, getLocaleSupplier().apply(this));
 	}
 
-	@Nonnull
+	@NonNull
 	@Override
-	public String get(@Nonnull String key,
+	public String get(@NonNull String key,
 										@Nullable Map<String, Object> placeholders) {
 		requireNonNull(key);
 		return get(key, placeholders, getLocaleSupplier().apply(this));
 	}
 
-	@Nonnull
-	protected String get(@Nonnull String key,
+	@NonNull
+	protected String get(@NonNull String key,
 											 @Nullable Map<String, Object> placeholders,
-											 @Nonnull Locale locale) {
+											 @NonNull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(locale);
 
@@ -318,10 +318,10 @@ public class DefaultStrings implements Strings {
 	 * @param locale           the locale to use for evaluation, not null
 	 * @return the translation, if possible (may not be possible if no translation value specified and no alternative expressions match), not null
 	 */
-	@Nonnull
-	protected Optional<String> getInternal(@Nonnull String key, @Nonnull LocalizedString localizedString,
-																				 @Nonnull Map<String, Object> mutableContext, @Nonnull Map<String, Object> immutableContext,
-																				 @Nonnull Locale locale) {
+	@NonNull
+	protected Optional<String> getInternal(@NonNull String key, @NonNull LocalizedString localizedString,
+																				 @NonNull Map<String, Object> mutableContext, @NonNull Map<String, Object> immutableContext,
+																				 @NonNull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
 		requireNonNull(mutableContext);
@@ -490,16 +490,16 @@ public class DefaultStrings implements Strings {
 		return Optional.of(translation);
 	}
 
-	@Nonnull
+	@NonNull
 	@Override
-	public Locale bestMatchFor(@Nonnull Locale locale) {
+	public Locale bestMatchFor(@NonNull Locale locale) {
 		requireNonNull(locale);
 		return bestMatchFor(List.of(new LanguageRange(locale.toLanguageTag())));
 	}
 
-	@Nonnull
+	@NonNull
 	@Override
-	public Locale bestMatchFor(@Nonnull List<LanguageRange> languageRanges) {
+	public Locale bestMatchFor(@NonNull List<LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
 
 		if (languageRanges.isEmpty())
@@ -548,7 +548,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the set of localized strings for each locale, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Map<Locale, Set<LocalizedString>> getLocalizedStringsByLocale() {
 		return localizedStringsByLocale;
 	}
@@ -558,7 +558,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the locale supplier, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Function<LocaleMatcher, Locale> getLocaleSupplier() {
 		return this.localeSupplier;
 	}
@@ -568,7 +568,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the per-language-code "tiebreaker" locales, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Map<String, List<Locale>> getTiebreakerLocalesByLanguageCode() {
 		return this.tiebreakerLocalesByLanguageCode;
 	}
@@ -578,7 +578,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the strategy for handling string lookup failures, not null
 	 */
-	@Nonnull
+	@NonNull
 	public FailureMode getFailureMode() {
 		return failureMode;
 	}
@@ -588,7 +588,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the fallback locale, not null
 	 */
-	@Nonnull
+	@NonNull
 	public Locale getFallbackLocale() {
 		return fallbackLocale;
 	}
@@ -598,7 +598,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the string interpolator, not null
 	 */
-	@Nonnull
+	@NonNull
 	protected StringInterpolator getStringInterpolator() {
 		return stringInterpolator;
 	}
@@ -608,7 +608,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the expression evaluator, not null
 	 */
-	@Nonnull
+	@NonNull
 	protected ExpressionEvaluator getExpressionEvaluator() {
 		return expressionEvaluator;
 	}
@@ -618,7 +618,7 @@ public class DefaultStrings implements Strings {
 	 *
 	 * @return the cache of localized strings by key by locale, not null
 	 */
-	@Nonnull
+	@NonNull
 	protected Map<Locale, Map<String, LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
 	}
@@ -630,9 +630,9 @@ public class DefaultStrings implements Strings {
 	 */
 	@Immutable
 	static class LocalizedStringSource {
-		@Nonnull
+		@NonNull
 		private final Locale locale;
-		@Nonnull
+		@NonNull
 		private final Map<String, LocalizedString> localizedStringsByKey;
 
 		/**
@@ -641,7 +641,7 @@ public class DefaultStrings implements Strings {
 		 * @param locale                the locale for these localized strings, not null
 		 * @param localizedStringsByKey localized strings by translation key, not null
 		 */
-		public LocalizedStringSource(@Nonnull Locale locale, @Nonnull Map<String, LocalizedString> localizedStringsByKey) {
+		public LocalizedStringSource(@NonNull Locale locale, @NonNull Map<String, LocalizedString> localizedStringsByKey) {
 			requireNonNull(locale);
 			requireNonNull(localizedStringsByKey);
 
@@ -655,7 +655,7 @@ public class DefaultStrings implements Strings {
 		 * @return a string representation of this object, not null
 		 */
 		@Override
-		@Nonnull
+		@NonNull
 		public String toString() {
 			return format("%s{locale=%s, localizedStringsByKey=%s", getClass().getSimpleName(), getLocale(), getLocalizedStringsByKey());
 		}
@@ -690,12 +690,12 @@ public class DefaultStrings implements Strings {
 			return Objects.hash(getLocale(), getLocalizedStringsByKey());
 		}
 
-		@Nonnull
+		@NonNull
 		public Locale getLocale() {
 			return locale;
 		}
 
-		@Nonnull
+		@NonNull
 		public Map<String, LocalizedString> getLocalizedStringsByKey() {
 			return localizedStringsByKey;
 		}
@@ -729,7 +729,7 @@ public class DefaultStrings implements Strings {
 	 */
 	@NotThreadSafe
 	public static class Builder {
-		@Nonnull
+		@NonNull
 		private final Locale fallbackLocale;
 		@Nullable
 		private Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier;
@@ -747,7 +747,7 @@ public class DefaultStrings implements Strings {
 		 *
 		 * @param fallbackLocale fallback locale, not null
 		 */
-		protected Builder(@Nonnull Locale fallbackLocale) {
+		protected Builder(@NonNull Locale fallbackLocale) {
 			requireNonNull(fallbackLocale);
 			this.fallbackLocale = fallbackLocale;
 		}
@@ -758,7 +758,7 @@ public class DefaultStrings implements Strings {
 		 * @param localizedStringSupplier localized string supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
-		@Nonnull
+		@NonNull
 		public Builder localizedStringSupplier(@Nullable Supplier<Map<Locale, ? extends Iterable<LocalizedString>>> localizedStringSupplier) {
 			this.localizedStringSupplier = localizedStringSupplier;
 			return this;
@@ -770,7 +770,7 @@ public class DefaultStrings implements Strings {
 		 * @param localeSupplier locale supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
-		@Nonnull
+		@NonNull
 		public Builder localeSupplier(@Nullable Function<LocaleMatcher, Locale> localeSupplier) {
 			this.localeSupplier = localeSupplier;
 			return this;
@@ -782,7 +782,7 @@ public class DefaultStrings implements Strings {
 		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
-		@Nonnull
+		@NonNull
 		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<String, List<Locale>> tiebreakerLocalesByLanguageCode) {
 			this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode;
 			return this;
@@ -794,7 +794,7 @@ public class DefaultStrings implements Strings {
 		 * @param failureMode strategy for dealing with lookup failures, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
-		@Nonnull
+		@NonNull
 		public Builder failureMode(@Nullable FailureMode failureMode) {
 			this.failureMode = failureMode;
 			return this;
@@ -805,7 +805,7 @@ public class DefaultStrings implements Strings {
 		 *
 		 * @return an instance of {@link DefaultStrings}, not null
 		 */
-		@Nonnull
+		@NonNull
 		public DefaultStrings build() {
 			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, failureMode);
 		}

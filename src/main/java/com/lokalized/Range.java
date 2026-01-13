@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.Immutable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -54,14 +55,14 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 public class Range<T> implements Collection<T> {
-  @Nonnull
+  @NonNull
   private static final Range<?> EMPTY_FINITE_RANGE;
-  @Nonnull
+  @NonNull
   private static final Range<?> EMPTY_INFINITE_RANGE;
 
-  @Nonnull
+  @NonNull
   private final List<T> values;
-  @Nonnull
+  @NonNull
   private final Boolean infinite;
 
   static {
@@ -76,8 +77,8 @@ public class Range<T> implements Collection<T> {
    * @param <T>    the type of values contained in the range
    * @return an infinite range, not null
    */
-  @Nonnull
-  public static <T> Range<T> ofInfiniteValues(@Nonnull Collection<T> values) {
+  @NonNull
+  public static <T> Range<T> ofInfiniteValues(@NonNull Collection<T> values) {
     requireNonNull(values);
     return values.size() == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
@@ -89,7 +90,7 @@ public class Range<T> implements Collection<T> {
    * @param <T>    the type of values contained in the range
    * @return an infinite range, not null
    */
-  @Nonnull
+  @NonNull
   public static <T> Range<T> ofInfiniteValues(@Nullable T... values) {
     return values == null || values.length == 0 ? emptyInfiniteRange() : new Range(values, true);
   }
@@ -101,8 +102,8 @@ public class Range<T> implements Collection<T> {
    * @param <T>    the type of values contained in the range
    * @return a finite range, not null
    */
-  @Nonnull
-  public static <T> Range<T> ofFiniteValues(@Nonnull Collection<T> values) {
+  @NonNull
+  public static <T> Range<T> ofFiniteValues(@NonNull Collection<T> values) {
     requireNonNull(values);
     return values.size() == 0 ? emptyFiniteRange() : new Range(values, false);
   }
@@ -114,7 +115,7 @@ public class Range<T> implements Collection<T> {
    * @param <T>    the type of values contained in the range
    * @return a finite range, not null
    */
-  @Nonnull
+  @NonNull
   public static <T> Range<T> ofFiniteValues(@Nullable T... values) {
     return values == null || values.length == 0 ? emptyFiniteRange() : new Range(values, false);
   }
@@ -145,7 +146,7 @@ public class Range<T> implements Collection<T> {
    * @param values   the values that comprise this range, not null
    * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  private Range(@Nonnull Collection<T> values, @Nonnull Boolean infinite) {
+  private Range(@NonNull Collection<T> values, @NonNull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
@@ -159,7 +160,7 @@ public class Range<T> implements Collection<T> {
    * @param values   the values that comprise this range, may be null
    * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  private Range(@Nullable T[] values, @Nonnull Boolean infinite) {
+  private Range(@Nullable T[] values, @NonNull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
@@ -207,7 +208,7 @@ public class Range<T> implements Collection<T> {
    *
    * @return an iterator over the values in this range in proper sequence, not null
    */
-  @Nonnull
+  @NonNull
   @Override
   public Iterator<T> iterator() {
     return getValues().iterator();
@@ -222,7 +223,7 @@ public class Range<T> implements Collection<T> {
    *
    * @return an array containing all of the values in this range in proper sequence, not null
    */
-  @Nonnull
+  @NonNull
   @Override
   public Object[] toArray() {
     return getValues().toArray();
@@ -237,9 +238,9 @@ public class Range<T> implements Collection<T> {
    * @param <T1> the runtime type of the array to contain the collection
    * @return an array containing the values of the range, not null
    */
-  @Nonnull
+  @NonNull
   @Override
-  public <T1> T1[] toArray(@Nonnull T1[] a) {
+  public <T1> T1[] toArray(@NonNull T1[] a) {
     return getValues().toArray(a);
   }
 
@@ -278,7 +279,7 @@ public class Range<T> implements Collection<T> {
    * @return true if this range contains all of the elements of the specified collection
    */
   @Override
-  public boolean containsAll(@Nonnull Collection<?> c) {
+  public boolean containsAll(@NonNull Collection<?> c) {
     requireNonNull(c);
     return getValues().containsAll(c);
   }
@@ -343,7 +344,7 @@ public class Range<T> implements Collection<T> {
    * @return a string representation of this object, not null
    */
   @Override
-  @Nonnull
+  @NonNull
   public String toString() {
     return format("%s{values=%s, infinite=%s}", getClass().getSimpleName(), getValues().stream()
         .map(value -> value.toString())
@@ -385,7 +386,7 @@ public class Range<T> implements Collection<T> {
    *
    * @return the values that comprise this range, not null
    */
-  @Nonnull
+  @NonNull
   public List<T> getValues() {
     return values;
   }
@@ -395,7 +396,7 @@ public class Range<T> implements Collection<T> {
    *
    * @return whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
    */
-  @Nonnull
+  @NonNull
   public Boolean getInfinite() {
     return infinite;
   }

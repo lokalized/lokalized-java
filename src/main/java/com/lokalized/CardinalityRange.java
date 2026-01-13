@@ -16,8 +16,9 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.Immutable;
 import java.util.Objects;
 
@@ -33,9 +34,9 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 class CardinalityRange implements Comparable<CardinalityRange> {
-  @Nonnull
+  @NonNull
   private final Cardinality start;
-  @Nonnull
+  @NonNull
   private final Cardinality end;
 
   /**
@@ -45,8 +46,8 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    * @param end   the range's end cardinality, not null
    * @return a cardinality range with the given start and end cardinalities, not null
    */
-  @Nonnull
-  static CardinalityRange of(@Nonnull Cardinality start, @Nonnull Cardinality end) {
+  @NonNull
+  static CardinalityRange of(@NonNull Cardinality start, @NonNull Cardinality end) {
     requireNonNull(start);
     requireNonNull(end);
 
@@ -62,7 +63,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    * @param start the range's start cardinality, not null
    * @param end   the range's end cardinality, not null
    */
-  private CardinalityRange(@Nonnull Cardinality start, @Nonnull Cardinality end) {
+  private CardinalityRange(@NonNull Cardinality start, @NonNull Cardinality end) {
     requireNonNull(start);
     requireNonNull(end);
 
@@ -77,7 +78,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    * @return the comparison result
    */
   @Override
-  public int compareTo(@Nonnull CardinalityRange cardinalityRange) {
+  public int compareTo(@NonNull CardinalityRange cardinalityRange) {
     requireNonNull(cardinalityRange);
 
     int comparison = getStart().compareTo(cardinalityRange.getStart());
@@ -94,7 +95,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    * @return a string representation of this object, not null
    */
   @Override
-  @Nonnull
+  @NonNull
   public String toString() {
     return String.format("%s{start=%s, end=%s}", getClass().getSimpleName(), getStart().name(), getEnd().name());
   }
@@ -134,7 +135,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    *
    * @return the range's start cardinality, not null
    */
-  @Nonnull
+  @NonNull
   public Cardinality getStart() {
     return start;
   }
@@ -144,7 +145,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
    *
    * @return the range's end cardinality, not null
    */
-  @Nonnull
+  @NonNull
   public Cardinality getEnd() {
     return end;
   }

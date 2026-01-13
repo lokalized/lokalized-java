@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Objects;
 import java.util.logging.Handler;
@@ -43,8 +44,7 @@ final class LoggingUtils {
    *
    * @param level the level to use, not null
    */
-  @Nonnull
-  public static void setRootLoggerLevel(@Nonnull Level level) {
+  public static void setRootLoggerLevel(@NonNull Level level) {
     Objects.requireNonNull(level);
 
     Logger rootLogger = Logger.getLogger("");

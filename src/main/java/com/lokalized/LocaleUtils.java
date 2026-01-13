@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 import java.util.Optional;
@@ -52,7 +53,7 @@ class LocaleUtils {
    * @param locale the locale for which the language code is extracted, not null
    * @return the normalized language for the locale (if present), not null
    */
-  static Optional<String> normalizedLanguage(@Nonnull Locale locale) {
+  static Optional<String> normalizedLanguage(@NonNull Locale locale) {
     requireNonNull(locale);
 
     String language = locale.getLanguage();

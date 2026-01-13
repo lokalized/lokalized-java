@@ -16,7 +16,8 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
 import java.util.Optional;
@@ -32,15 +33,15 @@ import static java.lang.String.format;
  */
 @ThreadSafe
 class StringInterpolator {
-  @Nonnull
+  @NonNull
   private static final Pattern PLACEHOLDER_PATTERN;
 
   static {
     PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{[\\p{Alnum}_-]+}}");
   }
 
-  @Nonnull
-  public String interpolate(@Nonnull String string, @Nonnull Map<String, Object> context) {
+  @NonNull
+  public String interpolate(@NonNull String string, @NonNull Map<String, Object> context) {
     Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
 
     // Matcher#appendReplacement only accepts StringBuffer, not StringBuilder

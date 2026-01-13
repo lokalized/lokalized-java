@@ -16,7 +16,7 @@
 
 package com.lokalized;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 import static java.util.Objects.requireNonNull;
 
@@ -29,15 +29,15 @@ enum LoggerType {
   LOCALIZED_STRING_LOADER("com.lokalized.LOCALIZED_STRING_LOADER"),
   TEST("com.lokalized.TEST");
 
-  @Nonnull
+  @NonNull
   private final String loggerName;
 
-  LoggerType(@Nonnull String loggerName) {
+  LoggerType(@NonNull String loggerName) {
     requireNonNull(loggerName);
     this.loggerName = loggerName;
   }
 
-  @Nonnull
+  @NonNull
   public String getLoggerName() {
     return loggerName;
   }

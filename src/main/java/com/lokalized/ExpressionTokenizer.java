@@ -17,7 +17,8 @@
 package com.lokalized;
 
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,19 +40,19 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 class ExpressionTokenizer {
-  @Nonnull
+  @NonNull
   private static final Map<TokenType, String> PATTERNS_BY_TOKEN_TYPE;
-  @Nonnull
+  @NonNull
   private static final Map<TokenType, String> GROUP_NAMES_BY_TOKEN_TYPE;
-  @Nonnull
+  @NonNull
   private static final Pattern TOKEN_PATTERN;
-  @Nonnull
+  @NonNull
   private static final String WHITESPACE_GROUP_NAME = "WHITESPACE";
-  @Nonnull
+  @NonNull
   private static final String WHITESPACE_GROUP_PATTERN = "\\p{Space}";
-  @Nonnull
+  @NonNull
   private static final String ERROR_GROUP_NAME = "ERROR";
-  @Nonnull
+  @NonNull
   private static final String ERROR_GROUP_PATTERN = ".+";
 
   static {
@@ -112,7 +113,7 @@ class ExpressionTokenizer {
    * @return the tokens that comprise the expression
    * @throws ExpressionEvaluationException if an error occurs while extracting tokens
    */
-  public List<Token> extractTokens(@Nonnull String expression) {
+  public List<Token> extractTokens(@NonNull String expression) {
     requireNonNull(expression);
 
     List<Token> tokens = new ArrayList<>();

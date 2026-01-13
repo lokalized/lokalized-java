@@ -19,7 +19,7 @@ package com.lokalized;
 import org.junit.Assert;
 import org.junit.Test;
 
-import javax.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.net.URL;
@@ -163,7 +163,7 @@ public class LocalizedStringLoaderTests {
     }
   }
 
-  protected void verifyLocalizedStringsByLocale(@Nonnull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
+  protected void verifyLocalizedStringsByLocale(@NonNull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
     requireNonNull(localizedStringsByLocale);
 
     Assert.assertEquals("Unexpected number of strings files", 4, localizedStringsByLocale.size());

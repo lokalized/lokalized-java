@@ -17,9 +17,9 @@
 package com.lokalized;
 
 import com.lokalized.Maps.MapEntry;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -107,95 +107,95 @@ public enum Cardinality implements LanguageForm {
    */
   OTHER;
 
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_0;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_1;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_2;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_3;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_4;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_5;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_6;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_9;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_10;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_11;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_12;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_14;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_19;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_20;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_40;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_60;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_80;
-  @Nonnull
+  @NonNull
   private static final BigInteger BIG_INTEGER_100;
 
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_0;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_1;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_2;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_3;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_4;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_5;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_6;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_7;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_9;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_10;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_11;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_12;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_13;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_14;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_19;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_70;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_71;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_72;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_79;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_90;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_91;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_92;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_99;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_100;
-  @Nonnull
+  @NonNull
   private static final BigDecimal BIG_DECIMAL_1_000_000;
 
-  @Nonnull
+  @NonNull
   static final Map<String, Cardinality> CARDINALITIES_BY_NAME;
 
   static {
@@ -265,8 +265,8 @@ public enum Cardinality implements LanguageForm {
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    */
-  @Nonnull
-  public static Cardinality forNumber(@Nonnull Number number, @Nonnull Locale locale) {
+  @NonNull
+  public static Cardinality forNumber(@NonNull Number number, @NonNull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
@@ -289,8 +289,8 @@ public enum Cardinality implements LanguageForm {
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    */
-  @Nonnull
-  public static Cardinality forNumber(@Nonnull Number number, @Nullable Integer visibleDecimalPlaces, @Nonnull Locale locale) {
+  @NonNull
+  public static Cardinality forNumber(@NonNull Number number, @Nullable Integer visibleDecimalPlaces, @NonNull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
@@ -338,8 +338,8 @@ public enum Cardinality implements LanguageForm {
    * @return an appropriate plural cardinality for the range, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    */
-  @Nonnull
-  public static Cardinality forRange(@Nonnull Cardinality start, @Nonnull Cardinality end, @Nonnull Locale locale) {
+  @NonNull
+  public static Cardinality forRange(@NonNull Cardinality start, @NonNull Cardinality end, @NonNull Locale locale) {
     requireNonNull(start);
     requireNonNull(end);
     requireNonNull(locale);
@@ -366,8 +366,8 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale to use for lookup, not null
    * @return the cardinalities supported by the given locale, not null
    */
-  @Nonnull
-  public static SortedSet<Cardinality> supportedCardinalitiesForLocale(@Nonnull Locale locale) {
+  @NonNull
+  public static SortedSet<Cardinality> supportedCardinalitiesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
@@ -384,8 +384,8 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example integer values, not null
    */
-  @Nonnull
-  public static SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesForLocale(@Nonnull Locale locale) {
+  @NonNull
+  public static SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
@@ -402,8 +402,8 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example decimal values, not null
    */
-  @Nonnull
-  public static SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesForLocale(@Nonnull Locale locale) {
+  @NonNull
+  public static SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     Optional<CardinalityFamily> cardinalityFamily = CardinalityFamily.cardinalityFamilyForLocale(locale);
@@ -417,7 +417,7 @@ public enum Cardinality implements LanguageForm {
    *
    * @return the ISO 639 language codes for which cardinality operations are supported, not null
    */
-  @Nonnull
+  @NonNull
   public static SortedSet<String> getSupportedLanguageCodes() {
     return CardinalityFamily.getSupportedLanguageCodes();
   }
@@ -427,7 +427,7 @@ public enum Cardinality implements LanguageForm {
    *
    * @return the mapping of cardinality names to values, not null
    */
-  @Nonnull
+  @NonNull
   static Map<String, Cardinality> getCardinalitiesByName() {
     return CARDINALITIES_BY_NAME;
   }
@@ -1940,18 +1940,18 @@ public enum Cardinality implements LanguageForm {
         )
     );
 
-    @Nonnull
+    @NonNull
     private static final Map<String, CardinalityFamily> CARDINALITY_FAMILIES_BY_LANGUAGE_CODE;
-    @Nonnull
+    @NonNull
     private static final SortedSet<String> SUPPORTED_LANGUAGE_CODES;
 
-    @Nonnull
+    @NonNull
     private final Function<BigDecimal, Cardinality> cardinalityFunction;
-    @Nonnull
+    @NonNull
     private final SortedSet<Cardinality> supportedCardinalities;
-    @Nonnull
+    @NonNull
     private final SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality;
-    @Nonnull
+    @NonNull
     private final SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality;
 
     /**
@@ -1962,10 +1962,10 @@ public enum Cardinality implements LanguageForm {
      * @param exampleIntegerValuesByCardinality a mapping of cardinalities to example integer values for this cardinality family sorted by the natural ordering of {@link Cardinality}, not null
      * @param exampleDecimalValuesByCardinality a mapping of cardinalities to example decimal values for this cardinality family sorted by the natural ordering of {@link Cardinality}, not null
      */
-    CardinalityFamily(@Nonnull Function<BigDecimal, Cardinality> cardinalityFunction,
-                      @Nonnull SortedSet<Cardinality> supportedCardinalities,
-                      @Nonnull SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality,
-                      @Nonnull SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality) {
+    CardinalityFamily(@NonNull Function<BigDecimal, Cardinality> cardinalityFunction,
+                      @NonNull SortedSet<Cardinality> supportedCardinalities,
+                      @NonNull SortedMap<Cardinality, Range<Integer>> exampleIntegerValuesByCardinality,
+                      @NonNull SortedMap<Cardinality, Range<BigDecimal>> exampleDecimalValuesByCardinality) {
       requireNonNull(cardinalityFunction);
       requireNonNull(supportedCardinalities);
       requireNonNull(exampleIntegerValuesByCardinality);
@@ -2195,7 +2195,7 @@ public enum Cardinality implements LanguageForm {
      *
      * @return the cardinality-determining function for this cardinality family, not null
      */
-    @Nonnull
+    @NonNull
     Function<BigDecimal, Cardinality> getCardinalityFunction() {
       return cardinalityFunction;
     }
@@ -2209,7 +2209,7 @@ public enum Cardinality implements LanguageForm {
      *
      * @return the cardinalities supported by this cardinality family, not null
      */
-    @Nonnull
+    @NonNull
     SortedSet<Cardinality> getSupportedCardinalities() {
       return supportedCardinalities;
     }
@@ -2223,7 +2223,7 @@ public enum Cardinality implements LanguageForm {
      *
      * @return a mapping of cardinalities to example integer values, not null
      */
-    @Nonnull
+    @NonNull
     SortedMap<Cardinality, Range<Integer>> getExampleIntegerValuesByCardinality() {
       return exampleIntegerValuesByCardinality;
     }
@@ -2237,7 +2237,7 @@ public enum Cardinality implements LanguageForm {
      *
      * @return a mapping of cardinalities to example decimal values, not null
      */
-    @Nonnull
+    @NonNull
     SortedMap<Cardinality, Range<BigDecimal>> getExampleDecimalValuesByCardinality() {
       return exampleDecimalValuesByCardinality;
     }
@@ -2249,7 +2249,7 @@ public enum Cardinality implements LanguageForm {
      *
      * @return the ISO 639 language codes for which cardinality operations are supported, not null
      */
-    @Nonnull
+    @NonNull
     static SortedSet<String> getSupportedLanguageCodes() {
       return SUPPORTED_LANGUAGE_CODES;
     }
@@ -2260,8 +2260,8 @@ public enum Cardinality implements LanguageForm {
      * @param locale the locale to check, not null
      * @return the appropriate plural cardinality family (if one exists) for the given locale, not null
      */
-    @Nonnull
-    static Optional<CardinalityFamily> cardinalityFamilyForLocale(@Nonnull Locale locale) {
+    @NonNull
+    static Optional<CardinalityFamily> cardinalityFamilyForLocale(@NonNull Locale locale) {
       requireNonNull(locale);
 
       String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
@@ -2872,10 +2872,10 @@ public enum Cardinality implements LanguageForm {
         )
     );
 
-    @Nonnull
+    @NonNull
     private static final Map<String, CardinalityRangeFamily> CARDINALITY_RANGE_FAMILIES_BY_LANGUAGE_CODE;
 
-    @Nonnull
+    @NonNull
     private final SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange;
 
     static {
@@ -3089,8 +3089,8 @@ public enum Cardinality implements LanguageForm {
      * @param locale the locale to check, not null
      * @return the appropriate plural cardinality range family (if one exists) for the given locale, not null
      */
-    @Nonnull
-    static Optional<CardinalityRangeFamily> cardinalityRangeFamilyForLocale(@Nonnull Locale locale) {
+    @NonNull
+    static Optional<CardinalityRangeFamily> cardinalityRangeFamilyForLocale(@NonNull Locale locale) {
       requireNonNull(locale);
 
       String language = LocaleUtils.normalizedLanguage(locale).orElse(null);
@@ -3115,11 +3115,11 @@ public enum Cardinality implements LanguageForm {
      *
      * @param cardinalitiesByCardinalityRange a mapping of cardinalities to example integer values for this cardinality range family sorted by the natural ordering of {@link Cardinality}, not null
      */
-    CardinalityRangeFamily(@Nonnull SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange) {
+    CardinalityRangeFamily(@NonNull SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange) {
       this.cardinalitiesByCardinalityRange = cardinalitiesByCardinalityRange;
     }
 
-    @Nonnull
+    @NonNull
     SortedMap<CardinalityRange, Cardinality> getCardinalitiesByCardinalityRange() {
       return cardinalitiesByCardinalityRange;
     }
