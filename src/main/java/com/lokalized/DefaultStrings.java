@@ -21,7 +21,6 @@ import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
@@ -35,7 +34,6 @@ import java.util.Locale;
 import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -331,7 +329,7 @@ public class DefaultStrings implements Strings {
 
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
-			if (getExpressionEvaluator().evaluate(alternative.getKey(), mutableContext, locale)) {
+			if (alternativeMatches(alternative, mutableContext, locale)) {
 				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, mutableContext));
 
 				// If we have a matching alternative, recurse into it
@@ -489,6 +487,21 @@ public class DefaultStrings implements Strings {
 		translation = getStringInterpolator().interpolate(translation, mutableContext);
 
 		return Optional.of(translation);
+	}
+
+	private boolean alternativeMatches(@NonNull LocalizedString alternative,
+																		 @NonNull Map<@NonNull String, @Nullable Object> context,
+																		 @NonNull Locale locale) {
+		requireNonNull(alternative);
+		requireNonNull(context);
+		requireNonNull(locale);
+
+		List<@NonNull Token> expressionTokens = alternative.getExpressionTokens();
+
+		if (expressionTokens != null)
+			return getExpressionEvaluator().evaluateReversePolishNotationTokens(expressionTokens, context, locale);
+
+		return getExpressionEvaluator().evaluate(alternative.getKey(), context, locale);
 	}
 
 	@NonNull
@@ -651,84 +664,6 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Data structure which holds a locale and the localized strings for it, with the strings mapped by key for fast access.
-	 *
-	 * @author <a href="https://revetkn.com">Mark Allen</a>
-	 */
-	@Immutable
-	static class LocalizedStringSource {
-		@NonNull
-		private final Locale locale;
-		@NonNull
-		private final Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey;
-
-		/**
-		 * Constructs a localized string source with the given locale and map of keys to localized strings.
-		 *
-		 * @param locale                the locale for these localized strings, not null
-		 * @param localizedStringsByKey localized strings by translation key, not null
-		 */
-		public LocalizedStringSource(@NonNull Locale locale, @NonNull Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey) {
-			requireNonNull(locale);
-			requireNonNull(localizedStringsByKey);
-
-			this.locale = locale;
-			this.localizedStringsByKey = localizedStringsByKey;
-		}
-
-		/**
-		 * Generates a {@code String} representation of this object.
-		 *
-		 * @return a string representation of this object, not null
-		 */
-		@Override
-		@NonNull
-		public String toString() {
-			return format("%s{locale=%s, localizedStringsByKey=%s", getClass().getSimpleName(), getLocale(), getLocalizedStringsByKey());
-		}
-
-		/**
-		 * Checks if this object is equal to another one.
-		 *
-		 * @param other the object to check, null returns false
-		 * @return true if this is equal to the other object, false otherwise
-		 */
-		@Override
-		public boolean equals(@Nullable Object other) {
-			if (this == other)
-				return true;
-
-			if (other == null || !getClass().equals(other.getClass()))
-				return false;
-
-			LocalizedStringSource localizedStringSource = (LocalizedStringSource) other;
-
-			return Objects.equals(getLocale(), localizedStringSource.getLocale())
-					&& Objects.equals(getLocalizedStringsByKey(), localizedStringSource.getLocalizedStringsByKey());
-		}
-
-		/**
-		 * A hash code for this object.
-		 *
-		 * @return a suitable hash code
-		 */
-		@Override
-		public int hashCode() {
-			return Objects.hash(getLocale(), getLocalizedStringsByKey());
-		}
-
-		@NonNull
-		public Locale getLocale() {
-			return locale;
-		}
-
-		@NonNull
-		public Map<@NonNull String, @NonNull LocalizedString> getLocalizedStringsByKey() {
-			return localizedStringsByKey;
-		}
-	}
-
-	/**
 	 * Strategies for handling localized string lookup failures.
 	 */
 	public enum FailureMode {
@@ -762,8 +697,6 @@ public class DefaultStrings implements Strings {
 		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
 		@Nullable
 		private Function<LocaleMatcher, Locale> localeSupplier;
-		@Nullable
-		private Supplier<List<@NonNull LanguageRange>> languageRangesSupplier;
 		@Nullable
 		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable

@@ -70,12 +70,15 @@ public final class LocalizedStringLoader {
   @NonNull
   private static final Logger LOGGER;
   @NonNull
+  private static final ExpressionEvaluator EXPRESSION_EVALUATOR;
+  @NonNull
   private static final Pattern LANGUAGE_TAG_PATTERN;
   @NonNull
   private static final String JSON_EXTENSION;
 
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
+    EXPRESSION_EVALUATOR = new ExpressionEvaluator();
 
     Set<@NonNull LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
@@ -228,6 +231,9 @@ public final class LocalizedStringLoader {
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
     File[] files = directory.listFiles();
+
+    if (files == null)
+      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
 
     if (files != null) {
       for (File file : files) {
@@ -481,7 +487,7 @@ public final class LocalizedStringLoader {
         throw new LocalizedStringLoadingException(format("%s: duplicate localized string key '%s' encountered", canonicalPath, key));
 
       JsonValue value = member.getValue();
-      localizedStrings.add(parseLocalizedString(canonicalPath, key, value));
+      localizedStrings.add(parseLocalizedString(canonicalPath, key, value, null));
     }
 
     return Collections.unmodifiableSet(localizedStrings);
@@ -499,10 +505,13 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key, @NonNull JsonValue jsonValue) {
+  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key, @NonNull JsonValue jsonValue,
+                                                      @Nullable List<@NonNull Token> expressionTokens) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(jsonValue);
+
+    LocalizedString.Builder localizedStringBuilder = new LocalizedString.Builder(key).expressionTokens(expressionTokens);
 
     if (jsonValue.isString()) {
       // Simple case - just a key and a value, no translation rules
@@ -518,7 +527,7 @@ public final class LocalizedStringLoader {
       if (translation == null)
         throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-      return new LocalizedString.Builder(key).translation(translation).build();
+      return localizedStringBuilder.translation(translation).build();
     } else if (jsonValue.isObject()) {
       // More complex case, there can be placeholders and alternatives.
       //
@@ -689,13 +698,13 @@ public final class LocalizedStringLoader {
           for (Member member : outerJsonObject) {
             String alternativeKey = member.getName();
             JsonValue alternativeValue = member.getValue();
-            alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue));
+            List<@NonNull Token> alternativeTokens = parseExpressionTokens(canonicalPath, alternativeKey);
+            alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue, alternativeTokens));
           }
         }
       }
 
-      return new LocalizedString.Builder(key)
-          .translation(translation)
+      return localizedStringBuilder.translation(translation)
           .commentary(commentary)
           .languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
           .alternatives(alternatives)
@@ -703,6 +712,20 @@ public final class LocalizedStringLoader {
     } else {
       throw new LocalizedStringLoadingException(format("%s: either a translation string or object value is required for key '%s'",
           canonicalPath, key));
+    }
+  }
+
+  @NonNull
+  private static List<@NonNull Token> parseExpressionTokens(@NonNull String canonicalPath, @NonNull String expression) {
+    requireNonNull(canonicalPath);
+    requireNonNull(expression);
+
+    try {
+      List<@NonNull Token> tokens = EXPRESSION_EVALUATOR.getExpressionTokenizer().extractTokens(expression);
+      return EXPRESSION_EVALUATOR.convertTokensToReversePolishNotation(tokens);
+    } catch (ExpressionEvaluationException e) {
+      throw new LocalizedStringLoadingException(
+          format("%s: unable to parse alternative expression '%s'", canonicalPath, expression), e);
     }
   }
 }

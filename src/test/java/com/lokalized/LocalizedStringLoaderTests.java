@@ -118,6 +118,20 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsInvalidAlternativeExpressions() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount = 1\":{\"translation\":\"Hi\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected invalid alternative expression to fail fast during load");
+  }
+
+  @Test
   public void testClasspathLoadingFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
     tempJar.toFile().deleteOnExit();

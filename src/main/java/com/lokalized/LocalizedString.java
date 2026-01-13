@@ -48,6 +48,8 @@ public class LocalizedString {
   private final String translation;
   @Nullable
   private final String commentary;
+  @Nullable
+  private final List<@NonNull Token> expressionTokens;
   @NonNull
   private final Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
   @NonNull
@@ -64,12 +66,14 @@ public class LocalizedString {
    */
   protected LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
                             @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
-                            @Nullable List<@NonNull LocalizedString> alternatives) {
+                            @Nullable List<@NonNull LocalizedString> alternatives,
+                            @Nullable List<@NonNull Token> expressionTokens) {
     requireNonNull(key);
 
     this.key = key;
     this.translation = translation;
     this.commentary = commentary;
+    this.expressionTokens = expressionTokens == null ? null : Collections.unmodifiableList(new ArrayList<>(expressionTokens));
 
     if (languageFormTranslationsByPlaceholder == null) {
       this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
@@ -202,6 +206,11 @@ public class LocalizedString {
     return alternatives;
   }
 
+  @Nullable
+  List<@NonNull Token> getExpressionTokens() {
+    return expressionTokens;
+  }
+
 
   /**
    * Builder used to construct instances of {@link LocalizedString}.
@@ -222,6 +231,8 @@ public class LocalizedString {
     private Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
     @Nullable
     private List<@NonNull LocalizedString> alternatives;
+    @Nullable
+    private List<@NonNull Token> expressionTokens;
 
     /**
      * Constructs a localized string builder with the given key.
@@ -282,6 +293,12 @@ public class LocalizedString {
       return this;
     }
 
+    @NonNull
+    Builder expressionTokens(@Nullable List<@NonNull Token> expressionTokens) {
+      this.expressionTokens = expressionTokens;
+      return this;
+    }
+
     /**
      * Constructs an instance of {@link LocalizedString}.
      *
@@ -289,7 +306,7 @@ public class LocalizedString {
      */
     @NonNull
     public LocalizedString build() {
-      return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives);
+      return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives, expressionTokens);
     }
   }
 

@@ -388,10 +388,11 @@ class ExpressionEvaluator {
       OperandType lhsOperandType = operandType(leftHandOperand, context);
       OperandType rhsOperandType = operandType(rightHandOperand, context);
 
-      // If either side is unknown we evaluate to false
-      // TODO: fail-fast here?
       if (lhsOperandType == OperandType.UNKNOWN || rhsOperandType == OperandType.UNKNOWN)
-        return FALSE_RESULT_TOKEN;
+        throw new ExpressionEvaluationException(format(
+            "Unable to evaluate expression '%s %s %s'. Operand types %s and %s are unsupported",
+            leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
+            lhsOperandType.name(), rhsOperandType.name()));
 
       // null == null
       if (lhsOperandType == OperandType.NULL && rhsOperandType == OperandType.NULL)
