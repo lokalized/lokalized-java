@@ -16,14 +16,14 @@
 
 package com.lokalized;
 
-import org.junit.Assert;
-import org.junit.Test;
-
 import org.jspecify.annotations.NonNull;
+import org.junit.jupiter.api.Test;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,10 +34,12 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
-import java.nio.charset.StandardCharsets;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link LocalizedStringLoader}.
@@ -69,8 +71,8 @@ public class LocalizedStringLoaderTests {
 
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
-    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-GB")));
-    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("x-private")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-GB")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("x-private")));
   }
 
   @Test
@@ -83,7 +85,7 @@ public class LocalizedStringLoaderTests {
 
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
-    Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
   }
 
   @Test
@@ -124,7 +126,7 @@ public class LocalizedStringLoaderTests {
 
     try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
       Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
-      Assert.assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
+      assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
     }
   }
 
@@ -145,8 +147,8 @@ public class LocalizedStringLoaderTests {
       Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
       Set<LocalizedString> localizedStrings = localizedStringsByLocale.get(Locale.forLanguageTag("en"));
 
-      Assert.assertNotNull(localizedStrings);
-      Assert.assertEquals(2, localizedStrings.size());
+      assertNotNull(localizedStrings);
+      assertEquals(2, localizedStrings.size());
     }
   }
 
@@ -166,10 +168,9 @@ public class LocalizedStringLoaderTests {
   protected void verifyLocalizedStringsByLocale(@NonNull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {
     requireNonNull(localizedStringsByLocale);
 
-    Assert.assertEquals("Unexpected number of strings files", 4, localizedStringsByLocale.size());
+    assertEquals(4, localizedStringsByLocale.size(), "Unexpected number of strings files");
 
     for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
-      Assert.assertTrue(format("The '%s' strings file has no data", entry.getKey().toLanguageTag()),
-          entry.getValue().size() > 0);
+      assertTrue(entry.getValue().size() > 0, format("The '%s' strings file has no data", entry.getKey().toLanguageTag()));
   }
 }

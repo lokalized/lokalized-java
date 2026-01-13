@@ -16,14 +16,16 @@
 
 package com.lokalized;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.util.Locale;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Exercises {@link ExpressionEvaluator}.
  *
@@ -37,57 +39,57 @@ public class ExpressionEvaluatorTests {
 	public void identityExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Number identity failed", expressionEvaluator.evaluate("12.5 == 12.5", LOCALE));
-		Assert.assertFalse("Unequal numbers evaluate as equal", expressionEvaluator.evaluate("12.5 == 12.6", LOCALE));
-		Assert.assertTrue("Unequal numbers evaluate as equal", expressionEvaluator.evaluate("12.5 != 12.6", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("12.5 == 12.5", LOCALE), "Number identity failed");
+		assertFalse(expressionEvaluator.evaluate("12.5 == 12.6", LOCALE), "Unequal numbers evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("12.5 != 12.6", LOCALE), "Unequal numbers evaluate as equal");
 
-		Assert.assertTrue("Gender identity failed", expressionEvaluator.evaluate("MASCULINE == MASCULINE", LOCALE));
-		Assert.assertFalse("Unequal genders evaluate as equal", expressionEvaluator.evaluate("MASCULINE == FEMININE", LOCALE));
-		Assert.assertTrue("Unequal genders evaluate as equal", expressionEvaluator.evaluate("MASCULINE != FEMININE", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("MASCULINE == MASCULINE", LOCALE), "Gender identity failed");
+		assertFalse(expressionEvaluator.evaluate("MASCULINE == FEMININE", LOCALE), "Unequal genders evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("MASCULINE != FEMININE", LOCALE), "Unequal genders evaluate as equal");
 
-		Assert.assertTrue("Cardinality identity failed", expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_ONE", LOCALE));
-		Assert.assertFalse("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_MANY", LOCALE));
-		Assert.assertTrue("Unequal plurals evaluate as equal", expressionEvaluator.evaluate("CARDINALITY_ONE != CARDINALITY_MANY", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_ONE", LOCALE), "Cardinality identity failed");
+		assertFalse(expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_MANY", LOCALE), "Unequal plurals evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("CARDINALITY_ONE != CARDINALITY_MANY", LOCALE), "Unequal plurals evaluate as equal");
 	}
 
 	@Test
 	public void numericOperators() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Number <= failed", expressionEvaluator.evaluate("12.5 <= 12.5", LOCALE));
-		Assert.assertTrue("Number < failed", expressionEvaluator.evaluate("12.4 < 12.5", LOCALE));
-		Assert.assertTrue("Number >= failed", expressionEvaluator.evaluate("12.5 >= 12.5", LOCALE));
-		Assert.assertTrue("Number > failed", expressionEvaluator.evaluate("12.6 > 12.5", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("12.5 <= 12.5", LOCALE), "Number <= failed");
+		assertTrue(expressionEvaluator.evaluate("12.4 < 12.5", LOCALE), "Number < failed");
+		assertTrue(expressionEvaluator.evaluate("12.5 >= 12.5", LOCALE), "Number >= failed");
+		assertTrue(expressionEvaluator.evaluate("12.6 > 12.5", LOCALE), "Number > failed");
 	}
 
 	@Test
 	public void contextualExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Number-variable comparison failed", expressionEvaluator.evaluate("12.5 == x", Map.of(
+		assertTrue(expressionEvaluator.evaluate("12.5 == x", Map.of(
 				"x", 12.5
-		), LOCALE));
+		), LOCALE), "Number-variable comparison failed");
 
-		Assert.assertTrue("Gender-variable comparison failed", expressionEvaluator.evaluate("gender == MASCULINE", Map.of(
+		assertTrue(expressionEvaluator.evaluate("gender == MASCULINE", Map.of(
 				"gender", Gender.MASCULINE
-		), LOCALE));
+		), LOCALE), "Gender-variable comparison failed");
 
-		Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("CARDINALITY_OTHER == bigNumber", Map.of(
+		assertTrue(expressionEvaluator.evaluate("CARDINALITY_OTHER == bigNumber", Map.of(
 				"bigNumber", 1_000
-		), LOCALE));
+		), LOCALE), "Cardinality-variable comparison failed");
 
-		Assert.assertTrue("Cardinality-variable comparison failed", expressionEvaluator.evaluate("CARDINALITY_ONE == exactlyOne", Map.of(
+		assertTrue(expressionEvaluator.evaluate("CARDINALITY_ONE == exactlyOne", Map.of(
 				"exactlyOne", 1
-		), LOCALE));
+		), LOCALE), "Cardinality-variable comparison failed");
 	}
 
 	@Test
 	public void ordinalityExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Ordinality identity failed", expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_ONE", LOCALE));
-		Assert.assertFalse("Unequal ordinalities evaluate as equal", expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_OTHER", LOCALE));
-		Assert.assertTrue("Unequal ordinalities evaluate as equal", expressionEvaluator.evaluate("ORDINALITY_ONE != ORDINALITY_OTHER", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_ONE", LOCALE), "Ordinality identity failed");
+		assertFalse(expressionEvaluator.evaluate("ORDINALITY_ONE == ORDINALITY_OTHER", LOCALE), "Unequal ordinalities evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("ORDINALITY_ONE != ORDINALITY_OTHER", LOCALE), "Unequal ordinalities evaluate as equal");
 	}
 
 	@Test
@@ -100,40 +102,34 @@ public class ExpressionEvaluatorTests {
 				"c", 0
 		), LOCALE);
 
-		Assert.assertTrue("Expected && to bind tighter than ||", result);
+		assertTrue(result, "Expected && to bind tighter than ||");
 	}
 
 	@Test
 	public void hyphenatedVariableExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		Assert.assertTrue("Hyphenated variable comparison failed", expressionEvaluator.evaluate("user-name == 2", Map.of(
+		assertTrue(expressionEvaluator.evaluate("user-name == 2", Map.of(
 				"user-name", 2
-		), LOCALE));
+		), LOCALE), "Hyphenated variable comparison failed");
 	}
 
 	@Test
 	public void invalidCardinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		try {
-			expressionEvaluator.evaluate("CARDINALITY_ONE < CARDINALITY_TWO", LOCALE);
-			Assert.fail("Expected invalid cardinality operator to throw");
-		} catch (ExpressionEvaluationException expected) {
-			// Expected
-		}
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("CARDINALITY_ONE < CARDINALITY_TWO", LOCALE),
+				"Expected invalid cardinality operator to throw");
 	}
 
 	@Test
 	public void invalidOrdinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
-		try {
-			expressionEvaluator.evaluate("ORDINALITY_ONE > ORDINALITY_TWO", LOCALE);
-			Assert.fail("Expected invalid ordinality operator to throw");
-		} catch (ExpressionEvaluationException expected) {
-			// Expected
-		}
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("ORDINALITY_ONE > ORDINALITY_TWO", LOCALE),
+				"Expected invalid ordinality operator to throw");
 	}
 
 	@Test
@@ -145,6 +141,6 @@ public class ExpressionEvaluatorTests {
 			}
 		});
 
-		Assert.assertTrue("Custom tokenizer output should be evaluated", expressionEvaluator.evaluate("ignored", LOCALE));
+		assertTrue(expressionEvaluator.evaluate("ignored", LOCALE), "Custom tokenizer output should be evaluated");
 	}
 }

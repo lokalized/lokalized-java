@@ -67,8 +67,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param fallbackLocale the fallback locale, not null
 	 * @return a builder for a {@link Strings} instance, not null
 	 */
-	@NonNull
-	static DefaultStrings.Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
+	static DefaultStrings.@NonNull Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
 		requireNonNull(fallbackLocale);
 		return new DefaultStrings.Builder(fallbackLocale);
 	}

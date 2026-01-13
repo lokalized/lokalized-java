@@ -16,14 +16,14 @@
 
 package com.lokalized;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 import java.util.Map;
 
 import static java.lang.String.format;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Exercises {@link Cardinality}.
@@ -36,16 +36,16 @@ public class OrdinalityTests {
   public void ordinalityForms() {
     Locale usEnglishLocale = Locale.forLanguageTag("en-US");
 
-    Assert.assertEquals(format("Incorrect %s ordinality for 1", usEnglishLocale.toLanguageTag()),
-        Ordinality.ONE, Ordinality.forNumber(1, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s ordinality for 2", usEnglishLocale.toLanguageTag()),
-        Ordinality.TWO, Ordinality.forNumber(2, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s ordinality for 3", usEnglishLocale.toLanguageTag()),
-        Ordinality.FEW, Ordinality.forNumber(3, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s ordinality for 4", usEnglishLocale.toLanguageTag()),
-        Ordinality.OTHER, Ordinality.forNumber(4, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s ordinality for 138", usEnglishLocale.toLanguageTag()),
-        Ordinality.OTHER, Ordinality.forNumber(138, usEnglishLocale));
+    assertEquals(Ordinality.ONE, Ordinality.forNumber(1, usEnglishLocale),
+        format("Incorrect %s ordinality for 1", usEnglishLocale.toLanguageTag()));
+    assertEquals(Ordinality.TWO, Ordinality.forNumber(2, usEnglishLocale),
+        format("Incorrect %s ordinality for 2", usEnglishLocale.toLanguageTag()));
+    assertEquals(Ordinality.FEW, Ordinality.forNumber(3, usEnglishLocale),
+        format("Incorrect %s ordinality for 3", usEnglishLocale.toLanguageTag()));
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(4, usEnglishLocale),
+        format("Incorrect %s ordinality for 4", usEnglishLocale.toLanguageTag()));
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(138, usEnglishLocale),
+        format("Incorrect %s ordinality for 138", usEnglishLocale.toLanguageTag()));
   }
 
   @Test
@@ -59,8 +59,8 @@ public class OrdinalityTests {
 
         for (Integer integer : integers) {
           Ordinality calculatedOrdinality = Ordinality.forNumber(integer, locale);
-          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
-              locale.toLanguageTag(), integer, integers), ordinality, calculatedOrdinality);
+          assertEquals(ordinality, calculatedOrdinality, format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), integer, integers));
         }
       }
     }

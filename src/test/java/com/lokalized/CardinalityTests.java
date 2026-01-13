@@ -17,8 +17,7 @@
 package com.lokalized;
 
 import com.lokalized.Cardinality.CardinalityRangeFamily;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
@@ -29,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.SortedMap;
 
 import static java.lang.String.format;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Exercises {@link Cardinality}.
@@ -41,12 +41,12 @@ public class CardinalityTests {
   public void cardinalityForms() {
     Locale usEnglishLocale = Locale.forLanguageTag("en-US");
 
-    Assert.assertEquals(format("Incorrect %s cardinality for 1", usEnglishLocale.toLanguageTag()),
-        Cardinality.ONE, Cardinality.forNumber(1, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s cardinality for 0", usEnglishLocale.toLanguageTag()),
-        Cardinality.OTHER, Cardinality.forNumber(0, usEnglishLocale));
-    Assert.assertEquals(format("Incorrect %s cardinality for 1.5", usEnglishLocale.toLanguageTag()),
-        Cardinality.OTHER, Cardinality.forNumber(1.5, usEnglishLocale));
+    assertEquals(Cardinality.ONE, Cardinality.forNumber(1, usEnglishLocale),
+        format("Incorrect %s cardinality for 1", usEnglishLocale.toLanguageTag()));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(0, usEnglishLocale),
+        format("Incorrect %s cardinality for 0", usEnglishLocale.toLanguageTag()));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1.5, usEnglishLocale),
+        format("Incorrect %s cardinality for 1.5", usEnglishLocale.toLanguageTag()));
   }
 
   @Test
@@ -60,8 +60,8 @@ public class CardinalityTests {
 
         for (Integer integer : integers) {
           Cardinality calculatedCardinality = Cardinality.forNumber(integer, locale);
-          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
-              locale.toLanguageTag(), integer, integers), cardinality, calculatedCardinality);
+          assertEquals(cardinality, calculatedCardinality, format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), integer, integers));
         }
       }
     }
@@ -78,8 +78,8 @@ public class CardinalityTests {
 
         for (BigDecimal bigDecimal : bigDecimals) {
           Cardinality calculatedCardinality = Cardinality.forNumber(bigDecimal, locale);
-          Assert.assertEquals(format("Mismatched '%s' cardinalities for %s. Range was %s",
-              locale.toLanguageTag(), bigDecimal, bigDecimals), cardinality, calculatedCardinality);
+          assertEquals(cardinality, calculatedCardinality, format("Mismatched '%s' cardinalities for %s. Range was %s",
+              locale.toLanguageTag(), bigDecimal, bigDecimals));
         }
       }
     }
@@ -107,8 +107,8 @@ public class CardinalityTests {
 
         Cardinality actualCardinality = Cardinality.forRange(cardinalityRange.getStart(), cardinalityRange.getEnd(), locale);
 
-        Assert.assertEquals(format("Mismatched cardinality for range %s and locale %s", cardinalityRange, locale.toLanguageTag()),
-            expectedCardinality, actualCardinality);
+        assertEquals(expectedCardinality, actualCardinality,
+            format("Mismatched cardinality for range %s and locale %s", cardinalityRange, locale.toLanguageTag()));
       }
     }
   }

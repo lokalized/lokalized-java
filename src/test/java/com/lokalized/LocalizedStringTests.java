@@ -17,14 +17,14 @@
 package com.lokalized;
 
 import com.lokalized.LocalizedString.LanguageFormTranslation;
-
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Exercises {@link LocalizedString}.
  *
@@ -47,13 +47,10 @@ public class LocalizedStringTests {
 
     translationsByPlaceholder.clear();
 
-    Assert.assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("books"));
+    assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("books"));
 
-    try {
-      localizedString.getLanguageFormTranslationsByPlaceholder().put("other", null);
-      Assert.fail("Expected language form translations map to be unmodifiable");
-    } catch (UnsupportedOperationException expected) {
-      // Expected
-    }
+    assertThrows(UnsupportedOperationException.class,
+        () -> localizedString.getLanguageFormTranslationsByPlaceholder().put("other", null),
+        "Expected language form translations map to be unmodifiable");
   }
 }

@@ -16,12 +16,12 @@
 
 package com.lokalized;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 /**
  * Exercises {@link StringInterpolator}.
  *
@@ -37,7 +37,7 @@ public class StringInterpolatorTests {
         "user-name", "Bob"
     ));
 
-    Assert.assertEquals("Hi Ada and Bob", result);
+    assertEquals("Hi Ada and Bob", result);
   }
 
   @Test
@@ -47,6 +47,6 @@ public class StringInterpolatorTests {
         "amount", "$24.99"
     ));
 
-    Assert.assertEquals("Total: $24.99", result);
+    assertEquals("Total: $24.99", result);
   }
 }

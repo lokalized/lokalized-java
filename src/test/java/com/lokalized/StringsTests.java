@@ -16,9 +16,8 @@
 
 package com.lokalized;
 
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
@@ -29,6 +28,9 @@ import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.logging.Level;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 /**
  * Exercises {@link Strings}.
  *
@@ -36,36 +38,28 @@ import java.util.logging.Level;
  */
 @ThreadSafe
 public class StringsTests {
-	@BeforeClass
+	@BeforeAll
 	public static void configureLogging() {
 		LoggingUtils.setRootLoggerLevel(Level.FINER);
 	}
 
 	@Test
 	public void configurationVerificationTest() {
-		try {
+		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("fake"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
+		}, "Should not be able to construct a DefaultStrings instance with a fallback locale that doesn't have a corresponding strings file");
 
-			Assert.fail("Should not be able to construct a DefaultStrings instance with a fallback locale that doesn't have a corresponding strings file");
-		} catch (IllegalArgumentException expected) {
-			// Nothing to do
-		}
-
-		try {
+		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
+		}, "Should not be able to construct a DefaultStrings instance with missing tiebreaker information");
 
-			Assert.fail("Should not be able to construct a DefaultStrings instance with missing tiebreaker information");
-		} catch (IllegalArgumentException expected) {
-			// Nothing to do
-		}
-
-		try {
+		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
@@ -73,13 +67,9 @@ public class StringsTests {
 							"en", List.of(Locale.forLanguageTag("en"))
 					))
 					.build();
+		}, "Should not be able to construct a DefaultStrings instance with incomplete tiebreaker information");
 
-			Assert.fail("Should not be able to construct a DefaultStrings instance with incomplete tiebreaker information");
-		} catch (IllegalArgumentException expected) {
-			// Nothing to do
-		}
-
-		try {
+		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
@@ -87,11 +77,7 @@ public class StringsTests {
 							"en", List.of(Locale.forLanguageTag("ja-JA"))
 					))
 					.build();
-
-			Assert.fail("Should not be able to construct a DefaultStrings instance with invalid tiebreaker information");
-		} catch (IllegalArgumentException expected) {
-			// Nothing to do
-		}
+		}, "Should not be able to construct a DefaultStrings instance with invalid tiebreaker information");
 
 		// This is a legal construction because it provides all necessary fallbacks
 		Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -115,7 +101,7 @@ public class StringsTests {
 
 		String translation = strings.get("I am going on vacation");
 
-		Assert.assertEquals("I am going on holiday", translation);
+		assertEquals("I am going on holiday", translation);
 	}
 
 	@Test
@@ -130,7 +116,7 @@ public class StringsTests {
 
 		Locale bestMatch = strings.bestMatchFor(Locale.forLanguageTag("en-US"));
 
-		Assert.assertEquals(Locale.forLanguageTag("en-GB"), bestMatch);
+		assertEquals(Locale.forLanguageTag("en-GB"), bestMatch);
 	}
 
 	@Test
@@ -148,21 +134,21 @@ public class StringsTests {
 					put("bookCount", 3);
 				}});
 
-		Assert.assertEquals("I read 3 books", translation);
+		assertEquals("I read 3 books", translation);
 
 		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", 1);
 				}});
 
-		Assert.assertEquals("I read 1 book", translation);
+		assertEquals("I read 1 book", translation);
 
 		translation = strings.get("I read {{bookCount}} books",
 				new HashMap<String, Object>() {{
 					put("bookCount", new BigDecimal("1.0"));
 				}});
 
-		Assert.assertEquals("I read 1.0 books", translation);
+		assertEquals("I read 1.0 books", translation);
 
 		// Switch to Russian
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -178,7 +164,7 @@ public class StringsTests {
 					put("bookCount", 3);
 				}});
 
-		Assert.assertEquals("I прочитал 3 книг", translation);
+		assertEquals("I прочитал 3 книг", translation);
 	}
 
 	@Test
@@ -197,7 +183,7 @@ public class StringsTests {
 					put("year", 18);
 				}});
 
-		Assert.assertEquals("His 18th birthday party is next week.", translation);
+		assertEquals("His 18th birthday party is next week.", translation);
 
 		translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
 				new HashMap<String, Object>() {{
@@ -205,7 +191,7 @@ public class StringsTests {
 					put("year", 21);
 				}});
 
-		Assert.assertEquals("Her 21st birthday party is next week.", translation);
+		assertEquals("Her 21st birthday party is next week.", translation);
 
 		// Switch to Spanish
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -222,14 +208,14 @@ public class StringsTests {
 					put("year", 18);
 				}});
 
-		Assert.assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
+		assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
 
 		translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
 				new HashMap<String, Object>() {{
 					put("year", 1);
 				}});
 
-		Assert.assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
+		assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
 
 		translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
 				new HashMap<String, Object>() {{
@@ -237,7 +223,7 @@ public class StringsTests {
 					put("year", 15);
 				}});
 
-		Assert.assertEquals("Su quinceañera es la próxima semana.", translation);
+		assertEquals("Su quinceañera es la próxima semana.", translation);
 	}
 
 	@Test
@@ -255,14 +241,14 @@ public class StringsTests {
 					put("heOrShe", Gender.MASCULINE);
 				}});
 
-		Assert.assertEquals("He is a good actor.", translation);
+		assertEquals("He is a good actor.", translation);
 
 		translation = strings.get("{{heOrShe}} is a good actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
 				}});
 
-		Assert.assertEquals("She is a good actress.", translation);
+		assertEquals("She is a good actress.", translation);
 
 		// Switch to Spanish
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -278,28 +264,28 @@ public class StringsTests {
 					put("heOrShe", Gender.MASCULINE);
 				}});
 
-		Assert.assertEquals("Él es un buen actor.", translation);
+		assertEquals("Él es un buen actor.", translation);
 
 		translation = strings.get("{{heOrShe}} is a good actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
 				}});
 
-		Assert.assertEquals("Ella es una buena actriz.", translation);
+		assertEquals("Ella es una buena actriz.", translation);
 
 		translation = strings.get("{{heOrShe}} is a great actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.MASCULINE);
 				}});
 
-		Assert.assertEquals("Él es un gran actor.", translation);
+		assertEquals("Él es un gran actor.", translation);
 
 		translation = strings.get("{{heOrShe}} is a great actor.",
 				new HashMap<String, Object>() {{
 					put("heOrShe", Gender.FEMININE);
 				}});
 
-		Assert.assertEquals("Ella es una gran actriz.", translation);
+		assertEquals("Ella es una gran actriz.", translation);
 	}
 
 	@Test
@@ -317,7 +303,7 @@ public class StringsTests {
 					put("bookCount", 0);
 				}});
 
-		Assert.assertEquals("I didn't read any books", translation);
+		assertEquals("I didn't read any books", translation);
 	}
 
 	@Test
@@ -343,7 +329,7 @@ public class StringsTests {
 					put("groupSize", 10);
 				}});
 
-		Assert.assertEquals("He was one of the 10 best baseball players.", translation);
+		assertEquals("He was one of the 10 best baseball players.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -351,7 +337,7 @@ public class StringsTests {
 					put("groupSize", 1);
 				}});
 
-		Assert.assertEquals("He was the best baseball player.", translation);
+		assertEquals("He was the best baseball player.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -359,7 +345,7 @@ public class StringsTests {
 					put("groupSize", 10);
 				}});
 
-		Assert.assertEquals("She was one of the 10 best baseball players.", translation);
+		assertEquals("She was one of the 10 best baseball players.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -367,7 +353,7 @@ public class StringsTests {
 					put("groupSize", 1);
 				}});
 
-		Assert.assertEquals("She was the best baseball player.", translation);
+		assertEquals("She was the best baseball player.", translation);
 
 		// Switch to Spanish
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -389,7 +375,7 @@ public class StringsTests {
 					put("groupSize", 10);
 				}});
 
-		Assert.assertEquals("Fue uno de los 10 mejores jugadores de béisbol.", translation);
+		assertEquals("Fue uno de los 10 mejores jugadores de béisbol.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -397,7 +383,7 @@ public class StringsTests {
 					put("groupSize", 1);
 				}});
 
-		Assert.assertEquals("Él era el mejor jugador de béisbol.", translation);
+		assertEquals("Él era el mejor jugador de béisbol.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -405,7 +391,7 @@ public class StringsTests {
 					put("groupSize", 10);
 				}});
 
-		Assert.assertEquals("Fue una de las 10 mejores jugadoras de béisbol.", translation);
+		assertEquals("Fue una de las 10 mejores jugadoras de béisbol.", translation);
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -413,7 +399,7 @@ public class StringsTests {
 					put("groupSize", 1);
 				}});
 
-		Assert.assertEquals("Ella era la mejor jugadora de béisbol.", translation);
+		assertEquals("Ella era la mejor jugadora de béisbol.", translation);
 	}
 
 	@Test
@@ -428,7 +414,7 @@ public class StringsTests {
 
 		String translation = strings.get("I read {{bookCount}} books");
 
-		Assert.assertEquals("I read {{bookCount}} books", translation);
+		assertEquals("I read {{bookCount}} books", translation);
 	}
 
 	@Test
@@ -443,7 +429,7 @@ public class StringsTests {
 
 		String translation = strings.get("I am going on vacation");
 
-		Assert.assertEquals("I am going on vacation", translation);
+		assertEquals("I am going on vacation", translation);
 
 		Strings enGbStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -455,7 +441,7 @@ public class StringsTests {
 
 		String enGbTranslation = enGbStrings.get("I am going on vacation");
 
-		Assert.assertEquals("I am going on holiday", enGbTranslation);
+		assertEquals("I am going on holiday", enGbTranslation);
 
 		Strings enUsStrings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -467,7 +453,7 @@ public class StringsTests {
 
 		String enUsTranslation = enUsStrings.get("I am going on vacation");
 
-		Assert.assertEquals("I am going on vacation", enUsTranslation);
+		assertEquals("I am going on vacation", enUsTranslation);
 
 		Strings ruStrings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -479,7 +465,7 @@ public class StringsTests {
 
 		String ruTranslation = ruStrings.get("I am going on vacation - MISSING KEY");
 
-		Assert.assertEquals("I am going on vacation - MISSING KEY", ruTranslation);
+		assertEquals("I am going on vacation - MISSING KEY", ruTranslation);
 
 		Strings ru2Strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -490,7 +476,7 @@ public class StringsTests {
 
 		String ru2Translation = ru2Strings.get("Hello, world!");
 
-		Assert.assertEquals("Приветствую, мир", ru2Translation);
+		assertEquals("Приветствую, мир", ru2Translation);
 	}
 
 	@Test
@@ -508,7 +494,7 @@ public class StringsTests {
 			put("maxHours", 2);
 		}});
 
-		Assert.assertEquals("The meeting will be 1.5-2 hours long.", enTranslation);
+		assertEquals("The meeting will be 1.5-2 hours long.", enTranslation);
 	}
 
 	@Test
@@ -523,13 +509,13 @@ public class StringsTests {
 
 		String translation = strings.get("There is no key for this");
 
-		Assert.assertEquals("There is no key for this", translation);
+		assertEquals("There is no key for this", translation);
 
 		translation = strings.get("There is no key for {{this}}", new HashMap<String, Object>() {{
 			put("this", "that");
 		}});
 
-		Assert.assertEquals("There is no key for that", translation);
+		assertEquals("There is no key for that", translation);
 	}
 
 	@Test
@@ -546,6 +532,6 @@ public class StringsTests {
 			put("amount", "$24.99");
 		}});
 
-		Assert.assertEquals("We were unable to charge $24.99 to your credit card.", translation);
+		assertEquals("We were unable to charge $24.99 to your credit card.", translation);
 	}
 }
