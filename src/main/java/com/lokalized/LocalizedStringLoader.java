@@ -72,6 +72,8 @@ public final class LocalizedStringLoader {
   @NonNull
   private static final ExpressionEvaluator EXPRESSION_EVALUATOR;
   @NonNull
+  private static final Pattern PLACEHOLDER_NAME_PATTERN;
+  @NonNull
   private static final Pattern LANGUAGE_TAG_PATTERN;
   @NonNull
   private static final String JSON_EXTENSION;
@@ -112,6 +114,7 @@ public final class LocalizedStringLoader {
     }
 
     SUPPORTED_LANGUAGE_FORMS_BY_NAME = Collections.unmodifiableMap(supportedLanguageFormsByName);
+    PLACEHOLDER_NAME_PATTERN = Pattern.compile("^[\\p{Alpha}_][\\p{Alnum}_-]*$");
     LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
     JSON_EXTENSION = ".json";
   }
@@ -421,7 +424,7 @@ public final class LocalizedStringLoader {
 
     String languageTag = fileName;
 
-    if (fileName.endsWith(JSON_EXTENSION))
+    if (fileName.toLowerCase(Locale.ROOT).endsWith(JSON_EXTENSION))
       languageTag = fileName.substring(0, fileName.length() - JSON_EXTENSION.length());
 
     return isLanguageTag(languageTag) ? languageTag : null;
@@ -603,6 +606,8 @@ public final class LocalizedStringLoader {
           String value = null;
           LanguageFormTranslationRange rangeValue = null;
 
+          ensureValidPlaceholderName(canonicalPath, key, placeholderKey, "placeholder");
+
           if (!placeholderJsonValue.isObject())
             throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key is '%s'", canonicalPath, key));
 
@@ -639,18 +644,25 @@ public final class LocalizedStringLoader {
             if (!rangeValueEndJsonValue.isString())
               throw new LocalizedStringLoadingException(format("%s: a placeholder translation range end must be a string. Key is '%s'", canonicalPath, key));
 
-            rangeValue = new LanguageFormTranslationRange(rangeValueStartJsonValue.asString(), rangeValueEndJsonValue.asString());
+            String rangeStartValue = rangeValueStartJsonValue.asString();
+            String rangeEndValue = rangeValueEndJsonValue.asString();
+
+            ensureValidPlaceholderName(canonicalPath, key, rangeStartValue, "range start");
+            ensureValidPlaceholderName(canonicalPath, key, rangeEndValue, "range end");
+
+            rangeValue = new LanguageFormTranslationRange(rangeStartValue, rangeEndValue);
           } else {
             if (!valueJsonValue.isString())
               throw new LocalizedStringLoadingException(format("%s: a placeholder translation value must be a string. Key is '%s'", canonicalPath, key));
 
             value = valueJsonValue.asString();
+            ensureValidPlaceholderName(canonicalPath, key, value, "placeholder value");
           }
 
           JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
 
           if (translationsJsonValue == null || translationsJsonValue.isNull())
-            continue;
+            throw new LocalizedStringLoadingException(format("%s: placeholder translations are required. Key is '%s'", canonicalPath, key));
 
           if (!translationsJsonValue.isObject())
             throw new LocalizedStringLoadingException(format("%s: the placeholder translations value must be an object. Key is '%s'", canonicalPath, key));
@@ -674,6 +686,9 @@ public final class LocalizedStringLoader {
 
             translationsByLanguageForm.put(languageForm, languageFormTranslationJsonValue.asString());
           }
+
+          if (translationsByLanguageForm.isEmpty())
+            throw new LocalizedStringLoadingException(format("%s: placeholder translations are required. Key is '%s'", canonicalPath, key));
 
           LanguageFormTranslation languageFormTranslation = rangeValue != null
               ? new LanguageFormTranslation(rangeValue, translationsByLanguageForm)
@@ -736,5 +751,17 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(
           format("%s: unable to parse alternative expression '%s'", canonicalPath, expression), e);
     }
+  }
+
+  private static void ensureValidPlaceholderName(@NonNull String canonicalPath, @NonNull String key,
+                                                 @NonNull String placeholderName, @NonNull String description) {
+    requireNonNull(canonicalPath);
+    requireNonNull(key);
+    requireNonNull(placeholderName);
+    requireNonNull(description);
+
+    if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
+      throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a letter or underscore " +
+          "and contain only letters, digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
   }
 }

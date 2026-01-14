@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -441,6 +442,29 @@ public class StringsTests {
 		assertThrows(ExpressionEvaluationException.class,
 				() -> strings.get("I read {{bookCount}} books"),
 				"Expected missing placeholders in expressions to throw");
+	}
+
+	@Test
+	public void missingPlaceholderTranslationsThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{itemLabel}}")
+				.translation("You have {{count}} {{itemLabel}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"itemLabel", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item"
+						))
+				))
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertThrows(IllegalStateException.class,
+				() -> strings.get("You have {{count}} {{itemLabel}}", Map.of("count", 2)),
+				"Expected missing placeholder translations to throw");
 	}
 
 	@Test

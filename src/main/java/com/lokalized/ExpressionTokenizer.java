@@ -84,8 +84,8 @@ class ExpressionTokenizer {
       put(TokenType.MASCULINE, "\\bMASCULINE\\b");
       put(TokenType.FEMININE, "\\bFEMININE\\b");
       put(TokenType.NEUTER, "\\bNEUTER\\b");
-      put(TokenType.NUMBER, "-?(0|([1-9]\\d*))(\\.\\d+)?");
-      put(TokenType.VARIABLE, "[\\p{Alnum}_][\\p{Alnum}_-]*");
+      put(TokenType.NUMBER, "[+-]?((\\d+\\.\\d*)|(\\.\\d+)|(\\d+))([eE][+-]?\\d+)?");
+      put(TokenType.VARIABLE, "[\\p{Alpha}_][\\p{Alnum}_-]*");
     }});
 
     // Underscore is illegal in regex group names.

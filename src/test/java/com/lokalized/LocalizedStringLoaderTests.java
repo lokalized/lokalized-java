@@ -91,6 +91,19 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingJsonExtensionCaseInsensitive() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Path jsonFile = tempDirectory.resolve("en-US.JSON");
+    Files.write(jsonFile, "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
+  }
+
+  @Test
   public void testFilesystemLoadingSkipsDirectories() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -155,6 +168,34 @@ public class LocalizedStringLoaderTests {
     assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
         "Expected invalid JSON to fail fast during load");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsInvalidPlaceholderNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholders\":{\"1st\":{\"value\":\"name\",\"translations\":{\"CARDINALITY_ONE\":\"one\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected digit-leading placeholder names to be rejected");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsMissingPlaceholderTranslations() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholders\":{\"name\":{\"value\":\"name\"}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected missing placeholder translations to fail during load");
   }
 
   @Test

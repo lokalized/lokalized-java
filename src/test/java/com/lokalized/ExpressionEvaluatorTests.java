@@ -60,6 +60,10 @@ public class ExpressionEvaluatorTests {
 		assertTrue(expressionEvaluator.evaluate("12.4 < 12.5", LOCALE), "Number < failed");
 		assertTrue(expressionEvaluator.evaluate("12.5 >= 12.5", LOCALE), "Number >= failed");
 		assertTrue(expressionEvaluator.evaluate("12.6 > 12.5", LOCALE), "Number > failed");
+		assertTrue(expressionEvaluator.evaluate(".5 == 0.5", LOCALE), "Leading decimal comparison failed");
+		assertTrue(expressionEvaluator.evaluate("1. == 1", LOCALE), "Trailing decimal comparison failed");
+		assertTrue(expressionEvaluator.evaluate("+1 == 1", LOCALE), "Signed integer comparison failed");
+		assertTrue(expressionEvaluator.evaluate("1e3 == 1000", LOCALE), "Exponent comparison failed");
 	}
 
 	@Test
@@ -109,6 +113,24 @@ public class ExpressionEvaluatorTests {
 		assertThrows(ExpressionEvaluationException.class,
 				() -> expressionEvaluator.evaluate("missing == 1", Map.of(), LOCALE),
 				"Missing placeholder values should raise an error");
+	}
+
+	@Test
+	public void shortCircuitOrSkipsMissingPlaceholder() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertTrue(expressionEvaluator.evaluate("a == 1 || missing == 1", Map.of(
+				"a", 1
+		), LOCALE), "Expected OR short-circuit to skip missing placeholders");
+	}
+
+	@Test
+	public void shortCircuitAndSkipsMissingPlaceholder() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertFalse(expressionEvaluator.evaluate("a == 1 && missing == 1", Map.of(
+				"a", 0
+		), LOCALE), "Expected AND short-circuit to skip missing placeholders");
 	}
 
 	@Test

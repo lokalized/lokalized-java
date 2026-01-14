@@ -38,7 +38,7 @@ class StringInterpolator {
   private static final Pattern PLACEHOLDER_PATTERN;
 
   static {
-    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{[\\p{Alnum}_-]+}}");
+    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{[\\p{Alpha}_][\\p{Alnum}_-]*}}");
   }
 
   @NonNull

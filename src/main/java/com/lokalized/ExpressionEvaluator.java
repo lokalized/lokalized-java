@@ -300,51 +300,83 @@ class ExpressionEvaluator {
     requireNonNull(context);
     requireNonNull(locale);
 
-    Deque<Token> valueStack = new ArrayDeque<>();
+    ExpressionNode root = buildExpressionTreeFromReversePolishNotationTokens(tokens);
+    Token resultToken = evaluateExpressionNode(root, context, locale);
 
-    // Evaluate RPN tokens.
-    // See http://en.wikipedia.org/wiki/Reverse_Polish_notation
+    if (resultToken == TRUE_RESULT_TOKEN)
+      return true;
+    if (resultToken == FALSE_RESULT_TOKEN)
+      return false;
+
+    throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
+  }
+
+  @NonNull
+  protected ExpressionNode buildExpressionTreeFromReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens) {
+    requireNonNull(tokens);
+
+    Deque<ExpressionNode> nodeStack = new ArrayDeque<>();
+
     for (Token token : tokens) {
-      // If the token is a value
       if (isOperand(token)) {
-        // Push it onto the stack.
-        valueStack.push(token);
+        nodeStack.push(new ExpressionNode(token));
       } else if (isOperator(token)) {
-        // It is known a priori that an operator takes 2 arguments.
-        // If there are fewer than 2 values on the stack, the user has not input sufficient values in the expression.
-        if (valueStack.size() < 2)
+        if (nodeStack.size() < 2)
           throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s' (%s)",
-              token.getSymbol(), valueStack.stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+              token.getSymbol(), nodeStack.stream().map(node -> node.getToken().getSymbol()).collect(Collectors.toList())));
 
-        // Else, Pop the top 2 values from the stack.
-        Token rightHandOperand = valueStack.pop();
-        Token leftHandOperand = valueStack.pop();
-
-        // Evaluate the operator, with the values as arguments.
-        Token result = evaluateBinaryOperator(leftHandOperand, token, rightHandOperand, context, locale);
-
-        // Push the returned results, if any, back onto the stack.
-        valueStack.push(result);
+        ExpressionNode rightHandOperand = nodeStack.pop();
+        ExpressionNode leftHandOperand = nodeStack.pop();
+        nodeStack.push(new ExpressionNode(token, leftHandOperand, rightHandOperand));
       } else {
         throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
       }
     }
 
-    // If there is only one value in the stack, that value is the result of the calculation.
-    if (valueStack.size() == 1) {
-      Token resultToken = valueStack.pop();
+    if (nodeStack.size() == 1)
+      return nodeStack.pop();
 
-      if (resultToken == TRUE_RESULT_TOKEN)
-        return true;
-      if (resultToken == FALSE_RESULT_TOKEN)
-        return false;
+    throw new ExpressionEvaluationException(format("Unexpected extra values exist on the stack: %s", nodeStack
+        .stream().map(node -> node.getToken().getSymbol()).collect(Collectors.toList())));
+  }
 
-      throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
+  @NonNull
+  protected Token evaluateExpressionNode(@NonNull ExpressionNode node,
+                                         @NonNull Map<@NonNull String, @Nullable Object> context,
+                                         @NonNull Locale locale) {
+    requireNonNull(node);
+    requireNonNull(context);
+    requireNonNull(locale);
+
+    Token token = node.getToken();
+
+    if (isOperand(token))
+      return token;
+
+    if (!isOperator(token))
+      throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
+
+    if (isBooleanOperator(token)) {
+      Token leftResult = evaluateExpressionNode(node.getLeft(), context, locale);
+      boolean leftValue = booleanValue(leftResult);
+
+      if (token.getTokenType() == TokenType.AND && !leftValue)
+        return FALSE_RESULT_TOKEN;
+
+      if (token.getTokenType() == TokenType.OR && leftValue)
+        return TRUE_RESULT_TOKEN;
+
+      Token rightResult = evaluateExpressionNode(node.getRight(), context, locale);
+      boolean rightValue = booleanValue(rightResult);
+      boolean result = token.getTokenType() == TokenType.AND ? (leftValue && rightValue) : (leftValue || rightValue);
+
+      return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
     }
 
-    // Otherwise, there are more values in the stack. The user input has too many values.
-    throw new ExpressionEvaluationException(format("Unexpected extra values exist on the stack: %s", valueStack
-        .stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+    Token leftResult = evaluateExpressionNode(node.getLeft(), context, locale);
+    Token rightResult = evaluateExpressionNode(node.getRight(), context, locale);
+
+    return evaluateBinaryOperator(leftResult, token, rightResult, context, locale);
   }
 
   /**
@@ -861,5 +893,46 @@ class ExpressionEvaluator {
    */
   protected enum OperandType {
     NUMBER, GENDER, CARDINALITY, ORDINALITY, UNKNOWN;
+  }
+
+  protected static final class ExpressionNode {
+    @NonNull
+    private final Token token;
+    @Nullable
+    private final ExpressionNode left;
+    @Nullable
+    private final ExpressionNode right;
+
+    private ExpressionNode(@NonNull Token token) {
+      this(token, null, null);
+    }
+
+    private ExpressionNode(@NonNull Token token, @Nullable ExpressionNode left, @Nullable ExpressionNode right) {
+      requireNonNull(token);
+      this.token = token;
+      this.left = left;
+      this.right = right;
+    }
+
+    @NonNull
+    private Token getToken() {
+      return token;
+    }
+
+    @NonNull
+    private ExpressionNode getLeft() {
+      if (left == null)
+        throw new ExpressionEvaluationException(format("Missing left operand for '%s'", token.getSymbol()));
+
+      return left;
+    }
+
+    @NonNull
+    private ExpressionNode getRight() {
+      if (right == null)
+        throw new ExpressionEvaluationException(format("Missing right operand for '%s'", token.getSymbol()));
+
+      return right;
+    }
   }
 }

@@ -425,7 +425,7 @@ public class DefaultStrings implements Strings {
 					String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
 
 					if (cardinalityTranslation == null)
-						logger.warning(format("Unable to find %s translation for range cardinality %s (start was %s, end was %s). Localized string was %s",
+						throw new IllegalStateException(format("Missing %s translation for range cardinality %s (start was %s, end was %s). Localized string was %s",
 								Cardinality.class.getSimpleName(), rangeCardinality.name(), startCardinality.name(), endCardinality.name(), localizedString));
 
 					mutableContext.put(placeholderName, cardinalityTranslation);
@@ -444,7 +444,7 @@ public class DefaultStrings implements Strings {
 					String cardinalityTranslation = translationsByCardinality.get(cardinality);
 
 					if (cardinalityTranslation == null)
-						logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+						throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
 								Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
 
 					mutableContext.put(placeholderName, cardinalityTranslation);
@@ -466,7 +466,7 @@ public class DefaultStrings implements Strings {
 				String ordinalityTranslation = translationsByOrdinality.get(ordinality);
 
 				if (ordinalityTranslation == null)
-					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
 							Ordinality.class.getSimpleName(), ordinality.name(), localizedString));
 
 				mutableContext.put(placeholderName, ordinalityTranslation);
@@ -490,7 +490,7 @@ public class DefaultStrings implements Strings {
 				String genderTranslation = translationsByGender.get(gender);
 
 				if (genderTranslation == null)
-					logger.warning(format("Unable to find %s translation for %s. Localized string was %s",
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
 							Gender.class.getSimpleName(), gender.name(), localizedString));
 
 				mutableContext.put(placeholderName, genderTranslation);

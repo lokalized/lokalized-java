@@ -56,6 +56,45 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void numberTokenizationSupportsSignsAndExponents() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("value == +12.5");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "value"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.NUMBER, "+12.5"));
+
+    assertEquals(expectedTokens, tokens);
+
+    tokens = new ExpressionTokenizer().extractTokens("value == .5");
+
+    expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "value"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.NUMBER, ".5"));
+
+    assertEquals(expectedTokens, tokens);
+
+    tokens = new ExpressionTokenizer().extractTokens("value == 1.");
+
+    expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "value"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.NUMBER, "1."));
+
+    assertEquals(expectedTokens, tokens);
+
+    tokens = new ExpressionTokenizer().extractTokens("value == 1e3");
+
+    expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "value"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.NUMBER, "1e3"));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void shortMalformedTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("chickenCount");
 
