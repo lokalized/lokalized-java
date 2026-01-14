@@ -143,6 +143,50 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void phoneticExpressions() {
+		PhoneticResolver phoneticResolver = term -> {
+			String value = term.toString().toLowerCase(Locale.ROOT);
+			return value.startsWith("hon") ? Phonetic.VOWEL : Phonetic.CONSONANT;
+		};
+
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
+
+		assertTrue(expressionEvaluator.evaluate("term == PHONETIC_VOWEL", Map.of(
+				"term", "honor"
+		), LOCALE), "Phonetic vowel comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("term == PHONETIC_CONSONANT", Map.of(
+				"term", "user"
+		), LOCALE), "Phonetic consonant comparison failed");
+
+		assertFalse(expressionEvaluator.evaluate("term == PHONETIC_VOWEL", Map.of(
+				"term", "user"
+		), LOCALE), "Phonetic comparison unexpectedly matched");
+
+		assertTrue(new ExpressionEvaluator().evaluate("term == PHONETIC_VOWEL", Map.of(
+				"term", Phonetic.VOWEL
+		), LOCALE), "Explicit phonetic values should be comparable without a resolver");
+	}
+
+	@Test
+	public void invalidPhoneticOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, term -> Phonetic.CONSONANT);
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("term < PHONETIC_VOWEL", Map.of("term", "honor"), LOCALE),
+				"Expected invalid phonetic operator to throw");
+	}
+
+	@Test
+	public void missingPhoneticResolverThrows() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("term == PHONETIC_VOWEL", Map.of("term", "honor"), LOCALE),
+				"Expected missing phonetic resolver to throw");
+	}
+
+	@Test
 	public void operatorPrecedence() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

@@ -16,13 +16,25 @@
 
 package com.lokalized;
 
+import org.jspecify.annotations.NonNull;
+
 /**
- * Marker interface which signifies a language construct (genders, cardinalities, ordinalities, phonetics).
+ * Resolves {@link Phonetic} categories for terms at runtime.
  * <p>
- * Implementors must be {@link Enum} types only.
+ * This allows callers to supply language-specific phonetic logic without
+ * Lokalized needing a built-in phonetic dictionary.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 1.2.0
  */
-public interface LanguageForm {
-  // Marker interface
+@FunctionalInterface
+public interface PhoneticResolver {
+  /**
+   * Determines the phonetic category for a term.
+   *
+   * @param term the term to classify, not null
+   * @return the phonetic category for the term, not null
+   */
+  @NonNull
+  Phonetic resolve(@NonNull String term);
 }

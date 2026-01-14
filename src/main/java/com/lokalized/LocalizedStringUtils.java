@@ -33,10 +33,13 @@ final class LocalizedStringUtils {
   private static final String CARDINALITY_NAME_PREFIX;
   @NonNull
   private static final String ORDINALITY_NAME_PREFIX;
+  @NonNull
+  private static final String PHONETIC_NAME_PREFIX;
 
   static {
     CARDINALITY_NAME_PREFIX = "CARDINALITY_";
     ORDINALITY_NAME_PREFIX = "ORDINALITY_";
+    PHONETIC_NAME_PREFIX = "PHONETIC_";
   }
 
   private LocalizedStringUtils() {
@@ -101,5 +104,35 @@ final class LocalizedStringUtils {
           localizedStringName, ORDINALITY_NAME_PREFIX));
 
     return localizedStringName.substring(ORDINALITY_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Phonetic name ({@code VOWEL}) to match localized strings file format {@code "PHONETIC_VOWEL"}.
+   *
+   * @param phoneticName the phonetic name to massage, not null
+   * @return the localized strings file representation of a phonetic name, not null
+   */
+  @NonNull
+  static String localizedStringNameForPhoneticName(@NonNull String phoneticName) {
+    requireNonNull(phoneticName);
+    return format("%s%s", PHONETIC_NAME_PREFIX, phoneticName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "PHONETIC_VOWEL"} to match phonetic name ({@code VOWEL}).
+   *
+   * @param localizedStringName the localized strings phonetic name to massage, not null
+   * @return the phonetic name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String phoneticNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(PHONETIC_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Phonetic value '%s' does not start with prefix '%s'",
+          localizedStringName, PHONETIC_NAME_PREFIX));
+
+    return localizedStringName.substring(PHONETIC_NAME_PREFIX.length());
   }
 }

@@ -44,6 +44,18 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void phoneticTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("sound == PHONETIC_VOWEL");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "sound"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.PHONETIC_VOWEL));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void numberTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("chickenCount == -12.5");
 

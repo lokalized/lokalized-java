@@ -844,7 +844,7 @@ bookCount == CARDINALITY_OTHER
 bookCount == 50
 ``` 
 
-Note that the supported comparison operators for cardinality, ordinality, and gender forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
+Note that the supported comparison operators for cardinality, ordinality, gender, and phonetic forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
 
 Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `placeholders`, `commentary`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
   
@@ -896,11 +896,17 @@ A grammar for alternative expressions follows.
 ```EBNF
 EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
 OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
-LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | PHONETIC ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
 GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
-VARIABLE = ( alphabetic character | digit | "_" ) { alphabetic character | digit | "_" | "-" } ;
+PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
+         | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
+         | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
+         | "PHONETIC_GLIDE_Y" | "PHONETIC_GLIDE_W"
+         | "PHONETIC_STRESSED_A"
+         | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" ;
+VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" | "-" } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
@@ -908,7 +914,7 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 #### What Expressions Currently Support
 
 * Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
-* Comparison of gender, plural, and literal numeric values against each other or user-supplied variables
+* Comparison of gender, phonetic, plural, and literal numeric values against each other or user-supplied variables
 
 #### What Expressions Do Not Currently Support
 

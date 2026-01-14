@@ -44,11 +44,17 @@ import static java.util.Objects.requireNonNull;
  * <pre>
  * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
  * OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
- * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER ;
+ * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | PHONETIC ;
  * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
  * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
  * GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
- * VARIABLE = { alphabetic character | digit } ;
+ * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
+ *          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
+ *          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
+ *          | "PHONETIC_GLIDE_Y" | "PHONETIC_GLIDE_W"
+ *          | "PHONETIC_STRESSED_A"
+ *          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" ;
+ * VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" | "-" } ;
  * BOOLEAN_OPERATOR = "&&" | "||" ;
  * COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
  * </pre>
@@ -64,6 +70,8 @@ class ExpressionEvaluator {
   @NonNull
   private static final Set<@NonNull TokenType> GENDER_TOKEN_TYPES;
   @NonNull
+  private static final Set<@NonNull TokenType> PHONETIC_TOKEN_TYPES;
+  @NonNull
   private static final Set<@NonNull TokenType> COMPARISON_OPERATOR_TOKEN_TYPES;
   @NonNull
   private static final Set<@NonNull TokenType> BOOLEAN_OPERATOR_TOKEN_TYPES;
@@ -78,6 +86,8 @@ class ExpressionEvaluator {
 
   @NonNull
   private final ExpressionTokenizer expressionTokenizer;
+  @Nullable
+  private final PhoneticResolver phoneticResolver;
 
   static {
     CARDINALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
@@ -110,6 +120,27 @@ class ExpressionEvaluator {
       }
     });
 
+    PHONETIC_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.PHONETIC_VOWEL);
+        add(TokenType.PHONETIC_CONSONANT);
+        add(TokenType.PHONETIC_OTHER);
+        add(TokenType.PHONETIC_H_SILENT);
+        add(TokenType.PHONETIC_H_ASPIRATED);
+        add(TokenType.PHONETIC_S_IMPURE);
+        add(TokenType.PHONETIC_Z);
+        add(TokenType.PHONETIC_GN);
+        add(TokenType.PHONETIC_PS);
+        add(TokenType.PHONETIC_PN);
+        add(TokenType.PHONETIC_X);
+        add(TokenType.PHONETIC_GLIDE_Y);
+        add(TokenType.PHONETIC_GLIDE_W);
+        add(TokenType.PHONETIC_STRESSED_A);
+        add(TokenType.PHONETIC_SOLAR);
+        add(TokenType.PHONETIC_LUNAR);
+      }
+    });
+
     COMPARISON_OPERATOR_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
         add(TokenType.LESS_THAN);
@@ -132,6 +163,7 @@ class ExpressionEvaluator {
     operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(ORDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
+    operandTokenTypes.addAll(PHONETIC_TOKEN_TYPES);
     operandTokenTypes.add(TokenType.VARIABLE);
     operandTokenTypes.add(TokenType.NUMBER);
 
@@ -152,7 +184,7 @@ class ExpressionEvaluator {
    * Constructs an expression evaluation with a default tokenizer.
    */
   public ExpressionEvaluator() {
-    this(null);
+    this(null, null);
   }
 
   /**
@@ -163,7 +195,21 @@ class ExpressionEvaluator {
    * @param expressionTokenizer the expression tokenizer to use, may be null
    */
   public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer) {
+    this(expressionTokenizer, null);
+  }
+
+  /**
+   * Constructs an expression evaluation with the provided tokenizer and phonetic resolver.
+   * <p>
+   * If no tokenizer is provided, a default will be used.
+   *
+   * @param expressionTokenizer the expression tokenizer to use, may be null
+   * @param phoneticResolver    the phonetic resolver to use, may be null
+   */
+  public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer,
+                             @Nullable PhoneticResolver phoneticResolver) {
     this.expressionTokenizer = expressionTokenizer == null ? new ExpressionTokenizer() : expressionTokenizer;
+    this.phoneticResolver = phoneticResolver;
   }
 
   /**
@@ -516,6 +562,27 @@ class ExpressionEvaluator {
         return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
       }
 
+      // Phonetic (operators: ==, !=)
+      if (lhsOperandType == OperandType.PHONETIC || rhsOperandType == OperandType.PHONETIC) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing phonetic comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Phonetic lhsValue = phoneticFromOperand(leftHandOperand, context);
+        Phonetic rhsValue = phoneticFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
       throw new ExpressionEvaluationException(format(
           "Unable to evaluate expression '%s %s %s'. Operand types %s and %s are incompatible", leftHandOperand.getSymbol(),
           operator.getSymbol(), rightHandOperand.getSymbol(), lhsOperandType.name(), rhsOperandType.name()));
@@ -642,6 +709,18 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Does the specified token represent a phonetic category?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a phonetic category, not null
+   */
+  @NonNull
+  protected Boolean isPhonetic(@NonNull Token token) {
+    requireNonNull(token);
+    return PHONETIC_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
    * Determines the type of an operand.
    *
    * @param operand the operand to examine, not null
@@ -661,6 +740,8 @@ class ExpressionEvaluator {
       return OperandType.ORDINALITY;
     if (isGender(operand))
       return OperandType.GENDER;
+    if (isPhonetic(operand))
+      return OperandType.PHONETIC;
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       if (!context.containsKey(operand.getSymbol()))
@@ -681,6 +762,10 @@ class ExpressionEvaluator {
         return OperandType.ORDINALITY;
       if (value instanceof Gender)
         return OperandType.GENDER;
+      if (value instanceof Phonetic)
+        return OperandType.PHONETIC;
+      if (value instanceof CharSequence)
+        return OperandType.PHONETIC;
     }
 
     return OperandType.UNKNOWN;
@@ -824,6 +909,58 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Determines the phonetic category of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the phonetic category of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine phonetic value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Phonetic phoneticFromOperand(@NonNull Token operand,
+                                         @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isPhonetic(operand)) {
+      String phoneticName = LocalizedStringUtils.phoneticNameForLocalizedStringName(operand.getSymbol());
+      Phonetic phonetic = Phonetic.getPhoneticsByName().get(phoneticName);
+
+      if (phonetic == null)
+        throw new ExpressionEvaluationException(format("Unexpected phonetic token '%s'", operand.getSymbol()));
+
+      return phonetic;
+    }
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Phonetic)
+        return (Phonetic) value;
+
+      if (value instanceof CharSequence) {
+        if (phoneticResolver == null)
+          throw new ExpressionEvaluationException(format("No %s was provided to resolve placeholder '%s'",
+              PhoneticResolver.class.getSimpleName(), operand.getSymbol()));
+
+        Phonetic phonetic = phoneticResolver.resolve(value.toString());
+
+        if (phonetic == null)
+          throw new ExpressionEvaluationException(format("%s returned null for placeholder '%s'",
+              PhoneticResolver.class.getSimpleName(), operand.getSymbol()));
+
+        return phonetic;
+      }
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Phonetic.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
    * Determines the boolean value of a token.
    *
    * @param token the token to examine, not null
@@ -892,7 +1029,7 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, CARDINALITY, ORDINALITY, UNKNOWN;
+    NUMBER, GENDER, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
   }
 
   protected static final class ExpressionNode {

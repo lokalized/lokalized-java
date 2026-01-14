@@ -291,6 +291,42 @@ public class StringsTests {
 	}
 
 	@Test
+	public void phoneticPlaceholderTest() {
+		LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
+				.translation("{{article}} {{noun}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"article", new LocalizedString.LanguageFormTranslation("noun", Map.of(
+								Phonetic.VOWEL, "an",
+								Phonetic.CONSONANT, "a"
+						))
+				))
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.phonemicResolver(term -> {
+					String value = term.toString().toLowerCase(Locale.ROOT);
+					return value.startsWith("hon") ? Phonetic.VOWEL : Phonetic.CONSONANT;
+				})
+				.build();
+
+		String translation = strings.get("{{article}} {{noun}}", Map.of(
+				"noun", "honor"
+		));
+
+		assertEquals("an honor", translation);
+
+		translation = strings.get("{{article}} {{noun}}", Map.of(
+				"noun", "user"
+		));
+
+		assertEquals("a user", translation);
+	}
+
+	@Test
 	public void optionalPlaceholderValuesAreUnwrapped() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

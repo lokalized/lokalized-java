@@ -72,6 +72,8 @@ public class DefaultStrings implements Strings {
 	private final StringInterpolator stringInterpolator;
 	@NonNull
 	private final ExpressionEvaluator expressionEvaluator;
+	@Nullable
+	private final PhoneticResolver phoneticResolver;
 	@NonNull
 	private final Logger logger;
 
@@ -111,6 +113,25 @@ public class DefaultStrings implements Strings {
 													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable FailureMode failureMode) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, failureMode, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with builder-supplied data.
+	 *
+	 * @param fallbackLocale                  fallback locale, not null
+	 * @param localizedStringSupplier         supplier of localized strings, not null
+	 * @param localeSupplier                  locale supplier, may not be null
+	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
+	 * @param failureMode                     strategy for dealing with lookup failures, may be null
+	 * @param phoneticResolver                resolver for phonetic categories, may be null
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+													 @Nullable FailureMode failureMode,
+													 @Nullable PhoneticResolver phoneticResolver) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
 		requireNonNull(localeSupplier, format("You must specify a 'localeSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
@@ -222,7 +243,8 @@ public class DefaultStrings implements Strings {
 
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();
-		this.expressionEvaluator = new ExpressionEvaluator();
+		this.phoneticResolver = phoneticResolver;
+		this.expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
 
 		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
 				new HashMap<>(localizedStringsByLocale.size());
@@ -364,6 +386,7 @@ public class DefaultStrings implements Strings {
 			Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
 			Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
 			Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
+			Map<@NonNull Phonetic, @NonNull String> translationsByPhonetic = new HashMap<>();
 
 			if (languageFormTranslation.getRange().isPresent()) {
 				LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
@@ -383,13 +406,16 @@ public class DefaultStrings implements Strings {
 					translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Gender)
 					translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Phonetic)
+					translationsByPhonetic.put((Phonetic) languageForm, translatedLanguageForm);
 				else
 					throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
 			}
 
 			int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
 					(translationsByOrdinality.size() > 0 ? 1 : 0) +
-					(translationsByGender.size() > 0 ? 1 : 0);
+					(translationsByGender.size() > 0 ? 1 : 0) +
+					(translationsByPhonetic.size() > 0 ? 1 : 0);
 
 			if (distinctLanguageForms > 1)
 				throw new IllegalArgumentException(format("You cannot mix-and-match language forms. Offending localized string was %s", localizedString));
@@ -493,6 +519,46 @@ public class DefaultStrings implements Strings {
 							Gender.class.getSimpleName(), gender.name(), localizedString));
 
 				mutableContext.put(placeholderName, genderTranslation);
+			}
+
+			// Handle phonetics
+			if (translationsByPhonetic.size() > 0) {
+				if (languageFormTranslation.getRange().isPresent())
+					throw new IllegalArgumentException(format("Phonetic translations cannot use ranges. Offending localized string was %s", localizedString));
+
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				Phonetic phonetic;
+
+				if (value instanceof Phonetic) {
+					phonetic = (Phonetic) value;
+				} else if (value instanceof CharSequence) {
+					PhoneticResolver resolver = getPhoneticResolver();
+
+					if (resolver == null)
+						throw new IllegalArgumentException(format("No %s was provided to resolve placeholder '%s' in key '%s'",
+								PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
+
+					phonetic = resolver.resolve(value.toString());
+
+					if (phonetic == null)
+						throw new IllegalArgumentException(format("%s returned null for placeholder '%s' in key '%s'",
+								PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
+				} else {
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s or %s but was %s",
+							languageFormTranslation.getValue().get(), key, Phonetic.class.getSimpleName(),
+							CharSequence.class.getSimpleName(), value.getClass().getSimpleName()));
+				}
+
+				String phoneticTranslation = translationsByPhonetic.get(phonetic);
+
+				if (phoneticTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Phonetic.class.getSimpleName(), phonetic.name(), localizedString));
+
+				mutableContext.put(placeholderName, phoneticTranslation);
 			}
 		}
 
@@ -668,6 +734,16 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the phonetic resolver used to determine phonetic categories.
+	 *
+	 * @return the phonetic resolver, may be null
+	 */
+	@Nullable
+	protected PhoneticResolver getPhoneticResolver() {
+		return phoneticResolver;
+	}
+
+	/**
 	 * Gets our "master" cache of localized strings by key by locale.
 	 *
 	 * @return the cache of localized strings by key by locale, not null
@@ -715,6 +791,8 @@ public class DefaultStrings implements Strings {
 		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
 		private FailureMode failureMode;
+		@Nullable
+		private PhoneticResolver phoneticResolver;
 
 		/**
 		 * Constructs a strings builder with a default locale.
@@ -775,13 +853,37 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
+		 * Applies a phonetic resolver to this builder.
+		 *
+		 * @param phoneticResolver phonetic resolver, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder phoneticResolver(@Nullable PhoneticResolver phoneticResolver) {
+			this.phoneticResolver = phoneticResolver;
+			return this;
+		}
+
+		/**
+		 * Applies a phonetic resolver to this builder.
+		 *
+		 * @param phoneticResolver phonetic resolver, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder phonemicResolver(@Nullable PhoneticResolver phoneticResolver) {
+			return phoneticResolver(phoneticResolver);
+		}
+
+		/**
 		 * Constructs an instance of {@link DefaultStrings}.
 		 *
 		 * @return an instance of {@link DefaultStrings}, not null
 		 */
 		@NonNull
 		public DefaultStrings build() {
-			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, failureMode);
+			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
+					failureMode, phoneticResolver);
 		}
 	}
 }
