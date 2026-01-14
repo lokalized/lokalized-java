@@ -472,7 +472,14 @@ public final class LocalizedStringLoader {
       return Collections.emptySet();
 
     Set<@NonNull LocalizedString> localizedStrings = new HashSet<>();
-    JsonValue outerJsonValue = Json.parse(localizedStringsFileContents);
+    JsonValue outerJsonValue;
+
+    try {
+      outerJsonValue = Json.parse(localizedStringsFileContents);
+    } catch (MinimalJson.ParseException e) {
+      throw new LocalizedStringLoadingException(
+          format("%s: unable to parse localized strings file", canonicalPath), e);
+    }
 
     if (!outerJsonValue.isObject())
       throw new LocalizedStringLoadingException(format("%s: a localized strings file must be comprised of a single JSON object", canonicalPath));
@@ -722,7 +729,9 @@ public final class LocalizedStringLoader {
 
     try {
       List<@NonNull Token> tokens = EXPRESSION_EVALUATOR.getExpressionTokenizer().extractTokens(expression);
-      return EXPRESSION_EVALUATOR.convertTokensToReversePolishNotation(tokens);
+      List<@NonNull Token> rpnTokens = EXPRESSION_EVALUATOR.convertTokensToReversePolishNotation(tokens);
+      EXPRESSION_EVALUATOR.validateReversePolishNotationTokens(rpnTokens);
+      return rpnTokens;
     } catch (ExpressionEvaluationException e) {
       throw new LocalizedStringLoadingException(
           format("%s: unable to parse alternative expression '%s'", canonicalPath, expression), e);

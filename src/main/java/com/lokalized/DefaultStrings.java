@@ -28,6 +28,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -223,16 +224,28 @@ public class DefaultStrings implements Strings {
 		this.stringInterpolator = new StringInterpolator();
 		this.expressionEvaluator = new ExpressionEvaluator();
 
-		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByLocale.entrySet().stream()
-				.collect(Collectors.toMap(
-						entry1 -> entry1.getKey(),
-						entry1 ->
-								Collections.unmodifiableMap(entry1.getValue().stream()
-										.collect(Collectors.toMap(
-														entry2 -> entry2.getKey(),
-														entry2 -> entry2
-												)
-										)))));
+		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
+				new HashMap<>(localizedStringsByLocale.size());
+
+		for (Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
+			Locale locale = entry.getKey();
+			Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey = new LinkedHashMap<>();
+
+			for (LocalizedString localizedString : entry.getValue()) {
+				if (localizedString == null)
+					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
+
+				String key = localizedString.getKey();
+				LocalizedString existing = localizedStringsByKey.putIfAbsent(key, localizedString);
+
+				if (existing != null)
+					throw new IllegalArgumentException(format("Duplicate localized string key '%s' encountered for locale '%s'", key, locale.toLanguageTag()));
+			}
+
+			localizedStringsByKeyByLocale.put(locale, Collections.unmodifiableMap(localizedStringsByKey));
+		}
+
+		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByKeyByLocale);
 
 		if (!localizedStringsByLocale.containsKey(getFallbackLocale()))
 			throw new IllegalArgumentException(format("Specified fallback locale is '%s' but no matching " +

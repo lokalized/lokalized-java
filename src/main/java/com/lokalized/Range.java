@@ -164,7 +164,8 @@ public class Range<T> implements Collection<@NonNull T> {
     requireNonNull(values);
     requireNonNull(infinite);
 
-    this.values = values == null ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(values));
+    this.values = values == null ? Collections.emptyList()
+        : Collections.unmodifiableList(new ArrayList<>(Arrays.asList(values)));
     this.infinite = infinite;
   }
 

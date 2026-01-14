@@ -132,6 +132,32 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsAlternativeExpressionsWithMissingOperands() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount ==\":{\"translation\":\"Hi\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected alternative expressions with missing operands to fail fast during load");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsInvalidJson() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"), "{".getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected invalid JSON to fail fast during load");
+  }
+
+  @Test
   public void testClasspathLoadingFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
     tempJar.toFile().deleteOnExit();

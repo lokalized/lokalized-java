@@ -103,6 +103,15 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void missingPlaceholderValuesThrow() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("missing == 1", Map.of(), LOCALE),
+				"Missing placeholder values should raise an error");
+	}
+
+	@Test
 	public void ordinalityExpressions() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

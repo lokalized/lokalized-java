@@ -438,9 +438,9 @@ public class StringsTests {
 				))
 				.build();
 
-		String translation = strings.get("I read {{bookCount}} books");
-
-		assertEquals("I read {{bookCount}} books", translation);
+		assertThrows(ExpressionEvaluationException.class,
+				() -> strings.get("I read {{bookCount}} books"),
+				"Expected missing placeholders in expressions to throw");
 	}
 
 	@Test

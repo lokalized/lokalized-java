@@ -442,9 +442,9 @@ public class LocalizedString {
   @Immutable
   public static class LanguageFormTranslationRange {
     @NonNull
-    private String start;
+    private final String start;
     @NonNull
-    private String end;
+    private final String end;
 
     /**
      * Constructs a translation range with the given start and end values.

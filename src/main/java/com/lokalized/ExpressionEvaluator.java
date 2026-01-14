@@ -394,14 +394,6 @@ class ExpressionEvaluator {
             leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
             lhsOperandType.name(), rhsOperandType.name()));
 
-      // null == null
-      if (lhsOperandType == OperandType.NULL && rhsOperandType == OperandType.NULL)
-        return TRUE_RESULT_TOKEN;
-
-      // null on either side evaluates to false (no coercing to some default value)
-      if (lhsOperandType == OperandType.NULL || rhsOperandType == OperandType.NULL)
-        return FALSE_RESULT_TOKEN;
-
       // Number (operators: any)
       if (lhsOperandType == OperandType.NUMBER && rhsOperandType == OperandType.NUMBER) {
         BigDecimal lhsValue = bigDecimalFromOperand(leftHandOperand, context);
@@ -639,13 +631,16 @@ class ExpressionEvaluator {
       return OperandType.GENDER;
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
+      if (!context.containsKey(operand.getSymbol()))
+        throw new ExpressionEvaluationException(format("No value was provided for placeholder '%s'", operand.getSymbol()));
+
       Object value = context.get(operand.getSymbol());
 
       if (value instanceof Optional)
         value = ((Optional<?>) value).orElse(null);
 
       if (value == null)
-        return OperandType.NULL;
+        throw new ExpressionEvaluationException(format("Placeholder '%s' resolved to null", operand.getSymbol()));
       if (value instanceof Number)
         return OperandType.NUMBER;
       if (value instanceof Cardinality)
@@ -825,12 +820,46 @@ class ExpressionEvaluator {
     return expressionTokenizer;
   }
 
+  protected void validateReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens) {
+    requireNonNull(tokens);
+
+    Deque<Token> valueStack = new ArrayDeque<>();
+
+    for (Token token : tokens) {
+      if (isOperand(token)) {
+        valueStack.push(token);
+      } else if (isOperator(token)) {
+        if (valueStack.size() < 2)
+          throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s' (%s)",
+              token.getSymbol(), valueStack.stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+
+        valueStack.pop();
+        valueStack.pop();
+        valueStack.push(TRUE_RESULT_TOKEN);
+      } else {
+        throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
+      }
+    }
+
+    if (valueStack.size() == 1) {
+      Token resultToken = valueStack.pop();
+
+      if (resultToken == TRUE_RESULT_TOKEN || resultToken == FALSE_RESULT_TOKEN)
+        return;
+
+      throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
+    }
+
+    throw new ExpressionEvaluationException(format("Unexpected extra values exist on the stack: %s", valueStack
+        .stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+  }
+
   /**
    * Expression operand types.
    *
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, CARDINALITY, ORDINALITY, NULL, UNKNOWN;
+    NUMBER, GENDER, CARDINALITY, ORDINALITY, UNKNOWN;
   }
 }
