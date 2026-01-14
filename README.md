@@ -651,6 +651,107 @@ cardinality = Cardinality.forRange(Cardinality.ZERO, Cardinality.ONE, Locale.for
 assertEquals(Cardinality.ONE, cardinality);
 ```
 
+### Phonetics
+
+Some languages choose word forms based on the <em>sound</em> that follows (e.g. English "a/an", Spanish "el agua", Italian "lo studente"). Lokalized supports this via phonetic categories and a user-provided resolver.
+
+Lokalized supports these values:
+
+* [`PHONETIC_VOWEL`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#VOWEL)
+* [`PHONETIC_CONSONANT`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#CONSONANT)
+* [`PHONETIC_H_SILENT`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#H_SILENT)
+* [`PHONETIC_H_ASPIRATED`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#H_ASPIRATED)
+* [`PHONETIC_S_IMPURE`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#S_IMPURE)
+* [`PHONETIC_Z`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#Z)
+* [`PHONETIC_GN`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#GN)
+* [`PHONETIC_PS`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#PS)
+* [`PHONETIC_PN`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#PN)
+* [`PHONETIC_X`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#X)
+* [`PHONETIC_GLIDE_Y`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#GLIDE_Y)
+* [`PHONETIC_GLIDE_W`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#GLIDE_W)
+* [`PHONETIC_STRESSED_A`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#STRESSED_A)
+* [`PHONETIC_SOLAR`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#SOLAR)
+* [`PHONETIC_LUNAR`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#LUNAR)
+* [`PHONETIC_OTHER`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#OTHER)
+
+Lokalized provides a [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) type which enumerates supported phonetic categories. To use phonetics, supply a [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) when building [`Strings`]((https://javadoc.lokalized.com/com/lokalized/Strings.html)) and use `PHONETIC_*` values in your translations file.
+
+#### English Example
+
+Let's model `I received a {{noun}}.`:
+
+```json
+{
+  "I received a {{noun}}." : {
+    "translation" : "I received {{article}} {{noun}}.",
+    "placeholders" : {
+      "article" : {
+        "value" : "noun",
+        "translations" : {
+          "PHONETIC_VOWEL" : "an",
+          "PHONETIC_CONSONANT" : "a"
+        }
+      }
+    }
+  }
+}
+```
+
+Now, ensure we have translations like `I received an honor` and `I received a gift`:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  // Plug in our resolver here
+  .phoneticResolver(term -> startsWithVowelSound(term) ? Phonetic.VOWEL : Phonetic.CONSONANT)
+  .localeSupplier(matcher -> Locale.forLanguageTag("en"))
+  .build();
+
+assertEquals("I received an honor.", strings.get("I received a {{noun}}.", Map.of("noun", "honor")));
+assertEquals("I received a gift.", strings.get("I received a {{noun}}.", Map.of("noun", "gift")));
+```
+
+#### Spanish Example (Stressed A)
+
+Now, for Spanish:
+
+```json
+{
+  "I saw {{article}} {{noun}}." : {
+    "translation" : "Vi {{article}} {{noun}}.",
+    "placeholders" : {
+      "article" : {
+        "value" : "noun",
+        "translations" : {
+          "PHONETIC_STRESSED_A" : "el",
+          "PHONETIC_OTHER" : "la"
+        }
+      }
+    }
+  }
+}
+```
+
+...and its resolver:
+
+```java
+PhoneticResolver spanishResolver = term -> {
+  String normalized = term.toLowerCase(Locale.ROOT);
+  return Set.of("agua", "aguila", "hacha", "alma").contains(normalized)
+    ? Phonetic.STRESSED_A
+    : Phonetic.OTHER;
+};
+
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("es"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .phoneticResolver(spanishResolver)
+  .localeSupplier(matcher -> Locale.forLanguageTag("es"))
+  .build();
+
+assertEquals("Vi el agua.", strings.get("I saw {{article}} {{noun}}.", Map.of("noun", "agua")));
+assertEquals("Vi la casa.", strings.get("I saw {{article}} {{noun}}.", Map.of("noun", "casa")));
+```
+
 ### Ordinals
 
 For example: `1st, 2nd, 3rd, 4th, ...`
@@ -787,12 +888,12 @@ In the below example of an `en` strings file, the application code provides the 
 
 Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), or [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules  
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html).
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
 
-Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), and [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) types.
+Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
 
 You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).
 
@@ -900,12 +1001,13 @@ LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | PHONETIC ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
 GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
-PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
+PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
          | "PHONETIC_GLIDE_Y" | "PHONETIC_GLIDE_W"
          | "PHONETIC_STRESSED_A"
-         | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" ;
+         | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" 
+         | "PHONETIC_OTHER" ;
 VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" | "-" } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
