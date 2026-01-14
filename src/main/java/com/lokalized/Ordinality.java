@@ -266,6 +266,8 @@ public enum Ordinality implements LanguageForm {
   /**
    * Gets an appropriate plural ordinality for the given number and locale.
    * <p>
+   * Negative numbers are evaluated using their absolute value.
+   * <p>
    * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html</a>
    * for a cheat sheet.
    *
@@ -279,7 +281,7 @@ public enum Ordinality implements LanguageForm {
     requireNonNull(number);
     requireNonNull(locale);
 
-    BigDecimal numberAsBigDecimal = NumberUtils.toBigDecimal(number);
+    BigDecimal numberAsBigDecimal = NumberUtils.toBigDecimal(number).abs();
 
     Optional<OrdinalityFamily> ordinalityFamily = OrdinalityFamily.ordinalityFamilyForLocale(locale);
 

@@ -726,6 +726,10 @@ public final class LocalizedStringLoader {
         }
       }
 
+      if (translation == null && alternatives.isEmpty())
+        throw new LocalizedStringLoadingException(format("%s: either a translation or at least one alternative expression is required for key '%s'",
+            canonicalPath, key));
+
       return localizedStringBuilder.translation(translation)
           .commentary(commentary)
           .languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)

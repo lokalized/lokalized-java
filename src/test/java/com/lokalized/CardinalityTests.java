@@ -43,10 +43,14 @@ public class CardinalityTests {
 
     assertEquals(Cardinality.ONE, Cardinality.forNumber(1, usEnglishLocale),
         format("Incorrect %s cardinality for 1", usEnglishLocale.toLanguageTag()));
+    assertEquals(Cardinality.ONE, Cardinality.forNumber(-1, usEnglishLocale),
+        format("Incorrect %s cardinality for -1", usEnglishLocale.toLanguageTag()));
     assertEquals(Cardinality.OTHER, Cardinality.forNumber(0, usEnglishLocale),
         format("Incorrect %s cardinality for 0", usEnglishLocale.toLanguageTag()));
     assertEquals(Cardinality.OTHER, Cardinality.forNumber(1.5, usEnglishLocale),
         format("Incorrect %s cardinality for 1.5", usEnglishLocale.toLanguageTag()));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(-1.5, usEnglishLocale),
+        format("Incorrect %s cardinality for -1.5", usEnglishLocale.toLanguageTag()));
   }
 
   @Test

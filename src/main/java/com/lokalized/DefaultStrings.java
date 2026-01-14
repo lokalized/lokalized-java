@@ -401,21 +401,24 @@ public class DefaultStrings implements Strings {
 			if (translationsByCardinality.size() > 0) {
 				// Special case: calculate range from min and max if this is a range-driven cardinality
 				if (languageFormTranslation.getRange().isPresent()) {
+					LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
+
 					if (rangeStart == null)
-						rangeStart = 0;
+						throw new IllegalArgumentException(format("Missing range start placeholder '%s' for key '%s'",
+								languageFormTranslationRange.getStart(), key));
+
 					if (rangeEnd == null)
-						rangeEnd = 0;
+						throw new IllegalArgumentException(format("Missing range end placeholder '%s' for key '%s'",
+								languageFormTranslationRange.getEnd(), key));
 
 					if (!(rangeStart instanceof Number)) {
-						logger.warning(format("Range start '%s' for '%s' is not a number, falling back to 0.",
-								rangeStart, languageFormTranslation.getValue()));
-						rangeStart = 0;
+						throw new IllegalArgumentException(format("Range start placeholder '%s' for key '%s' must be a %s but was %s",
+								languageFormTranslationRange.getStart(), key, Number.class.getSimpleName(), rangeStart.getClass().getSimpleName()));
 					}
 
 					if (!(rangeEnd instanceof Number)) {
-						logger.warning(format("Range value end '%s' for '%s' is not a number, falling back to 0.",
-								rangeEnd, languageFormTranslation.getValue()));
-						rangeEnd = 0;
+						throw new IllegalArgumentException(format("Range end placeholder '%s' for key '%s' must be a %s but was %s",
+								languageFormTranslationRange.getEnd(), key, Number.class.getSimpleName(), rangeEnd.getClass().getSimpleName()));
 					}
 
 					Cardinality startCardinality = Cardinality.forNumber((Number) rangeStart, locale);
@@ -432,12 +435,12 @@ public class DefaultStrings implements Strings {
 				} else {
 					// Normal "non-range" cardinality
 					if (value == null)
-						value = 0;
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
 
 					if (!(value instanceof Number)) {
-						logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
-								value, languageFormTranslation.getValue()));
-						value = 0;
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Number.class.getSimpleName(), value.getClass().getSimpleName()));
 					}
 
 					Cardinality cardinality = Cardinality.forNumber((Number) value, locale);
@@ -454,12 +457,12 @@ public class DefaultStrings implements Strings {
 			// Handle plural ordinalities
 			if (translationsByOrdinality.size() > 0) {
 				if (value == null)
-					value = 0;
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
 
 				if (!(value instanceof Number)) {
-					logger.warning(format("Value '%s' for '%s' is not a number, falling back to 0.",
-							value, languageFormTranslation.getValue()));
-					value = 0;
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Number.class.getSimpleName(), value.getClass().getSimpleName()));
 				}
 
 				Ordinality ordinality = Ordinality.forNumber((Number) value, locale);
@@ -474,17 +477,13 @@ public class DefaultStrings implements Strings {
 
 			// Handle genders
 			if (translationsByGender.size() > 0) {
-				if (value == null) {
-					logger.warning(format("Value '%s' for '%s' is null. No replacement will be performed.", value,
-							languageFormTranslation.getValue()));
-					continue;
-				}
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
 
-				if (!(value instanceof Gender)) {
-					logger.warning(format("Value '%s' for '%s' is not a %s. No replacement will be performed.", value,
-							languageFormTranslation.getValue(), Gender.class.getSimpleName()));
-					continue;
-				}
+				if (!(value instanceof Gender))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Gender.class.getSimpleName(), value.getClass().getSimpleName()));
 
 				Gender gender = (Gender) value;
 				String genderTranslation = translationsByGender.get(gender);
@@ -532,10 +531,12 @@ public class DefaultStrings implements Strings {
 		if (languageRanges.isEmpty())
 			return getFallbackLocale();
 
+		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(languageRanges);
+		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
 		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
 
 		// Walk through each LanguageRange in preference order
-		for (LanguageRange languageRange : languageRanges) {
+		for (LanguageRange languageRange : sortedLanguageRanges) {
 			String range = languageRange.getRange(); // e.g. "pt" or "pt-PT"
 			double weight = languageRange.getWeight();
 

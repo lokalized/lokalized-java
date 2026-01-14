@@ -445,6 +445,63 @@ public class StringsTests {
 	}
 
 	@Test
+	public void missingCardinalityPlaceholderValuesThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{items}}")
+				.translation("You have {{count}} {{items}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item",
+								Cardinality.OTHER, "items"
+						))
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.get("You have {{count}} {{items}}"),
+				"Expected missing cardinality placeholders to throw");
+	}
+
+	@Test
+	public void invalidOrdinalityPlaceholderValuesThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("It is your {{year}}{{suffix}} birthday")
+				.translation("It is your {{year}}{{suffix}} birthday")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"suffix", new LocalizedString.LanguageFormTranslation("year", Map.of(
+								Ordinality.ONE, "st",
+								Ordinality.OTHER, "th"
+						))
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.get("It is your {{year}}{{suffix}} birthday", Map.of("year", "one")),
+				"Expected invalid ordinality placeholders to throw");
+	}
+
+	@Test
+	public void invalidGenderPlaceholderValuesThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("{{title}} Doe")
+				.translation("{{title}} Doe")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"title", new LocalizedString.LanguageFormTranslation("gender", Map.of(
+								Gender.MASCULINE, "Mr",
+								Gender.FEMININE, "Ms"
+						))
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.get("{{title}} Doe", Map.of("gender", "MASCULINE")),
+				"Expected invalid gender placeholders to throw");
+	}
+
+	@Test
 	public void missingPlaceholderTranslationsThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{itemLabel}}")
 				.translation("You have {{count}} {{itemLabel}}")
@@ -583,5 +640,14 @@ public class StringsTests {
 		}});
 
 		assertEquals("We were unable to charge $24.99 to your credit card.", translation);
+	}
+
+	private Strings buildStrings(LocalizedString localizedString) {
+		return Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
 	}
 }

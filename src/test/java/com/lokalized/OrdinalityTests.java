@@ -38,6 +38,8 @@ public class OrdinalityTests {
 
     assertEquals(Ordinality.ONE, Ordinality.forNumber(1, usEnglishLocale),
         format("Incorrect %s ordinality for 1", usEnglishLocale.toLanguageTag()));
+    assertEquals(Ordinality.ONE, Ordinality.forNumber(-1, usEnglishLocale),
+        format("Incorrect %s ordinality for -1", usEnglishLocale.toLanguageTag()));
     assertEquals(Ordinality.TWO, Ordinality.forNumber(2, usEnglishLocale),
         format("Incorrect %s ordinality for 2", usEnglishLocale.toLanguageTag()));
     assertEquals(Ordinality.FEW, Ordinality.forNumber(3, usEnglishLocale),

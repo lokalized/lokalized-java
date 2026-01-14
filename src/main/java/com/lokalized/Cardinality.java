@@ -251,6 +251,8 @@ public enum Cardinality implements LanguageForm {
   /**
    * Gets an appropriate plural cardinality for the given number and locale.
    * <p>
+   * Negative numbers are evaluated using their absolute value.
+   * <p>
    * When determining cardinality, the decimal places of {@code number} will be computed and used.
    * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
@@ -276,6 +278,8 @@ public enum Cardinality implements LanguageForm {
   /**
    * Gets an appropriate plural cardinality for the given number, visible decimal places, and locale.
    * <p>
+   * Negative numbers are evaluated using their absolute value.
+   * <p>
    * If {@code visibleDecimalPlaces} is null, then the decimal places of {@code number} will be computed and used.
    * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
@@ -296,6 +300,7 @@ public enum Cardinality implements LanguageForm {
 
     boolean numberIsBigDecimal = number instanceof BigDecimal;
     BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
+    numberAsBigDecimal = numberAsBigDecimal.abs();
 
     // If number of visible decimal places is not specified, compute the number of decimal places.
     // If the number is a BigDecimal, then we have access to trailing zeroes.
