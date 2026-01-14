@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class StringsTests {
 	@BeforeAll
 	public static void configureLogging() {
-		LoggingUtils.setRootLoggerLevel(Level.FINER);
+		LoggingUtils.setRootLoggerLevel(Level.WARNING);
 	}
 
 	@Test
