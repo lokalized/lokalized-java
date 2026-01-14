@@ -307,7 +307,7 @@ public class StringsTests {
 						Locale.forLanguageTag("en"), Set.of(localizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
-				.phonemicResolver(term -> {
+				.phoneticResolver((term, locale) -> {
 					String value = term.toString().toLowerCase(Locale.ROOT);
 					return value.startsWith("hon") ? Phonetic.VOWEL : Phonetic.CONSONANT;
 				})

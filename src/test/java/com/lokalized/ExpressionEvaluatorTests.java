@@ -144,7 +144,7 @@ public class ExpressionEvaluatorTests {
 
 	@Test
 	public void phoneticExpressions() {
-		PhoneticResolver phoneticResolver = term -> {
+		PhoneticResolver phoneticResolver = (term, locale) -> {
 			String value = term.toString().toLowerCase(Locale.ROOT);
 			return value.startsWith("hon") ? Phonetic.VOWEL : Phonetic.CONSONANT;
 		};
@@ -170,7 +170,7 @@ public class ExpressionEvaluatorTests {
 
 	@Test
 	public void invalidPhoneticOperator() {
-		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, term -> Phonetic.CONSONANT);
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, (term, locale) -> Phonetic.CONSONANT);
 
 		assertThrows(ExpressionEvaluationException.class,
 				() -> expressionEvaluator.evaluate("term < PHONETIC_VOWEL", Map.of("term", "honor"), LOCALE),

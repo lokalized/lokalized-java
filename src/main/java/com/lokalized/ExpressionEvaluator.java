@@ -571,8 +571,8 @@ class ExpressionEvaluator {
                   TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
                   operator.getSymbol(), rightHandOperand.getSymbol()));
 
-        Phonetic lhsValue = phoneticFromOperand(leftHandOperand, context);
-        Phonetic rhsValue = phoneticFromOperand(rightHandOperand, context);
+        Phonetic lhsValue = phoneticFromOperand(leftHandOperand, context, locale);
+        Phonetic rhsValue = phoneticFromOperand(rightHandOperand, context, locale);
         boolean result = false;
 
         if (operator.getTokenType() == TokenType.EQUAL_TO)
@@ -913,14 +913,17 @@ class ExpressionEvaluator {
    *
    * @param operand the operand to examine, not null
    * @param context the context for the expression, not null
+   * @param locale  the locale to use for evaluation, not null
    * @return the phonetic category of the operand, not null
    * @throws ExpressionEvaluationException if unable to determine phonetic value (operand is of invalid type, etc.)
    */
   @NonNull
   protected Phonetic phoneticFromOperand(@NonNull Token operand,
-                                         @NonNull Map<@NonNull String, @Nullable Object> context) {
+                                         @NonNull Map<@NonNull String, @Nullable Object> context,
+                                         @NonNull Locale locale) {
     requireNonNull(operand);
     requireNonNull(context);
+    requireNonNull(locale);
 
     if (isPhonetic(operand)) {
       String phoneticName = LocalizedStringUtils.phoneticNameForLocalizedStringName(operand.getSymbol());
@@ -946,7 +949,7 @@ class ExpressionEvaluator {
           throw new ExpressionEvaluationException(format("No %s was provided to resolve placeholder '%s'",
               PhoneticResolver.class.getSimpleName(), operand.getSymbol()));
 
-        Phonetic phonetic = phoneticResolver.resolve(value.toString());
+        Phonetic phonetic = phoneticResolver.resolve(value.toString(), locale);
 
         if (phonetic == null)
           throw new ExpressionEvaluationException(format("%s returned null for placeholder '%s'",

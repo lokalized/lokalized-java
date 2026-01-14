@@ -18,6 +18,8 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
+import java.util.Locale;
+
 /**
  * Resolves {@link Phonetic} categories for terms at runtime.
  * <p>
@@ -33,8 +35,9 @@ public interface PhoneticResolver {
    * Determines the phonetic category for a term.
    *
    * @param term the term to classify, not null
+   * @param locale the locale in which to resolve the term, not null
    * @return the phonetic category for the term, not null
    */
   @NonNull
-  Phonetic resolve(@NonNull String term);
+  Phonetic resolve(@NonNull String term, @NonNull Locale locale);
 }

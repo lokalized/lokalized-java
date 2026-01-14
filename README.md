@@ -674,7 +674,7 @@ Lokalized supports these values:
 * [`PHONETIC_LUNAR`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#LUNAR)
 * [`PHONETIC_OTHER`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#OTHER)
 
-Lokalized provides a [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) type which enumerates supported phonetic categories. To use phonetics, supply a [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) when building [`Strings`]((https://javadoc.lokalized.com/com/lokalized/Strings.html)) and use `PHONETIC_*` values in your translations file.
+Lokalized provides a [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) type which enumerates supported phonetic categories. To use phonetics, supply a [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) when building [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) and use `PHONETIC_*` values in your translations file. The resolver receives both the term and its locale.
 
 #### English Example
 
@@ -697,13 +697,13 @@ Let's model `I received a {{noun}}.`:
 }
 ```
 
-Now, ensure we have translations like `I received an honor` and `I received a gift`:
+Now, ensure we have translations like `an honor` and `a gift`:
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
   // Plug in our resolver here
-  .phoneticResolver(term -> startsWithVowelSound(term) ? Phonetic.VOWEL : Phonetic.CONSONANT)
+  .phoneticResolver((term, locale) -> startsWithVowelSound(term, locale) ? Phonetic.VOWEL : Phonetic.CONSONANT)
   .localeSupplier(matcher -> Locale.forLanguageTag("en"))
   .build();
 
@@ -717,8 +717,8 @@ Now, for Spanish:
 
 ```json
 {
-  "I saw {{article}} {{noun}}." : {
-    "translation" : "Vi {{article}} {{noun}}.",
+  "I received a {{noun}}." : {
+    "translation" : "Recibi {{article}} {{noun}}.",
     "placeholders" : {
       "article" : {
         "value" : "noun",
@@ -732,12 +732,17 @@ Now, for Spanish:
 }
 ```
 
-...and its resolver:
+...and its [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html):
 
 ```java
-PhoneticResolver spanishResolver = term -> {
+// Special "Stressed-A" support for Spanish languages
+PhoneticResolver spanishResolver = (term, locale) -> {
+  if (!"es".equals(locale.getLanguage()))
+    return Phonetic.OTHER;
+
   String normalized = term.toLowerCase(Locale.ROOT);
-  return Set.of("agua", "aguila", "hacha", "alma").contains(normalized)
+
+  return Set.of("acta", "arma", "hacha").contains(normalized)
     ? Phonetic.STRESSED_A
     : Phonetic.OTHER;
 };
@@ -748,8 +753,8 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("es"))
   .localeSupplier(matcher -> Locale.forLanguageTag("es"))
   .build();
 
-assertEquals("Vi el agua.", strings.get("I saw {{article}} {{noun}}.", Map.of("noun", "agua")));
-assertEquals("Vi la casa.", strings.get("I saw {{article}} {{noun}}.", Map.of("noun", "casa")));
+assertEquals("Recibi el acta.", strings.get("I received a {{noun}}.", Map.of("noun", "acta")));
+assertEquals("Recibi la carta.", strings.get("I received a {{noun}}.", Map.of("noun", "carta")));
 ```
 
 ### Ordinals
@@ -888,7 +893,7 @@ In the below example of an `en` strings file, the application code provides the 
 
 Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html).
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 

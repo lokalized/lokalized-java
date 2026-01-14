@@ -541,7 +541,7 @@ public class DefaultStrings implements Strings {
 						throw new IllegalArgumentException(format("No %s was provided to resolve placeholder '%s' in key '%s'",
 								PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
 
-					phonetic = resolver.resolve(value.toString());
+					phonetic = resolver.resolve(value.toString(), locale);
 
 					if (phonetic == null)
 						throw new IllegalArgumentException(format("%s returned null for placeholder '%s' in key '%s'",
@@ -862,17 +862,6 @@ public class DefaultStrings implements Strings {
 		public Builder phoneticResolver(@Nullable PhoneticResolver phoneticResolver) {
 			this.phoneticResolver = phoneticResolver;
 			return this;
-		}
-
-		/**
-		 * Applies a phonetic resolver to this builder.
-		 *
-		 * @param phoneticResolver phonetic resolver, may be null
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder phonemicResolver(@Nullable PhoneticResolver phoneticResolver) {
-			return phoneticResolver(phoneticResolver);
 		}
 
 		/**
