@@ -59,6 +59,16 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 public class DefaultStrings implements Strings {
 	@NonNull
+	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
+
+	static {
+		DEFAULT_PHONETIC_RESOLVER = (term, locale) -> {
+			throw new IllegalStateException(format("No %s was configured. Provide one via %s.Builder#phoneticResolver(...)",
+					PhoneticResolver.class.getSimpleName(), Strings.class.getSimpleName()));
+		};
+	}
+
+	@NonNull
 	private final Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale;
 	@NonNull
 	private final Function<LocaleMatcher, Locale> localeSupplier;
@@ -72,7 +82,7 @@ public class DefaultStrings implements Strings {
 	private final StringInterpolator stringInterpolator;
 	@NonNull
 	private final ExpressionEvaluator expressionEvaluator;
-	@Nullable
+	@NonNull
 	private final PhoneticResolver phoneticResolver;
 	@NonNull
 	private final Logger logger;
@@ -124,7 +134,7 @@ public class DefaultStrings implements Strings {
 	 * @param localeSupplier                  locale supplier, may not be null
 	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
 	 * @param failureMode                     strategy for dealing with lookup failures, may be null
-	 * @param phoneticResolver                resolver for phonetic categories, may be null
+	 * @param phoneticResolver                resolver for phonetic categories, may be null (defaults to fail-fast resolver)
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
 													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
@@ -243,8 +253,8 @@ public class DefaultStrings implements Strings {
 
 		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
 		this.stringInterpolator = new StringInterpolator();
-		this.phoneticResolver = phoneticResolver;
-		this.expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
+		this.phoneticResolver = phoneticResolver == null ? DEFAULT_PHONETIC_RESOLVER : phoneticResolver;
+		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver);
 
 		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
 				new HashMap<>(localizedStringsByLocale.size());
@@ -536,11 +546,6 @@ public class DefaultStrings implements Strings {
 					phonetic = (Phonetic) value;
 				} else if (value instanceof CharSequence) {
 					PhoneticResolver resolver = getPhoneticResolver();
-
-					if (resolver == null)
-						throw new IllegalArgumentException(format("No %s was provided to resolve placeholder '%s' in key '%s'",
-								PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
-
 					phonetic = resolver.resolve(value.toString(), locale);
 
 					if (phonetic == null)
@@ -736,9 +741,9 @@ public class DefaultStrings implements Strings {
 	/**
 	 * Gets the phonetic resolver used to determine phonetic categories.
 	 *
-	 * @return the phonetic resolver, may be null
+	 * @return the phonetic resolver, not null
 	 */
-	@Nullable
+	@NonNull
 	protected PhoneticResolver getPhoneticResolver() {
 		return phoneticResolver;
 	}
@@ -855,7 +860,7 @@ public class DefaultStrings implements Strings {
 		/**
 		 * Applies a phonetic resolver to this builder.
 		 *
-		 * @param phoneticResolver phonetic resolver, may be null
+		 * @param phoneticResolver phonetic resolver, may be null (defaults to fail-fast resolver)
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
