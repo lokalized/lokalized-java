@@ -84,6 +84,43 @@
       }
     }
   },
+  "Hello, {{name}}." : {
+    "translation" : "{{greeting}}, {{name}}.",
+    "placeholders" : {
+      "greeting" : {
+        "value" : "formality",
+        "translations" : {
+          "INFORMAL" : "Hi",
+          "FORMAL" : "Hello",
+          "HONORIFIC" : "Greetings"
+        }
+      }
+    }
+  },
+  "We will meet at noon." : {
+    "translation" : "{{we}} will meet at noon.",
+    "placeholders" : {
+      "we" : {
+        "value" : "clusivity",
+        "translations" : {
+          "INCLUSIVE" : "We (including you)",
+          "EXCLUSIVE" : "We (excluding you)"
+        }
+      }
+    }
+  },
+  "I see {{object}}." : {
+    "translation" : "I see {{object}}.",
+    "placeholders" : {
+      "object" : {
+        "value" : "animacy",
+        "translations" : {
+          "ANIMATE" : "him",
+          "INANIMATE" : "it"
+        }
+      }
+    }
+  },
   "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
     "translation" : "The meeting will be {{minHours}}-{{maxHours}} {{hours}} long.",
     "placeholders" : {

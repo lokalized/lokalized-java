@@ -445,6 +445,10 @@ public class DefaultStrings implements Strings {
 			if (distinctLanguageForms == 0)
 				continue;
 
+			if (languageFormTranslation.getRange().isPresent() && translationsByCardinality.isEmpty())
+				throw new IllegalArgumentException(format("Range-based translations are only supported for %s. Offending localized string was %s",
+						Cardinality.class.getSimpleName(), localizedString));
+
 			// Handle plural cardinalities
 			if (translationsByCardinality.size() > 0) {
 				// Special case: calculate range from min and max if this is a range-driven cardinality

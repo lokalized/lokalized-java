@@ -32,6 +32,7 @@ import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link Strings}.
@@ -291,6 +292,53 @@ public class StringsTests {
 	}
 
 	@Test
+	public void formalityClusivityAnimacyPlaceholderTest() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
+		String translation = strings.get("Hello, {{name}}.",
+				new HashMap<String, Object>() {{
+					put("formality", Formality.HONORIFIC);
+					put("name", "Dr Smith");
+				}});
+
+		assertEquals("Greetings, Dr Smith.", translation);
+
+		translation = strings.get("We will meet at noon.",
+				new HashMap<String, Object>() {{
+					put("clusivity", Clusivity.INCLUSIVE);
+				}});
+
+		assertEquals("We (including you) will meet at noon.", translation);
+
+		translation = strings.get("We will meet at noon.",
+				new HashMap<String, Object>() {{
+					put("clusivity", Clusivity.EXCLUSIVE);
+				}});
+
+		assertEquals("We (excluding you) will meet at noon.", translation);
+
+		translation = strings.get("I see {{object}}.",
+				new HashMap<String, Object>() {{
+					put("animacy", Animacy.ANIMATE);
+				}});
+
+		assertEquals("I see him.", translation);
+
+		translation = strings.get("I see {{object}}.",
+				new HashMap<String, Object>() {{
+					put("animacy", Animacy.INANIMATE);
+				}});
+
+		assertEquals("I see it.", translation);
+	}
+
+	@Test
 	public void phoneticPlaceholderTest() {
 		LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
 				.translation("{{article}} {{noun}}")
@@ -535,6 +583,31 @@ public class StringsTests {
 		assertThrows(IllegalArgumentException.class,
 				() -> strings.get("{{title}} Doe", Map.of("gender", "MASCULINE")),
 				"Expected invalid gender placeholders to throw");
+	}
+
+	@Test
+	public void nonCardinalityRangePlaceholdersThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("Range example")
+				.translation("{{form}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"form", new LocalizedString.LanguageFormTranslation(
+								new LocalizedString.LanguageFormTranslationRange("start", "end"),
+								Map.of(
+										Formality.INFORMAL, "Hi",
+										Formality.FORMAL, "Hello"
+								)
+						)
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Range example", Map.of("start", 1, "end", 2)),
+				"Expected non-cardinality range placeholders to throw");
+
+		assertTrue(exception.getMessage().contains("Range-based translations are only supported"),
+				"Expected range error message to mention cardinality-only support");
 	}
 
 	@Test
