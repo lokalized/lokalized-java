@@ -556,6 +556,47 @@ Lokalized supports these values:
 
 Lokalized provides a [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html) type which enumerates supported formality values.
 
+#### Example
+
+Let's model a greeting with different levels of formality:
+
+```json
+{
+  "Hello, {{name}}." : {
+    "translation" : "{{greeting}}, {{name}}.",
+    "placeholders" : {
+      "greeting" : {
+        "value" : "formality",
+        "translations" : {
+          "INFORMAL" : "Hi",
+          "FORMAL" : "Hello",
+          "HONORIFIC" : "Greetings"
+        }
+      }
+    }
+  }
+}
+```
+
+Now select the register at runtime:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("en"))
+  .build();
+
+assertEquals("Greetings, Dr. Smith.", strings.get("Hello, {{name}}.", Map.of(
+  "formality", Formality.HONORIFIC,
+  "name", "Dr. Smith"
+)));
+
+assertEquals("Hi, Sam.", strings.get("Hello, {{name}}.", Map.of(
+  "formality", Formality.INFORMAL,
+  "name", "Sam"
+)));
+```
+
 ### Clusivity
 
 Clusivity rules distinguish between inclusive and exclusive first-person plurals.
@@ -567,6 +608,44 @@ Lokalized supports these values:
 
 Lokalized provides a [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html) type which enumerates supported clusivity values.
 
+#### Example
+
+In Malay, `kita` includes the addressee while `kami` excludes them. Let's model `We will meet at noon.`:
+
+```json
+{
+  "We will meet at noon." : {
+    "translation" : "{{we}} akan bertemu pada tengah hari.",
+    "placeholders" : {
+      "we" : {
+        "value" : "clusivity",
+        "translations" : {
+          "INCLUSIVE" : "Kita",
+          "EXCLUSIVE" : "Kami"
+        }
+      }
+    }
+  }
+}
+```
+
+Now choose inclusive vs exclusive at runtime:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ms"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ms"))
+  .build();
+
+assertEquals("Kita akan bertemu pada tengah hari.", strings.get("We will meet at noon.", Map.of(
+  "clusivity", Clusivity.INCLUSIVE
+)));
+
+assertEquals("Kami akan bertemu pada tengah hari.", strings.get("We will meet at noon.", Map.of(
+  "clusivity", Clusivity.EXCLUSIVE
+)));
+```
+
 ### Animacy
 
 Animacy rules distinguish between animate and inanimate referents.
@@ -577,6 +656,44 @@ Lokalized supports these values:
 * [`INANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#INANIMATE)
 
 Lokalized provides an [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html) type which enumerates supported animacy values.
+
+#### Example
+
+In Russian, masculine accusative forms often change based on animacy. Here's a simple example:
+
+```json
+{
+  "I see {{object}}." : {
+    "translation" : "Я вижу {{object}}.",
+    "placeholders" : {
+      "object" : {
+        "value" : "animacy",
+        "translations" : {
+          "ANIMATE" : "брата",
+          "INANIMATE" : "стол"
+        }
+      }
+    }
+  }
+}
+```
+
+Then select the animacy value at runtime:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ru"))
+  .build();
+
+assertEquals("Я вижу брата.", strings.get("I see {{object}}.", Map.of(
+  "animacy", Animacy.ANIMATE
+)));
+
+assertEquals("Я вижу стол.", strings.get("I see {{object}}.", Map.of(
+  "animacy", Animacy.INANIMATE
+)));
+```
 
 ### Plural Cardinality
 
