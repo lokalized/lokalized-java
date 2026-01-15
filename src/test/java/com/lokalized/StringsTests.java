@@ -638,6 +638,20 @@ public class StringsTests {
 	}
 
 	@Test
+	public void nonCardinalityRangePlaceholdersThrowDuringLoad() {
+		assertThrows(LocalizedStringLoadingException.class,
+				() -> LocalizedStringLoader.loadFromClasspath("strings-invalid-range"),
+				"Expected non-cardinality range placeholders to fail during load");
+	}
+
+	@Test
+	public void mixedLanguageFormPlaceholdersThrowDuringLoad() {
+		assertThrows(LocalizedStringLoadingException.class,
+				() -> LocalizedStringLoader.loadFromClasspath("strings-invalid-mixed"),
+				"Expected mixed language forms to fail during load");
+	}
+
+	@Test
 	public void missingPlaceholderTranslationsThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{itemLabel}}")
 				.translation("You have {{count}} {{itemLabel}}")

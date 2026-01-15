@@ -1,0 +1,17 @@
+{
+  "Range example" : {
+    "translation" : "{{form}}",
+    "placeholders" : {
+      "form" : {
+        "range" : {
+          "start" : "start",
+          "end" : "end"
+        },
+        "translations" : {
+          "FORMALITY_INFORMAL" : "Hi",
+          "FORMALITY_FORMAL" : "Hello"
+        }
+      }
+    }
+  }
+}

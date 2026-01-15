@@ -1,0 +1,14 @@
+{
+  "Mixed example" : {
+    "translation" : "{{value}}",
+    "placeholders" : {
+      "value" : {
+        "value" : "value",
+        "translations" : {
+          "CARDINALITY_ONE" : "one",
+          "GENDER_MASCULINE" : "he"
+        }
+      }
+    }
+  }
+}

@@ -714,6 +714,15 @@ public final class LocalizedStringLoader {
           if (translationsByLanguageForm.isEmpty())
             throw new LocalizedStringLoadingException(format("%s: placeholder translations are required. Key is '%s'", canonicalPath, key));
 
+          Set<Class<?>> languageFormTypes = new HashSet<>();
+
+          for (LanguageForm languageForm : translationsByLanguageForm.keySet())
+            languageFormTypes.add(languageForm.getClass());
+
+          if (languageFormTypes.size() > 1)
+            throw new LocalizedStringLoadingException(format("%s: you cannot mix-and-match language forms in placeholder translations. " +
+                "Placeholder is '%s' for key '%s'", canonicalPath, placeholderKey, key));
+
           if (rangeValue != null) {
             boolean hasNonCardinality = translationsByLanguageForm.keySet().stream()
                 .anyMatch(languageForm -> !(languageForm instanceof Cardinality));
