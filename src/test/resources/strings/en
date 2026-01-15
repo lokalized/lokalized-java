@@ -7,14 +7,16 @@
         "value" : "heOrShe",
         "translations" : {  
           "GENDER_MASCULINE" : "He",
-          "GENDER_FEMININE" : "She"
+          "GENDER_FEMININE" : "She",
+          "GENDER_COMMON" : "This person"
         }
       },
       "actor" : {  
         "value" : "heOrShe",
         "translations" : {  
           "GENDER_MASCULINE" : "actor",
-          "GENDER_FEMININE" : "actress"
+          "GENDER_FEMININE" : "actress",
+          "GENDER_COMMON" : "actor"
         }
       }
     }
@@ -46,7 +48,8 @@
         "value" : "heOrShe",
         "translations" : {  
           "GENDER_MASCULINE" : "He",
-          "GENDER_FEMININE" : "She"
+          "GENDER_FEMININE" : "She",
+          "GENDER_COMMON" : "This person"
         }
       }
     },
@@ -70,7 +73,8 @@
         "value" : "hisOrHer",
         "translations" : {  
           "GENDER_MASCULINE" : "His",
-          "GENDER_FEMININE" : "Her"
+          "GENDER_FEMININE" : "Her",
+          "GENDER_COMMON" : "Their"
         }
       },
       "ordinal" : {  

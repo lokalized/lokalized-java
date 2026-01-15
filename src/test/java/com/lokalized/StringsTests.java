@@ -253,6 +253,13 @@ public class StringsTests {
 
 		assertEquals("She is a good actress.", translation);
 
+		translation = strings.get("{{heOrShe}} is a good actor.",
+				new HashMap<String, Object>() {{
+					put("heOrShe", Gender.COMMON);
+				}});
+
+		assertEquals("This person is a good actor.", translation);
+
 		// Switch to Spanish
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

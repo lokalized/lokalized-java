@@ -959,9 +959,15 @@ class ExpressionEvaluator {
     requireNonNull(operand);
     requireNonNull(context);
 
-    if (isGender(operand))
-      return Gender.getGendersByName().get(
-          LocalizedStringUtils.genderNameForLocalizedStringName(operand.getSymbol()));
+    if (isGender(operand)) {
+      String genderName = LocalizedStringUtils.genderNameForLocalizedStringName(operand.getSymbol());
+      Gender gender = Gender.getGendersByName().get(genderName);
+
+      if (gender == null)
+        throw new ExpressionEvaluationException(format("Unexpected gender token '%s'", operand.getSymbol()));
+
+      return gender;
+    }
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -990,9 +996,15 @@ class ExpressionEvaluator {
     requireNonNull(operand);
     requireNonNull(context);
 
-    if (isFormality(operand))
-      return Formality.getFormalitiesByName().get(
-          LocalizedStringUtils.formalityNameForLocalizedStringName(operand.getSymbol()));
+    if (isFormality(operand)) {
+      String formalityName = LocalizedStringUtils.formalityNameForLocalizedStringName(operand.getSymbol());
+      Formality formality = Formality.getFormalitiesByName().get(formalityName);
+
+      if (formality == null)
+        throw new ExpressionEvaluationException(format("Unexpected formality token '%s'", operand.getSymbol()));
+
+      return formality;
+    }
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1021,9 +1033,15 @@ class ExpressionEvaluator {
     requireNonNull(operand);
     requireNonNull(context);
 
-    if (isClusivity(operand))
-      return Clusivity.getClusivitiesByName().get(
-          LocalizedStringUtils.clusivityNameForLocalizedStringName(operand.getSymbol()));
+    if (isClusivity(operand)) {
+      String clusivityName = LocalizedStringUtils.clusivityNameForLocalizedStringName(operand.getSymbol());
+      Clusivity clusivity = Clusivity.getClusivitiesByName().get(clusivityName);
+
+      if (clusivity == null)
+        throw new ExpressionEvaluationException(format("Unexpected clusivity token '%s'", operand.getSymbol()));
+
+      return clusivity;
+    }
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1052,9 +1070,15 @@ class ExpressionEvaluator {
     requireNonNull(operand);
     requireNonNull(context);
 
-    if (isAnimacy(operand))
-      return Animacy.getAnimaciesByName().get(
-          LocalizedStringUtils.animacyNameForLocalizedStringName(operand.getSymbol()));
+    if (isAnimacy(operand)) {
+      String animacyName = LocalizedStringUtils.animacyNameForLocalizedStringName(operand.getSymbol());
+      Animacy animacy = Animacy.getAnimaciesByName().get(animacyName);
+
+      if (animacy == null)
+        throw new ExpressionEvaluationException(format("Unexpected animacy token '%s'", operand.getSymbol()));
+
+      return animacy;
+    }
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());

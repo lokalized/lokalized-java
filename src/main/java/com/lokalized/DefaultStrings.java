@@ -700,6 +700,17 @@ public class DefaultStrings implements Strings {
 
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
 			String primary = range.split("-")[0]; // e.g. "pt"
+
+			if ("*".equals(primary)) {
+				List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), availableLocales,
+						Locale.FilteringMode.EXTENDED_FILTERING);
+
+				if (!filteredCandidates.isEmpty())
+					return filteredCandidates.get(0);
+
+				continue;
+			}
+
 			List<@NonNull Locale> candidates = availableLocales.stream()
 					.filter(locale -> locale.getLanguage().equalsIgnoreCase(primary))
 					.collect(Collectors.toList());
