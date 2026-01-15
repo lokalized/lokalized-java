@@ -100,6 +100,13 @@ class ExpressionTokenizer {
       put(TokenType.MASCULINE, "\\bMASCULINE\\b");
       put(TokenType.FEMININE, "\\bFEMININE\\b");
       put(TokenType.NEUTER, "\\bNEUTER\\b");
+      put(TokenType.INFORMAL, "\\bINFORMAL\\b");
+      put(TokenType.FORMAL, "\\bFORMAL\\b");
+      put(TokenType.HONORIFIC, "\\bHONORIFIC\\b");
+      put(TokenType.INCLUSIVE, "\\bINCLUSIVE\\b");
+      put(TokenType.EXCLUSIVE, "\\bEXCLUSIVE\\b");
+      put(TokenType.ANIMATE, "\\bANIMATE\\b");
+      put(TokenType.INANIMATE, "\\bINANIMATE\\b");
       put(TokenType.NUMBER, "[+-]?((\\d+\\.\\d*)|(\\.\\d+)|(\\d+))([eE][+-]?\\d+)?");
       put(TokenType.VARIABLE, "[\\p{Alpha}_][\\p{Alnum}_-]*");
     }});

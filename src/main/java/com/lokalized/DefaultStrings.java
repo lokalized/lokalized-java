@@ -396,6 +396,9 @@ public class DefaultStrings implements Strings {
 			Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
 			Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
 			Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
+			Map<@NonNull Formality, @NonNull String> translationsByFormality = new HashMap<>();
+			Map<@NonNull Clusivity, @NonNull String> translationsByClusivity = new HashMap<>();
+			Map<@NonNull Animacy, @NonNull String> translationsByAnimacy = new HashMap<>();
 			Map<@NonNull Phonetic, @NonNull String> translationsByPhonetic = new HashMap<>();
 
 			if (languageFormTranslation.getRange().isPresent()) {
@@ -416,6 +419,12 @@ public class DefaultStrings implements Strings {
 					translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Gender)
 					translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Formality)
+					translationsByFormality.put((Formality) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Clusivity)
+					translationsByClusivity.put((Clusivity) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Animacy)
+					translationsByAnimacy.put((Animacy) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Phonetic)
 					translationsByPhonetic.put((Phonetic) languageForm, translatedLanguageForm);
 				else
@@ -425,6 +434,9 @@ public class DefaultStrings implements Strings {
 			int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
 					(translationsByOrdinality.size() > 0 ? 1 : 0) +
 					(translationsByGender.size() > 0 ? 1 : 0) +
+					(translationsByFormality.size() > 0 ? 1 : 0) +
+					(translationsByClusivity.size() > 0 ? 1 : 0) +
+					(translationsByAnimacy.size() > 0 ? 1 : 0) +
 					(translationsByPhonetic.size() > 0 ? 1 : 0);
 
 			if (distinctLanguageForms > 1)
@@ -529,6 +541,66 @@ public class DefaultStrings implements Strings {
 							Gender.class.getSimpleName(), gender.name(), localizedString));
 
 				mutableContext.put(placeholderName, genderTranslation);
+			}
+
+			// Handle formality
+			if (translationsByFormality.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof Formality))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Formality.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				Formality formality = (Formality) value;
+				String formalityTranslation = translationsByFormality.get(formality);
+
+				if (formalityTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Formality.class.getSimpleName(), formality.name(), localizedString));
+
+				mutableContext.put(placeholderName, formalityTranslation);
+			}
+
+			// Handle clusivity
+			if (translationsByClusivity.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof Clusivity))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Clusivity.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				Clusivity clusivity = (Clusivity) value;
+				String clusivityTranslation = translationsByClusivity.get(clusivity);
+
+				if (clusivityTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Clusivity.class.getSimpleName(), clusivity.name(), localizedString));
+
+				mutableContext.put(placeholderName, clusivityTranslation);
+			}
+
+			// Handle animacy
+			if (translationsByAnimacy.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof Animacy))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Animacy.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				Animacy animacy = (Animacy) value;
+				String animacyTranslation = translationsByAnimacy.get(animacy);
+
+				if (animacyTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Animacy.class.getSimpleName(), animacy.name(), localizedString));
+
+				mutableContext.put(placeholderName, animacyTranslation);
 			}
 
 			// Handle phonetics

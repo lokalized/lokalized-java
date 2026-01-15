@@ -56,6 +56,30 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void formalityTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMAL");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.FORMAL));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
+  public void honorificTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == HONORIFIC");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.HONORIFIC));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void numberTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("chickenCount == -12.5");
 

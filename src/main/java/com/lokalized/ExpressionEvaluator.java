@@ -44,10 +44,13 @@ import static java.util.Objects.requireNonNull;
  * <pre>
  * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
  * OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
- * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | PHONETIC ;
+ * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
  * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
  * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
  * GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
+ * FORMALITY = "INFORMAL" | "FORMAL" | "HONORIFIC" ;
+ * CLUSIVITY = "INCLUSIVE" | "EXCLUSIVE" ;
+ * ANIMACY = "ANIMATE" | "INANIMATE" ;
  * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
  *          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
  *          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
@@ -69,6 +72,12 @@ class ExpressionEvaluator {
   private static final Set<@NonNull TokenType> ORDINALITY_TOKEN_TYPES;
   @NonNull
   private static final Set<@NonNull TokenType> GENDER_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> FORMALITY_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> CLUSIVITY_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> ANIMACY_TOKEN_TYPES;
   @NonNull
   private static final Set<@NonNull TokenType> PHONETIC_TOKEN_TYPES;
   @NonNull
@@ -120,6 +129,28 @@ class ExpressionEvaluator {
       }
     });
 
+    FORMALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.INFORMAL);
+        add(TokenType.FORMAL);
+        add(TokenType.HONORIFIC);
+      }
+    });
+
+    CLUSIVITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.INCLUSIVE);
+        add(TokenType.EXCLUSIVE);
+      }
+    });
+
+    ANIMACY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.ANIMATE);
+        add(TokenType.INANIMATE);
+      }
+    });
+
     PHONETIC_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
         add(TokenType.PHONETIC_VOWEL);
@@ -163,6 +194,9 @@ class ExpressionEvaluator {
     operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(ORDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
+    operandTokenTypes.addAll(FORMALITY_TOKEN_TYPES);
+    operandTokenTypes.addAll(CLUSIVITY_TOKEN_TYPES);
+    operandTokenTypes.addAll(ANIMACY_TOKEN_TYPES);
     operandTokenTypes.addAll(PHONETIC_TOKEN_TYPES);
     operandTokenTypes.add(TokenType.VARIABLE);
     operandTokenTypes.add(TokenType.NUMBER);
@@ -518,6 +552,69 @@ class ExpressionEvaluator {
         return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
       }
 
+      // Formality (operators: ==, !=)
+      if (lhsOperandType == OperandType.FORMALITY && rhsOperandType == OperandType.FORMALITY) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing formality comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Formality lhsValue = formalityFromOperand(leftHandOperand, context);
+        Formality rhsValue = formalityFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
+      // Clusivity (operators: ==, !=)
+      if (lhsOperandType == OperandType.CLUSIVITY && rhsOperandType == OperandType.CLUSIVITY) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing clusivity comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Clusivity lhsValue = clusivityFromOperand(leftHandOperand, context);
+        Clusivity rhsValue = clusivityFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
+      // Animacy (operators: ==, !=)
+      if (lhsOperandType == OperandType.ANIMACY && rhsOperandType == OperandType.ANIMACY) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing animacy comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Animacy lhsValue = animacyFromOperand(leftHandOperand, context);
+        Animacy rhsValue = animacyFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
       // Cardinality (operators: ==, !=)
       if (lhsOperandType == OperandType.CARDINALITY || rhsOperandType == OperandType.CARDINALITY) {
         if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
@@ -685,6 +782,42 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Does the specified token represent a formality?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a formality, not null
+   */
+  @NonNull
+  protected Boolean isFormality(@NonNull Token token) {
+    requireNonNull(token);
+    return FORMALITY_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
+   * Does the specified token represent a clusivity?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a clusivity, not null
+   */
+  @NonNull
+  protected Boolean isClusivity(@NonNull Token token) {
+    requireNonNull(token);
+    return CLUSIVITY_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
+   * Does the specified token represent animacy?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents animacy, not null
+   */
+  @NonNull
+  protected Boolean isAnimacy(@NonNull Token token) {
+    requireNonNull(token);
+    return ANIMACY_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
    * Does the specified token represent a plural cardinality?
    *
    * @param token the token to check, not null
@@ -740,6 +873,12 @@ class ExpressionEvaluator {
       return OperandType.ORDINALITY;
     if (isGender(operand))
       return OperandType.GENDER;
+    if (isFormality(operand))
+      return OperandType.FORMALITY;
+    if (isClusivity(operand))
+      return OperandType.CLUSIVITY;
+    if (isAnimacy(operand))
+      return OperandType.ANIMACY;
     if (isPhonetic(operand))
       return OperandType.PHONETIC;
 
@@ -762,6 +901,12 @@ class ExpressionEvaluator {
         return OperandType.ORDINALITY;
       if (value instanceof Gender)
         return OperandType.GENDER;
+      if (value instanceof Formality)
+        return OperandType.FORMALITY;
+      if (value instanceof Clusivity)
+        return OperandType.CLUSIVITY;
+      if (value instanceof Animacy)
+        return OperandType.ANIMACY;
       if (value instanceof Phonetic)
         return OperandType.PHONETIC;
       if (value instanceof CharSequence)
@@ -828,6 +973,96 @@ class ExpressionEvaluator {
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
         Gender.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the formality value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the formality value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine formality value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Formality formalityFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isFormality(operand))
+      return Formality.getFormalitiesByName().get(operand.getSymbol());
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Formality)
+        return (Formality) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Formality.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the clusivity value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the clusivity value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine clusivity value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Clusivity clusivityFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isClusivity(operand))
+      return Clusivity.getClusivitiesByName().get(operand.getSymbol());
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Clusivity)
+        return (Clusivity) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Clusivity.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the animacy value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the animacy value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine animacy value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Animacy animacyFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isAnimacy(operand))
+      return Animacy.getAnimaciesByName().get(operand.getSymbol());
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Animacy)
+        return (Animacy) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Animacy.class.getSimpleName(), operand.getSymbol()));
   }
 
   /**
@@ -1032,7 +1267,7 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
+    NUMBER, GENDER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
   }
 
   protected static final class ExpressionNode {

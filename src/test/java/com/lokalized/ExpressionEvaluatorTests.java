@@ -47,6 +47,20 @@ public class ExpressionEvaluatorTests {
 		assertFalse(expressionEvaluator.evaluate("MASCULINE == FEMININE", LOCALE), "Unequal genders evaluate as equal");
 		assertTrue(expressionEvaluator.evaluate("MASCULINE != FEMININE", LOCALE), "Unequal genders evaluate as equal");
 
+		assertTrue(expressionEvaluator.evaluate("FORMAL == FORMAL", LOCALE), "Formality identity failed");
+		assertFalse(expressionEvaluator.evaluate("FORMAL == INFORMAL", LOCALE), "Unequal formalities evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("FORMAL != INFORMAL", LOCALE), "Unequal formalities evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("HONORIFIC == HONORIFIC", LOCALE), "Honorific identity failed");
+		assertFalse(expressionEvaluator.evaluate("HONORIFIC == FORMAL", LOCALE), "Unequal formalities evaluate as equal");
+
+		assertTrue(expressionEvaluator.evaluate("INCLUSIVE == INCLUSIVE", LOCALE), "Clusivity identity failed");
+		assertFalse(expressionEvaluator.evaluate("INCLUSIVE == EXCLUSIVE", LOCALE), "Unequal clusivities evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("INCLUSIVE != EXCLUSIVE", LOCALE), "Unequal clusivities evaluate as equal");
+
+		assertTrue(expressionEvaluator.evaluate("ANIMATE == ANIMATE", LOCALE), "Animacy identity failed");
+		assertFalse(expressionEvaluator.evaluate("ANIMATE == INANIMATE", LOCALE), "Unequal animacy evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("ANIMATE != INANIMATE", LOCALE), "Unequal animacy evaluate as equal");
+
 		assertTrue(expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_ONE", LOCALE), "Cardinality identity failed");
 		assertFalse(expressionEvaluator.evaluate("CARDINALITY_ONE == CARDINALITY_MANY", LOCALE), "Unequal plurals evaluate as equal");
 		assertTrue(expressionEvaluator.evaluate("CARDINALITY_ONE != CARDINALITY_MANY", LOCALE), "Unequal plurals evaluate as equal");
@@ -87,6 +101,18 @@ public class ExpressionEvaluatorTests {
 		assertTrue(expressionEvaluator.evaluate("gender == MASCULINE", Map.of(
 				"gender", Gender.MASCULINE
 		), LOCALE), "Gender-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("formality == FORMAL", Map.of(
+				"formality", Formality.FORMAL
+		), LOCALE), "Formality-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("clusivity == INCLUSIVE", Map.of(
+				"clusivity", Clusivity.INCLUSIVE
+		), LOCALE), "Clusivity-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("animacy == ANIMATE", Map.of(
+				"animacy", Animacy.ANIMATE
+		), LOCALE), "Animacy-variable comparison failed");
 
 		assertTrue(expressionEvaluator.evaluate("CARDINALITY_OTHER == bigNumber", Map.of(
 				"bigNumber", 1_000
