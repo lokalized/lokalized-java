@@ -57,24 +57,24 @@ public class ExpressionTokenizerTests {
 
   @Test
   public void formalityTokenization() {
-    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMAL");
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMALITY_FORMAL");
 
     List<Token> expectedTokens = new ArrayList<>();
     expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
     expectedTokens.add(new Token(TokenType.EQUAL_TO));
-    expectedTokens.add(new Token(TokenType.FORMAL));
+    expectedTokens.add(new Token(TokenType.FORMALITY_FORMAL));
 
     assertEquals(expectedTokens, tokens);
   }
 
   @Test
   public void honorificTokenization() {
-    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == HONORIFIC");
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMALITY_HONORIFIC");
 
     List<Token> expectedTokens = new ArrayList<>();
     expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
     expectedTokens.add(new Token(TokenType.EQUAL_TO));
-    expectedTokens.add(new Token(TokenType.HONORIFIC));
+    expectedTokens.add(new Token(TokenType.FORMALITY_HONORIFIC));
 
     assertEquals(expectedTokens, tokens);
   }

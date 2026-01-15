@@ -47,10 +47,10 @@ import static java.util.Objects.requireNonNull;
  * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
  * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
  * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
- * GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
- * FORMALITY = "INFORMAL" | "FORMAL" | "HONORIFIC" ;
- * CLUSIVITY = "INCLUSIVE" | "EXCLUSIVE" ;
- * ANIMACY = "ANIMATE" | "INANIMATE" ;
+ * GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_NEUTER" ;
+ * FORMALITY = "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HONORIFIC" ;
+ * CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
+ * ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
  * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
  *          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
  *          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
@@ -123,31 +123,31 @@ class ExpressionEvaluator {
 
     GENDER_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
-        add(TokenType.MASCULINE);
-        add(TokenType.FEMININE);
-        add(TokenType.NEUTER);
+        add(TokenType.GENDER_MASCULINE);
+        add(TokenType.GENDER_FEMININE);
+        add(TokenType.GENDER_NEUTER);
       }
     });
 
     FORMALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
-        add(TokenType.INFORMAL);
-        add(TokenType.FORMAL);
-        add(TokenType.HONORIFIC);
+        add(TokenType.FORMALITY_INFORMAL);
+        add(TokenType.FORMALITY_FORMAL);
+        add(TokenType.FORMALITY_HONORIFIC);
       }
     });
 
     CLUSIVITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
-        add(TokenType.INCLUSIVE);
-        add(TokenType.EXCLUSIVE);
+        add(TokenType.CLUSIVITY_INCLUSIVE);
+        add(TokenType.CLUSIVITY_EXCLUSIVE);
       }
     });
 
     ANIMACY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
-        add(TokenType.ANIMATE);
-        add(TokenType.INANIMATE);
+        add(TokenType.ANIMACY_ANIMATE);
+        add(TokenType.ANIMACY_INANIMATE);
       }
     });
 
@@ -959,7 +959,8 @@ class ExpressionEvaluator {
     requireNonNull(context);
 
     if (isGender(operand))
-      return Gender.getGendersByName().get(operand.getSymbol());
+      return Gender.getGendersByName().get(
+          LocalizedStringUtils.genderNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -989,7 +990,8 @@ class ExpressionEvaluator {
     requireNonNull(context);
 
     if (isFormality(operand))
-      return Formality.getFormalitiesByName().get(operand.getSymbol());
+      return Formality.getFormalitiesByName().get(
+          LocalizedStringUtils.formalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1019,7 +1021,8 @@ class ExpressionEvaluator {
     requireNonNull(context);
 
     if (isClusivity(operand))
-      return Clusivity.getClusivitiesByName().get(operand.getSymbol());
+      return Clusivity.getClusivitiesByName().get(
+          LocalizedStringUtils.clusivityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1049,7 +1052,8 @@ class ExpressionEvaluator {
     requireNonNull(context);
 
     if (isAnimacy(operand))
-      return Animacy.getAnimaciesByName().get(operand.getSymbol());
+      return Animacy.getAnimaciesByName().get(
+          LocalizedStringUtils.animacyNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());

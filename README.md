@@ -240,17 +240,17 @@ English is a little simpler than Spanish because gender only affects the `He` or
       "heOrShe" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "He",
-          "FEMININE" : "She"
+          "GENDER_MASCULINE" : "He",
+          "GENDER_FEMININE" : "She"
         }
       }
     },
     "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : "He was the best baseball player."        
+        "heOrShe == GENDER_MASCULINE && groupSize <= 1" : "He was the best baseball player."        
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : "She was the best baseball player."        
+        "heOrShe == GENDER_FEMININE && groupSize <= 1" : "She was the best baseball player."        
       }
     ]
   }
@@ -269,31 +269,31 @@ Note that we define our own placeholders in `translation` and drive them off of 
       "uno" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "uno",
-          "FEMININE" : "una"
+          "GENDER_MASCULINE" : "uno",
+          "GENDER_FEMININE" : "una"
         }
       },
       "los" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "los",
-          "FEMININE" : "las"
+          "GENDER_MASCULINE" : "los",
+          "GENDER_FEMININE" : "las"
         }
       },
       "jugadores" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "jugadores",
-          "FEMININE" : "jugadoras"
+          "GENDER_MASCULINE" : "jugadores",
+          "GENDER_FEMININE" : "jugadoras"
         }
       }
     },
     "alternatives" : [
       {
-        "heOrShe == MASCULINE && groupSize <= 1" : "Él era el mejor jugador de béisbol."        
+        "heOrShe == GENDER_MASCULINE && groupSize <= 1" : "Él era el mejor jugador de béisbol."        
       },
       {
-        "heOrShe == FEMININE && groupSize <= 1" : "Ella era la mejor jugadora de béisbol."        
+        "heOrShe == GENDER_FEMININE && groupSize <= 1" : "Ella era la mejor jugadora de béisbol."        
       }
     ]
   }
@@ -336,7 +336,7 @@ assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
 
 ### Recursive Alternatives
 
-You can exploit the recursive nature of alternative expressions to reduce logic duplication.  Here, we define a toplevel alternative for `groupSize <= 1` which itself has alternatives for `MASCULINE` and `FEMININE` cases.  This is equivalent to the alternative rules defined above but might be a more "comfortable" way to express behavior for some.
+You can exploit the recursive nature of alternative expressions to reduce logic duplication.  Here, we define a toplevel alternative for `groupSize <= 1` which itself has alternatives for `GENDER_MASCULINE` and `GENDER_FEMININE` cases.  This is equivalent to the alternative rules defined above but might be a more "comfortable" way to express behavior for some.
 
 Note that this is just a snippet to illustrate functionality - the other portion of this localized string has been elided for brevity.
 
@@ -347,10 +347,10 @@ Note that this is just a snippet to illustrate functionality - the other portion
       "groupSize <= 1" : {
         "alternatives" : [
           {
-            "heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
+            "heOrShe == GENDER_MASCULINE" : "Él era el mejor jugador de béisbol."
           },
           {
-            "heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
+            "heOrShe == GENDER_FEMININE" : "Ella era la mejor jugadora de béisbol."
           }
         ]
       }
@@ -444,8 +444,8 @@ English has 4 ordinals.
       "hisOrHer" : {  
         "value" : "hisOrHer",
         "translations" : {  
-          "MASCULINE" : "His",
-          "FEMININE" : "Her"
+          "GENDER_MASCULINE" : "His",
+          "GENDER_FEMININE" : "Her"
         }
       },
       "ordinal" : {  
@@ -475,7 +475,7 @@ Spanish doesn't have ordinals, so we can disregard them.  But we do have a few s
         "year == 1" : "Su primera fiesta de cumpleaños es la próxima semana."        
       },
       {
-        "hisOrHer == FEMININE && year == 15" : "Su quinceañera es la próxima semana."        
+        "hisOrHer == GENDER_FEMININE && year == 15" : "Su quinceañera es la próxima semana."        
       }
     ]
   }
@@ -538,9 +538,9 @@ Gender rules vary across languages, but the general meaning is the same.
  
 Lokalized supports these values:
 
-* [`MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE)
-* [`FEMININE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#FEMININE)
-* [`NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER)
+* [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE)
+* [`GENDER_FEMININE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#FEMININE)
+* [`GENDER_NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER)
 
 Lokalized provides a [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) type which enumerates supported genders.
 
@@ -550,9 +550,9 @@ Formality rules determine whether a phrase is rendered in an informal or formal 
 
 Lokalized supports these values:
 
-* [`INFORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#INFORMAL)
-* [`FORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#FORMAL)
-* [`HONORIFIC`](https://javadoc.lokalized.com/com/lokalized/Formality.html#HONORIFIC)
+* [`FORMALITY_INFORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#INFORMAL)
+* [`FORMALITY_FORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#FORMAL)
+* [`FORMALITY_HONORIFIC`](https://javadoc.lokalized.com/com/lokalized/Formality.html#HONORIFIC)
 
 Lokalized provides a [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html) type which enumerates supported formality values.
 
@@ -568,9 +568,9 @@ Let's model a greeting with different levels of formality:
       "greeting" : {
         "value" : "formality",
         "translations" : {
-          "INFORMAL" : "Hi",
-          "FORMAL" : "Hello",
-          "HONORIFIC" : "Greetings"
+          "FORMALITY_INFORMAL" : "Hi",
+          "FORMALITY_FORMAL" : "Hello",
+          "FORMALITY_HONORIFIC" : "Greetings"
         }
       }
     }
@@ -603,8 +603,8 @@ Clusivity rules distinguish between inclusive and exclusive first-person plurals
 
 Lokalized supports these values:
 
-* [`INCLUSIVE`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html#INCLUSIVE)
-* [`EXCLUSIVE`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html#EXCLUSIVE)
+* [`CLUSIVITY_INCLUSIVE`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html#INCLUSIVE)
+* [`CLUSIVITY_EXCLUSIVE`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html#EXCLUSIVE)
 
 Lokalized provides a [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html) type which enumerates supported clusivity values.
 
@@ -620,8 +620,8 @@ In Malay, `kita` includes the addressee while `kami` excludes them. Let's model 
       "we" : {
         "value" : "clusivity",
         "translations" : {
-          "INCLUSIVE" : "Kita",
-          "EXCLUSIVE" : "Kami"
+          "CLUSIVITY_INCLUSIVE" : "Kita",
+          "CLUSIVITY_EXCLUSIVE" : "Kami"
         }
       }
     }
@@ -652,8 +652,8 @@ Animacy rules distinguish between animate and inanimate referents.
 
 Lokalized supports these values:
 
-* [`ANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#ANIMATE)
-* [`INANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#INANIMATE)
+* [`ANIMACY_ANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#ANIMATE)
+* [`ANIMACY_INANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#INANIMATE)
 
 Lokalized provides an [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html) type which enumerates supported animacy values.
 
@@ -669,8 +669,8 @@ In Russian, masculine accusative forms often change based on animacy. Here's a s
       "object" : {
         "value" : "animacy",
         "translations" : {
-          "ANIMATE" : "брата",
-          "INANIMATE" : "стол"
+          "ANIMACY_ANIMATE" : "брата",
+          "ANIMACY_INANIMATE" : "стол"
         }
       }
     }
@@ -1051,7 +1051,7 @@ Here, the value of `bookCount` is evaluated against the specified cardinality ru
 
 Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
 
-You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).
+You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 
@@ -1084,7 +1084,7 @@ You are prohibited from supplying both `range` and `value` fields - use `range` 
 You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like this:
  
 ```text
-gender == MASCULINE && (bookCount > 10 || magazineCount > 20)
+gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
 ```
 
 Standard boolean operator precedence applies: `&&` binds tighter than `||`.
@@ -1153,10 +1153,13 @@ A grammar for alternative expressions follows.
 ```EBNF
 EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
 OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
-LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | PHONETIC ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
-GENDER = "MASCULINE" | "FEMININE" | "NEUTER" ;
+GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_NEUTER" ;
+FORMALITY = "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HONORIFIC" ;
+CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
+ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
 PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"

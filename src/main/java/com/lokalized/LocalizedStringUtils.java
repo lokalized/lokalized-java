@@ -34,11 +34,23 @@ final class LocalizedStringUtils {
   @NonNull
   private static final String ORDINALITY_NAME_PREFIX;
   @NonNull
+  private static final String GENDER_NAME_PREFIX;
+  @NonNull
+  private static final String FORMALITY_NAME_PREFIX;
+  @NonNull
+  private static final String CLUSIVITY_NAME_PREFIX;
+  @NonNull
+  private static final String ANIMACY_NAME_PREFIX;
+  @NonNull
   private static final String PHONETIC_NAME_PREFIX;
 
   static {
     CARDINALITY_NAME_PREFIX = "CARDINALITY_";
     ORDINALITY_NAME_PREFIX = "ORDINALITY_";
+    GENDER_NAME_PREFIX = "GENDER_";
+    FORMALITY_NAME_PREFIX = "FORMALITY_";
+    CLUSIVITY_NAME_PREFIX = "CLUSIVITY_";
+    ANIMACY_NAME_PREFIX = "ANIMACY_";
     PHONETIC_NAME_PREFIX = "PHONETIC_";
   }
 
@@ -104,6 +116,126 @@ final class LocalizedStringUtils {
           localizedStringName, ORDINALITY_NAME_PREFIX));
 
     return localizedStringName.substring(ORDINALITY_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Gender name ({@code MASCULINE}) to match localized strings file format {@code "GENDER_MASCULINE"}.
+   *
+   * @param genderName the gender name to massage, not null
+   * @return the localized strings file representation of a gender name, not null
+   */
+  @NonNull
+  static String localizedStringNameForGenderName(@NonNull String genderName) {
+    requireNonNull(genderName);
+    return format("%s%s", GENDER_NAME_PREFIX, genderName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "GENDER_MASCULINE"} to match gender name ({@code MASCULINE}).
+   *
+   * @param localizedStringName the localized strings gender name to massage, not null
+   * @return the gender name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String genderNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(GENDER_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Gender value '%s' does not start with prefix '%s'",
+          localizedStringName, GENDER_NAME_PREFIX));
+
+    return localizedStringName.substring(GENDER_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Formality name ({@code FORMAL}) to match localized strings file format {@code "FORMALITY_FORMAL"}.
+   *
+   * @param formalityName the formality name to massage, not null
+   * @return the localized strings file representation of a formality name, not null
+   */
+  @NonNull
+  static String localizedStringNameForFormalityName(@NonNull String formalityName) {
+    requireNonNull(formalityName);
+    return format("%s%s", FORMALITY_NAME_PREFIX, formalityName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "FORMALITY_FORMAL"} to match formality name ({@code FORMAL}).
+   *
+   * @param localizedStringName the localized strings formality name to massage, not null
+   * @return the formality name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String formalityNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(FORMALITY_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Formality value '%s' does not start with prefix '%s'",
+          localizedStringName, FORMALITY_NAME_PREFIX));
+
+    return localizedStringName.substring(FORMALITY_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Clusivity name ({@code INCLUSIVE}) to match localized strings file format {@code "CLUSIVITY_INCLUSIVE"}.
+   *
+   * @param clusivityName the clusivity name to massage, not null
+   * @return the localized strings file representation of a clusivity name, not null
+   */
+  @NonNull
+  static String localizedStringNameForClusivityName(@NonNull String clusivityName) {
+    requireNonNull(clusivityName);
+    return format("%s%s", CLUSIVITY_NAME_PREFIX, clusivityName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "CLUSIVITY_INCLUSIVE"} to match clusivity name ({@code INCLUSIVE}).
+   *
+   * @param localizedStringName the localized strings clusivity name to massage, not null
+   * @return the clusivity name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String clusivityNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(CLUSIVITY_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Clusivity value '%s' does not start with prefix '%s'",
+          localizedStringName, CLUSIVITY_NAME_PREFIX));
+
+    return localizedStringName.substring(CLUSIVITY_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages Animacy name ({@code ANIMATE}) to match localized strings file format {@code "ANIMACY_ANIMATE"}.
+   *
+   * @param animacyName the animacy name to massage, not null
+   * @return the localized strings file representation of an animacy name, not null
+   */
+  @NonNull
+  static String localizedStringNameForAnimacyName(@NonNull String animacyName) {
+    requireNonNull(animacyName);
+    return format("%s%s", ANIMACY_NAME_PREFIX, animacyName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "ANIMACY_ANIMATE"} to match animacy name ({@code ANIMATE}).
+   *
+   * @param localizedStringName the localized strings animacy name to massage, not null
+   * @return the animacy name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String animacyNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(ANIMACY_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Animacy value '%s' does not start with prefix '%s'",
+          localizedStringName, ANIMACY_NAME_PREFIX));
+
+    return localizedStringName.substring(ANIMACY_NAME_PREFIX.length());
   }
 
   /**

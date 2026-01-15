@@ -5,15 +5,15 @@
       "heOrShe" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "Él",
-          "FEMININE" : "Ella"
+          "GENDER_MASCULINE" : "Él",
+          "GENDER_FEMININE" : "Ella"
         }
       },
       "suffix" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "un buen actor",
-          "FEMININE" : "una buena actriz"
+          "GENDER_MASCULINE" : "un buen actor",
+          "GENDER_FEMININE" : "una buena actriz"
         }
       }
     }
@@ -21,10 +21,10 @@
   "{{heOrShe}} is a great actor." : {
     "alternatives" : [
       {
-        "heOrShe == MASCULINE" : "Él es un gran actor."
+        "heOrShe == GENDER_MASCULINE" : "Él es un gran actor."
       },
       {
-        "heOrShe == FEMININE" : "Ella es una gran actriz."
+        "heOrShe == GENDER_FEMININE" : "Ella es una gran actriz."
       }
     ]
   },
@@ -34,22 +34,22 @@
       "uno" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "uno",
-          "FEMININE" : "una"
+          "GENDER_MASCULINE" : "uno",
+          "GENDER_FEMININE" : "una"
         }
       },
       "los" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "los",
-          "FEMININE" : "las"
+          "GENDER_MASCULINE" : "los",
+          "GENDER_FEMININE" : "las"
         }
       },
       "jugadores" : {
         "value" : "heOrShe",
         "translations" : {
-          "MASCULINE" : "jugadores",
-          "FEMININE" : "jugadoras"
+          "GENDER_MASCULINE" : "jugadores",
+          "GENDER_FEMININE" : "jugadoras"
         }
       }
     },
@@ -58,10 +58,10 @@
         "groupSize <= 1" : {
           "alternatives" : [
             {
-              "heOrShe == MASCULINE" : "Él era el mejor jugador de béisbol."
+              "heOrShe == GENDER_MASCULINE" : "Él era el mejor jugador de béisbol."
             },
             {
-              "heOrShe == FEMININE" : "Ella era la mejor jugadora de béisbol."
+              "heOrShe == GENDER_FEMININE" : "Ella era la mejor jugadora de béisbol."
             }
           ]
         }
@@ -75,7 +75,7 @@
         "year == 1" : "Su primera fiesta de cumpleaños es la próxima semana."
       },
       {
-        "hisOrHer == FEMININE && year == 15" : "Su quinceañera es la próxima semana."
+        "hisOrHer == GENDER_FEMININE && year == 15" : "Su quinceañera es la próxima semana."
       }
     ]
   }

@@ -6,15 +6,15 @@
       "heOrShe" : {  
         "value" : "heOrShe",
         "translations" : {  
-          "MASCULINE" : "He",
-          "FEMININE" : "She"
+          "GENDER_MASCULINE" : "He",
+          "GENDER_FEMININE" : "She"
         }
       },
       "actor" : {  
         "value" : "heOrShe",
         "translations" : {  
-          "MASCULINE" : "actor",
-          "FEMININE" : "actress"
+          "GENDER_MASCULINE" : "actor",
+          "GENDER_FEMININE" : "actress"
         }
       }
     }
@@ -45,19 +45,19 @@
       "heOrShe" : {  
         "value" : "heOrShe",
         "translations" : {  
-          "MASCULINE" : "He",
-          "FEMININE" : "She"
+          "GENDER_MASCULINE" : "He",
+          "GENDER_FEMININE" : "She"
         }
       }
     },
     "alternatives" : [  
       {  
-        "heOrShe == MASCULINE && groupSize <= 1" : {  
+        "heOrShe == GENDER_MASCULINE && groupSize <= 1" : {  
           "translation" : "He was the best baseball player."
         }
       },
       {  
-        "heOrShe == FEMININE && groupSize <= 1" : {  
+        "heOrShe == GENDER_FEMININE && groupSize <= 1" : {  
           "translation" : "She was the best baseball player."
         }
       }
@@ -69,8 +69,8 @@
       "hisOrHer" : {  
         "value" : "hisOrHer",
         "translations" : {  
-          "MASCULINE" : "His",
-          "FEMININE" : "Her"
+          "GENDER_MASCULINE" : "His",
+          "GENDER_FEMININE" : "Her"
         }
       },
       "ordinal" : {  
@@ -90,9 +90,9 @@
       "greeting" : {
         "value" : "formality",
         "translations" : {
-          "INFORMAL" : "Hi",
-          "FORMAL" : "Hello",
-          "HONORIFIC" : "Greetings"
+          "FORMALITY_INFORMAL" : "Hi",
+          "FORMALITY_FORMAL" : "Hello",
+          "FORMALITY_HONORIFIC" : "Greetings"
         }
       }
     }
@@ -103,8 +103,8 @@
       "we" : {
         "value" : "clusivity",
         "translations" : {
-          "INCLUSIVE" : "We (including you)",
-          "EXCLUSIVE" : "We (excluding you)"
+          "CLUSIVITY_INCLUSIVE" : "We (including you)",
+          "CLUSIVITY_EXCLUSIVE" : "We (excluding you)"
         }
       }
     }
@@ -115,8 +115,8 @@
       "object" : {
         "value" : "animacy",
         "translations" : {
-          "ANIMATE" : "him",
-          "INANIMATE" : "it"
+          "ANIMACY_ANIMATE" : "him",
+          "ANIMACY_INANIMATE" : "it"
         }
       }
     }

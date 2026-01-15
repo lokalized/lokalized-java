@@ -114,6 +114,22 @@ public final class LocalizedStringLoader {
       if (languageForm instanceof Ordinality)
         languageFormName = LocalizedStringUtils.localizedStringNameForOrdinalityName(languageFormName);
 
+      // Massage Gender to match file format, e.g. "MASCULINE" -> "GENDER_MASCULINE"
+      if (languageForm instanceof Gender)
+        languageFormName = LocalizedStringUtils.localizedStringNameForGenderName(languageFormName);
+
+      // Massage Formality to match file format, e.g. "FORMAL" -> "FORMALITY_FORMAL"
+      if (languageForm instanceof Formality)
+        languageFormName = LocalizedStringUtils.localizedStringNameForFormalityName(languageFormName);
+
+      // Massage Clusivity to match file format, e.g. "INCLUSIVE" -> "CLUSIVITY_INCLUSIVE"
+      if (languageForm instanceof Clusivity)
+        languageFormName = LocalizedStringUtils.localizedStringNameForClusivityName(languageFormName);
+
+      // Massage Animacy to match file format, e.g. "ANIMATE" -> "ANIMACY_ANIMATE"
+      if (languageForm instanceof Animacy)
+        languageFormName = LocalizedStringUtils.localizedStringNameForAnimacyName(languageFormName);
+
       // Massage Phonetic to match file format, e.g. "VOWEL" -> "PHONETIC_VOWEL"
       if (languageForm instanceof Phonetic)
         languageFormName = LocalizedStringUtils.localizedStringNameForPhoneticName(languageFormName);

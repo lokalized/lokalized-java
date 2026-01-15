@@ -183,7 +183,7 @@ public class LocalizedString {
   /**
    * Gets per-language-form translations that correspond to a placeholder value.
    * <p>
-   * For example, language form {@code MASCULINE} might be translated as {@code He} for placeholder {@code subject}.
+   * For example, language form {@code GENDER_MASCULINE} might be translated as {@code He} for placeholder {@code subject}.
    *
    * @return per-language-form translations that correspond to a placeholder value, not null
    */
