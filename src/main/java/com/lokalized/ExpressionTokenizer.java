@@ -99,6 +99,7 @@ class ExpressionTokenizer {
       put(TokenType.PHONETIC_LUNAR, "\\bPHONETIC_LUNAR\\b");
       put(TokenType.GENDER_MASCULINE, "\\bGENDER_MASCULINE\\b");
       put(TokenType.GENDER_FEMININE, "\\bGENDER_FEMININE\\b");
+      put(TokenType.GENDER_COMMON, "\\bGENDER_COMMON\\b");
       put(TokenType.GENDER_NEUTER, "\\bGENDER_NEUTER\\b");
       put(TokenType.FORMALITY_INFORMAL, "\\bFORMALITY_INFORMAL\\b");
       put(TokenType.FORMALITY_FORMAL, "\\bFORMALITY_FORMAL\\b");

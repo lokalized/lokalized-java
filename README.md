@@ -540,7 +540,11 @@ Lokalized supports these values:
 
 * [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE)
 * [`GENDER_FEMININE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#FEMININE)
+* [`GENDER_COMMON`](https://javadoc.lokalized.com/com/lokalized/Gender.html#COMMON)
 * [`GENDER_NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER)
+
+Some languages (e.g. Swedish, Danish, Dutch) collapse masculine and feminine into a common gender. Use
+`GENDER_COMMON` for that class (for example, Swedish `en` words) and `GENDER_NEUTER` for neuter (`ett` words).
 
 Lokalized provides a [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) type which enumerates supported genders.
 
@@ -804,7 +808,7 @@ assertEquals(Cardinality.ONE, cardinality);
 
 ### Phonetics
 
-Some languages choose word forms based on the <em>sound</em> that follows (e.g. English "a/an", Spanish "el agua", Italian "lo studente"). Lokalized supports this via phonetic categories and a user-provided resolver.
+Some languages choose word forms based on the <em>sound</em> that follows (e.g. English `a/an`, Spanish `el agua`, Italian `lo studente`). Lokalized supports these via phonetic categories and a user-provided resolver.
 
 Lokalized supports these values:
 
@@ -853,7 +857,7 @@ Now, ensure we have translations like `an honor` and `a gift`:
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-  // Plug in our resolver here
+  // Plug in a custom resolver here. You would bring your own "startsWithVowelSound" implementation
   .phoneticResolver((term, locale) -> startsWithVowelSound(term, locale) ? Phonetic.VOWEL : Phonetic.CONSONANT)
   .localeSupplier(matcher -> Locale.forLanguageTag("en"))
   .build();
@@ -893,6 +897,7 @@ PhoneticResolver spanishResolver = (term, locale) -> {
 
   String normalized = term.toLowerCase(Locale.ROOT);
 
+  // It is your responsibility to define this set
   return Set.of("acta", "arma", "hacha").contains(normalized)
     ? Phonetic.STRESSED_A
     : Phonetic.OTHER;
@@ -1156,7 +1161,7 @@ OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
 LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
-GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_NEUTER" ;
+GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_COMMON" | "GENDER_NEUTER" ;
 FORMALITY = "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HONORIFIC" ;
 CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
 ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;

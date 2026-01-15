@@ -56,6 +56,18 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void genderTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("gender == GENDER_COMMON");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "gender"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.GENDER_COMMON));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void formalityTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMALITY_FORMAL");
 

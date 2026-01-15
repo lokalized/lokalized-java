@@ -38,6 +38,10 @@ public enum Gender implements LanguageForm {
    */
   FEMININE,
   /**
+   * Common gender (masculine + feminine), e.g. Swedish/Danish/Dutch "en" words.
+   */
+  COMMON,
+  /**
    * Neutral/unspecified gender.
    */
   NEUTER;

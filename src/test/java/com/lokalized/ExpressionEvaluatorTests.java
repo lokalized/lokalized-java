@@ -46,6 +46,9 @@ public class ExpressionEvaluatorTests {
 		assertTrue(expressionEvaluator.evaluate("GENDER_MASCULINE == GENDER_MASCULINE", LOCALE), "Gender identity failed");
 		assertFalse(expressionEvaluator.evaluate("GENDER_MASCULINE == GENDER_FEMININE", LOCALE), "Unequal genders evaluate as equal");
 		assertTrue(expressionEvaluator.evaluate("GENDER_MASCULINE != GENDER_FEMININE", LOCALE), "Unequal genders evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("GENDER_COMMON == GENDER_COMMON", LOCALE), "Common gender identity failed");
+		assertFalse(expressionEvaluator.evaluate("GENDER_COMMON == GENDER_NEUTER", LOCALE), "Unequal genders evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("GENDER_COMMON != GENDER_NEUTER", LOCALE), "Unequal genders evaluate as equal");
 
 		assertTrue(expressionEvaluator.evaluate("FORMALITY_FORMAL == FORMALITY_FORMAL", LOCALE), "Formality identity failed");
 		assertFalse(expressionEvaluator.evaluate("FORMALITY_FORMAL == FORMALITY_INFORMAL", LOCALE), "Unequal formalities evaluate as equal");
@@ -100,6 +103,9 @@ public class ExpressionEvaluatorTests {
 
 		assertTrue(expressionEvaluator.evaluate("gender == GENDER_MASCULINE", Map.of(
 				"gender", Gender.MASCULINE
+		), LOCALE), "Gender-variable comparison failed");
+		assertTrue(expressionEvaluator.evaluate("gender == GENDER_COMMON", Map.of(
+				"gender", Gender.COMMON
 		), LOCALE), "Gender-variable comparison failed");
 
 		assertTrue(expressionEvaluator.evaluate("formality == FORMALITY_FORMAL", Map.of(
