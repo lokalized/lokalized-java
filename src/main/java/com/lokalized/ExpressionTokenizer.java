@@ -161,7 +161,7 @@ class ExpressionTokenizer {
             format("Unexpected content '%s' encountered while evaluating expression '%s'.", errorGroup, expression);
 
         // Special message for common error of using "=" instead of "==" for equality checks
-        if (errorGroup.startsWith("= "))
+        if (errorGroup.startsWith("="))
           errorMessage = format("%s Did you mean '=%s'?", errorMessage, errorGroup);
 
         throw new ExpressionEvaluationException(errorMessage);

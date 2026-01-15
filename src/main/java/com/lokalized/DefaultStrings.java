@@ -681,6 +681,7 @@ public class DefaultStrings implements Strings {
 		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(languageRanges);
 		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
 		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
+		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
 
 		// Walk through each LanguageRange in preference order
 		for (LanguageRange languageRange : sortedLanguageRanges) {

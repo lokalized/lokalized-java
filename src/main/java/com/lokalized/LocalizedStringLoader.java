@@ -714,6 +714,15 @@ public final class LocalizedStringLoader {
           if (translationsByLanguageForm.isEmpty())
             throw new LocalizedStringLoadingException(format("%s: placeholder translations are required. Key is '%s'", canonicalPath, key));
 
+          if (rangeValue != null) {
+            boolean hasNonCardinality = translationsByLanguageForm.keySet().stream()
+                .anyMatch(languageForm -> !(languageForm instanceof Cardinality));
+
+            if (hasNonCardinality)
+              throw new LocalizedStringLoadingException(format("%s: range-based translations only support %s. Placeholder is '%s' for key '%s'",
+                  canonicalPath, Cardinality.class.getSimpleName(), placeholderKey, key));
+          }
+
           LanguageFormTranslation languageFormTranslation = rangeValue != null
               ? new LanguageFormTranslation(rangeValue, translationsByLanguageForm)
               : new LanguageFormTranslation(value, translationsByLanguageForm);

@@ -123,6 +123,26 @@ public class StringsTests {
 	}
 
 	@Test
+	public void wildcardLanguageRangesMatchSubtags() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en-GB"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en-GB"), Set.of(localizedString),
+						Locale.forLanguageTag("en-US"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-GB"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
+		Locale bestMatch = strings.bestMatchFor(LanguageRange.parse("*-US"));
+
+		assertEquals(Locale.forLanguageTag("en-US"), bestMatch);
+	}
+
+	@Test
 	public void cardinalityPlaceholderTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
