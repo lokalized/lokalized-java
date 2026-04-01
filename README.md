@@ -1320,6 +1320,43 @@ In the selector-driven format:
 * A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, string evaluation fails with an exception.
 * Ambiguous overlapping rules with the same specificity are rejected while loading translations.
 
+Here is the selector-driven placeholder exercised with a few simple assertions:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("de"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("de"))
+  .build();
+
+// Most-specific CASE + GENDER rule
+assertEquals("der Baum", strings.get("{{article}} {{noun}}", Map.of(
+  "grammaticalCase", GrammaticalCase.NOMINATIVE,
+  "gender", Gender.MASCULINE,
+  "noun", "Baum"
+)));
+
+// Different CASE + GENDER rule
+assertEquals("den Baum", strings.get("{{article}} {{noun}}", Map.of(
+  "grammaticalCase", GrammaticalCase.ACCUSATIVE,
+  "gender", Gender.MASCULINE,
+  "noun", "Baum"
+)));
+
+// Falls back to the less-specific GENDER rule
+assertEquals("die Frau", strings.get("{{article}} {{noun}}", Map.of(
+  "grammaticalCase", GrammaticalCase.NOMINATIVE,
+  "gender", Gender.FEMININE,
+  "noun", "Frau"
+)));
+
+// Falls back to the default rule because no CASE/GENDER-specific rule matches
+assertEquals("das Haus", strings.get("{{article}} {{noun}}", Map.of(
+  "grammaticalCase", GrammaticalCase.NOMINATIVE,
+  "gender", Gender.NEUTER,
+  "noun", "Haus"
+)));
+```
+
 Selector-driven placeholders are for local agreement only.  Use `alternatives` when you need arbitrary boolean logic or whole-sentence rewrites.
 
 ### Alternatives
