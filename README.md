@@ -1266,10 +1266,10 @@ Use selector-driven placeholders when a single placeholder depends on multiple l
 
 ```json
 {
-  "{{article}} {{noun}}" : {
-    "translation" : "{{article}} {{noun}}",
+  "Send the invoice to {{honorific}} {{lastName}}." : {
+    "translation" : "Senden Sie die Rechnung an {{honorific}} {{lastName}}.",
     "placeholders" : {
-      "article" : {
+      "honorific" : {
         "selectors" : [
           {
             "value" : "grammaticalCase",
@@ -1283,26 +1283,22 @@ Use selector-driven placeholders when a single placeholder depends on multiple l
         "translations" : [
           {
             "when" : {
-              "CASE" : "CASE_NOMINATIVE",
+              "CASE" : "CASE_DATIVE",
               "GENDER" : "GENDER_MASCULINE"
             },
-            "value" : "der"
+            "value" : "Herrn"
           },
           {
             "when" : {
-              "CASE" : "CASE_ACCUSATIVE",
               "GENDER" : "GENDER_MASCULINE"
             },
-            "value" : "den"
+            "value" : "Herr"
           },
           {
             "when" : {
               "GENDER" : "GENDER_FEMININE"
             },
-            "value" : "die"
-          },
-          {
-            "value" : "das"
+            "value" : "Frau"
           }
         ]
       }
@@ -1329,31 +1325,27 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("de"))
   .build();
 
 // Most-specific CASE + GENDER rule
-assertEquals("der Baum", strings.get("{{article}} {{noun}}", Map.of(
-  "grammaticalCase", GrammaticalCase.NOMINATIVE,
+assertEquals("Senden Sie die Rechnung an Herrn Weber.", strings.get(
+  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
+  "grammaticalCase", GrammaticalCase.DATIVE,
   "gender", Gender.MASCULINE,
-  "noun", "Baum"
-)));
-
-// Different CASE + GENDER rule
-assertEquals("den Baum", strings.get("{{article}} {{noun}}", Map.of(
-  "grammaticalCase", GrammaticalCase.ACCUSATIVE,
-  "gender", Gender.MASCULINE,
-  "noun", "Baum"
+  "lastName", "Weber"
 )));
 
 // Falls back to the less-specific GENDER rule
-assertEquals("die Frau", strings.get("{{article}} {{noun}}", Map.of(
+assertEquals("Senden Sie die Rechnung an Herr Weber.", strings.get(
+  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
   "grammaticalCase", GrammaticalCase.NOMINATIVE,
-  "gender", Gender.FEMININE,
-  "noun", "Frau"
+  "gender", Gender.MASCULINE,
+  "lastName", "Weber"
 )));
 
-// Falls back to the default rule because no CASE/GENDER-specific rule matches
-assertEquals("das Haus", strings.get("{{article}} {{noun}}", Map.of(
+// Different less-specific GENDER rule
+assertEquals("Senden Sie die Rechnung an Frau Weber.", strings.get(
+  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
   "grammaticalCase", GrammaticalCase.NOMINATIVE,
-  "gender", Gender.NEUTER,
-  "noun", "Haus"
+  "gender", Gender.FEMININE,
+  "lastName", "Weber"
 )));
 ```
 
