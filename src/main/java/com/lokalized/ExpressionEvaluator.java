@@ -44,11 +44,17 @@ import static java.util.Objects.requireNonNull;
  * <pre>
  * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
  * OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
- * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
+ * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE | DEFINITENESS | CLASSIFIER
+ *               | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
  * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
  * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
  * GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_COMMON" | "GENDER_NEUTER" ;
- * FORMALITY = "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HONORIFIC" ;
+ * GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE" | "CASE_GENITIVE" | "CASE_DATIVE"
+ *                  | "CASE_INSTRUMENTAL" | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL" | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
+ * DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE" | "DEFINITENESS_CONSTRUCT" ;
+ * CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL" | "CLASSIFIER_LONG_THIN"
+ *            | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND" | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
+ * FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
  * CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
  * ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
  * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
@@ -72,6 +78,12 @@ class ExpressionEvaluator {
   private static final Set<@NonNull TokenType> ORDINALITY_TOKEN_TYPES;
   @NonNull
   private static final Set<@NonNull TokenType> GENDER_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> GRAMMATICAL_CASE_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> DEFINITENESS_TOKEN_TYPES;
+  @NonNull
+  private static final Set<@NonNull TokenType> CLASSIFIER_TOKEN_TYPES;
   @NonNull
   private static final Set<@NonNull TokenType> FORMALITY_TOKEN_TYPES;
   @NonNull
@@ -130,10 +142,47 @@ class ExpressionEvaluator {
       }
     });
 
+    GRAMMATICAL_CASE_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.CASE_NOMINATIVE);
+        add(TokenType.CASE_ACCUSATIVE);
+        add(TokenType.CASE_GENITIVE);
+        add(TokenType.CASE_DATIVE);
+        add(TokenType.CASE_INSTRUMENTAL);
+        add(TokenType.CASE_LOCATIVE);
+        add(TokenType.CASE_PREPOSITIONAL);
+        add(TokenType.CASE_VOCATIVE);
+        add(TokenType.CASE_ABLATIVE);
+      }
+    });
+
+    DEFINITENESS_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.DEFINITENESS_DEFINITE);
+        add(TokenType.DEFINITENESS_INDEFINITE);
+        add(TokenType.DEFINITENESS_CONSTRUCT);
+      }
+    });
+
+    CLASSIFIER_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
+      {
+        add(TokenType.CLASSIFIER_GENERAL);
+        add(TokenType.CLASSIFIER_PERSON);
+        add(TokenType.CLASSIFIER_ANIMAL);
+        add(TokenType.CLASSIFIER_LONG_THIN);
+        add(TokenType.CLASSIFIER_FLAT);
+        add(TokenType.CLASSIFIER_BOUND);
+        add(TokenType.CLASSIFIER_MACHINE);
+        add(TokenType.CLASSIFIER_VEHICLE);
+      }
+    });
+
     FORMALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
       {
+        add(TokenType.FORMALITY_CASUAL);
         add(TokenType.FORMALITY_INFORMAL);
         add(TokenType.FORMALITY_FORMAL);
+        add(TokenType.FORMALITY_HUMBLE);
         add(TokenType.FORMALITY_HONORIFIC);
       }
     });
@@ -195,6 +244,9 @@ class ExpressionEvaluator {
     operandTokenTypes.addAll(CARDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(ORDINALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(GENDER_TOKEN_TYPES);
+    operandTokenTypes.addAll(GRAMMATICAL_CASE_TOKEN_TYPES);
+    operandTokenTypes.addAll(DEFINITENESS_TOKEN_TYPES);
+    operandTokenTypes.addAll(CLASSIFIER_TOKEN_TYPES);
     operandTokenTypes.addAll(FORMALITY_TOKEN_TYPES);
     operandTokenTypes.addAll(CLUSIVITY_TOKEN_TYPES);
     operandTokenTypes.addAll(ANIMACY_TOKEN_TYPES);
@@ -553,6 +605,69 @@ class ExpressionEvaluator {
         return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
       }
 
+      // Grammatical case (operators: ==, !=)
+      if (lhsOperandType == OperandType.GRAMMATICAL_CASE && rhsOperandType == OperandType.GRAMMATICAL_CASE) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing grammatical case comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        GrammaticalCase lhsValue = grammaticalCaseFromOperand(leftHandOperand, context);
+        GrammaticalCase rhsValue = grammaticalCaseFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
+      // Definiteness (operators: ==, !=)
+      if (lhsOperandType == OperandType.DEFINITENESS && rhsOperandType == OperandType.DEFINITENESS) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing definiteness comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Definiteness lhsValue = definitenessFromOperand(leftHandOperand, context);
+        Definiteness rhsValue = definitenessFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
+      // Classifier (operators: ==, !=)
+      if (lhsOperandType == OperandType.CLASSIFIER && rhsOperandType == OperandType.CLASSIFIER) {
+        if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
+          throw new ExpressionEvaluationException(
+              format(
+                  "You may only use the '%s' and '%s' operators when performing classifier comparisons. Offending comparison: '%s %s %s'",
+                  TokenType.EQUAL_TO.getSymbol().get(), TokenType.NOT_EQUAL_TO.getSymbol().get(), leftHandOperand.getSymbol(),
+                  operator.getSymbol(), rightHandOperand.getSymbol()));
+
+        Classifier lhsValue = classifierFromOperand(leftHandOperand, context);
+        Classifier rhsValue = classifierFromOperand(rightHandOperand, context);
+        boolean result = false;
+
+        if (operator.getTokenType() == TokenType.EQUAL_TO)
+          result = lhsValue == rhsValue;
+        if (operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          result = lhsValue != rhsValue;
+
+        return result ? TRUE_RESULT_TOKEN : FALSE_RESULT_TOKEN;
+      }
+
       // Formality (operators: ==, !=)
       if (lhsOperandType == OperandType.FORMALITY && rhsOperandType == OperandType.FORMALITY) {
         if (!(operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO))
@@ -783,6 +898,42 @@ class ExpressionEvaluator {
   }
 
   /**
+   * Does the specified token represent a grammatical case?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a grammatical case, not null
+   */
+  @NonNull
+  protected Boolean isGrammaticalCase(@NonNull Token token) {
+    requireNonNull(token);
+    return GRAMMATICAL_CASE_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
+   * Does the specified token represent definiteness?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents definiteness, not null
+   */
+  @NonNull
+  protected Boolean isDefiniteness(@NonNull Token token) {
+    requireNonNull(token);
+    return DEFINITENESS_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
+   * Does the specified token represent a classifier?
+   *
+   * @param token the token to check, not null
+   * @return whether the token represents a classifier, not null
+   */
+  @NonNull
+  protected Boolean isClassifier(@NonNull Token token) {
+    requireNonNull(token);
+    return CLASSIFIER_TOKEN_TYPES.contains(token.getTokenType());
+  }
+
+  /**
    * Does the specified token represent a formality?
    *
    * @param token the token to check, not null
@@ -874,6 +1025,12 @@ class ExpressionEvaluator {
       return OperandType.ORDINALITY;
     if (isGender(operand))
       return OperandType.GENDER;
+    if (isGrammaticalCase(operand))
+      return OperandType.GRAMMATICAL_CASE;
+    if (isDefiniteness(operand))
+      return OperandType.DEFINITENESS;
+    if (isClassifier(operand))
+      return OperandType.CLASSIFIER;
     if (isFormality(operand))
       return OperandType.FORMALITY;
     if (isClusivity(operand))
@@ -902,6 +1059,12 @@ class ExpressionEvaluator {
         return OperandType.ORDINALITY;
       if (value instanceof Gender)
         return OperandType.GENDER;
+      if (value instanceof GrammaticalCase)
+        return OperandType.GRAMMATICAL_CASE;
+      if (value instanceof Definiteness)
+        return OperandType.DEFINITENESS;
+      if (value instanceof Classifier)
+        return OperandType.CLASSIFIER;
       if (value instanceof Formality)
         return OperandType.FORMALITY;
       if (value instanceof Clusivity)
@@ -981,6 +1144,117 @@ class ExpressionEvaluator {
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
         Gender.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the grammatical case value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the grammatical case value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine grammatical case value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected GrammaticalCase grammaticalCaseFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isGrammaticalCase(operand)) {
+      String grammaticalCaseName = LocalizedStringUtils.grammaticalCaseNameForLocalizedStringName(operand.getSymbol());
+      GrammaticalCase grammaticalCase = GrammaticalCase.getGrammaticalCasesByName().get(grammaticalCaseName);
+
+      if (grammaticalCase == null)
+        throw new ExpressionEvaluationException(format("Unexpected grammatical case token '%s'", operand.getSymbol()));
+
+      return grammaticalCase;
+    }
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof GrammaticalCase)
+        return (GrammaticalCase) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        GrammaticalCase.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the definiteness value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the definiteness value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine definiteness value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Definiteness definitenessFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isDefiniteness(operand)) {
+      String definitenessName = LocalizedStringUtils.definitenessNameForLocalizedStringName(operand.getSymbol());
+      Definiteness definiteness = Definiteness.getDefinitenessByName().get(definitenessName);
+
+      if (definiteness == null)
+        throw new ExpressionEvaluationException(format("Unexpected definiteness token '%s'", operand.getSymbol()));
+
+      return definiteness;
+    }
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Definiteness)
+        return (Definiteness) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Definiteness.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  /**
+   * Determines the classifier value of an operand.
+   *
+   * @param operand the operand to examine, not null
+   * @param context the context for the expression, not null
+   * @return the classifier value of the operand, not null
+   * @throws ExpressionEvaluationException if unable to determine classifier value (operand is of invalid type, etc.)
+   */
+  @NonNull
+  protected Classifier classifierFromOperand(@NonNull Token operand, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (isClassifier(operand)) {
+      String classifierName = LocalizedStringUtils.classifierNameForLocalizedStringName(operand.getSymbol());
+      Classifier classifier = Classifier.getClassifiersByName().get(classifierName);
+
+      if (classifier == null)
+        throw new ExpressionEvaluationException(format("Unexpected classifier token '%s'", operand.getSymbol()));
+
+      return classifier;
+    }
+
+    if (operand.getTokenType() == TokenType.VARIABLE) {
+      Object value = context.get(operand.getSymbol());
+
+      if (value instanceof Optional)
+        value = ((Optional<?>) value).orElse(null);
+
+      if (value instanceof Classifier)
+        return (Classifier) value;
+    }
+
+    throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
+        Classifier.class.getSimpleName(), operand.getSymbol()));
   }
 
   /**
@@ -1296,7 +1570,7 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
+    NUMBER, GENDER, GRAMMATICAL_CASE, DEFINITENESS, CLASSIFIER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
   }
 
   protected static final class ExpressionNode {

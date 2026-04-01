@@ -80,6 +80,42 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void grammaticalCaseTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("grammaticalCase == CASE_DATIVE");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "grammaticalCase"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.CASE_DATIVE));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
+  public void definitenessTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("definiteness == DEFINITENESS_CONSTRUCT");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "definiteness"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.DEFINITENESS_CONSTRUCT));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
+  public void classifierTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("classifier == CLASSIFIER_BOUND");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "classifier"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.CLASSIFIER_BOUND));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void honorificTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMALITY_HONORIFIC");
 
@@ -87,6 +123,18 @@ public class ExpressionTokenizerTests {
     expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
     expectedTokens.add(new Token(TokenType.EQUAL_TO));
     expectedTokens.add(new Token(TokenType.FORMALITY_HONORIFIC));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
+  public void humbleTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("formality == FORMALITY_HUMBLE");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "formality"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.FORMALITY_HUMBLE));
 
     assertEquals(expectedTokens, tokens);
   }

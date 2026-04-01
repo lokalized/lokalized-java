@@ -36,6 +36,12 @@ final class LocalizedStringUtils {
   @NonNull
   private static final String GENDER_NAME_PREFIX;
   @NonNull
+  private static final String GRAMMATICAL_CASE_NAME_PREFIX;
+  @NonNull
+  private static final String DEFINITENESS_NAME_PREFIX;
+  @NonNull
+  private static final String CLASSIFIER_NAME_PREFIX;
+  @NonNull
   private static final String FORMALITY_NAME_PREFIX;
   @NonNull
   private static final String CLUSIVITY_NAME_PREFIX;
@@ -48,6 +54,9 @@ final class LocalizedStringUtils {
     CARDINALITY_NAME_PREFIX = "CARDINALITY_";
     ORDINALITY_NAME_PREFIX = "ORDINALITY_";
     GENDER_NAME_PREFIX = "GENDER_";
+    GRAMMATICAL_CASE_NAME_PREFIX = "CASE_";
+    DEFINITENESS_NAME_PREFIX = "DEFINITENESS_";
+    CLASSIFIER_NAME_PREFIX = "CLASSIFIER_";
     FORMALITY_NAME_PREFIX = "FORMALITY_";
     CLUSIVITY_NAME_PREFIX = "CLUSIVITY_";
     ANIMACY_NAME_PREFIX = "ANIMACY_";
@@ -146,6 +155,96 @@ final class LocalizedStringUtils {
           localizedStringName, GENDER_NAME_PREFIX));
 
     return localizedStringName.substring(GENDER_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages grammatical case name ({@code DATIVE}) to match localized strings file format {@code "CASE_DATIVE"}.
+   *
+   * @param grammaticalCaseName the grammatical case name to massage, not null
+   * @return the localized strings file representation of a grammatical case name, not null
+   */
+  @NonNull
+  static String localizedStringNameForGrammaticalCaseName(@NonNull String grammaticalCaseName) {
+    requireNonNull(grammaticalCaseName);
+    return format("%s%s", GRAMMATICAL_CASE_NAME_PREFIX, grammaticalCaseName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "CASE_DATIVE"} to match grammatical case name ({@code DATIVE}).
+   *
+   * @param localizedStringName the localized strings grammatical case name to massage, not null
+   * @return the grammatical case name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String grammaticalCaseNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(GRAMMATICAL_CASE_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Grammatical case value '%s' does not start with prefix '%s'",
+          localizedStringName, GRAMMATICAL_CASE_NAME_PREFIX));
+
+    return localizedStringName.substring(GRAMMATICAL_CASE_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages definiteness name ({@code DEFINITE}) to match localized strings file format {@code "DEFINITENESS_DEFINITE"}.
+   *
+   * @param definitenessName the definiteness name to massage, not null
+   * @return the localized strings file representation of a definiteness name, not null
+   */
+  @NonNull
+  static String localizedStringNameForDefinitenessName(@NonNull String definitenessName) {
+    requireNonNull(definitenessName);
+    return format("%s%s", DEFINITENESS_NAME_PREFIX, definitenessName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "DEFINITENESS_DEFINITE"} to match definiteness name ({@code DEFINITE}).
+   *
+   * @param localizedStringName the localized strings definiteness name to massage, not null
+   * @return the definiteness name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String definitenessNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(DEFINITENESS_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Definiteness value '%s' does not start with prefix '%s'",
+          localizedStringName, DEFINITENESS_NAME_PREFIX));
+
+    return localizedStringName.substring(DEFINITENESS_NAME_PREFIX.length());
+  }
+
+  /**
+   * Massages classifier name ({@code GENERAL}) to match localized strings file format {@code "CLASSIFIER_GENERAL"}.
+   *
+   * @param classifierName the classifier name to massage, not null
+   * @return the localized strings file representation of a classifier name, not null
+   */
+  @NonNull
+  static String localizedStringNameForClassifierName(@NonNull String classifierName) {
+    requireNonNull(classifierName);
+    return format("%s%s", CLASSIFIER_NAME_PREFIX, classifierName);
+  }
+
+  /**
+   * Massages localized strings file format {@code "CLASSIFIER_GENERAL"} to match classifier name ({@code GENERAL}).
+   *
+   * @param localizedStringName the localized strings classifier name to massage, not null
+   * @return the classifier name of the localized strings file representation, not null
+   * @throws IllegalArgumentException if the localized strings name is malformed
+   */
+  @NonNull
+  static String classifierNameForLocalizedStringName(@NonNull String localizedStringName) {
+    requireNonNull(localizedStringName);
+
+    if (!localizedStringName.startsWith(CLASSIFIER_NAME_PREFIX))
+      throw new IllegalArgumentException(format("Classifier value '%s' does not start with prefix '%s'",
+          localizedStringName, CLASSIFIER_NAME_PREFIX));
+
+    return localizedStringName.substring(CLASSIFIER_NAME_PREFIX.length());
   }
 
   /**

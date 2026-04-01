@@ -330,11 +330,27 @@ public class StringsTests {
 
 		String translation = strings.get("Hello, {{name}}.",
 				new HashMap<String, Object>() {{
+					put("formality", Formality.CASUAL);
+					put("name", "Sam");
+				}});
+
+		assertEquals("Hey, Sam.", translation);
+
+		translation = strings.get("Hello, {{name}}.",
+				new HashMap<String, Object>() {{
 					put("formality", Formality.HONORIFIC);
 					put("name", "Dr Smith");
 				}});
 
 		assertEquals("Greetings, Dr Smith.", translation);
+
+		translation = strings.get("Hello, {{name}}.",
+				new HashMap<String, Object>() {{
+					put("formality", Formality.HUMBLE);
+					put("name", "Professor Tanaka");
+				}});
+
+		assertEquals("I humbly greet you, Professor Tanaka.", translation);
 
 		translation = strings.get("We will meet at noon.",
 				new HashMap<String, Object>() {{
@@ -363,6 +379,61 @@ public class StringsTests {
 				}});
 
 		assertEquals("I see it.", translation);
+	}
+
+	@Test
+	public void grammaticalCaseDefinitenessAndClassifierPlaceholderTest() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
+		String translation = strings.get("I gave the book to the recipient.",
+				new HashMap<String, Object>() {{
+					put("grammaticalCase", GrammaticalCase.DATIVE);
+				}});
+
+		assertEquals("Я дал книгу Ивану.", translation);
+
+		translation = strings.get("I gave the book to the recipient.",
+				new HashMap<String, Object>() {{
+					put("grammaticalCase", GrammaticalCase.ACCUSATIVE);
+				}});
+
+		assertEquals("Я дал книгу Ивана.", translation);
+
+		translation = strings.get("Open the document.",
+				new HashMap<String, Object>() {{
+					put("definiteness", Definiteness.DEFINITE);
+				}});
+
+		assertEquals("افتح الكتاب.", translation);
+
+		translation = strings.get("Open the document.",
+				new HashMap<String, Object>() {{
+					put("definiteness", Definiteness.CONSTRUCT);
+				}});
+
+		assertEquals("افتح كتاب.", translation);
+
+		translation = strings.get("I bought {{count}} items.",
+				new HashMap<String, Object>() {{
+					put("count", 3);
+					put("classifier", Classifier.BOUND);
+				}});
+
+		assertEquals("3冊買いました。", translation);
+
+		translation = strings.get("I bought {{count}} items.",
+				new HashMap<String, Object>() {{
+					put("count", 2);
+					put("classifier", Classifier.MACHINE);
+				}});
+
+		assertEquals("2台買いました。", translation);
 	}
 
 	@Test

@@ -50,6 +50,22 @@ public class ExpressionEvaluatorTests {
 		assertFalse(expressionEvaluator.evaluate("GENDER_COMMON == GENDER_NEUTER", LOCALE), "Unequal genders evaluate as equal");
 		assertTrue(expressionEvaluator.evaluate("GENDER_COMMON != GENDER_NEUTER", LOCALE), "Unequal genders evaluate as equal");
 
+		assertTrue(expressionEvaluator.evaluate("CASE_DATIVE == CASE_DATIVE", LOCALE), "Grammatical case identity failed");
+		assertFalse(expressionEvaluator.evaluate("CASE_DATIVE == CASE_ACCUSATIVE", LOCALE), "Unequal grammatical cases evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("CASE_DATIVE != CASE_ACCUSATIVE", LOCALE), "Unequal grammatical cases evaluate as equal");
+
+		assertTrue(expressionEvaluator.evaluate("DEFINITENESS_DEFINITE == DEFINITENESS_DEFINITE", LOCALE), "Definiteness identity failed");
+		assertFalse(expressionEvaluator.evaluate("DEFINITENESS_DEFINITE == DEFINITENESS_INDEFINITE", LOCALE), "Unequal definiteness values evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("DEFINITENESS_DEFINITE != DEFINITENESS_INDEFINITE", LOCALE), "Unequal definiteness values evaluate as equal");
+
+		assertTrue(expressionEvaluator.evaluate("CLASSIFIER_BOUND == CLASSIFIER_BOUND", LOCALE), "Classifier identity failed");
+		assertFalse(expressionEvaluator.evaluate("CLASSIFIER_BOUND == CLASSIFIER_GENERAL", LOCALE), "Unequal classifiers evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("CLASSIFIER_BOUND != CLASSIFIER_GENERAL", LOCALE), "Unequal classifiers evaluate as equal");
+
+		assertTrue(expressionEvaluator.evaluate("FORMALITY_CASUAL == FORMALITY_CASUAL", LOCALE), "Casual formality identity failed");
+		assertFalse(expressionEvaluator.evaluate("FORMALITY_CASUAL == FORMALITY_HUMBLE", LOCALE), "Unequal formalities evaluate as equal");
+		assertTrue(expressionEvaluator.evaluate("FORMALITY_HUMBLE == FORMALITY_HUMBLE", LOCALE), "Humble formality identity failed");
+
 		assertTrue(expressionEvaluator.evaluate("FORMALITY_FORMAL == FORMALITY_FORMAL", LOCALE), "Formality identity failed");
 		assertFalse(expressionEvaluator.evaluate("FORMALITY_FORMAL == FORMALITY_INFORMAL", LOCALE), "Unequal formalities evaluate as equal");
 		assertTrue(expressionEvaluator.evaluate("FORMALITY_FORMAL != FORMALITY_INFORMAL", LOCALE), "Unequal formalities evaluate as equal");
@@ -108,9 +124,25 @@ public class ExpressionEvaluatorTests {
 				"gender", Gender.COMMON
 		), LOCALE), "Gender-variable comparison failed");
 
+		assertTrue(expressionEvaluator.evaluate("grammaticalCase == CASE_DATIVE", Map.of(
+				"grammaticalCase", GrammaticalCase.DATIVE
+		), LOCALE), "Grammatical case-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("definiteness == DEFINITENESS_CONSTRUCT", Map.of(
+				"definiteness", Definiteness.CONSTRUCT
+		), LOCALE), "Definiteness-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("classifier == CLASSIFIER_BOUND", Map.of(
+				"classifier", Classifier.BOUND
+		), LOCALE), "Classifier-variable comparison failed");
+
 		assertTrue(expressionEvaluator.evaluate("formality == FORMALITY_FORMAL", Map.of(
 				"formality", Formality.FORMAL
 		), LOCALE), "Formality-variable comparison failed");
+
+		assertTrue(expressionEvaluator.evaluate("formality == FORMALITY_HUMBLE", Map.of(
+				"formality", Formality.HUMBLE
+		), LOCALE), "Expanded formality-variable comparison failed");
 
 		assertTrue(expressionEvaluator.evaluate("clusivity == CLUSIVITY_INCLUSIVE", Map.of(
 				"clusivity", Clusivity.INCLUSIVE
@@ -256,6 +288,33 @@ public class ExpressionEvaluatorTests {
 		assertThrows(ExpressionEvaluationException.class,
 				() -> expressionEvaluator.evaluate("ORDINALITY_ONE > ORDINALITY_TWO", LOCALE),
 				"Expected invalid ordinality operator to throw");
+	}
+
+	@Test
+	public void invalidGrammaticalCaseOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("CASE_DATIVE < CASE_ACCUSATIVE", LOCALE),
+				"Expected invalid grammatical case operator to throw");
+	}
+
+	@Test
+	public void invalidDefinitenessOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("DEFINITENESS_DEFINITE > DEFINITENESS_INDEFINITE", LOCALE),
+				"Expected invalid definiteness operator to throw");
+	}
+
+	@Test
+	public void invalidClassifierOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("CLASSIFIER_BOUND < CLASSIFIER_GENERAL", LOCALE),
+				"Expected invalid classifier operator to throw");
 	}
 
 	@Test

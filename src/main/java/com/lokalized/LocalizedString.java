@@ -311,7 +311,8 @@ public class LocalizedString {
   }
 
   /**
-   * Container for per-language-form (gender, cardinal, ordinal) translation information.
+   * Container for per-language-form (gender, case, definiteness, classifier, formality, clusivity, animacy,
+   * cardinal, ordinal, phonetic) translation information.
    * <p>
    * Translations can be keyed either on a single value or a range of values (start and end) in the case of cardinality ranges.
    * <p>

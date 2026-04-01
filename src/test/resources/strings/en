@@ -94,9 +94,50 @@
       "greeting" : {
         "value" : "formality",
         "translations" : {
+          "FORMALITY_CASUAL" : "Hey",
           "FORMALITY_INFORMAL" : "Hi",
           "FORMALITY_FORMAL" : "Hello",
+          "FORMALITY_HUMBLE" : "I humbly greet you",
           "FORMALITY_HONORIFIC" : "Greetings"
+        }
+      }
+    }
+  },
+  "I gave the book to the recipient." : {
+    "translation" : "Я дал книгу {{recipientForm}}.",
+    "placeholders" : {
+      "recipientForm" : {
+        "value" : "grammaticalCase",
+        "translations" : {
+          "CASE_NOMINATIVE" : "Иван",
+          "CASE_DATIVE" : "Ивану",
+          "CASE_ACCUSATIVE" : "Ивана"
+        }
+      }
+    }
+  },
+  "Open the document." : {
+    "translation" : "افتح {{documentForm}}.",
+    "placeholders" : {
+      "documentForm" : {
+        "value" : "definiteness",
+        "translations" : {
+          "DEFINITENESS_DEFINITE" : "الكتاب",
+          "DEFINITENESS_INDEFINITE" : "كتابًا",
+          "DEFINITENESS_CONSTRUCT" : "كتاب"
+        }
+      }
+    }
+  },
+  "I bought {{count}} items." : {
+    "translation" : "{{count}}{{counter}}買いました。",
+    "placeholders" : {
+      "counter" : {
+        "value" : "classifier",
+        "translations" : {
+          "CLASSIFIER_GENERAL" : "つ",
+          "CLASSIFIER_BOUND" : "冊",
+          "CLASSIFIER_MACHINE" : "台"
         }
       }
     }

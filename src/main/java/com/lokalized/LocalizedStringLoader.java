@@ -84,6 +84,9 @@ public final class LocalizedStringLoader {
 
     Set<@NonNull LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
+    supportedLanguageForms.addAll(Arrays.asList(GrammaticalCase.values()));
+    supportedLanguageForms.addAll(Arrays.asList(Definiteness.values()));
+    supportedLanguageForms.addAll(Arrays.asList(Classifier.values()));
     supportedLanguageForms.addAll(Arrays.asList(Formality.values()));
     supportedLanguageForms.addAll(Arrays.asList(Clusivity.values()));
     supportedLanguageForms.addAll(Arrays.asList(Animacy.values()));
@@ -117,6 +120,18 @@ public final class LocalizedStringLoader {
       // Massage Gender to match file format, e.g. "MASCULINE" -> "GENDER_MASCULINE"
       if (languageForm instanceof Gender)
         languageFormName = LocalizedStringUtils.localizedStringNameForGenderName(languageFormName);
+
+      // Massage GrammaticalCase to match file format, e.g. "DATIVE" -> "CASE_DATIVE"
+      if (languageForm instanceof GrammaticalCase)
+        languageFormName = LocalizedStringUtils.localizedStringNameForGrammaticalCaseName(languageFormName);
+
+      // Massage Definiteness to match file format, e.g. "DEFINITE" -> "DEFINITENESS_DEFINITE"
+      if (languageForm instanceof Definiteness)
+        languageFormName = LocalizedStringUtils.localizedStringNameForDefinitenessName(languageFormName);
+
+      // Massage Classifier to match file format, e.g. "GENERAL" -> "CLASSIFIER_GENERAL"
+      if (languageForm instanceof Classifier)
+        languageFormName = LocalizedStringUtils.localizedStringNameForClassifierName(languageFormName);
 
       // Massage Formality to match file format, e.g. "FORMAL" -> "FORMALITY_FORMAL"
       if (languageForm instanceof Formality)

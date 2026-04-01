@@ -17,8 +17,8 @@
 package com.lokalized;
 
 /**
- * Marker interface which signifies a language construct (genders, animacy, clusivity, formality, cardinalities,
- * ordinalities, phonetics).
+ * Marker interface which signifies a language construct (genders, grammatical cases, definiteness, classifiers,
+ * animacy, clusivity, formality, cardinalities, ordinalities, phonetics).
  * <p>
  * Implementors must be {@link Enum} types only.
  *

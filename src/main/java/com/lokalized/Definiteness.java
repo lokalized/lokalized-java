@@ -24,48 +24,39 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Language formality forms.
+ * Definiteness forms.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
- * @since 1.2.0
  */
-public enum Formality implements LanguageForm {
+public enum Definiteness implements LanguageForm {
   /**
-   * Casual register.
+   * Definite form, such as "the book" or Arabic nouns with the definite article.
    */
-  CASUAL,
+  DEFINITE,
   /**
-   * Informal register.
+   * Indefinite form, such as "a book".
    */
-  INFORMAL,
+  INDEFINITE,
   /**
-   * Formal register.
+   * Construct or bound-state form used by languages such as Arabic and Hebrew.
    */
-  FORMAL,
-  /**
-   * Humble register.
-   */
-  HUMBLE,
-  /**
-   * Honorific register.
-   */
-  HONORIFIC;
+  CONSTRUCT;
 
   @NonNull
-  private static final Map<@NonNull String, @NonNull Formality> FORMALITIES_BY_NAME;
+  private static final Map<@NonNull String, @NonNull Definiteness> DEFINITENESS_BY_NAME;
 
   static {
-    FORMALITIES_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
-        Formality.values()).collect(Collectors.toMap(formality -> formality.name(), formality -> formality)));
+    DEFINITENESS_BY_NAME = Collections.unmodifiableMap(Arrays.stream(
+        Definiteness.values()).collect(Collectors.toMap(definiteness -> definiteness.name(), definiteness -> definiteness)));
   }
 
   /**
-   * Gets the mapping of formality names to formality values.
+   * Gets the mapping of definiteness names to definiteness values.
    *
-   * @return the mapping of formality names to formality values, not null
+   * @return the mapping of definiteness names to definiteness values, not null
    */
   @NonNull
-  static Map<@NonNull String, @NonNull Formality> getFormalitiesByName() {
-    return FORMALITIES_BY_NAME;
+  static Map<@NonNull String, @NonNull Definiteness> getDefinitenessByName() {
+    return DEFINITENESS_BY_NAME;
   }
 }

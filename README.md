@@ -41,7 +41,7 @@ assertEquals("I didn't read any books.", translation);
 ## Design Goals
 
 * Complex translation rules can be expressed in a configuration file, not code
-* First-class support for gender and plural (cardinal, ordinal, range) language forms per latest CLDR specifications
+* First-class support for common language forms such as gender, grammatical case, definiteness, classifiers, register, and plural (cardinal, ordinal, range)
 * Provide a simple expression language to handle traditionally difficult edge cases
 * Support multiple platforms natively
 * Immutability/thread-safety
@@ -69,13 +69,13 @@ assertEquals("I didn't read any books.", translation);
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>2.0.0</version>
+  <version>2.1.0-SNAPSHOT</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven, you can drop [lokalized-2.0.0.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/2.0.0/lokalized-2.0.0.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop `lokalized-2.1.0-SNAPSHOT.jar` directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
@@ -548,14 +548,169 @@ Some languages (e.g. Swedish, Danish, Dutch) collapse masculine and feminine int
 
 Lokalized provides a [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) type which enumerates supported genders.
 
-### Formality
+### Grammatical Case
 
-Formality rules determine whether a phrase is rendered in an informal or formal register.
+Grammatical case rules determine how a noun or pronoun changes according to its syntactic role.
 
 Lokalized supports these values:
 
+* [`CASE_NOMINATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#NOMINATIVE)
+* [`CASE_ACCUSATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#ACCUSATIVE)
+* [`CASE_GENITIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#GENITIVE)
+* [`CASE_DATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#DATIVE)
+* [`CASE_INSTRUMENTAL`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#INSTRUMENTAL)
+* [`CASE_LOCATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#LOCATIVE)
+* [`CASE_PREPOSITIONAL`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#PREPOSITIONAL)
+* [`CASE_VOCATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#VOCATIVE)
+* [`CASE_ABLATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#ABLATIVE)
+
+Lokalized provides a [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html) type which enumerates supported case values. The enum is intentionally high-coverage rather than exhaustive; if a language distinguishes more cases, map them to the closest supported value in your application code.
+
+#### Example
+
+In Russian, a recipient often takes dative case:
+
+```json
+{
+  "Send a message to the recipient." : {
+    "translation" : "Отправить сообщение {{recipientForm}}.",
+    "placeholders" : {
+      "recipientForm" : {
+        "value" : "grammaticalCase",
+        "translations" : {
+          "CASE_NOMINATIVE" : "Иван",
+          "CASE_DATIVE" : "Ивану",
+          "CASE_ACCUSATIVE" : "Ивана"
+        }
+      }
+    }
+  }
+}
+```
+
+Now select the grammatical role at runtime:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ru"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ru"))
+  .build();
+
+assertEquals("Отправить сообщение Ивану.", strings.get("Send a message to the recipient.", Map.of(
+  "grammaticalCase", GrammaticalCase.DATIVE
+)));
+```
+
+### Definiteness
+
+Definiteness rules distinguish whether a noun phrase is definite, indefinite, or in construct/bound state.
+
+Lokalized supports these values:
+
+* [`DEFINITENESS_DEFINITE`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html#DEFINITE)
+* [`DEFINITENESS_INDEFINITE`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html#INDEFINITE)
+* [`DEFINITENESS_CONSTRUCT`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html#CONSTRUCT)
+
+Lokalized provides a [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html) type which enumerates supported definiteness values.
+
+#### Example
+
+Arabic and Hebrew frequently change noun phrases based on definiteness:
+
+```json
+{
+  "Open the document." : {
+    "translation" : "افتح {{documentForm}}.",
+    "placeholders" : {
+      "documentForm" : {
+        "value" : "definiteness",
+        "translations" : {
+          "DEFINITENESS_DEFINITE" : "الكتاب",
+          "DEFINITENESS_INDEFINITE" : "كتابًا",
+          "DEFINITENESS_CONSTRUCT" : "كتاب"
+        }
+      }
+    }
+  }
+}
+```
+
+Then choose the desired form at runtime:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ar"))
+  .build();
+
+assertEquals("افتح الكتاب.", strings.get("Open the document.", Map.of(
+  "definiteness", Definiteness.DEFINITE
+)));
+```
+
+### Classifiers
+
+Classifier rules select the measure word or counter associated with a noun.
+
+Lokalized supports these values:
+
+* [`CLASSIFIER_GENERAL`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#GENERAL)
+* [`CLASSIFIER_PERSON`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#PERSON)
+* [`CLASSIFIER_ANIMAL`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#ANIMAL)
+* [`CLASSIFIER_LONG_THIN`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#LONG_THIN)
+* [`CLASSIFIER_FLAT`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#FLAT)
+* [`CLASSIFIER_BOUND`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#BOUND)
+* [`CLASSIFIER_MACHINE`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#MACHINE)
+* [`CLASSIFIER_VEHICLE`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#VEHICLE)
+
+Lokalized provides a [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html) type which enumerates supported classifier categories. This enum is intentionally generic and non-exhaustive: it captures common semantic buckets across classifier languages, but applications with language-specific inventories may still want separate keys or alternative expressions in some cases.
+
+#### Example
+
+In Japanese, the counter for books differs from the general-purpose counter:
+
+```json
+{
+  "I bought {{count}} items." : {
+    "translation" : "{{count}}{{counter}}買いました。",
+    "placeholders" : {
+      "counter" : {
+        "value" : "classifier",
+        "translations" : {
+          "CLASSIFIER_GENERAL" : "つ",
+          "CLASSIFIER_BOUND" : "冊",
+          "CLASSIFIER_MACHINE" : "台"
+        }
+      }
+    }
+  }
+}
+```
+
+Then choose the classifier category in calling code:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ja"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ja"))
+  .build();
+
+assertEquals("3冊買いました。", strings.get("I bought {{count}} items.", Map.of(
+  "count", 3,
+  "classifier", Classifier.BOUND
+)));
+```
+
+### Formality
+
+Formality rules determine whether a phrase is rendered in a casual, informal, formal, humble, or honorific register.
+
+Lokalized supports these values:
+
+* [`FORMALITY_CASUAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#CASUAL)
 * [`FORMALITY_INFORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#INFORMAL)
 * [`FORMALITY_FORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#FORMAL)
+* [`FORMALITY_HUMBLE`](https://javadoc.lokalized.com/com/lokalized/Formality.html#HUMBLE)
 * [`FORMALITY_HONORIFIC`](https://javadoc.lokalized.com/com/lokalized/Formality.html#HONORIFIC)
 
 Lokalized provides a [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html) type which enumerates supported formality values.
@@ -572,8 +727,10 @@ Let's model a greeting with different levels of formality:
       "greeting" : {
         "value" : "formality",
         "translations" : {
+          "FORMALITY_CASUAL" : "Hey",
           "FORMALITY_INFORMAL" : "Hi",
           "FORMALITY_FORMAL" : "Hello",
+          "FORMALITY_HUMBLE" : "I humbly greet you",
           "FORMALITY_HONORIFIC" : "Greetings"
         }
       }
@@ -593,6 +750,16 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 assertEquals("Greetings, Dr. Smith.", strings.get("Hello, {{name}}.", Map.of(
   "formality", Formality.HONORIFIC,
   "name", "Dr. Smith"
+)));
+
+assertEquals("Hey, Sam.", strings.get("Hello, {{name}}.", Map.of(
+  "formality", Formality.CASUAL,
+  "name", "Sam"
+)));
+
+assertEquals("I humbly greet you, Professor Tanaka.", strings.get("Hello, {{name}}.", Map.of(
+  "formality", Formality.HUMBLE,
+  "name", "Professor Tanaka"
 )));
 
 assertEquals("Hi, Sam.", strings.get("Hello, {{name}}.", Map.of(

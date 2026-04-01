@@ -396,6 +396,9 @@ public class DefaultStrings implements Strings {
 			Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
 			Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
 			Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
+			Map<@NonNull GrammaticalCase, @NonNull String> translationsByGrammaticalCase = new HashMap<>();
+			Map<@NonNull Definiteness, @NonNull String> translationsByDefiniteness = new HashMap<>();
+			Map<@NonNull Classifier, @NonNull String> translationsByClassifier = new HashMap<>();
 			Map<@NonNull Formality, @NonNull String> translationsByFormality = new HashMap<>();
 			Map<@NonNull Clusivity, @NonNull String> translationsByClusivity = new HashMap<>();
 			Map<@NonNull Animacy, @NonNull String> translationsByAnimacy = new HashMap<>();
@@ -419,6 +422,12 @@ public class DefaultStrings implements Strings {
 					translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Gender)
 					translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof GrammaticalCase)
+					translationsByGrammaticalCase.put((GrammaticalCase) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Definiteness)
+					translationsByDefiniteness.put((Definiteness) languageForm, translatedLanguageForm);
+				else if (languageForm instanceof Classifier)
+					translationsByClassifier.put((Classifier) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Formality)
 					translationsByFormality.put((Formality) languageForm, translatedLanguageForm);
 				else if (languageForm instanceof Clusivity)
@@ -434,6 +443,9 @@ public class DefaultStrings implements Strings {
 			int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
 					(translationsByOrdinality.size() > 0 ? 1 : 0) +
 					(translationsByGender.size() > 0 ? 1 : 0) +
+					(translationsByGrammaticalCase.size() > 0 ? 1 : 0) +
+					(translationsByDefiniteness.size() > 0 ? 1 : 0) +
+					(translationsByClassifier.size() > 0 ? 1 : 0) +
 					(translationsByFormality.size() > 0 ? 1 : 0) +
 					(translationsByClusivity.size() > 0 ? 1 : 0) +
 					(translationsByAnimacy.size() > 0 ? 1 : 0) +
@@ -545,6 +557,66 @@ public class DefaultStrings implements Strings {
 							Gender.class.getSimpleName(), gender.name(), localizedString));
 
 				mutableContext.put(placeholderName, genderTranslation);
+			}
+
+			// Handle grammatical cases
+			if (translationsByGrammaticalCase.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof GrammaticalCase))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, GrammaticalCase.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				GrammaticalCase grammaticalCase = (GrammaticalCase) value;
+				String grammaticalCaseTranslation = translationsByGrammaticalCase.get(grammaticalCase);
+
+				if (grammaticalCaseTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							GrammaticalCase.class.getSimpleName(), grammaticalCase.name(), localizedString));
+
+				mutableContext.put(placeholderName, grammaticalCaseTranslation);
+			}
+
+			// Handle definiteness
+			if (translationsByDefiniteness.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof Definiteness))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Definiteness.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				Definiteness definiteness = (Definiteness) value;
+				String definitenessTranslation = translationsByDefiniteness.get(definiteness);
+
+				if (definitenessTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Definiteness.class.getSimpleName(), definiteness.name(), localizedString));
+
+				mutableContext.put(placeholderName, definitenessTranslation);
+			}
+
+			// Handle classifiers
+			if (translationsByClassifier.size() > 0) {
+				if (value == null)
+					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+							languageFormTranslation.getValue().get(), key));
+
+				if (!(value instanceof Classifier))
+					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+							languageFormTranslation.getValue().get(), key, Classifier.class.getSimpleName(), value.getClass().getSimpleName()));
+
+				Classifier classifier = (Classifier) value;
+				String classifierTranslation = translationsByClassifier.get(classifier);
+
+				if (classifierTranslation == null)
+					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
+							Classifier.class.getSimpleName(), classifier.name(), localizedString));
+
+				mutableContext.put(placeholderName, classifierTranslation);
 			}
 
 			// Handle formality
