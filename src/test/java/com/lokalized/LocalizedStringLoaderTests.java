@@ -199,6 +199,48 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingAcceptsSelectorDrivenPlaceholderTranslations() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
+            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}," +
+            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
+            "],\"translations\":[" +
+            "{\"when\":{\"CASE\":\"CASE_NOMINATIVE\",\"GENDER\":\"GENDER_MASCULINE\"},\"value\":\"der\"}," +
+            "{\"value\":\"die\"}" +
+            "]}}}}").getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
+    LocalizedString.LanguageFormTranslation translation = localizedString.getLanguageFormTranslationsByPlaceholder().get("article");
+
+    assertTrue(translation.isSelectorDriven());
+    assertEquals(2, translation.getSelectors().size());
+    assertEquals(2, translation.getTranslationRules().size());
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsAmbiguousSelectorDrivenPlaceholderTranslations() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
+            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}," +
+            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
+            "],\"translations\":[" +
+            "{\"when\":{\"CASE\":\"CASE_DATIVE\"},\"value\":\"dem\"}," +
+            "{\"when\":{\"GENDER\":\"GENDER_FEMININE\"},\"value\":\"die\"}" +
+            "]}}}}").getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected ambiguous selector-based translation rules to fail during load");
+  }
+
+  @Test
   public void testClasspathLoadingFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
     tempJar.toFile().deleteOnExit();

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -52,5 +53,47 @@ public class LocalizedStringTests {
     assertThrows(UnsupportedOperationException.class,
         () -> localizedString.getLanguageFormTranslationsByPlaceholder().put("other", null),
         "Expected language form translations map to be unmodifiable");
+  }
+
+  @Test
+  public void selectorDrivenLanguageFormTranslationsAreDefensivelyCopied() {
+    Map<LanguageFormType, LanguageForm> whenByLanguageFormType = new HashMap<>();
+    whenByLanguageFormType.put(LanguageFormType.GENDER, Gender.MASCULINE);
+
+    List<LocalizedString.LanguageFormSelector> selectors = List.of(
+        new LocalizedString.LanguageFormSelector("gender", LanguageFormType.GENDER),
+        new LocalizedString.LanguageFormSelector("grammaticalCase", LanguageFormType.CASE)
+    );
+    List<LocalizedString.LanguageFormTranslationRule> translationRules = List.of(
+        new LocalizedString.LanguageFormTranslationRule(whenByLanguageFormType, "der"),
+        new LocalizedString.LanguageFormTranslationRule("die")
+    );
+
+    Map<String, LanguageFormTranslation> translationsByPlaceholder = new HashMap<>();
+    translationsByPlaceholder.put("article", new LanguageFormTranslation(selectors, translationRules));
+
+    LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
+        .translation("{{article}} {{noun}}")
+        .languageFormTranslationsByPlaceholder(translationsByPlaceholder)
+        .build();
+
+    whenByLanguageFormType.clear();
+    translationsByPlaceholder.clear();
+
+    LanguageFormTranslation languageFormTranslation = localizedString.getLanguageFormTranslationsByPlaceholder().get("article");
+
+    assertTrue(languageFormTranslation.isSelectorDriven());
+    assertTrue(languageFormTranslation.getSelectors().size() == 2);
+    assertTrue(languageFormTranslation.getTranslationRules().size() == 2);
+
+    assertThrows(UnsupportedOperationException.class,
+        () -> languageFormTranslation.getSelectors().add(new LocalizedString.LanguageFormSelector("other", LanguageFormType.GENDER)),
+        "Expected selector list to be unmodifiable");
+    assertThrows(UnsupportedOperationException.class,
+        () -> languageFormTranslation.getTranslationRules().add(new LocalizedString.LanguageFormTranslationRule("other")),
+        "Expected translation rules list to be unmodifiable");
+    assertThrows(UnsupportedOperationException.class,
+        () -> languageFormTranslation.getTranslationRules().get(0).getWhenByLanguageFormType().put(LanguageFormType.CASE, GrammaticalCase.DATIVE),
+        "Expected translation rule conditions map to be unmodifiable");
   }
 }

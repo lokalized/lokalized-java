@@ -1214,16 +1214,25 @@ In the below example of an `en` strings file, the application code provides the 
 }
 ```
 
-Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
+Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object.
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
+Lokalized supports 2 placeholder formats:
+
+* A simple single-axis format using `value` and `translations`
+* A selector-driven multi-axis format using `selectors` and rule-array `translations`
+
+#### Simple Placeholder Rules
+
+In the simple format:
+
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
 
-Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
+Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
 
-You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).
+In the simple format, you may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).  Use the selector-driven format when one placeholder depends on more than one agreement dimension.
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 
@@ -1251,9 +1260,71 @@ Here, the cardinalities of `minHours` and `maxHours` are evaluated to determine 
 
 You are prohibited from supplying both `range` and `value` fields - use `range` only for cardinality ranges and `value` otherwise.
 
+#### Selector-Driven Placeholder Rules
+
+Use selector-driven placeholders when a single placeholder depends on multiple language-form dimensions at once, for example `CASE` and `GENDER`.
+
+```json
+{
+  "{{article}} {{noun}}" : {
+    "translation" : "{{article}} {{noun}}",
+    "placeholders" : {
+      "article" : {
+        "selectors" : [
+          {
+            "value" : "grammaticalCase",
+            "form" : "CASE"
+          },
+          {
+            "value" : "gender",
+            "form" : "GENDER"
+          }
+        ],
+        "translations" : [
+          {
+            "when" : {
+              "CASE" : "CASE_NOMINATIVE",
+              "GENDER" : "GENDER_MASCULINE"
+            },
+            "value" : "der"
+          },
+          {
+            "when" : {
+              "CASE" : "CASE_ACCUSATIVE",
+              "GENDER" : "GENDER_MASCULINE"
+            },
+            "value" : "den"
+          },
+          {
+            "when" : {
+              "GENDER" : "GENDER_FEMININE"
+            },
+            "value" : "die"
+          },
+          {
+            "value" : "das"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+In the selector-driven format:
+
+* `selectors` declares which application-supplied values to inspect and which language-form family each one belongs to.  Supported selector `form` values are `CARDINALITY`, `ORDINALITY`, `GENDER`, `CASE`, `DEFINITENESS`, `CLASSIFIER`, `FORMALITY`, `CLUSIVITY`, `ANIMACY`, and `PHONETIC`.
+* `translations` is an ordered list of rules.  Each rule has a `value` and may optionally have a `when` object.
+* `when` is a structured match, not a general expression language.  It may only contain selector-form names such as `CASE` or `GENDER`.
+* Lokalized selects the most specific matching rule.  In the above example, `CASE + GENDER` beats `GENDER` alone.
+* A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, string evaluation fails with an exception.
+* Ambiguous overlapping rules with the same specificity are rejected while loading translations.
+
+Selector-driven placeholders are for local agreement only.  Use `alternatives` when you need arbitrary boolean logic or whole-sentence rewrites.
+
 ### Alternatives
 
-You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  It's perfectly legal to have an alternative like this:
+You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  `alternatives` complement selector-driven placeholders: use placeholder selectors for local agreement on one slot, and use `alternatives` for broader conditional rewrites.  It's perfectly legal to have an alternative like this:
  
 ```text
 gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
@@ -1325,11 +1396,16 @@ A grammar for alternative expressions follows.
 ```EBNF
 EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
 OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
-LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE | DEFINITENESS | CLASSIFIER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
 CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
 ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
 GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_COMMON" | "GENDER_NEUTER" ;
-FORMALITY = "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HONORIFIC" ;
+GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE" | "CASE_GENITIVE" | "CASE_DATIVE"
+                 | "CASE_INSTRUMENTAL" | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL" | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
+DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE" | "DEFINITENESS_CONSTRUCT" ;
+CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL" | "CLASSIFIER_LONG_THIN"
+           | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND" | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
+FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
 CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
 ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
 PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
@@ -1347,7 +1423,7 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 #### What Expressions Currently Support
 
 * Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
-* Comparison of gender, phonetic, plural, and literal numeric values against each other or user-supplied variables
+* Comparison of supported language forms, phonetic forms, plural and ordinal forms, and literal numeric values against each other or user-supplied variables
 
 #### What Expressions Do Not Currently Support
 

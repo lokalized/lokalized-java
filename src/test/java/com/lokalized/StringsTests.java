@@ -473,6 +473,104 @@ public class StringsTests {
 	}
 
 	@Test
+	public void selectorDrivenPlaceholderTest() {
+		LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
+				.translation("{{article}} {{noun}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"article", new LocalizedString.LanguageFormTranslation(
+								List.of(
+										new LocalizedString.LanguageFormSelector("grammaticalCase", LanguageFormType.CASE),
+										new LocalizedString.LanguageFormSelector("gender", LanguageFormType.GENDER)
+								),
+								List.of(
+										new LocalizedString.LanguageFormTranslationRule(Map.of(
+												LanguageFormType.CASE, GrammaticalCase.NOMINATIVE,
+												LanguageFormType.GENDER, Gender.MASCULINE
+										), "der"),
+										new LocalizedString.LanguageFormTranslationRule(Map.of(
+												LanguageFormType.CASE, GrammaticalCase.ACCUSATIVE,
+												LanguageFormType.GENDER, Gender.MASCULINE
+										), "den"),
+										new LocalizedString.LanguageFormTranslationRule(Map.of(
+												LanguageFormType.GENDER, Gender.FEMININE
+										), "die"),
+										new LocalizedString.LanguageFormTranslationRule("das")
+								)
+						)
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		String translation = strings.get("{{article}} {{noun}}", Map.of(
+				"grammaticalCase", GrammaticalCase.NOMINATIVE,
+				"gender", Gender.MASCULINE,
+				"noun", "Baum"
+		));
+
+		assertEquals("der Baum", translation);
+
+		translation = strings.get("{{article}} {{noun}}", Map.of(
+				"grammaticalCase", GrammaticalCase.ACCUSATIVE,
+				"gender", Gender.MASCULINE,
+				"noun", "Baum"
+		));
+
+		assertEquals("den Baum", translation);
+
+		translation = strings.get("{{article}} {{noun}}", Map.of(
+				"grammaticalCase", GrammaticalCase.NOMINATIVE,
+				"gender", Gender.FEMININE,
+				"noun", "Frau"
+		));
+
+		assertEquals("die Frau", translation);
+
+		translation = strings.get("{{article}} {{noun}}", Map.of(
+				"grammaticalCase", GrammaticalCase.NOMINATIVE,
+				"gender", Gender.NEUTER,
+				"noun", "Haus"
+		));
+
+		assertEquals("das Haus", translation);
+	}
+
+	@Test
+	public void missingSelectorDrivenPlaceholderTranslationsThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
+				.translation("{{article}} {{noun}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"article", new LocalizedString.LanguageFormTranslation(
+								List.of(
+										new LocalizedString.LanguageFormSelector("grammaticalCase", LanguageFormType.CASE),
+										new LocalizedString.LanguageFormSelector("gender", LanguageFormType.GENDER)
+								),
+								List.of(
+										new LocalizedString.LanguageFormTranslationRule(Map.of(
+												LanguageFormType.CASE, GrammaticalCase.NOMINATIVE,
+												LanguageFormType.GENDER, Gender.MASCULINE
+										), "der"),
+										new LocalizedString.LanguageFormTranslationRule(Map.of(
+												LanguageFormType.CASE, GrammaticalCase.ACCUSATIVE,
+												LanguageFormType.GENDER, Gender.MASCULINE
+										), "den")
+								)
+						)
+				))
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		assertThrows(IllegalStateException.class,
+				() -> strings.get("{{article}} {{noun}}", Map.of(
+						"grammaticalCase", GrammaticalCase.NOMINATIVE,
+						"gender", Gender.NEUTER,
+						"noun", "Haus"
+				)),
+				"Expected unmatched selector-driven placeholders without a default rule to throw");
+	}
+
+	@Test
 	public void optionalPlaceholderValuesAreUnwrapped() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

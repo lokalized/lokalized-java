@@ -183,7 +183,8 @@ public class LocalizedString {
   /**
    * Gets per-language-form translations that correspond to a placeholder value.
    * <p>
-   * For example, language form {@code GENDER_MASCULINE} might be translated as {@code He} for placeholder {@code subject}.
+   * For example, language form {@code GENDER_MASCULINE} might be translated as {@code He} for placeholder {@code subject},
+   * or a selector-based placeholder might use both {@code GENDER} and {@code CASE} to choose a single translation rule.
    *
    * @return per-language-form translations that correspond to a placeholder value, not null
    */
@@ -271,7 +272,7 @@ public class LocalizedString {
     /**
      * Applies per-language-form translations to this builder.
      *
-     * @param languageFormTranslationsByPlaceholder per-language-form translations, may be null
+     * @param languageFormTranslationsByPlaceholder per-language-form or selector-driven translations, may be null
      * @return this builder instance, useful for chaining. not null
      */
     @NonNull
@@ -314,9 +315,10 @@ public class LocalizedString {
    * Container for per-language-form (gender, case, definiteness, classifier, formality, clusivity, animacy,
    * cardinal, ordinal, phonetic) translation information.
    * <p>
-   * Translations can be keyed either on a single value or a range of values (start and end) in the case of cardinality ranges.
+   * Translations can be keyed either on a single value, a range of values (start and end) in the case of cardinality ranges,
+   * or a selector-based rule set for multi-axis agreement.
    * <p>
-   * It is required to have either a {@code value} or {@code range}, but not both.
+   * Exactly one translation mode is active for each instance.
    *
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
@@ -328,6 +330,10 @@ public class LocalizedString {
     private final LanguageFormTranslationRange range;
     @NonNull
     private final Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm;
+    @NonNull
+    private final List<@NonNull LanguageFormSelector> selectors;
+    @NonNull
+    private final List<@NonNull LanguageFormTranslationRule> translationRules;
 
     /**
      * Constructs a per-language-form translation set with the given placeholder value and mapping of translations by language form.
@@ -342,6 +348,8 @@ public class LocalizedString {
       this.value = value;
       this.range = null;
       this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+      this.selectors = Collections.emptyList();
+      this.translationRules = Collections.emptyList();
     }
 
     /**
@@ -357,6 +365,34 @@ public class LocalizedString {
       this.value = null;
       this.range = range;
       this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+      this.selectors = Collections.emptyList();
+      this.translationRules = Collections.emptyList();
+    }
+
+    /**
+     * Constructs a selector-based translation set with multiple agreement dimensions and ordered translation rules.
+     *
+     * @param selectors        the selector definitions that determine which language forms to evaluate, not null
+     * @param translationRules the translation rules to evaluate against the selector values, not null
+     */
+    public LanguageFormTranslation(@NonNull List<@NonNull LanguageFormSelector> selectors,
+                                   @NonNull List<@NonNull LanguageFormTranslationRule> translationRules) {
+      requireNonNull(selectors);
+      requireNonNull(translationRules);
+
+      if (selectors.isEmpty())
+        throw new IllegalArgumentException(format("Selector-based %s instances require at least one selector",
+            getClass().getSimpleName()));
+
+      if (translationRules.isEmpty())
+        throw new IllegalArgumentException(format("Selector-based %s instances require at least one translation rule",
+            getClass().getSimpleName()));
+
+      this.value = null;
+      this.range = null;
+      this.translationsByLanguageForm = Collections.emptyMap();
+      this.selectors = Collections.unmodifiableList(new ArrayList<>(selectors));
+      this.translationRules = Collections.unmodifiableList(new ArrayList<>(translationRules));
     }
 
     /**
@@ -367,6 +403,9 @@ public class LocalizedString {
     @Override
     @NonNull
     public String toString() {
+      if (isSelectorDriven())
+        return format("%s{selectors=%s, translationRules=%s}", getClass().getSimpleName(), getSelectors(), getTranslationRules());
+
       if (getRange().isPresent())
         return format("%s{range=%s, translationsByLanguageForm=%s}", getClass().getSimpleName(), getRange().get(), getTranslationsByLanguageForm());
 
@@ -391,7 +430,9 @@ public class LocalizedString {
 
       return Objects.equals(getValue(), languageFormTranslation.getValue())
           && Objects.equals(getRange(), languageFormTranslation.getRange())
-          && Objects.equals(getTranslationsByLanguageForm(), languageFormTranslation.getTranslationsByLanguageForm());
+          && Objects.equals(getTranslationsByLanguageForm(), languageFormTranslation.getTranslationsByLanguageForm())
+          && Objects.equals(getSelectors(), languageFormTranslation.getSelectors())
+          && Objects.equals(getTranslationRules(), languageFormTranslation.getTranslationRules());
     }
 
     /**
@@ -401,7 +442,7 @@ public class LocalizedString {
      */
     @Override
     public int hashCode() {
-      return Objects.hash(getValue(), getRange(), getTranslationsByLanguageForm());
+      return Objects.hash(getValue(), getRange(), getTranslationsByLanguageForm(), getSelectors(), getTranslationRules());
     }
 
     /**
@@ -425,6 +466,15 @@ public class LocalizedString {
     }
 
     /**
+     * Indicates whether this translation uses selector-based multi-axis agreement.
+     *
+     * @return true if this translation is selector-driven, false otherwise
+     */
+    public boolean isSelectorDriven() {
+      return getSelectors().size() > 0;
+    }
+
+    /**
      * Gets the translations by language form for this per-language-form translation set.
      *
      * @return the translations by language form for this per-language-form translation set, not null
@@ -432,6 +482,216 @@ public class LocalizedString {
     @NonNull
     public Map<@NonNull LanguageForm, @NonNull String> getTranslationsByLanguageForm() {
       return translationsByLanguageForm;
+    }
+
+    /**
+     * Gets the selector definitions for this translation set.
+     *
+     * @return the selector definitions for this translation set, not null
+     */
+    @NonNull
+    public List<@NonNull LanguageFormSelector> getSelectors() {
+      return selectors;
+    }
+
+    /**
+     * Gets the ordered translation rules for this translation set.
+     *
+     * @return the ordered translation rules for this translation set, not null
+     */
+    @NonNull
+    public List<@NonNull LanguageFormTranslationRule> getTranslationRules() {
+      return translationRules;
+    }
+  }
+
+  /**
+   * Defines a selector used by a multi-axis placeholder translation.
+   * <p>
+   * Each selector identifies an application-supplied placeholder value and the language-form family to derive from it.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   */
+  @Immutable
+  public static class LanguageFormSelector {
+    @NonNull
+    private final String value;
+    @NonNull
+    private final LanguageFormType form;
+
+    /**
+     * Constructs a selector with the given placeholder value name and language-form type.
+     *
+     * @param value the placeholder value to inspect, not null
+     * @param form  the language-form family to derive from the value, not null
+     */
+    public LanguageFormSelector(@NonNull String value, @NonNull LanguageFormType form) {
+      requireNonNull(value);
+      requireNonNull(form);
+
+      this.value = value;
+      this.form = form;
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @NonNull
+    public String toString() {
+      return format("%s{value=%s, form=%s}", getClass().getSimpleName(), getValue(), getForm());
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      LanguageFormSelector languageFormSelector = (LanguageFormSelector) other;
+
+      return Objects.equals(getValue(), languageFormSelector.getValue())
+          && Objects.equals(getForm(), languageFormSelector.getForm());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getValue(), getForm());
+    }
+
+    /**
+     * Gets the placeholder value name for this selector.
+     *
+     * @return the placeholder value name for this selector, not null
+     */
+    @NonNull
+    public String getValue() {
+      return value;
+    }
+
+    /**
+     * Gets the language-form family for this selector.
+     *
+     * @return the language-form family for this selector, not null
+     */
+    @NonNull
+    public LanguageFormType getForm() {
+      return form;
+    }
+  }
+
+  /**
+   * Defines a selector-based translation rule for a multi-axis placeholder translation.
+   * <p>
+   * Rules may optionally provide a {@code when} map. An empty map represents the default rule.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   */
+  @Immutable
+  public static class LanguageFormTranslationRule {
+    @NonNull
+    private final Map<@NonNull LanguageFormType, @NonNull LanguageForm> whenByLanguageFormType;
+    @NonNull
+    private final String value;
+
+    /**
+     * Constructs a default translation rule with no conditions.
+     *
+     * @param value the value to use when this rule matches, not null
+     */
+    public LanguageFormTranslationRule(@NonNull String value) {
+      this(Collections.emptyMap(), value);
+    }
+
+    /**
+     * Constructs a translation rule with the given selector conditions and value.
+     *
+     * @param whenByLanguageFormType selector conditions that must be satisfied for this rule to match, not null
+     * @param value                  the value to use when this rule matches, not null
+     */
+    public LanguageFormTranslationRule(@NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> whenByLanguageFormType,
+                                       @NonNull String value) {
+      requireNonNull(whenByLanguageFormType);
+      requireNonNull(value);
+
+      this.whenByLanguageFormType = Collections.unmodifiableMap(new LinkedHashMap<>(whenByLanguageFormType));
+      this.value = value;
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @NonNull
+    public String toString() {
+      return format("%s{whenByLanguageFormType=%s, value=%s}", getClass().getSimpleName(), getWhenByLanguageFormType(), getValue());
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      LanguageFormTranslationRule languageFormTranslationRule = (LanguageFormTranslationRule) other;
+
+      return Objects.equals(getWhenByLanguageFormType(), languageFormTranslationRule.getWhenByLanguageFormType())
+          && Objects.equals(getValue(), languageFormTranslationRule.getValue());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getWhenByLanguageFormType(), getValue());
+    }
+
+    /**
+     * Gets the selector conditions for this rule.
+     *
+     * @return the selector conditions for this rule, not null
+     */
+    @NonNull
+    public Map<@NonNull LanguageFormType, @NonNull LanguageForm> getWhenByLanguageFormType() {
+      return whenByLanguageFormType;
+    }
+
+    /**
+     * Gets the value for this rule.
+     *
+     * @return the value for this rule, not null
+     */
+    @NonNull
+    public String getValue() {
+      return value;
     }
   }
 
