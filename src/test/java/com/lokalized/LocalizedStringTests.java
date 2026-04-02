@@ -23,6 +23,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -53,6 +54,29 @@ public class LocalizedStringTests {
     assertThrows(UnsupportedOperationException.class,
         () -> localizedString.getLanguageFormTranslationsByPlaceholder().put("other", null),
         "Expected language form translations map to be unmodifiable");
+  }
+
+  @Test
+  public void placeholderMetadataIsDefensivelyCopied() {
+    Map<String, LocalizedString.PlaceholderMetadata> placeholderMetadataByPlaceholder = new HashMap<>();
+    placeholderMetadataByPlaceholder.put("lastName",
+        new LocalizedString.PlaceholderMetadata("STRING", "Recipient family name without title.", "Weber", Set.of("Weber", "Nguyen")));
+
+    LocalizedString localizedString = new LocalizedString.Builder("Hello {{lastName}}")
+        .translation("Hello {{lastName}}")
+        .placeholderMetadataByPlaceholder(placeholderMetadataByPlaceholder)
+        .build();
+
+    placeholderMetadataByPlaceholder.clear();
+
+    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("lastName"));
+
+    assertThrows(UnsupportedOperationException.class,
+        () -> localizedString.getPlaceholderMetadataByPlaceholder().put("other", null),
+        "Expected placeholder metadata map to be unmodifiable");
+    assertThrows(UnsupportedOperationException.class,
+        () -> localizedString.getPlaceholderMetadataByPlaceholder().get("lastName").getAllowedValues().add("Singh"),
+        "Expected placeholder metadata allowed values to be unmodifiable");
   }
 
   @Test

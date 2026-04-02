@@ -1166,9 +1166,9 @@ This is equivalent to the more verbose object form, which we don't need in this 
 }
 ```
 
-In addition to `translation`, each object form supports 3 additional keys: `commentary`, `placeholders`, and `alternatives`.
+In addition to `translation`, each object form supports 4 additional keys: `commentary`, `placeholderMetadata`, `placeholders`, and `alternatives`.
 
-All 4 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
+All 5 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
 
 ### Commentary
 
@@ -1375,7 +1375,7 @@ bookCount == 50
 
 Note that the supported comparison operators for cardinality, ordinality, gender, and phonetic forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
 
-Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `placeholders`, `commentary`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
+Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `commentary`, `placeholderMetadata`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
   
 Alternative evaluation follows these rules:
 
@@ -1459,6 +1459,54 @@ COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
 * A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
+
+### Placeholder Metadata
+
+The `placeholderMetadata` object lets you document individual placeholders for translators or tooling.  Unlike `placeholders`, it does not affect runtime evaluation.
+
+Each `placeholderMetadata` object key is the name of a placeholder and the value is an object with optional fields:
+
+* `type` is a translator-facing type label such as `STRING`, `NUMBER`, `DATE`, `GENDER`, or `CASE`
+* `commentary` is free-form placeholder-specific context
+* `example` is an example runtime value
+* `allowedValues` is an array of unique string values that are valid for this placeholder
+
+If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a predefined set of values.
+
+If `type` is one of Lokalized's built-in language-form families such as `GENDER` or `CASE`, any supplied `allowedValues` are validated against the corresponding built-in language-form values. Duplicate `allowedValues` entries are rejected.
+
+```json
+{
+  "Send the invoice to {{honorific}} {{lastName}}." : {
+    "commentary" : "Shown in the invoice send-confirmation flow.",
+    "placeholderMetadata" : {
+      "grammaticalCase" : {
+        "type" : "CASE",
+        "commentary" : "Case required by the surrounding German preposition.",
+        "example" : "CASE_DATIVE",
+        "allowedValues" : ["CASE_NOMINATIVE", "CASE_DATIVE"]
+      },
+      "gender" : {
+        "type" : "GENDER",
+        "commentary" : "Recipient grammatical gender.",
+        "example" : "GENDER_MASCULINE",
+        "allowedValues" : ["GENDER_MASCULINE", "GENDER_FEMININE"]
+      },
+      "lastName" : {
+        "type" : "STRING",
+        "commentary" : "Recipient family name without honorific.",
+        "example" : "Weber"
+      },
+      "honorific" : {
+        "type" : "STRING",
+        "commentary" : "Derived placeholder selected by the translation rules below.",
+        "example" : "Herrn"
+      }
+    },
+    "translation" : "Senden Sie die Rechnung an {{honorific}} {{lastName}}."
+  }
+}
+```
 
 ## Keying Strategy
 

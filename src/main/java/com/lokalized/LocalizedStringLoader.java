@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import com.lokalized.LocalizedString.LanguageFormSelector;
+import com.lokalized.LocalizedString.PlaceholderMetadata;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRule;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
@@ -647,6 +648,101 @@ public final class LocalizedStringLoader {
         commentary = commentaryJsonValue.asString();
       }
 
+      Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder = new LinkedHashMap<>();
+
+      JsonValue placeholderMetadataJsonValue = localizedStringObject.get("placeholderMetadata");
+
+      if (placeholderMetadataJsonValue != null && !placeholderMetadataJsonValue.isNull()) {
+        if (!placeholderMetadataJsonValue.isObject())
+          throw new LocalizedStringLoadingException(format("%s: the placeholderMetadata value must be an object. Key is '%s'", canonicalPath, key));
+
+        JsonObject placeholderMetadataJsonObject = placeholderMetadataJsonValue.asObject();
+
+        for (Member placeholderMetadataMember : placeholderMetadataJsonObject) {
+          String placeholderKey = placeholderMetadataMember.getName();
+          JsonValue placeholderMetadataValue = placeholderMetadataMember.getValue();
+
+          ensureValidPlaceholderName(canonicalPath, key, placeholderKey, "placeholder metadata");
+
+          if (!placeholderMetadataValue.isObject())
+            throw new LocalizedStringLoadingException(format("%s: placeholder metadata must be an object. Key is '%s'", canonicalPath, key));
+
+          JsonObject placeholderMetadataObject = placeholderMetadataValue.asObject();
+          JsonValue typeJsonValue = placeholderMetadataObject.get("type");
+          JsonValue commentaryJsonValueForPlaceholder = placeholderMetadataObject.get("commentary");
+          JsonValue exampleJsonValue = placeholderMetadataObject.get("example");
+          JsonValue allowedValuesJsonValue = placeholderMetadataObject.get("allowedValues");
+          String type = null;
+          String placeholderCommentary = null;
+          String example = null;
+          Set<@NonNull String> allowedValues = new LinkedHashSet<>();
+
+          if (typeJsonValue != null && !typeJsonValue.isNull()) {
+            if (!typeJsonValue.isString())
+              throw new LocalizedStringLoadingException(format("%s: placeholder metadata type must be a string. Placeholder is '%s' for key '%s'",
+                  canonicalPath, placeholderKey, key));
+
+            type = typeJsonValue.asString();
+          }
+
+          if (commentaryJsonValueForPlaceholder != null && !commentaryJsonValueForPlaceholder.isNull()) {
+            if (!commentaryJsonValueForPlaceholder.isString())
+              throw new LocalizedStringLoadingException(format("%s: placeholder metadata commentary must be a string. Placeholder is '%s' for key '%s'",
+                  canonicalPath, placeholderKey, key));
+
+            placeholderCommentary = commentaryJsonValueForPlaceholder.asString();
+          }
+
+          if (exampleJsonValue != null && !exampleJsonValue.isNull()) {
+            if (!exampleJsonValue.isString())
+              throw new LocalizedStringLoadingException(format("%s: placeholder metadata example must be a string. Placeholder is '%s' for key '%s'",
+                  canonicalPath, placeholderKey, key));
+
+            example = exampleJsonValue.asString();
+          }
+
+          if (allowedValuesJsonValue != null && !allowedValuesJsonValue.isNull()) {
+            if (!allowedValuesJsonValue.isArray())
+              throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues must be an array. Placeholder is '%s' for key '%s'",
+                  canonicalPath, placeholderKey, key));
+
+            for (JsonValue allowedValueJsonValue : allowedValuesJsonValue.asArray()) {
+              if (allowedValueJsonValue == null || allowedValueJsonValue.isNull() || !allowedValueJsonValue.isString())
+                throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues entries must be strings. Placeholder is '%s' for key '%s'",
+                    canonicalPath, placeholderKey, key));
+
+              String allowedValue = allowedValueJsonValue.asString();
+
+              if (!allowedValues.add(allowedValue))
+                throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues may not contain duplicates. " +
+                    "Duplicate value '%s' encountered for placeholder '%s' in key '%s'", canonicalPath, allowedValue, placeholderKey, key));
+            }
+          }
+
+          if (type != null) {
+            LanguageFormType languageFormType = SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.get(type);
+
+            if (languageFormType != null) {
+              Set<@NonNull String> supportedLanguageFormsForType = SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE.get(languageFormType);
+
+              for (String allowedValue : allowedValues) {
+                if (!supportedLanguageFormsForType.contains(allowedValue))
+                  throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowed value '%s' is invalid for type '%s'. " +
+                          "Placeholder is '%s' for key '%s', valid values are [%s]", canonicalPath, allowedValue, type, placeholderKey, key,
+                      supportedLanguageFormsForType.stream().collect(Collectors.joining(", "))));
+              }
+            }
+          }
+
+          if (type == null && placeholderCommentary == null && example == null && allowedValues.isEmpty())
+            throw new LocalizedStringLoadingException(format("%s: placeholder metadata must define at least one field. Placeholder is '%s' for key '%s'",
+                canonicalPath, placeholderKey, key));
+
+          placeholderMetadataByPlaceholder.put(placeholderKey,
+              new PlaceholderMetadata(type, placeholderCommentary, example, allowedValues));
+        }
+      }
+
       Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
 
       JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
@@ -706,6 +802,7 @@ public final class LocalizedStringLoader {
 
       return localizedStringBuilder.translation(translation)
           .commentary(commentary)
+          .placeholderMetadataByPlaceholder(placeholderMetadataByPlaceholder)
           .languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
           .alternatives(alternatives)
           .build();

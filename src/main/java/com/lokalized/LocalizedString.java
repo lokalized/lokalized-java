@@ -24,10 +24,12 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -51,6 +53,8 @@ public class LocalizedString {
   @Nullable
   private final List<@NonNull Token> expressionTokens;
   @NonNull
+  private final Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder;
+  @NonNull
   private final Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
   @NonNull
   private final List<@NonNull LocalizedString> alternatives;
@@ -61,10 +65,12 @@ public class LocalizedString {
    * @param key                                   this string's translation key, not null
    * @param translation                           this string's default translation, may be null
    * @param commentary                            this string's commentary (usage/translation notes), may be null
+   * @param placeholderMetadataByPlaceholder      per-placeholder translator metadata, may be null
    * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
    * @param alternatives                          alternative expression-driven translations for this string, may be null
    */
   protected LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
+                            @Nullable Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder,
                             @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
                             @Nullable List<@NonNull LocalizedString> alternatives,
                             @Nullable List<@NonNull Token> expressionTokens) {
@@ -74,6 +80,12 @@ public class LocalizedString {
     this.translation = translation;
     this.commentary = commentary;
     this.expressionTokens = expressionTokens == null ? null : Collections.unmodifiableList(new ArrayList<>(expressionTokens));
+
+    if (placeholderMetadataByPlaceholder == null) {
+      this.placeholderMetadataByPlaceholder = Collections.emptyMap();
+    } else {
+      this.placeholderMetadataByPlaceholder = Collections.unmodifiableMap(new LinkedHashMap<>(placeholderMetadataByPlaceholder));
+    }
 
     if (languageFormTranslationsByPlaceholder == null) {
       this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
@@ -98,7 +110,7 @@ public class LocalizedString {
   @Override
   @NonNull
   public String toString() {
-    List<@NonNull String> components = new ArrayList<>(5);
+    List<@NonNull String> components = new ArrayList<>(6);
 
     components.add(format("key=%s", getKey()));
 
@@ -107,6 +119,9 @@ public class LocalizedString {
 
     if (getCommentary().isPresent())
       components.add(format("commentary=%s", getCommentary().get()));
+
+    if (getPlaceholderMetadataByPlaceholder().size() > 0)
+      components.add(format("placeholderMetadataByPlaceholder=%s", getPlaceholderMetadataByPlaceholder()));
 
     if (getLanguageFormTranslationsByPlaceholder().size() > 0)
       components.add(format("languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
@@ -136,6 +151,7 @@ public class LocalizedString {
     return Objects.equals(getKey(), localizedString.getKey())
         && Objects.equals(getTranslation(), localizedString.getTranslation())
         && Objects.equals(getCommentary(), localizedString.getCommentary())
+        && Objects.equals(getPlaceholderMetadataByPlaceholder(), localizedString.getPlaceholderMetadataByPlaceholder())
         && Objects.equals(getLanguageFormTranslationsByPlaceholder(), localizedString.getLanguageFormTranslationsByPlaceholder())
         && Objects.equals(getAlternatives(), localizedString.getAlternatives());
   }
@@ -147,7 +163,8 @@ public class LocalizedString {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getKey(), getTranslation(), getCommentary(), getLanguageFormTranslationsByPlaceholder(), getAlternatives());
+    return Objects.hash(getKey(), getTranslation(), getCommentary(), getPlaceholderMetadataByPlaceholder(),
+        getLanguageFormTranslationsByPlaceholder(), getAlternatives());
   }
 
   /**
@@ -178,6 +195,18 @@ public class LocalizedString {
   @NonNull
   public Optional<String> getCommentary() {
     return Optional.ofNullable(commentary);
+  }
+
+  /**
+   * Gets per-placeholder translator metadata for this string.
+   * <p>
+   * This metadata can be used to document placeholder meaning, type, examples, and allowed values for translators or tooling.
+   *
+   * @return per-placeholder translator metadata for this string, not null
+   */
+  @NonNull
+  public Map<@NonNull String, @NonNull PlaceholderMetadata> getPlaceholderMetadataByPlaceholder() {
+    return placeholderMetadataByPlaceholder;
   }
 
   /**
@@ -229,6 +258,8 @@ public class LocalizedString {
     @Nullable
     private String commentary;
     @Nullable
+    private Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder;
+    @Nullable
     private Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
     @Nullable
     private List<@NonNull LocalizedString> alternatives;
@@ -270,6 +301,19 @@ public class LocalizedString {
     }
 
     /**
+     * Applies per-placeholder translator metadata to this builder.
+     *
+     * @param placeholderMetadataByPlaceholder per-placeholder translator metadata, may be null
+     * @return this builder instance, useful for chaining. not null
+     */
+    @NonNull
+    public Builder placeholderMetadataByPlaceholder(
+        @Nullable Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder) {
+      this.placeholderMetadataByPlaceholder = placeholderMetadataByPlaceholder;
+      return this;
+    }
+
+    /**
      * Applies per-language-form translations to this builder.
      *
      * @param languageFormTranslationsByPlaceholder per-language-form or selector-driven translations, may be null
@@ -307,7 +351,144 @@ public class LocalizedString {
      */
     @NonNull
     public LocalizedString build() {
-      return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives, expressionTokens);
+      return new LocalizedString(key, translation, commentary, placeholderMetadataByPlaceholder,
+          languageFormTranslationsByPlaceholder, alternatives, expressionTokens);
+    }
+  }
+
+  /**
+   * Translator-facing metadata for a single placeholder.
+   * <p>
+   * This metadata is informational and is not used by runtime string evaluation. It is intended to improve translator
+   * context and to support documentation or linting tools.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   */
+  @Immutable
+  public static class PlaceholderMetadata {
+    @Nullable
+    private final String type;
+    @Nullable
+    private final String commentary;
+    @Nullable
+    private final String example;
+    @NonNull
+    private final Set<@NonNull String> allowedValues;
+
+    /**
+     * Constructs placeholder metadata.
+     *
+     * @param type          translator-facing type label, for example {@code STRING}, {@code NUMBER}, or {@code GENDER}, may be null
+     * @param commentary    commentary describing how the placeholder is used, may be null
+     * @param example       example placeholder value, may be null
+     * @param allowedValues allowed values for the placeholder as an insertion-ordered set, may be null
+     */
+    public PlaceholderMetadata(@Nullable String type, @Nullable String commentary, @Nullable String example,
+                               @Nullable Set<@NonNull String> allowedValues) {
+      if (type == null && commentary == null && example == null && (allowedValues == null || allowedValues.isEmpty()))
+        throw new IllegalArgumentException(format("%s requires at least one metadata field", getClass().getSimpleName()));
+
+      this.type = type;
+      this.commentary = commentary;
+      this.example = example;
+      this.allowedValues = allowedValues == null ? Collections.emptySet() : Collections.unmodifiableSet(new LinkedHashSet<>(allowedValues));
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @NonNull
+    public String toString() {
+      List<@NonNull String> components = new ArrayList<>(4);
+
+      if (getType().isPresent())
+        components.add(format("type=%s", getType().get()));
+
+      if (getCommentary().isPresent())
+        components.add(format("commentary=%s", getCommentary().get()));
+
+      if (getExample().isPresent())
+        components.add(format("example=%s", getExample().get()));
+
+      if (getAllowedValues().size() > 0)
+        components.add(format("allowedValues=%s", getAllowedValues()));
+
+      return format("%s{%s}", getClass().getSimpleName(), components.stream().collect(Collectors.joining(", ")));
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      PlaceholderMetadata placeholderMetadata = (PlaceholderMetadata) other;
+
+      return Objects.equals(getType(), placeholderMetadata.getType())
+          && Objects.equals(getCommentary(), placeholderMetadata.getCommentary())
+          && Objects.equals(getExample(), placeholderMetadata.getExample())
+          && Objects.equals(getAllowedValues(), placeholderMetadata.getAllowedValues());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getType(), getCommentary(), getExample(), getAllowedValues());
+    }
+
+    /**
+     * Gets the translator-facing type label for this placeholder.
+     *
+     * @return the translator-facing type label for this placeholder, not null
+     */
+    @NonNull
+    public Optional<String> getType() {
+      return Optional.ofNullable(type);
+    }
+
+    /**
+     * Gets the commentary for this placeholder.
+     *
+     * @return the commentary for this placeholder, not null
+     */
+    @NonNull
+    public Optional<String> getCommentary() {
+      return Optional.ofNullable(commentary);
+    }
+
+    /**
+     * Gets an example value for this placeholder.
+     *
+     * @return an example value for this placeholder, not null
+     */
+    @NonNull
+    public Optional<String> getExample() {
+      return Optional.ofNullable(example);
+    }
+
+    /**
+     * Gets the allowed values for this placeholder.
+     *
+     * @return the allowed values for this placeholder, not null
+     */
+    @NonNull
+    public Set<@NonNull String> getAllowedValues() {
+      return allowedValues;
     }
   }
 

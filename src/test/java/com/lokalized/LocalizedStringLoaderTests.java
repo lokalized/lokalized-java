@@ -199,6 +199,54 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingAcceptsPlaceholderMetadata() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
+            "\"name\":{\"type\":\"STRING\",\"commentary\":\"Customer first name.\",\"example\":\"Ada\"}," +
+            "\"gender\":{\"type\":\"GENDER\",\"commentary\":\"Recipient grammatical gender.\",\"allowedValues\":[\"GENDER_MASCULINE\",\"GENDER_FEMININE\"]}" +
+            "}}}").getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
+
+    assertEquals("Ada", localizedString.getPlaceholderMetadataByPlaceholder().get("name").getExample().orElse(null));
+    assertEquals(2, localizedString.getPlaceholderMetadataByPlaceholder().get("gender").getAllowedValues().size());
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsInvalidPlaceholderMetadataAllowedValues() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
+            "\"gender\":{\"type\":\"GENDER\",\"allowedValues\":[\"GENDER_MASCULINE\",\"CASE_DATIVE\"]}" +
+            "}}}").getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected invalid placeholder metadata allowed values to fail during load");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsDuplicatePlaceholderMetadataAllowedValues() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
+            "\"gender\":{\"type\":\"GENDER\",\"allowedValues\":[\"GENDER_MASCULINE\",\"GENDER_MASCULINE\"]}" +
+            "}}}").getBytes(StandardCharsets.UTF_8));
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected duplicate placeholder metadata allowed values to fail during load");
+  }
+
+  @Test
   public void testFilesystemLoadingAcceptsSelectorDrivenPlaceholderTranslations() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
