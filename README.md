@@ -1332,27 +1332,33 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("de"))
 
 // Most-specific CASE + GENDER rule
 assertEquals("Senden Sie die Rechnung an Herrn Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
-  "grammaticalCase", GrammaticalCase.DATIVE,
-  "gender", Gender.MASCULINE,
-  "lastName", "Weber"
-)));
+  "Send the invoice to {{honorific}} {{lastName}}.",
+  Map.of(
+    "grammaticalCase", GrammaticalCase.DATIVE,
+    "gender", Gender.MASCULINE,
+    "lastName", "Weber"
+  )
+));
 
 // Falls back to the less-specific GENDER rule
 assertEquals("Senden Sie die Rechnung an Herr Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
-  "grammaticalCase", GrammaticalCase.NOMINATIVE,
-  "gender", Gender.MASCULINE,
-  "lastName", "Weber"
-)));
+  "Send the invoice to {{honorific}} {{lastName}}.",
+  Map.of(
+    "grammaticalCase", GrammaticalCase.NOMINATIVE,
+    "gender", Gender.MASCULINE,
+    "lastName", "Weber"
+  )
+));
 
 // Different less-specific GENDER rule
 assertEquals("Senden Sie die Rechnung an Frau Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.", Map.of(
-  "grammaticalCase", GrammaticalCase.NOMINATIVE,
-  "gender", Gender.FEMININE,
-  "lastName", "Weber"
-)));
+  "Send the invoice to {{honorific}} {{lastName}}.",
+  Map.of(
+    "grammaticalCase", GrammaticalCase.NOMINATIVE,
+    "gender", Gender.FEMININE,
+    "lastName", "Weber"
+  )
+));
 ```
 
 Selector-driven placeholders are for local agreement only.  Use `alternatives` when you need arbitrary boolean logic or whole-sentence rewrites.
@@ -1538,7 +1544,7 @@ For example: `"I read {{bookCount}} books."`
 
 ### Contextual Keys
 
-For example: `"SCREEN-PROFILE-BOOKS_READ"`
+For example: `"SCREEN_PROFILE_BOOKS_READ"`
 
 #### Pros
 
