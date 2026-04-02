@@ -601,6 +601,8 @@ assertEquals("Отправить сообщение Ивану.", strings.get("S
 )));
 ```
 
+This example is intentionally partial: if application code supplies a grammatical case that is not listed here, evaluation throws.
+
 ### Definiteness
 
 Definiteness rules distinguish whether a noun phrase is definite, indefinite, or in construct/bound state.
@@ -700,6 +702,8 @@ assertEquals("3冊買いました。", strings.get("I bought {{count}} items.", 
   "classifier", Classifier.BOUND
 )));
 ```
+
+This example is intentionally partial: if application code supplies a classifier that is not listed here, evaluation throws.
 
 ### Formality
 
@@ -1233,6 +1237,8 @@ Here, the value of `bookCount` is evaluated against the specified cardinality ru
 Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
 
 In the simple format, you may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).  Use the selector-driven format when one placeholder depends on more than one agreement dimension.
+
+Simple placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, string evaluation throws an exception. Use selector-driven placeholders with a default rule if you need fallback behavior.
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 
