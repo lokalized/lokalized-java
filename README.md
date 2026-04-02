@@ -1471,9 +1471,9 @@ Each `placeholderMetadata` object key is the name of a placeholder and the value
 * `example` is an example runtime value
 * `allowedValues` is an array of unique string values that are valid for this placeholder
 
-If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a predefined set of values.
-
 If `type` is one of Lokalized's built-in language-form families such as `GENDER` or `CASE`, any supplied `allowedValues` are validated against the corresponding built-in language-form values. Duplicate `allowedValues` entries are rejected.
+
+If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a predefined set of values.
 
 ```json
 {
