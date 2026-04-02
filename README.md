@@ -69,13 +69,13 @@ assertEquals("I didn't read any books.", translation);
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>2.1.0-SNAPSHOT</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven, you can drop `lokalized-2.1.0-SNAPSHOT.jar` directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop `lokalized-2.1.0.jar` directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
