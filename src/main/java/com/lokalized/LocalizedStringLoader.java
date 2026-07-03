@@ -49,6 +49,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.MissingResourceException;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.jar.JarEntry;
@@ -84,6 +85,7 @@ public final class LocalizedStringLoader {
   private static final Pattern LANGUAGE_TAG_PATTERN;
   @NonNull
   private static final String JSON_EXTENSION;
+  private static final char UTF_8_BOM;
 
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
@@ -113,12 +115,6 @@ public final class LocalizedStringLoader {
             LanguageForm.class.getSimpleName(), languageForm.getClass().getSimpleName()));
 
       String languageFormName = ((Enum<?>) languageForm).name();
-      LanguageForm existingLanguageForm = supportedLanguageFormsByName.get(languageFormName);
-
-      if (existingLanguageForm != null)
-        throw new IllegalArgumentException(format("There is already a language form %s.%s whose name collides with %s.%s. " +
-                "Language form names must be unique", existingLanguageForm.getClass().getSimpleName(), languageFormName,
-            languageForm.getClass().getSimpleName(), languageFormName));
 
       // Massage Cardinality to match file format, e.g. "ONE" -> "CARDINALITY_ONE"
       if (languageForm instanceof Cardinality)
@@ -160,6 +156,13 @@ public final class LocalizedStringLoader {
       if (languageForm instanceof Phonetic)
         languageFormName = LocalizedStringUtils.localizedStringNameForPhoneticName(languageFormName);
 
+      LanguageForm existingLanguageForm = supportedLanguageFormsByName.get(languageFormName);
+
+      if (existingLanguageForm != null)
+        throw new IllegalArgumentException(format("There is already a language form %s.%s whose localized string name collides with %s.%s. " +
+                "Localized string language form names must be unique", existingLanguageForm.getClass().getSimpleName(), languageFormName,
+            languageForm.getClass().getSimpleName(), languageFormName));
+
       supportedLanguageFormsByName.put(languageFormName, languageForm);
       supportedLanguageFormNamesByType.get(LanguageFormType.forLanguageForm(languageForm)).add(languageFormName);
     }
@@ -175,6 +178,7 @@ public final class LocalizedStringLoader {
     PLACEHOLDER_NAME_PATTERN = Pattern.compile("^[\\p{Alpha}_][\\p{Alnum}_-]*$");
     LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
     JSON_EXTENSION = ".json";
+    UTF_8_BOM = '\uFEFF';
   }
 
   private LocalizedStringLoader() {
@@ -211,12 +215,28 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
-    return loadFromClasspath(LocalizedStringLoader.class.getClassLoader(), classpathPackage);
+    ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+
+    if (classLoader == null)
+      classLoader = LocalizedStringLoader.class.getClassLoader();
+
+    return loadFromClasspath(classLoader, classpathPackage);
   }
 
+  /**
+   * Loads all localized string files present in the specified package using the specified classloader.
+   * <p>
+   * This is useful for containers, plugin systems, test harnesses, and other environments where the
+   * desired localized string resources are not visible to Lokalized's own defining classloader.
+   *
+   * @param classLoader classloader to search, not null
+   * @param classpathPackage location of a package on the classpath, not null
+   * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   */
   @NonNull
-  static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
-                                                             @NonNull String classpathPackage) {
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
+                                                                                               @NonNull String classpathPackage) {
     requireNonNull(classpathPackage);
     requireNonNull(classLoader);
 
@@ -394,7 +414,7 @@ public final class LocalizedStringLoader {
                   locale.toLanguageTag(), jarFile.getName()));
 
             try (InputStream inputStream = jarFile.getInputStream(entry)) {
-              String contents = new String(inputStream.readAllBytes(), UTF_8).trim();
+              String contents = normalizeLocalizedStringsFileContents(new String(inputStream.readAllBytes(), UTF_8));
               String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
               localizedStringsByLocale.put(locale, parseLocalizedStrings(canonicalPath, contents));
             }
@@ -469,11 +489,24 @@ public final class LocalizedStringLoader {
     if (!LANGUAGE_TAG_PATTERN.matcher(languageTag).matches())
       return false;
 
-    Locale locale = Locale.forLanguageTag(languageTag);
-    if (!"".equals(locale.getLanguage()))
+    if (languageTag.toLowerCase(Locale.ROOT).startsWith("x-"))
       return true;
 
-    return languageTag.toLowerCase(Locale.ROOT).startsWith("x-");
+    Locale locale = Locale.forLanguageTag(languageTag);
+    if ("".equals(locale.getLanguage()))
+      return false;
+
+    try {
+      locale.getISO3Language();
+      return true;
+    } catch (MissingResourceException e) {
+      return false;
+    }
+  }
+
+  private static boolean hasJsonExtension(@NonNull String fileName) {
+    requireNonNull(fileName);
+    return fileName.toLowerCase(Locale.ROOT).endsWith(JSON_EXTENSION);
   }
 
   @Nullable
@@ -481,11 +514,19 @@ public final class LocalizedStringLoader {
     requireNonNull(fileName);
 
     String languageTag = fileName;
+    boolean hasJsonExtension = hasJsonExtension(fileName);
 
-    if (fileName.toLowerCase(Locale.ROOT).endsWith(JSON_EXTENSION))
+    if (hasJsonExtension)
       languageTag = fileName.substring(0, fileName.length() - JSON_EXTENSION.length());
 
-    return isLanguageTag(languageTag) ? languageTag : null;
+    if (isLanguageTag(languageTag))
+      return languageTag;
+
+    if (hasJsonExtension)
+      throw new LocalizedStringLoadingException(format("File '%s' ends with %s but is not named with a valid IETF BCP 47 language tag. " +
+          "Use names like 'en', 'en.json', or 'en-US.json'", fileName, JSON_EXTENSION));
+
+    return null;
   }
 
   /**
@@ -514,7 +555,7 @@ public final class LocalizedStringLoader {
     String localizedStringsFileContents;
 
     try {
-      localizedStringsFileContents = new String(Files.readAllBytes(file.toPath()), UTF_8).trim();
+      localizedStringsFileContents = normalizeLocalizedStringsFileContents(new String(Files.readAllBytes(file.toPath()), UTF_8));
     } catch (IOException e) {
       throw new LocalizedStringLoadingException(format("Unable to load localized strings file contents for %s",
           canonicalPath), e);
@@ -538,8 +579,8 @@ public final class LocalizedStringLoader {
     try {
       outerJsonValue = Json.parse(localizedStringsFileContents);
     } catch (MinimalJson.ParseException e) {
-      throw new LocalizedStringLoadingException(
-          format("%s: unable to parse localized strings file", canonicalPath), e);
+      throw new LocalizedStringLoadingException(format("%s:%d:%d: unable to parse localized strings file",
+          canonicalPath, e.getLocation().line, e.getLocation().column), e);
     }
 
     if (!outerJsonValue.isObject())
@@ -555,6 +596,7 @@ public final class LocalizedStringLoader {
         throw new LocalizedStringLoadingException(format("%s: duplicate localized string key '%s' encountered", canonicalPath, key));
 
       JsonValue value = member.getValue();
+      validateNoDuplicateObjectMembers(canonicalPath, value, "$." + key);
       localizedStrings.add(parseLocalizedString(canonicalPath, key, value, null));
     }
 
@@ -609,8 +651,8 @@ public final class LocalizedStringLoader {
       //       "books" : {
       //         "value" : "bookCount",
       //         "translations" : {
-      //           "ONE" : "book",
-      //           "OTHER" : "books"
+      //           "CARDINALITY_ONE" : "book",
+      //           "CARDINALITY_OTHER" : "books"
       //         }
       //       }
       //     },
@@ -1167,5 +1209,47 @@ public final class LocalizedStringLoader {
     if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a letter or underscore " +
           "and contain only letters, digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
+  }
+
+  @NonNull
+  private static String normalizeLocalizedStringsFileContents(@NonNull String localizedStringsFileContents) {
+    requireNonNull(localizedStringsFileContents);
+
+    String normalizedLocalizedStringsFileContents = localizedStringsFileContents;
+
+    if (!normalizedLocalizedStringsFileContents.isEmpty() && normalizedLocalizedStringsFileContents.charAt(0) == UTF_8_BOM)
+      normalizedLocalizedStringsFileContents = normalizedLocalizedStringsFileContents.substring(1);
+
+    return normalizedLocalizedStringsFileContents.trim();
+  }
+
+  private static void validateNoDuplicateObjectMembers(@NonNull String canonicalPath, @NonNull JsonValue jsonValue,
+                                                       @NonNull String jsonPath) {
+    requireNonNull(canonicalPath);
+    requireNonNull(jsonValue);
+    requireNonNull(jsonPath);
+
+    if (jsonValue.isObject()) {
+      Set<@NonNull String> memberNames = new LinkedHashSet<>();
+
+      for (Member member : jsonValue.asObject()) {
+        String memberName = member.getName();
+
+        if (!memberNames.add(memberName))
+          throw new LocalizedStringLoadingException(format("%s: duplicate JSON object member '%s' encountered at %s",
+              canonicalPath, memberName, jsonPath));
+
+        validateNoDuplicateObjectMembers(canonicalPath, member.getValue(), jsonPath + "." + memberName);
+      }
+    } else if (jsonValue.isArray()) {
+      int index = 0;
+
+      for (JsonValue arrayElementJsonValue : jsonValue.asArray()) {
+        if (arrayElementJsonValue != null && !arrayElementJsonValue.isNull())
+          validateNoDuplicateObjectMembers(canonicalPath, arrayElementJsonValue, jsonPath + "[" + index + "]");
+
+        ++index;
+      }
+    }
   }
 }

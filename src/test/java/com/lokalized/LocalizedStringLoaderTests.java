@@ -104,6 +104,18 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingStripsUtf8Bom() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"), "\uFEFF{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
   public void testFilesystemLoadingSkipsDirectories() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -115,6 +127,50 @@ public class LocalizedStringLoaderTests {
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-GB")));
     assertFalse(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
+  public void testFilesystemLoadingSkipsNonLocaleNonJsonFiles() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("NOTES"), "Not a localized strings file.".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("en"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertEquals(1, localizedStringsByLocale.size());
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsInvalidJsonLocaleFileNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en_US.json"), "{}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected locale JSON files named with underscores to fail during load");
+
+    assertTrue(exception.getMessage().contains("en_US.json"));
+    assertTrue(exception.getMessage().contains("IETF BCP 47"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnknownJsonLocaleFileNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("template.json"), "{}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unknown locale JSON files to fail during load");
+
+    assertTrue(exception.getMessage().contains("template.json"));
+    assertTrue(exception.getMessage().contains("IETF BCP 47"));
   }
 
   @Test
@@ -168,6 +224,22 @@ public class LocalizedStringLoaderTests {
     assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
         "Expected invalid JSON to fail fast during load");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsInvalidJsonWithLocation() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"), ("{\n" +
+        "  \"hello\":\n" +
+        "}").getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected invalid JSON to fail fast during load");
+
+    assertTrue(exception.getMessage().matches("(?s).*:\\d+:\\d+: unable to parse localized strings file.*"));
   }
 
   @Test
@@ -244,6 +316,23 @@ public class LocalizedStringLoaderTests {
     assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
         "Expected duplicate placeholder metadata allowed values to fail during load");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsNestedDuplicateObjectMembers() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{books}}\",\"placeholders\":{\"books\":{\"value\":\"count\",\"translations\":{" +
+            "\"CARDINALITY_ONE\":\"book\",\"CARDINALITY_ONE\":\"book duplicate\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected duplicate nested JSON object members to fail during load");
+
+    assertTrue(exception.getMessage().contains("duplicate JSON object member 'CARDINALITY_ONE'"));
   }
 
   @Test
@@ -331,6 +420,38 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testClasspathLoadingStripsUtf8BomFromJar() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-bom", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar, "strings/en", "\uFEFF{\"hello\":\"world\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+      assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingUsesThreadContextClassLoader() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-context", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar, "context-strings/en", "{\"hello\":\"world\"}");
+
+    ClassLoader originalContextClassLoader = Thread.currentThread().getContextClassLoader();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Thread.currentThread().setContextClassLoader(classLoader);
+
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath("context-strings");
+      assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+    } finally {
+      Thread.currentThread().setContextClassLoader(originalContextClassLoader);
+    }
+  }
+
+  @Test
   public void testClasspathLoadingMergesResources() throws IOException {
     Path tempJar1 = Files.createTempFile("lokalized-strings-one", ".jar");
     Path tempJar2 = Files.createTempFile("lokalized-strings-two", ".jar");
@@ -354,7 +475,7 @@ public class LocalizedStringLoaderTests {
 
   private void writeJarEntry(Path jarPath, String entryName, String json) throws IOException {
     try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
-      JarEntry directoryEntry = new JarEntry("strings/");
+      JarEntry directoryEntry = new JarEntry(entryName.substring(0, entryName.lastIndexOf('/') + 1));
       jarOutputStream.putNextEntry(directoryEntry);
       jarOutputStream.closeEntry();
 

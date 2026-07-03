@@ -2031,10 +2031,12 @@ final class MinimalJson {
 
       void remove(int index) {
         for (int i = 0; i < hashTable.length; i++) {
-          if (hashTable[i] == index + 1) {
+          int storedIndex = hashTable[i] & 0xff;
+
+          if (storedIndex == index + 1) {
             hashTable[i] = 0;
-          } else if (hashTable[i] > index + 1) {
-            hashTable[i]--;
+          } else if (storedIndex > index + 1) {
+            hashTable[i] = (byte) (storedIndex - 1);
           }
         }
       }
@@ -2161,7 +2163,9 @@ final class MinimalJson {
       line = 1;
       lineOffset = 0;
       current = 0;
+      captureBuffer = null;
       captureStart = -1;
+      nestingLevel = 0;
       read();
       skipWhiteSpace();
       readValue();
