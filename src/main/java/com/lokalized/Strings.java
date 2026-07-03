@@ -46,7 +46,7 @@ public interface Strings extends LocaleMatcher {
 	/**
 	 * Gets a localized string for the given key and locale.
 	 * <p>
-	 * If no localized string is available, the key is returned unless the implementation is configured to fail fast.
+	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
 	 *
 	 * @param key    the localization key, not null
 	 * @param locale the locale to use, not null
@@ -74,7 +74,7 @@ public interface Strings extends LocaleMatcher {
 	/**
 	 * Gets a localized string for the given key and locale.
 	 * <p>
-	 * If no localized string is available, the key is returned unless the implementation is configured to fail fast.
+	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
 	 *
 	 * @param key          the localization key, not null
 	 * @param placeholders the placeholders to insert into the string, may be null

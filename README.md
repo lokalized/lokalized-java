@@ -141,6 +141,29 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .build();
 ```
 
+By default, failed lookups return the key with supplied placeholders interpolated into it. To throw instead:
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler(TranslationFailureHandler.throwException())
+  .build();
+```
+
+You can also provide your own handler:
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler((failure) -> {
+    metrics.increment("localized.translation.failure");
+    return TranslationFailureResponse.returnString("Translation unavailable");
+  })
+  .build();
+```
+
 ### 3. Ask Strings Instance For Translations
 
 ```java
@@ -1238,7 +1261,7 @@ Supported values for `translations` are [`Cardinality`](https://javadoc.lokalize
 
 In the simple format, you may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).  Use the selector-driven format when one placeholder depends on more than one agreement dimension.
 
-Simple placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, string evaluation throws an exception. Use selector-driven placeholders with a default rule if you need fallback behavior.
+Simple placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens. Use selector-driven placeholders with a default rule if you need data-level fallback behavior.
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 

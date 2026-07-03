@@ -77,7 +77,7 @@ public class DefaultStrings implements Strings {
 	@NonNull
 	private final Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 	@NonNull
-	private final FailureMode failureMode;
+	private final TranslationFailureHandler translationFailureHandler;
 	@NonNull
 	private final Locale fallbackLocale;
 	@NonNull
@@ -118,14 +118,14 @@ public class DefaultStrings implements Strings {
 	 * @param localizedStringSupplier         supplier of localized strings, not null
 	 * @param localeSupplier                  locale supplier, may not be null
 	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
-	 * @param failureMode                     strategy for dealing with lookup failures, may be null
+	 * @param translationFailureHandler       handler for lookup failures, may be null
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
 													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
 													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
-													 @Nullable FailureMode failureMode) {
-		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, failureMode, null);
+													 @Nullable TranslationFailureHandler translationFailureHandler) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, translationFailureHandler, null);
 	}
 
 	/**
@@ -135,14 +135,14 @@ public class DefaultStrings implements Strings {
 	 * @param localizedStringSupplier         supplier of localized strings, not null
 	 * @param localeSupplier                  locale supplier, may not be null
 	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
-	 * @param failureMode                     strategy for dealing with lookup failures, may be null
+	 * @param translationFailureHandler       handler for lookup failures, may be null
 	 * @param phoneticResolver                resolver for phonetic categories, may be null (defaults to fail-fast resolver)
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
 													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
 													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
-													 @Nullable FailureMode failureMode,
+													 @Nullable TranslationFailureHandler translationFailureHandler,
 													 @Nullable PhoneticResolver phoneticResolver) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
@@ -254,7 +254,7 @@ public class DefaultStrings implements Strings {
 
 		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(finalizedTiebreakerLocalesByLanguageCode);
 
-		this.failureMode = failureMode == null ? FailureMode.USE_FALLBACK : failureMode;
+		this.translationFailureHandler = translationFailureHandler == null ? TranslationFailureHandler.returnKey() : translationFailureHandler;
 		this.stringInterpolator = new StringInterpolator();
 		this.phoneticResolver = phoneticResolver == null ? DEFAULT_PHONETIC_RESOLVER : phoneticResolver;
 		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver);
@@ -330,8 +330,9 @@ public class DefaultStrings implements Strings {
 
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException lastFallbackFailure = null;
+		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
 
-		for (Locale candidateLocale : fallbackCandidateLocales(locale)) {
+		for (Locale candidateLocale : candidateLocales) {
 			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
 			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(candidateLocale);
 
@@ -349,11 +350,11 @@ public class DefaultStrings implements Strings {
 				if (translation.isPresent())
 					return translation.get();
 			} catch (RuntimeException e) {
-				if (getFailureMode() == FailureMode.FAIL_FAST || !isFallbackEligible(e))
+				if (!isFallbackEligible(e))
 					throw e;
 
 				lastFallbackFailure = e;
-				logger.warning(format("Unable to resolve key '%s' for locale '%s'; trying fallback candidates. Cause: %s",
+				logger.finer(format("Unable to resolve key '%s' for locale '%s'; trying fallback candidates. Cause: %s",
 						key, candidateLocale.toLanguageTag(), e.getMessage()));
 			}
 		}
@@ -361,14 +362,27 @@ public class DefaultStrings implements Strings {
 		String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
 		logger.finer(message);
 
-		if (getFailureMode() == FailureMode.FAIL_FAST)
-			throw new MissingTranslationException(message, key, placeholders, locale);
-
 		if (lastFallbackFailure != null)
-			logger.warning(format("%s Falling back to the key after resolution failure: %s", message, lastFallbackFailure.getMessage()));
+			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, lastFallbackFailure.getMessage()));
 
-		// Not fail-fast?  Merge against the key itself in hopes that the key is a meaningful natural-language value
-		return getStringInterpolator().interpolate(key, new HashMap<>(placeholders));
+		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, placeholders,
+				lastFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
+				lastFallbackFailure);
+		TranslationFailureResponse translationFailureResponse = requireNonNull(getTranslationFailureHandler().handle(translationFailure),
+				format("%s returned null", TranslationFailureHandler.class.getSimpleName()));
+
+		switch (translationFailureResponse.getAction()) {
+			case RETURN_KEY:
+				return getStringInterpolator().interpolate(key, new HashMap<>(placeholders));
+			case RETURN_STRING:
+				return translationFailureResponse.getTranslation();
+			case THROW_EXCEPTION:
+				throwExceptionFor(translationFailure, message);
+				throw new IllegalStateException("Unreachable code");
+			default:
+				throw new IllegalArgumentException(format("Unsupported %s action %s",
+						TranslationFailureResponse.class.getSimpleName(), translationFailureResponse.getAction()));
+		}
 	}
 
 	/**
@@ -1116,16 +1130,6 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Gets the strategy for handling string lookup failures.
-	 *
-	 * @return the strategy for handling string lookup failures, not null
-	 */
-	@NonNull
-	public FailureMode getFailureMode() {
-		return failureMode;
-	}
-
-	/**
 	 * Gets the fallback locale.
 	 *
 	 * @return the fallback locale, not null
@@ -1166,6 +1170,16 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the handler used to decide how lookup failures are handled.
+	 *
+	 * @return the handler, not null
+	 */
+	@NonNull
+	public TranslationFailureHandler getTranslationFailureHandler() {
+		return translationFailureHandler;
+	}
+
+	/**
 	 * Gets our "master" cache of localized strings by key by locale.
 	 *
 	 * @return the cache of localized strings by key by locale, not null
@@ -1173,25 +1187,6 @@ public class DefaultStrings implements Strings {
 	@NonNull
 	protected Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
-	}
-
-	/**
-	 * Strategies for handling localized string lookup failures.
-	 */
-	public enum FailureMode {
-		/**
-		 * The system will attempt a series of fallbacks in order to not throw an exception at runtime.
-		 * <p>
-		 * This mode is useful for production, where we often want program execution to continue in the face of
-		 * localization errors.
-		 */
-		USE_FALLBACK,
-		/**
-		 * The system will throw an exception if a localization is missing for the specified locale.
-		 * <p>
-		 * This mode is useful for testing, since problems are uncovered right away when execution halts.
-		 */
-		FAIL_FAST
 	}
 
 	/**
@@ -1212,7 +1207,7 @@ public class DefaultStrings implements Strings {
 		@Nullable
 		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
-		private FailureMode failureMode;
+		private TranslationFailureHandler translationFailureHandler;
 		@Nullable
 		private PhoneticResolver phoneticResolver;
 
@@ -1263,18 +1258,6 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
-		 * Applies a failure mode to this builder.
-		 *
-		 * @param failureMode strategy for dealing with lookup failures, may be null
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder failureMode(@Nullable FailureMode failureMode) {
-			this.failureMode = failureMode;
-			return this;
-		}
-
-		/**
 		 * Applies a phonetic resolver to this builder.
 		 *
 		 * @param phoneticResolver phonetic resolver, may be null (defaults to fail-fast resolver)
@@ -1287,6 +1270,18 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
+		 * Applies a translation failure handler to this builder.
+		 *
+		 * @param translationFailureHandler handler for failed lookups, may be null (defaults to returning the key)
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder translationFailureHandler(@Nullable TranslationFailureHandler translationFailureHandler) {
+			this.translationFailureHandler = translationFailureHandler;
+			return this;
+		}
+
+		/**
 		 * Constructs an instance of {@link DefaultStrings}.
 		 *
 		 * @return an instance of {@link DefaultStrings}, not null
@@ -1294,7 +1289,25 @@ public class DefaultStrings implements Strings {
 		@NonNull
 		public DefaultStrings build() {
 			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
-					failureMode, phoneticResolver);
+					translationFailureHandler, phoneticResolver);
 		}
+	}
+
+	private void throwExceptionFor(@NonNull TranslationFailure translationFailure, @NonNull String message) {
+		requireNonNull(translationFailure);
+		requireNonNull(message);
+
+		if (translationFailure.getCause().isPresent()) {
+			Throwable cause = translationFailure.getCause().get();
+
+			if (cause instanceof RuntimeException)
+				throw (RuntimeException) cause;
+
+			if (cause instanceof Error)
+				throw (Error) cause;
+		}
+
+		throw new MissingTranslationException(message, translationFailure.getKey(), translationFailure.getPlaceholders(),
+				translationFailure.getRequestedLocale());
 	}
 }

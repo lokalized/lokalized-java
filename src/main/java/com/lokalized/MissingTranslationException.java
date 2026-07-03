@@ -28,9 +28,7 @@ import java.util.Map;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Exception thrown when no translation is found when {@link com.lokalized.DefaultStrings.FailureMode} is configured to be {@link com.lokalized.DefaultStrings.FailureMode#FAIL_FAST}.
- * <p>
- * In production, you would normally prefer {@link com.lokalized.DefaultStrings.FailureMode#USE_FALLBACK}.
+ * Exception thrown when no translation is found and the configured {@link TranslationFailureHandler} chooses to throw.
  * <p>
  * This class is intended for use by a single thread.
  *

@@ -28,6 +28,7 @@ import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -749,7 +750,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
-				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
 				.build();
 
 		assertThrows(ExpressionEvaluationException.class,
@@ -869,7 +870,7 @@ public class StringsTests {
 						Locale.forLanguageTag("en"), Set.of(localizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
-				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
 				.build();
 
 		assertThrows(IllegalStateException.class,
@@ -888,6 +889,85 @@ public class StringsTests {
 				.build();
 
 		assertEquals("I read {{bookCount}} books", strings.get("I read {{bookCount}} books"));
+	}
+
+	@Test
+	public void translationFailureHandlerReceivesMissingTranslation() {
+		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(new LocalizedString.Builder("Hello").translation("Hello").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-US"))
+				.translationFailureHandler((translationFailure) -> {
+					translationFailureHolder.set(translationFailure);
+					assertThrows(UnsupportedOperationException.class,
+							() -> translationFailure.getPlaceholders().put("other", "value"),
+							"Expected translation failure placeholders to be immutable");
+					assertThrows(UnsupportedOperationException.class,
+							() -> translationFailure.getCandidateLocales().add(Locale.forLanguageTag("fr")),
+							"Expected translation failure candidate locales to be immutable");
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		String translation = strings.get("Missing {{name}}", Map.of("name", "Ada"));
+		TranslationFailure translationFailure = translationFailureHolder.get();
+
+		assertEquals("handled", translation);
+		assertTrue(translationFailure != null);
+		assertEquals("Missing {{name}}", translationFailure.getKey());
+		assertEquals(Locale.forLanguageTag("en-US"), translationFailure.getRequestedLocale());
+		assertEquals(List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en")),
+				translationFailure.getCandidateLocales());
+		assertEquals(Map.of("name", "Ada"), translationFailure.getPlaceholders());
+		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, translationFailure.getReason());
+		assertTrue(!translationFailure.getCause().isPresent());
+	}
+
+	@Test
+	public void translationFailureHandlerReceivesResolutionFailure() {
+		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.translationFailureHandler((translationFailure) -> {
+					translationFailureHolder.set(translationFailure);
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		String translation = strings.get("I read {{bookCount}} books");
+		TranslationFailure translationFailure = translationFailureHolder.get();
+
+		assertEquals("handled", translation);
+		assertTrue(translationFailure != null);
+		assertEquals("I read {{bookCount}} books", translationFailure.getKey());
+		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, translationFailure.getReason());
+		assertTrue(translationFailure.getCause().isPresent());
+		assertTrue(translationFailure.getCause().get() instanceof ExpressionEvaluationException);
+	}
+
+	@Test
+	public void throwExceptionTranslationFailureHandlerThrowsForMissingTranslations() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(new LocalizedString.Builder("Hello").translation("Hello").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-US"))
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		MissingTranslationException exception = assertThrows(MissingTranslationException.class,
+				() -> strings.get("Missing {{name}}", Map.of("name", "Ada")),
+				"Expected missing translations to throw when configured to throw");
+
+		assertEquals("Missing {{name}}", exception.getKey());
+		assertEquals(Map.of("name", "Ada"), exception.getPlaceholders());
+		assertEquals(Locale.forLanguageTag("en-US"), exception.getLocale());
 	}
 
 	@Test
@@ -1036,7 +1116,7 @@ public class StringsTests {
 						Locale.forLanguageTag("en"), Set.of(localizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
-				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
 				.build();
 	}
 }
