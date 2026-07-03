@@ -176,7 +176,7 @@ public class DefaultStrings implements Strings {
 		if (tiebreakerLocalesByLanguageCode != null) {
 			for (Entry<@NonNull String, @Nullable List<@NonNull Locale>> entry : tiebreakerLocalesByLanguageCode.entrySet()) {
 				@Nullable List<@NonNull Locale> locales = entry.getValue();
-				internalTiebreakerLocalesByLanguageCode.put(entry.getKey(),
+				internalTiebreakerLocalesByLanguageCode.put(normalizedLanguageCode(entry.getKey()),
 						locales == null ? null : new ArrayList<>(locales));
 			}
 		}
@@ -186,7 +186,8 @@ public class DefaultStrings implements Strings {
 		Map<@NonNull String, @NonNull Set<@NonNull Locale>> supportedLocalesByLanguageCode = new HashMap<>(localizedStringsByLocale.size());
 
 		for (Locale supportedLocale : localizedStringsByLocale.keySet()) {
-			String languageCode = supportedLocale.getLanguage();
+			String languageCode = LocaleUtils.normalizedLanguage(supportedLocale)
+					.orElse(supportedLocale.getLanguage());
 			Set<@NonNull Locale> locales = supportedLocalesByLanguageCode.get(languageCode);
 
 			if (locales == null) {
@@ -302,55 +303,72 @@ public class DefaultStrings implements Strings {
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
+										@NonNull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(locale);
+		return get(key, null, locale);
+	}
+
+	@NonNull
+	@Override
+	public String get(@NonNull String key,
 										@Nullable Map<@NonNull String, @Nullable Object> placeholders) {
 		requireNonNull(key);
 		return get(key, placeholders, getLocaleSupplier().apply(this));
 	}
 
 	@NonNull
-	protected String get(@NonNull String key,
-											 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
-											 @NonNull Locale locale) {
+	@Override
+	public String get(@NonNull String key,
+										@Nullable Map<@NonNull String, @Nullable Object> placeholders,
+										@NonNull Locale locale) {
 		requireNonNull(key);
 		requireNonNull(locale);
 
 		if (placeholders == null)
 			placeholders = Collections.emptyMap();
 
-		Locale finalLocale = locale;
-		Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
+		RuntimeException lastFallbackFailure = null;
 
-		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
+		for (Locale candidateLocale : fallbackCandidateLocales(locale)) {
+			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
+			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(candidateLocale);
 
-		if (localizedStrings == null) {
-			finalLocale = getFallbackLocale();
-			localizedStrings = getLocalizedStringsByKeyByLocale().get(getFallbackLocale());
+			if (localizedStrings == null)
+				continue;
+
+			LocalizedString localizedString = localizedStrings.get(key);
+
+			if (localizedString == null)
+				continue;
+
+			try {
+				Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext, candidateLocale);
+
+				if (translation.isPresent())
+					return translation.get();
+			} catch (RuntimeException e) {
+				if (getFailureMode() == FailureMode.FAIL_FAST || !isFallbackEligible(e))
+					throw e;
+
+				lastFallbackFailure = e;
+				logger.warning(format("Unable to resolve key '%s' for locale '%s'; trying fallback candidates. Cause: %s",
+						key, candidateLocale.toLanguageTag(), e.getMessage()));
+			}
 		}
 
-		// Should never occur
-		if (localizedStrings == null)
-			throw new IllegalStateException(format("Unable to find strings file for both '%s' and fallback locale '%s'",
-					locale.toLanguageTag(), getFallbackLocale().toLanguageTag()));
+		String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
+		logger.finer(message);
 
-		LocalizedString localizedString = localizedStrings.get(key);
-		String translation = null;
+		if (getFailureMode() == FailureMode.FAIL_FAST)
+			throw new MissingTranslationException(message, key, placeholders, locale);
 
-		if (localizedString != null)
-			translation = getInternal(key, localizedString, mutableContext, immutableContext, finalLocale).orElse(null);
+		if (lastFallbackFailure != null)
+			logger.warning(format("%s Falling back to the key after resolution failure: %s", message, lastFallbackFailure.getMessage()));
 
-		if (translation == null) {
-			String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
-			logger.finer(message);
-
-			if (getFailureMode() == FailureMode.FAIL_FAST)
-				throw new MissingTranslationException(message, key, placeholders, locale);
-
-			// Not fail-fast?  Merge against the key itself in hopes that the key is a meaningful natural-language value
-			translation = getStringInterpolator().interpolate(key, mutableContext);
-		}
-
-		return translation;
+		// Not fail-fast?  Merge against the key itself in hopes that the key is a meaningful natural-language value
+		return getStringInterpolator().interpolate(key, new HashMap<>(placeholders));
 	}
 
 	/**
@@ -380,7 +398,10 @@ public class DefaultStrings implements Strings {
 				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, mutableContext));
 
 				// If we have a matching alternative, recurse into it
-				return getInternal(key, alternative, mutableContext, immutableContext, locale);
+				Optional<String> translation = getInternal(key, alternative, mutableContext, immutableContext, locale);
+
+				if (translation.isPresent())
+					return translation;
 			}
 		}
 
@@ -935,8 +956,13 @@ public class DefaultStrings implements Strings {
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
 					return locale;
 
+			Optional<Locale> lookupMatch = lookupMatchByTruncation(range, availableLocales);
+
+			if (lookupMatch.isPresent())
+				return lookupMatch.get();
+
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
-			String primary = range.split("-")[0]; // e.g. "pt"
+			String primary = normalizedLanguageCode(range.split("-")[0]); // e.g. "pt"
 
 			if ("*".equals(primary)) {
 				List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), availableLocales,
@@ -949,7 +975,9 @@ public class DefaultStrings implements Strings {
 			}
 
 			List<@NonNull Locale> candidates = availableLocales.stream()
-					.filter(locale -> locale.getLanguage().equalsIgnoreCase(primary))
+					.filter(locale -> LocaleUtils.normalizedLanguage(locale)
+							.map(language -> language.equalsIgnoreCase(primary))
+							.orElse(false))
 					.collect(Collectors.toList());
 
 			if (candidates.isEmpty())
@@ -982,6 +1010,71 @@ public class DefaultStrings implements Strings {
 
 		// 4) Nothing matched at all
 		return getFallbackLocale();
+	}
+
+	@NonNull
+	private List<@NonNull Locale> fallbackCandidateLocales(@NonNull Locale locale) {
+		requireNonNull(locale);
+
+		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
+		candidates.add(locale);
+
+		String languageTag = locale.toLanguageTag();
+		int subtagSeparatorIndex = languageTag.lastIndexOf('-');
+
+		while (subtagSeparatorIndex > 0) {
+			languageTag = languageTag.substring(0, subtagSeparatorIndex);
+			candidates.add(Locale.forLanguageTag(languageTag));
+			subtagSeparatorIndex = languageTag.lastIndexOf('-');
+		}
+
+		LocaleUtils.normalizedLanguage(locale)
+				.map(getTiebreakerLocalesByLanguageCode()::get)
+				.ifPresent(candidates::addAll);
+		candidates.add(getFallbackLocale());
+
+		return new ArrayList<>(candidates);
+	}
+
+	@NonNull
+	private Optional<@NonNull Locale> lookupMatchByTruncation(@NonNull String range,
+																														@NonNull List<@NonNull Locale> availableLocales) {
+		requireNonNull(range);
+		requireNonNull(availableLocales);
+
+		if (range.contains("*"))
+			return Optional.empty();
+
+		String candidateTag = range;
+		int subtagSeparatorIndex = candidateTag.lastIndexOf('-');
+
+		while (subtagSeparatorIndex > 0) {
+			candidateTag = candidateTag.substring(0, subtagSeparatorIndex);
+
+			for (Locale locale : availableLocales)
+				if (locale.toLanguageTag().equalsIgnoreCase(candidateTag))
+					return Optional.of(locale);
+
+			subtagSeparatorIndex = candidateTag.lastIndexOf('-');
+		}
+
+		return Optional.empty();
+	}
+
+	@NonNull
+	private static String normalizedLanguageCode(@NonNull String languageCode) {
+		requireNonNull(languageCode);
+		return LocaleUtils.normalizedLanguage(Locale.forLanguageTag(languageCode))
+				.orElse(languageCode)
+				.toLowerCase(Locale.ROOT);
+	}
+
+	private boolean isFallbackEligible(@NonNull RuntimeException e) {
+		requireNonNull(e);
+		return e instanceof ExpressionEvaluationException ||
+				e instanceof UnsupportedLocaleException ||
+				e instanceof IllegalArgumentException ||
+				e instanceof IllegalStateException;
 	}
 
 	@Nullable

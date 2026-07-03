@@ -151,6 +151,10 @@ class NumberUtils {
     if (number instanceof BigInteger)
       return new BigDecimal((BigInteger) number);
 
+    if ((number instanceof Double && (((Double) number).isNaN() || ((Double) number).isInfinite())) ||
+        (number instanceof Float && (((Float) number).isNaN() || ((Float) number).isInfinite())))
+      throw new IllegalArgumentException(format("Number must be finite, but was %s", number));
+
     return new BigDecimal(number.toString()).stripTrailingZeros();
   }
 
@@ -235,12 +239,12 @@ class NumberUtils {
     if (minimumScale != maximumScale)
       throw new IllegalArgumentException(format("Minimum scale %d does not match maximum scale %d", minimumScale, maximumScale));
 
-    int numberScale = normalizedScale(number);
+    BigDecimal normalizedNumber = number.stripTrailingZeros();
 
-    if (numberScale != minimumScale)
+    if (normalizedScale(normalizedNumber) > minimumScale)
       return false;
 
-    return number.compareTo(minimum) >= 0 && number.compareTo(maximum) <= 0;
+    return normalizedNumber.compareTo(minimum) >= 0 && normalizedNumber.compareTo(maximum) <= 0;
   }
 
   /**

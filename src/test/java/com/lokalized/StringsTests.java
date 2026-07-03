@@ -119,7 +119,39 @@ public class StringsTests {
 
 		Locale bestMatch = strings.bestMatchFor(Locale.forLanguageTag("en-US"));
 
-		assertEquals(Locale.forLanguageTag("en-GB"), bestMatch);
+		assertEquals(Locale.forLanguageTag("en"), bestMatch);
+	}
+
+	@Test
+	public void lookupTruncationBeatsLanguageTiebreakers() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("zh"), Set.of(localizedString),
+						Locale.forLanguageTag("zh-Hant"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"zh", List.of(Locale.forLanguageTag("zh"), Locale.forLanguageTag("zh-Hant"))
+				))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("zh-Hant"), strings.bestMatchFor(Locale.forLanguageTag("zh-Hant-TW")));
+	}
+
+	@Test
+	public void regionalLocalesFallbackPerKeyToBaseLocale() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-GB"))
+				.build();
+
+		assertEquals("I read 1 book", strings.get("I read {{bookCount}} books", Map.of("bookCount", 1)));
 	}
 
 	@Test
@@ -559,7 +591,7 @@ public class StringsTests {
 				))
 				.build();
 
-		Strings strings = buildStrings(localizedString);
+		Strings strings = buildFailFastStrings(localizedString);
 
 		assertThrows(IllegalStateException.class,
 				() -> strings.get("{{article}} {{noun}}", Map.of(
@@ -717,6 +749,7 @@ public class StringsTests {
 				.tiebreakerLocalesByLanguageCode(Map.of(
 						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
 				))
+				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
 				.build();
 
 		assertThrows(ExpressionEvaluationException.class,
@@ -736,7 +769,7 @@ public class StringsTests {
 				))
 				.build();
 
-		Strings strings = buildStrings(localizedString);
+		Strings strings = buildFailFastStrings(localizedString);
 
 		assertThrows(IllegalArgumentException.class,
 				() -> strings.get("You have {{count}} {{items}}"),
@@ -755,7 +788,7 @@ public class StringsTests {
 				))
 				.build();
 
-		Strings strings = buildStrings(localizedString);
+		Strings strings = buildFailFastStrings(localizedString);
 
 		assertThrows(IllegalArgumentException.class,
 				() -> strings.get("It is your {{year}}{{suffix}} birthday", Map.of("year", "one")),
@@ -774,7 +807,7 @@ public class StringsTests {
 				))
 				.build();
 
-		Strings strings = buildStrings(localizedString);
+		Strings strings = buildFailFastStrings(localizedString);
 
 		assertThrows(IllegalArgumentException.class,
 				() -> strings.get("{{title}} Doe", Map.of("gender", "MASCULINE")),
@@ -796,7 +829,7 @@ public class StringsTests {
 				))
 				.build();
 
-		Strings strings = buildStrings(localizedString);
+		Strings strings = buildFailFastStrings(localizedString);
 
 		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
 				() -> strings.get("Range example", Map.of("start", 1, "end", 2)),
@@ -836,11 +869,38 @@ public class StringsTests {
 						Locale.forLanguageTag("en"), Set.of(localizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
 				.build();
 
 		assertThrows(IllegalStateException.class,
 				() -> strings.get("You have {{count}} {{itemLabel}}", Map.of("count", 2)),
 				"Expected missing placeholder translations to throw");
+	}
+
+	@Test
+	public void useFallbackDoesNotThrowForResolutionFailures() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.build();
+
+		assertEquals("I read {{bookCount}} books", strings.get("I read {{bookCount}} books"));
+	}
+
+	@Test
+	public void explicitLocaleLookupUsesProvidedLocale() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals("I am going on holiday", strings.get("I am going on vacation", Locale.forLanguageTag("en-GB")));
 	}
 
 	@Test
@@ -967,6 +1027,16 @@ public class StringsTests {
 						Locale.forLanguageTag("en"), Set.of(localizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+	}
+
+	private Strings buildFailFastStrings(LocalizedString localizedString) {
+		return Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.failureMode(DefaultStrings.FailureMode.FAIL_FAST)
 				.build();
 	}
 }

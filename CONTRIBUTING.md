@@ -6,22 +6,27 @@ Pull requests and bug reports are welcomed.  For enhancement pull requests, plea
 
 #### Pushing to Maven Central
 
-Contact Mark Allen at maa@xmog.com to request Sonatype deployment access.
+Contact Mark Allen at mark@revetware.com to request Central Portal deployment access.
 
-Once granted, make sure your ```~/.m2/settings.xml``` file has ```ossrh``` entries:
+Once granted, make sure your ```~/.m2/settings.xml``` file has ```central-portal``` entries:
 
 ```xml
 <settings>
   <servers>
     <server>
-      <id>ossrh</id>
-      <username>YOUR_USERNAME_HERE</username>
-      <password>YOUR_PASSWORD_HERE</password>
-    </server>    
+      <id>central-portal</id>
+      <username>YOUR_CENTRAL_PORTAL_TOKEN_USERNAME_HERE</username>
+      <password>YOUR_CENTRAL_PORTAL_TOKEN_PASSWORD_HERE</password>
+    </server>
+    <server>
+      <id>central-portal-snapshots</id>
+      <username>YOUR_CENTRAL_PORTAL_TOKEN_USERNAME_HERE</username>
+      <password>YOUR_CENTRAL_PORTAL_TOKEN_PASSWORD_HERE</password>
+    </server>
   </servers>
   <profiles>
     <profile>
-      <id>ossrh</id>
+      <id>central-portal</id>
       <properties>
         <gpg.passphrase>YOUR_PASSPHRASE_HERE</gpg.passphrase>
       </properties>
@@ -33,5 +38,5 @@ Once granted, make sure your ```~/.m2/settings.xml``` file has ```ossrh``` entri
 You can then push to Maven central:
 
 ```
-$ mvn clean deploy -Dgpg.passphrase=YOUR_PASSPHRASE
+$ mvn clean deploy -Prelease -Dgpg.passphrase=YOUR_PASSPHRASE
 ```

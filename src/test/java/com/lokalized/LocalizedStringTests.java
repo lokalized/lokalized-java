@@ -120,4 +120,14 @@ public class LocalizedStringTests {
         () -> languageFormTranslation.getTranslationRules().get(0).getWhenByLanguageFormType().put(LanguageFormType.CASE, GrammaticalCase.DATIVE),
         "Expected translation rule conditions map to be unmodifiable");
   }
+
+  @Test
+  public void missingTranslationAndAlternativesThrowsHelpfulException() {
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> new LocalizedString.Builder("empty").build(),
+        "Expected empty localized strings to fail with a validation exception");
+
+    assertTrue(exception.getMessage().contains("either a translation or at least one alternative"),
+        "Expected validation message to describe the missing translation/alternatives");
+  }
 }

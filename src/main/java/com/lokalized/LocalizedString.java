@@ -97,7 +97,7 @@ public class LocalizedString {
     // Defensive copy to unmodifiable list
     this.alternatives = alternatives == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(alternatives));
 
-    if (translation == null && alternatives.size() == 0)
+    if (translation == null && this.alternatives.isEmpty())
       throw new IllegalArgumentException(format("You must provide either a translation or at least one alternative expression. " +
           "Offending key was '%s'", key));
   }

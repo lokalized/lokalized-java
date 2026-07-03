@@ -115,7 +115,7 @@ public class CardinalityTests {
         Cardinality expectedCardinality = cardinalitiesByCardinalityRange.get(cardinalityRange);
 
         if (expectedCardinality == null)
-          expectedCardinality = Cardinality.OTHER;
+          expectedCardinality = cardinalityRange.getEnd();
 
         Cardinality actualCardinality = Cardinality.forRange(cardinalityRange.getStart(), cardinalityRange.getEnd(), locale);
 
@@ -123,5 +123,12 @@ public class CardinalityTests {
             format("Mismatched cardinality for range %s and locale %s", cardinalityRange, locale.toLanguageTag()));
       }
     }
+  }
+
+  @Test
+  public void missingRangePairsDefaultToEndCardinality() {
+    assertEquals(Cardinality.ONE,
+        Cardinality.forRange(Cardinality.OTHER, Cardinality.ONE, Locale.forLanguageTag("fa")),
+        "Expected missing range pairs to follow UTS #35's default-to-end rule");
   }
 }

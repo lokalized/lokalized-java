@@ -354,7 +354,7 @@ public enum Cardinality implements LanguageForm {
     CardinalityRange cardinalityRange = CardinalityRange.of(start, end);
     Cardinality cardinality = cardinalityRangeFamily.get().getCardinalitiesByCardinalityRange().get(cardinalityRange);
 
-    return cardinality == null ? Cardinality.OTHER : cardinality;
+    return cardinality == null ? end : cardinality;
   }
 
   /**

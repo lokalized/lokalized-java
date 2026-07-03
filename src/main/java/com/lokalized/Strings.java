@@ -44,6 +44,22 @@ public interface Strings extends LocaleMatcher {
 	String get(@NonNull String key);
 
 	/**
+	 * Gets a localized string for the given key and locale.
+	 * <p>
+	 * If no localized string is available, the key is returned unless the implementation is configured to fail fast.
+	 *
+	 * @param key    the localization key, not null
+	 * @param locale the locale to use, not null
+	 * @return a localized string for the key, not null
+	 */
+	@NonNull
+	default String get(@NonNull String key, @NonNull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(locale);
+		throw new UnsupportedOperationException("Explicit-locale lookup is not supported by this implementation");
+	}
+
+	/**
 	 * Gets a localized string for the given key.
 	 * <p>
 	 * If no localized string is available, the key is returned.
@@ -56,11 +72,30 @@ public interface Strings extends LocaleMatcher {
 	String get(@NonNull String key, @Nullable Map<@NonNull String, @Nullable Object> placeholders);
 
 	/**
+	 * Gets a localized string for the given key and locale.
+	 * <p>
+	 * If no localized string is available, the key is returned unless the implementation is configured to fail fast.
+	 *
+	 * @param key          the localization key, not null
+	 * @param placeholders the placeholders to insert into the string, may be null
+	 * @param locale       the locale to use, not null
+	 * @return a localized string for the key, not null
+	 */
+	@NonNull
+	default String get(@NonNull String key,
+										 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
+										 @NonNull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(locale);
+		throw new UnsupportedOperationException("Explicit-locale lookup is not supported by this implementation");
+	}
+
+	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
 	 * <p>
 	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-	 * 		.localeSupplier(() -> Locale.forLanguageTag("en-GB"))
+	 * 		.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-GB")))
 	 * 		.build();
 	 * }</pre>
 	 *
