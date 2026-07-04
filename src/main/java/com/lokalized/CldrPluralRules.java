@@ -16,6 +16,9 @@
 
 package com.lokalized;
 
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -44,12 +47,18 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 final class CldrPluralRules {
+  @NonNull
   private static final Pattern RELATION_PATTERN;
-  private static final Map<String, LocaleRules> CARDINAL_RULES_BY_LOCALE;
-  private static final Map<String, LocaleRules> ORDINAL_RULES_BY_LOCALE;
-  private static final Map<String, LocaleRanges> CARDINAL_RANGES_BY_LOCALE;
-  private static final SortedSet<String> CARDINAL_SUPPORTED_LOCALES;
-  private static final SortedSet<String> ORDINAL_SUPPORTED_LOCALES;
+  @NonNull
+  private static final Map<@NonNull String, @NonNull LocaleRules> CARDINAL_RULES_BY_LOCALE;
+  @NonNull
+  private static final Map<@NonNull String, @NonNull LocaleRules> ORDINAL_RULES_BY_LOCALE;
+  @NonNull
+  private static final Map<@NonNull String, @NonNull LocaleRanges> CARDINAL_RANGES_BY_LOCALE;
+  @NonNull
+  private static final SortedSet<@NonNull String> CARDINAL_SUPPORTED_LOCALES;
+  @NonNull
+  private static final SortedSet<@NonNull String> ORDINAL_SUPPORTED_LOCALES;
 
   static {
     RELATION_PATTERN = Pattern.compile("([nivwftec])(?:\\s*%\\s*([0-9]+))?\\s*(!=|=)\\s*(.+)");
@@ -64,11 +73,12 @@ final class CldrPluralRules {
     // Non-instantiable
   }
 
-  static Cardinality cardinalityForNumber(BigDecimal number, Locale locale) {
+  @NonNull
+  static Cardinality cardinalityForNumber(@NonNull BigDecimal number, @NonNull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = cardinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = cardinalRulesForLocale(locale);
 
     if (!localeRules.isPresent())
       throw new UnsupportedLocaleException(locale);
@@ -76,11 +86,12 @@ final class CldrPluralRules {
     return cardinalityForCount(localeRules.get().countFor(number));
   }
 
-  static Ordinality ordinalityForNumber(BigDecimal number, Locale locale) {
+  @NonNull
+  static Ordinality ordinalityForNumber(@NonNull BigDecimal number, @NonNull Locale locale) {
     requireNonNull(number);
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = ordinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = ordinalRulesForLocale(locale);
 
     if (!localeRules.isPresent())
       throw new UnsupportedLocaleException(locale);
@@ -88,7 +99,8 @@ final class CldrPluralRules {
     return ordinalityForCount(localeRules.get().countFor(number));
   }
 
-  static Cardinality cardinalityForRange(Cardinality start, Cardinality end, Locale locale) {
+  @NonNull
+  static Cardinality cardinalityForRange(@NonNull Cardinality start, @NonNull Cardinality end, @NonNull Locale locale) {
     requireNonNull(start);
     requireNonNull(end);
     requireNonNull(locale);
@@ -96,68 +108,78 @@ final class CldrPluralRules {
     if (!cardinalRulesForLocale(locale).isPresent())
       throw new UnsupportedLocaleException(locale);
 
-    SortedMap<CardinalityRange, Cardinality> cardinalitiesByRange = cardinalityRangesForLocale(locale);
-    Cardinality cardinality = cardinalitiesByRange.get(CardinalityRange.of(start, end));
+    SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange = cardinalityRangesForLocale(locale);
+    @Nullable Cardinality cardinality = cardinalitiesByRange.get(CardinalityRange.of(start, end));
 
     return cardinality == null ? end : cardinality;
   }
 
-  static SortedSet<Cardinality> supportedCardinalitiesForLocale(Locale locale) {
+  @NonNull
+  static SortedSet<@NonNull Cardinality> supportedCardinalitiesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = cardinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = cardinalRulesForLocale(locale);
     return localeRules.isPresent() ? localeRules.get().supportedCardinalities() : Collections.emptySortedSet();
   }
 
-  static SortedSet<Ordinality> supportedOrdinalitiesForLocale(Locale locale) {
+  @NonNull
+  static SortedSet<@NonNull Ordinality> supportedOrdinalitiesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = ordinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = ordinalRulesForLocale(locale);
     return localeRules.isPresent() ? localeRules.get().supportedOrdinalities() : Collections.emptySortedSet();
   }
 
-  static SortedMap<Cardinality, Range<Integer>> cardinalityIntegerExamplesForLocale(Locale locale) {
+  @NonNull
+  static SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull Integer>> cardinalityIntegerExamplesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = cardinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = cardinalRulesForLocale(locale);
     return localeRules.isPresent() ? localeRules.get().cardinalityIntegerExamples() : Collections.emptySortedMap();
   }
 
-  static SortedMap<Cardinality, Range<BigDecimal>> cardinalityDecimalExamplesForLocale(Locale locale) {
+  @NonNull
+  static SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull BigDecimal>> cardinalityDecimalExamplesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = cardinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = cardinalRulesForLocale(locale);
     return localeRules.isPresent() ? localeRules.get().cardinalityDecimalExamples() : Collections.emptySortedMap();
   }
 
-  static SortedMap<Ordinality, Range<Integer>> ordinalityIntegerExamplesForLocale(Locale locale) {
+  @NonNull
+  static SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> ordinalityIntegerExamplesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRules> localeRules = ordinalRulesForLocale(locale);
+    Optional<@NonNull LocaleRules> localeRules = ordinalRulesForLocale(locale);
     return localeRules.isPresent() ? localeRules.get().ordinalityIntegerExamples() : Collections.emptySortedMap();
   }
 
-  static SortedSet<String> cardinalitySupportedLocales() {
+  @NonNull
+  static SortedSet<@NonNull String> cardinalitySupportedLocales() {
     return CARDINAL_SUPPORTED_LOCALES;
   }
 
-  static SortedSet<String> ordinalitySupportedLocales() {
+  @NonNull
+  static SortedSet<@NonNull String> ordinalitySupportedLocales() {
     return ORDINAL_SUPPORTED_LOCALES;
   }
 
-  static SortedMap<CardinalityRange, Cardinality> cardinalityRangesForLocale(Locale locale) {
+  @NonNull
+  static SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalityRangesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
-    Optional<LocaleRanges> localeRanges = localeRangesForLocale(locale);
+    Optional<@NonNull LocaleRanges> localeRanges = localeRangesForLocale(locale);
     return localeRanges.isPresent() ? localeRanges.get().cardinalitiesByRange() : Collections.emptySortedMap();
   }
 
-  static Example<Integer> integerExample(boolean infinite, Integer... values) {
+  @NonNull
+  static Example<@NonNull Integer> integerExample(boolean infinite, @NonNull Integer @Nullable ... values) {
     return new Example<>(infinite, values == null ? Collections.emptyList() : Arrays.asList(values));
   }
 
-  static Example<BigDecimal> decimalExample(boolean infinite, String... values) {
-    List<BigDecimal> decimals = new ArrayList<>();
+  @NonNull
+  static Example<@NonNull BigDecimal> decimalExample(boolean infinite, @NonNull String @Nullable ... values) {
+    List<@NonNull BigDecimal> decimals = new ArrayList<>();
 
     if (values != null)
       for (String value : values)
@@ -166,12 +188,14 @@ final class CldrPluralRules {
     return new Example<>(infinite, decimals);
   }
 
-  private static Optional<LocaleRules> cardinalRulesForLocale(Locale locale) {
+  @NonNull
+  private static Optional<@NonNull LocaleRules> cardinalRulesForLocale(@NonNull Locale locale) {
     return rulesForLocale(CARDINAL_RULES_BY_LOCALE, locale);
   }
 
-  private static Optional<LocaleRules> ordinalRulesForLocale(Locale locale) {
-    Optional<LocaleRules> localeRules = rulesForLocale(ORDINAL_RULES_BY_LOCALE, locale);
+  @NonNull
+  private static Optional<@NonNull LocaleRules> ordinalRulesForLocale(@NonNull Locale locale) {
+    Optional<@NonNull LocaleRules> localeRules = rulesForLocale(ORDINAL_RULES_BY_LOCALE, locale);
 
     if (localeRules.isPresent())
       return localeRules;
@@ -182,11 +206,12 @@ final class CldrPluralRules {
     return Optional.empty();
   }
 
-  private static Optional<LocaleRanges> localeRangesForLocale(Locale locale) {
+  @NonNull
+  private static Optional<@NonNull LocaleRanges> localeRangesForLocale(@NonNull Locale locale) {
     requireNonNull(locale);
 
     for (String candidate : localeCandidates(locale)) {
-      LocaleRanges localeRanges = CARDINAL_RANGES_BY_LOCALE.get(candidate);
+      @Nullable LocaleRanges localeRanges = CARDINAL_RANGES_BY_LOCALE.get(candidate);
 
       if (localeRanges != null)
         return Optional.of(localeRanges);
@@ -195,12 +220,14 @@ final class CldrPluralRules {
     return Optional.empty();
   }
 
-  private static Optional<LocaleRules> rulesForLocale(Map<String, LocaleRules> rulesByLocale, Locale locale) {
+  @NonNull
+  private static Optional<@NonNull LocaleRules> rulesForLocale(@NonNull Map<@NonNull String, @NonNull LocaleRules> rulesByLocale,
+                                                               @NonNull Locale locale) {
     requireNonNull(rulesByLocale);
     requireNonNull(locale);
 
     for (String candidate : localeCandidates(locale)) {
-      LocaleRules localeRules = rulesByLocale.get(candidate);
+      @Nullable LocaleRules localeRules = rulesByLocale.get(candidate);
 
       if (localeRules != null)
         return Optional.of(localeRules);
@@ -209,15 +236,16 @@ final class CldrPluralRules {
     return Optional.empty();
   }
 
-  private static List<String> localeCandidates(Locale locale) {
-    Optional<String> language = LocaleUtils.normalizedLanguage(locale);
+  @NonNull
+  private static List<@NonNull String> localeCandidates(@NonNull Locale locale) {
+    Optional<@NonNull String> language = LocaleUtils.normalizedLanguage(locale);
 
     if (!language.isPresent())
       return Collections.emptyList();
 
-    String script = locale.getScript();
-    String country = locale.getCountry();
-    LinkedHashSet<String> candidates = new LinkedHashSet<>();
+    @NonNull String script = locale.getScript();
+    @NonNull String country = locale.getCountry();
+    LinkedHashSet<@NonNull String> candidates = new LinkedHashSet<>();
 
     if (script != null && script.length() > 0 && country != null && country.length() > 0)
       candidates.add(format("%s-%s-%s", language.get(), script, country));
@@ -232,8 +260,9 @@ final class CldrPluralRules {
     return Collections.unmodifiableList(new ArrayList<>(candidates));
   }
 
-  private static Map<String, LocaleRules> rulesByLocale(LocaleRules[] localeRules) {
-    Map<String, LocaleRules> rulesByLocale = new HashMap<>();
+  @NonNull
+  private static Map<@NonNull String, @NonNull LocaleRules> rulesByLocale(@NonNull LocaleRules @NonNull [] localeRules) {
+    Map<@NonNull String, @NonNull LocaleRules> rulesByLocale = new HashMap<>();
 
     for (LocaleRules rules : localeRules)
       rulesByLocale.put(rules.getLocale(), rules);
@@ -241,8 +270,9 @@ final class CldrPluralRules {
     return Collections.unmodifiableMap(rulesByLocale);
   }
 
-  private static Map<String, LocaleRanges> rangesByLocale(LocaleRanges[] localeRanges) {
-    Map<String, LocaleRanges> rangesByLocale = new HashMap<>();
+  @NonNull
+  private static Map<@NonNull String, @NonNull LocaleRanges> rangesByLocale(@NonNull LocaleRanges @NonNull [] localeRanges) {
+    Map<@NonNull String, @NonNull LocaleRanges> rangesByLocale = new HashMap<>();
 
     for (LocaleRanges ranges : localeRanges)
       rangesByLocale.put(ranges.getLocale(), ranges);
@@ -250,30 +280,37 @@ final class CldrPluralRules {
     return Collections.unmodifiableMap(rangesByLocale);
   }
 
-  private static SortedSet<String> supportedLocales(Map<String, LocaleRules> rulesByLocale) {
+  @NonNull
+  private static SortedSet<@NonNull String> supportedLocales(@NonNull Map<@NonNull String, @NonNull LocaleRules> rulesByLocale) {
     return Collections.unmodifiableSortedSet(new TreeSet<>(rulesByLocale.keySet()));
   }
 
-  private static SortedSet<String> ordinalSupportedLocales(Map<String, LocaleRules> cardinalRulesByLocale,
-                                                           Map<String, LocaleRules> ordinalRulesByLocale) {
-    SortedSet<String> supportedLocales = new TreeSet<>(cardinalRulesByLocale.keySet());
+  @NonNull
+  private static SortedSet<@NonNull String> ordinalSupportedLocales(
+      @NonNull Map<@NonNull String, @NonNull LocaleRules> cardinalRulesByLocale,
+      @NonNull Map<@NonNull String, @NonNull LocaleRules> ordinalRulesByLocale) {
+    SortedSet<@NonNull String> supportedLocales = new TreeSet<>(cardinalRulesByLocale.keySet());
     supportedLocales.addAll(ordinalRulesByLocale.keySet());
     return Collections.unmodifiableSortedSet(supportedLocales);
   }
 
-  private static Cardinality cardinalityForCount(String count) {
+  @NonNull
+  private static Cardinality cardinalityForCount(@NonNull String count) {
     return Cardinality.valueOf(count.toUpperCase(Locale.ENGLISH));
   }
 
-  private static Ordinality ordinalityForCount(String count) {
+  @NonNull
+  private static Ordinality ordinalityForCount(@NonNull String count) {
     return Ordinality.valueOf(count.toUpperCase(Locale.ENGLISH));
   }
 
   static final class LocaleRules {
+    @NonNull
     private final String locale;
-    private final Rule[] rules;
+    @NonNull
+    private final Rule @NonNull [] rules;
 
-    LocaleRules(String locale, Rule[] rules) {
+    LocaleRules(@NonNull String locale, @NonNull Rule @NonNull [] rules) {
       requireNonNull(locale);
       requireNonNull(rules);
 
@@ -281,11 +318,13 @@ final class CldrPluralRules {
       this.rules = Arrays.copyOf(rules, rules.length);
     }
 
+    @NonNull
     String getLocale() {
       return locale;
     }
 
-    String countFor(BigDecimal number) {
+    @NonNull
+    String countFor(@NonNull BigDecimal number) {
       Operands operands = new Operands(number);
 
       for (Rule rule : rules)
@@ -295,8 +334,9 @@ final class CldrPluralRules {
       return "other";
     }
 
-    SortedSet<Cardinality> supportedCardinalities() {
-      SortedSet<Cardinality> supportedCardinalities = new TreeSet<>();
+    @NonNull
+    SortedSet<@NonNull Cardinality> supportedCardinalities() {
+      SortedSet<@NonNull Cardinality> supportedCardinalities = new TreeSet<>();
 
       for (Rule rule : rules)
         supportedCardinalities.add(cardinalityForCount(rule.getCount()));
@@ -304,8 +344,9 @@ final class CldrPluralRules {
       return Collections.unmodifiableSortedSet(supportedCardinalities);
     }
 
-    SortedSet<Ordinality> supportedOrdinalities() {
-      SortedSet<Ordinality> supportedOrdinalities = new TreeSet<>();
+    @NonNull
+    SortedSet<@NonNull Ordinality> supportedOrdinalities() {
+      SortedSet<@NonNull Ordinality> supportedOrdinalities = new TreeSet<>();
 
       for (Rule rule : rules)
         supportedOrdinalities.add(ordinalityForCount(rule.getCount()));
@@ -313,8 +354,9 @@ final class CldrPluralRules {
       return Collections.unmodifiableSortedSet(supportedOrdinalities);
     }
 
-    SortedMap<Cardinality, Range<Integer>> cardinalityIntegerExamples() {
-      SortedMap<Cardinality, Range<Integer>> examples = new TreeMap<>();
+    @NonNull
+    SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull Integer>> cardinalityIntegerExamples() {
+      SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull Integer>> examples = new TreeMap<>();
 
       for (Rule rule : rules)
         if (!rule.getIntegerExample().isEmpty())
@@ -323,8 +365,9 @@ final class CldrPluralRules {
       return Collections.unmodifiableSortedMap(examples);
     }
 
-    SortedMap<Cardinality, Range<BigDecimal>> cardinalityDecimalExamples() {
-      SortedMap<Cardinality, Range<BigDecimal>> examples = new TreeMap<>();
+    @NonNull
+    SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull BigDecimal>> cardinalityDecimalExamples() {
+      SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull BigDecimal>> examples = new TreeMap<>();
 
       for (Rule rule : rules)
         if (!rule.getDecimalExample().isEmpty())
@@ -333,8 +376,9 @@ final class CldrPluralRules {
       return Collections.unmodifiableSortedMap(examples);
     }
 
-    SortedMap<Ordinality, Range<Integer>> ordinalityIntegerExamples() {
-      SortedMap<Ordinality, Range<Integer>> examples = new TreeMap<>();
+    @NonNull
+    SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> ordinalityIntegerExamples() {
+      SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> examples = new TreeMap<>();
 
       for (Rule rule : rules)
         if (!rule.getIntegerExample().isEmpty())
@@ -345,12 +389,17 @@ final class CldrPluralRules {
   }
 
   static final class Rule {
+    @NonNull
     private final String count;
+    @NonNull
     private final Condition condition;
-    private final Example<Integer> integerExample;
-    private final Example<BigDecimal> decimalExample;
+    @NonNull
+    private final Example<@NonNull Integer> integerExample;
+    @NonNull
+    private final Example<@NonNull BigDecimal> decimalExample;
 
-    Rule(String count, String condition, Example<Integer> integerExample, Example<BigDecimal> decimalExample) {
+    Rule(@NonNull String count, @NonNull String condition, @NonNull Example<@NonNull Integer> integerExample,
+         @NonNull Example<@NonNull BigDecimal> decimalExample) {
       requireNonNull(count);
       requireNonNull(condition);
       requireNonNull(integerExample);
@@ -362,28 +411,33 @@ final class CldrPluralRules {
       this.decimalExample = decimalExample;
     }
 
+    @NonNull
     String getCount() {
       return count;
     }
 
-    Example<Integer> getIntegerExample() {
+    @NonNull
+    Example<@NonNull Integer> getIntegerExample() {
       return integerExample;
     }
 
-    Example<BigDecimal> getDecimalExample() {
+    @NonNull
+    Example<@NonNull BigDecimal> getDecimalExample() {
       return decimalExample;
     }
 
-    boolean matches(Operands operands) {
+    boolean matches(@NonNull Operands operands) {
       return condition.matches(operands);
     }
   }
 
   static final class LocaleRanges {
+    @NonNull
     private final String locale;
-    private final RangeRule[] rangeRules;
+    @NonNull
+    private final RangeRule @NonNull [] rangeRules;
 
-    LocaleRanges(String locale, RangeRule[] rangeRules) {
+    LocaleRanges(@NonNull String locale, @NonNull RangeRule @NonNull [] rangeRules) {
       requireNonNull(locale);
       requireNonNull(rangeRules);
 
@@ -391,12 +445,14 @@ final class CldrPluralRules {
       this.rangeRules = Arrays.copyOf(rangeRules, rangeRules.length);
     }
 
+    @NonNull
     String getLocale() {
       return locale;
     }
 
-    SortedMap<CardinalityRange, Cardinality> cardinalitiesByRange() {
-      SortedMap<CardinalityRange, Cardinality> cardinalitiesByRange = new TreeMap<>();
+    @NonNull
+    SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange() {
+      SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange = new TreeMap<>();
 
       for (RangeRule rangeRule : rangeRules)
         cardinalitiesByRange.put(CardinalityRange.of(cardinalityForCount(rangeRule.getStart()), cardinalityForCount(rangeRule.getEnd())),
@@ -407,11 +463,14 @@ final class CldrPluralRules {
   }
 
   static final class RangeRule {
+    @NonNull
     private final String start;
+    @NonNull
     private final String end;
+    @NonNull
     private final String result;
 
-    RangeRule(String start, String end, String result) {
+    RangeRule(@NonNull String start, @NonNull String end, @NonNull String result) {
       requireNonNull(start);
       requireNonNull(end);
       requireNonNull(result);
@@ -421,24 +480,28 @@ final class CldrPluralRules {
       this.result = result;
     }
 
+    @NonNull
     String getStart() {
       return start;
     }
 
+    @NonNull
     String getEnd() {
       return end;
     }
 
+    @NonNull
     String getResult() {
       return result;
     }
   }
 
   static final class Example<T> {
+    @NonNull
+    private final List<@NonNull T> values;
     private final boolean infinite;
-    private final List<T> values;
 
-    Example(boolean infinite, List<T> values) {
+    Example(boolean infinite, @NonNull List<@NonNull T> values) {
       requireNonNull(values);
 
       this.infinite = infinite;
@@ -449,25 +512,27 @@ final class CldrPluralRules {
       return values.isEmpty();
     }
 
-    Range<T> range() {
+    @NonNull
+    Range<@NonNull T> range() {
       return infinite ? Range.ofInfiniteValues(values) : Range.ofFiniteValues(values);
     }
   }
 
   private interface Condition {
-    boolean matches(Operands operands);
+    boolean matches(@NonNull Operands operands);
   }
 
-  private static Condition compile(String condition) {
-    String trimmedCondition = condition.trim();
+  @NonNull
+  private static Condition compile(@NonNull String condition) {
+    @NonNull String trimmedCondition = condition.trim();
 
     if (trimmedCondition.length() == 0)
       return operands -> true;
 
-    List<Condition> disjuncts = new ArrayList<>();
+    List<@NonNull Condition> disjuncts = new ArrayList<>();
 
     for (String orPart : trimmedCondition.split("\\s+or\\s+")) {
-      List<Condition> conjuncts = new ArrayList<>();
+      List<@NonNull Condition> conjuncts = new ArrayList<>();
 
       for (String andPart : orPart.split("\\s+and\\s+"))
         conjuncts.add(compileRelation(andPart.trim()));
@@ -490,14 +555,15 @@ final class CldrPluralRules {
     };
   }
 
-  private static Condition compileRelation(String relation) {
+  @NonNull
+  private static Condition compileRelation(@NonNull String relation) {
     Matcher matcher = RELATION_PATTERN.matcher(relation);
 
     if (!matcher.matches())
       throw new IllegalArgumentException(format("Unsupported CLDR plural relation '%s'", relation));
 
     Operand operand = Operand.forName(matcher.group(1));
-    BigDecimal modulus = matcher.group(2) == null ? null : new BigDecimal(matcher.group(2));
+    @Nullable BigDecimal modulus = matcher.group(2) == null ? null : new BigDecimal(matcher.group(2));
     boolean negated = "!=".equals(matcher.group(3));
     ValueSet valueSet = ValueSet.parse(matcher.group(4));
 
@@ -522,25 +588,34 @@ final class CldrPluralRules {
     C,
     E;
 
-    static Operand forName(String name) {
+    @NonNull
+    static Operand forName(@NonNull String name) {
       return Operand.valueOf(name.toUpperCase(Locale.ENGLISH));
     }
   }
 
   private static final class Operands {
+    @NonNull
     private final BigDecimal n;
+    @NonNull
     private final BigDecimal i;
+    @NonNull
     private final BigDecimal v;
+    @NonNull
     private final BigDecimal w;
+    @NonNull
     private final BigDecimal f;
+    @NonNull
     private final BigDecimal t;
+    @NonNull
     private final BigDecimal c;
+    @NonNull
     private final BigDecimal e;
 
-    private Operands(BigDecimal n) {
+    private Operands(@NonNull BigDecimal n) {
       requireNonNull(n);
 
-      BigDecimal strippedNumber = n.stripTrailingZeros();
+      @NonNull BigDecimal strippedNumber = n.stripTrailingZeros();
 
       this.n = n;
       this.i = new BigDecimal(NumberUtils.integerComponent(n));
@@ -552,7 +627,8 @@ final class CldrPluralRules {
       this.e = BigDecimal.ZERO;
     }
 
-    private BigDecimal valueFor(Operand operand) {
+    @NonNull
+    private BigDecimal valueFor(@NonNull Operand operand) {
       switch (operand) {
         case N:
           return n;
@@ -577,17 +653,21 @@ final class CldrPluralRules {
   }
 
   private static final class ValueSet {
-    private final List<ValueRange> ranges;
+    @NonNull
+    private final List<@NonNull ValueRange> ranges;
 
-    private ValueSet(List<ValueRange> ranges) {
+    private ValueSet(@NonNull List<@NonNull ValueRange> ranges) {
+      requireNonNull(ranges);
+
       this.ranges = Collections.unmodifiableList(new ArrayList<>(ranges));
     }
 
-    static ValueSet parse(String valueList) {
-      List<ValueRange> ranges = new ArrayList<>();
+    @NonNull
+    static ValueSet parse(@NonNull String valueList) {
+      List<@NonNull ValueRange> ranges = new ArrayList<>();
 
       for (String rawValue : valueList.split(",")) {
-        String value = rawValue.trim();
+        @NonNull String value = rawValue.trim();
 
         if (value.length() == 0)
           continue;
@@ -606,7 +686,7 @@ final class CldrPluralRules {
       return new ValueSet(ranges);
     }
 
-    boolean contains(BigDecimal value) {
+    boolean contains(@NonNull BigDecimal value) {
       for (ValueRange range : ranges)
         if (range.contains(value))
           return true;
@@ -616,22 +696,27 @@ final class CldrPluralRules {
   }
 
   private static final class ValueRange {
+    @NonNull
     private final BigDecimal minimum;
+    @NonNull
     private final BigDecimal maximum;
 
-    private ValueRange(BigDecimal minimum, BigDecimal maximum) {
+    private ValueRange(@NonNull BigDecimal minimum, @NonNull BigDecimal maximum) {
+      requireNonNull(minimum);
+      requireNonNull(maximum);
+
       this.minimum = minimum;
       this.maximum = maximum;
     }
 
-    boolean contains(BigDecimal value) {
+    boolean contains(@NonNull BigDecimal value) {
       if (!integerValued(value))
         return minimum.compareTo(maximum) == 0 && value.compareTo(minimum) == 0;
 
       return value.compareTo(minimum) >= 0 && value.compareTo(maximum) <= 0;
     }
 
-    private boolean integerValued(BigDecimal value) {
+    private boolean integerValued(@NonNull BigDecimal value) {
       return value.stripTrailingZeros().scale() <= 0;
     }
   }
