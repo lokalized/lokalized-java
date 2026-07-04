@@ -51,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
@@ -331,7 +332,7 @@ public final class LocalizedStringLoader {
             throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found at '%s'",
                 locale.toLanguageTag(), file.getPath()));
 
-          localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file));
+          localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file, locale));
         } else {
           LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
@@ -415,7 +416,7 @@ public final class LocalizedStringLoader {
             try (InputStream inputStream = jarFile.getInputStream(entry)) {
               String contents = normalizeLocalizedStringsFileContents(new String(inputStream.readAllBytes(), UTF_8));
               String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
-              localizedStringsByLocale.put(locale, parseLocalizedStrings(canonicalPath, contents));
+              localizedStringsByLocale.put(locale, parseLocalizedStrings(canonicalPath, contents, locale));
             }
           } else {
             LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", relativeName));
@@ -527,12 +528,14 @@ public final class LocalizedStringLoader {
    * Parses out a set of localized strings from the given file.
    *
    * @param file the file to parse, not null
+   * @param locale the locale represented by the file, not null
    * @return the set of localized strings contained in the file, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull File file) {
+  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull File file, @NonNull Locale locale) {
     requireNonNull(file);
+    requireNonNull(locale);
 
     String canonicalPath;
 
@@ -555,14 +558,16 @@ public final class LocalizedStringLoader {
           canonicalPath), e);
     }
 
-    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents);
+    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents, locale);
   }
 
   @NonNull
   private static Set<@NonNull LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
-                                                            @NonNull String localizedStringsFileContents) {
+                                                                     @NonNull String localizedStringsFileContents,
+                                                                     @NonNull Locale locale) {
     requireNonNull(canonicalPath);
     requireNonNull(localizedStringsFileContents);
+    requireNonNull(locale);
 
     if ("".equals(localizedStringsFileContents))
       return Collections.emptySet();
@@ -591,10 +596,107 @@ public final class LocalizedStringLoader {
 
       JsonValue value = member.getValue();
       validateNoDuplicateObjectMembers(canonicalPath, value, "$." + key);
-      localizedStrings.add(parseLocalizedString(canonicalPath, key, value, null));
+      LocalizedString localizedString = parseLocalizedString(canonicalPath, key, value, null);
+      validateLanguageFormTranslationCompleteness(canonicalPath, locale, localizedString);
+      localizedStrings.add(localizedString);
     }
 
     return Collections.unmodifiableSet(localizedStrings);
+  }
+
+  private static void validateLanguageFormTranslationCompleteness(@NonNull String canonicalPath,
+                                                                  @NonNull Locale locale,
+                                                                  @NonNull LocalizedString localizedString) {
+    requireNonNull(canonicalPath);
+    requireNonNull(locale);
+    requireNonNull(localizedString);
+
+    for (Map.Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
+        localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+      String placeholderKey = entry.getKey();
+      LanguageFormTranslation languageFormTranslation = entry.getValue();
+
+      if (languageFormTranslation.isSelectorDriven() || languageFormTranslation.getRange().isPresent())
+        continue;
+
+      validateCardinalityTranslationCompleteness(canonicalPath, locale, localizedString, placeholderKey, languageFormTranslation);
+      validateOrdinalityTranslationCompleteness(canonicalPath, locale, localizedString, placeholderKey, languageFormTranslation);
+    }
+
+    for (LocalizedString alternative : localizedString.getAlternatives())
+      validateLanguageFormTranslationCompleteness(canonicalPath, locale, alternative);
+  }
+
+  private static void validateCardinalityTranslationCompleteness(@NonNull String canonicalPath,
+                                                                 @NonNull Locale locale,
+                                                                 @NonNull LocalizedString localizedString,
+                                                                 @NonNull String placeholderKey,
+                                                                 @NonNull LanguageFormTranslation languageFormTranslation) {
+    Set<@NonNull Cardinality> providedCardinalities = new TreeSet<>();
+
+    for (LanguageForm languageForm : languageFormTranslation.getTranslationsByLanguageForm().keySet())
+      if (languageForm instanceof Cardinality)
+        providedCardinalities.add((Cardinality) languageForm);
+
+    if (providedCardinalities.isEmpty())
+      return;
+
+    Set<@NonNull Cardinality> missingCardinalities = new TreeSet<>(Cardinality.supportedCardinalitiesForLocale(locale));
+
+    if (missingCardinalities.isEmpty())
+      return;
+
+    missingCardinalities.removeAll(providedCardinalities);
+
+    if (!missingCardinalities.isEmpty())
+      throw new LocalizedStringLoadingException(format("%s: placeholder '%s' for key '%s' is missing %s translations for locale '%s': [%s]. " +
+              "Supported %s forms are [%s]", canonicalPath, placeholderKey, localizedString.getKey(), Cardinality.class.getSimpleName(),
+          locale.toLanguageTag(), cardinalityNamesFor(missingCardinalities), Cardinality.class.getSimpleName(),
+          cardinalityNamesFor(Cardinality.supportedCardinalitiesForLocale(locale))));
+  }
+
+  private static void validateOrdinalityTranslationCompleteness(@NonNull String canonicalPath,
+                                                                @NonNull Locale locale,
+                                                                @NonNull LocalizedString localizedString,
+                                                                @NonNull String placeholderKey,
+                                                                @NonNull LanguageFormTranslation languageFormTranslation) {
+    Set<@NonNull Ordinality> providedOrdinalities = new TreeSet<>();
+
+    for (LanguageForm languageForm : languageFormTranslation.getTranslationsByLanguageForm().keySet())
+      if (languageForm instanceof Ordinality)
+        providedOrdinalities.add((Ordinality) languageForm);
+
+    if (providedOrdinalities.isEmpty())
+      return;
+
+    Set<@NonNull Ordinality> missingOrdinalities = new TreeSet<>(Ordinality.supportedOrdinalitiesForLocale(locale));
+
+    if (missingOrdinalities.isEmpty())
+      return;
+
+    missingOrdinalities.removeAll(providedOrdinalities);
+
+    if (!missingOrdinalities.isEmpty())
+      throw new LocalizedStringLoadingException(format("%s: placeholder '%s' for key '%s' is missing %s translations for locale '%s': [%s]. " +
+              "Supported %s forms are [%s]", canonicalPath, placeholderKey, localizedString.getKey(), Ordinality.class.getSimpleName(),
+          locale.toLanguageTag(), ordinalityNamesFor(missingOrdinalities), Ordinality.class.getSimpleName(),
+          ordinalityNamesFor(Ordinality.supportedOrdinalitiesForLocale(locale))));
+  }
+
+  @NonNull
+  private static String cardinalityNamesFor(@NonNull Set<@NonNull Cardinality> cardinalities) {
+    requireNonNull(cardinalities);
+    return cardinalities.stream()
+        .map(cardinality -> "CARDINALITY_" + cardinality.name())
+        .collect(Collectors.joining(", "));
+  }
+
+  @NonNull
+  private static String ordinalityNamesFor(@NonNull Set<@NonNull Ordinality> ordinalities) {
+    requireNonNull(ordinalities);
+    return ordinalities.stream()
+        .map(ordinality -> "ORDINALITY_" + ordinality.name())
+        .collect(Collectors.joining(", "));
   }
 
   /**

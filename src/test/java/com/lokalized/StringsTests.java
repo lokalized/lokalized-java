@@ -269,7 +269,21 @@ public class StringsTests {
 					put("bookCount", 3);
 				}});
 
-		assertEquals("I прочитал 3 книг", translation);
+		assertEquals("I прочитал 3 книги", translation);
+
+		translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", 5);
+				}});
+
+		assertEquals("I прочитал 5 книг", translation);
+
+		translation = strings.get("I read {{bookCount}} books",
+				new HashMap<String, Object>() {{
+					put("bookCount", new BigDecimal("1.5"));
+				}});
+
+		assertEquals("I прочитал 1.5 книги", translation);
 	}
 
 	@Test

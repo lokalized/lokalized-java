@@ -300,6 +300,44 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsIncompleteCardinalityTranslations() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("ru"),
+        ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\",\"translations\":{" +
+            "\"CARDINALITY_ONE\":\"книга\",\"CARDINALITY_FEW\":\"книги\",\"CARDINALITY_OTHER\":\"книги\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected incomplete cardinality translations to fail during load");
+
+    assertTrue(exception.getMessage().contains("CARDINALITY_MANY"));
+    assertTrue(exception.getMessage().contains("books"));
+    assertTrue(exception.getMessage().contains("ru"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsIncompleteOrdinalityTranslations() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Birthday\":{\"translation\":\"{{year}}{{suffix}}\",\"placeholders\":{\"suffix\":{\"value\":\"year\",\"translations\":{" +
+            "\"ORDINALITY_ONE\":\"st\",\"ORDINALITY_OTHER\":\"th\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected incomplete ordinality translations to fail during load");
+
+    assertTrue(exception.getMessage().contains("ORDINALITY_TWO"));
+    assertTrue(exception.getMessage().contains("ORDINALITY_FEW"));
+    assertTrue(exception.getMessage().contains("suffix"));
+  }
+
+  @Test
   public void testFilesystemLoadingAcceptsPlaceholderMetadata() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
