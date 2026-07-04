@@ -282,6 +282,65 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void invalidMixedOrderingOperator() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("a < CARDINALITY_FEW", Map.of("a", 3), LOCALE),
+				"Expected ordering against language forms to throw");
+
+		assertTrue(exception.getMessage().contains("requires numeric operands"),
+				"Expected invalid ordering message to explain numeric operands");
+	}
+
+	@Test
+	public void bareVariablesAreNotBooleanExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("a && b", Map.of("a", 1, "b", 1), LOCALE),
+				"Expected bare variables in boolean expressions to throw");
+
+		assertTrue(exception.getMessage().contains("requires boolean operands"),
+				"Expected boolean operator message to explain required operands");
+	}
+
+	@Test
+	public void chainedComparisonsAreRejected() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("a == b == c", Map.of("a", 1, "b", 1, "c", 1), LOCALE),
+				"Expected chained comparisons to throw");
+
+		assertTrue(exception.getMessage().contains("Chained comparisons are not supported"),
+				"Expected chained comparison message to be explicit");
+		assertFalse(exception.getMessage().contains("TRUE"),
+				"Expected chained comparison message not to expose internal boolean sentinels");
+	}
+
+	@Test
+	public void comparisonResultsCannotBeCompared() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("(x == 2) == 1", Map.of("x", 2), LOCALE),
+				"Expected comparison results to be rejected as comparison operands");
+	}
+
+	@Test
+	public void emptyExpressionsAreRejectedClearly() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("", LOCALE),
+				"Expected empty expressions to throw");
+
+		assertTrue(exception.getMessage().contains("must not be empty"),
+				"Expected empty expression message to be clear");
+	}
+
+	@Test
 	public void invalidOrdinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

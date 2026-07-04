@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 enum TokenType {
   VARIABLE(null),
   NUMBER(null),
+  BOOLEAN_RESULT(null),
   GROUP_START("("),
   GROUP_END(")"),
   AND("&&"),

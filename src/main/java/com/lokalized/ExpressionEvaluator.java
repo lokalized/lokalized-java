@@ -262,9 +262,8 @@ class ExpressionEvaluator {
 
     OPERATOR_TOKEN_TYPES = Collections.unmodifiableSet(operatorTokenTypes);
 
-    // TRUE and FALSE are magic tokens used at RPN evaluation time to hold result of binary operator expressions
-    TRUE_RESULT_TOKEN = new Token(TokenType.VARIABLE, "TRUE");
-    FALSE_RESULT_TOKEN = new Token(TokenType.VARIABLE, "FALSE");
+    TRUE_RESULT_TOKEN = new Token(TokenType.BOOLEAN_RESULT, "true");
+    FALSE_RESULT_TOKEN = new Token(TokenType.BOOLEAN_RESULT, "false");
   }
 
   /**
@@ -337,6 +336,7 @@ class ExpressionEvaluator {
 
     List<@NonNull Token> tokens = getExpressionTokenizer().extractTokens(expression);
     tokens = convertTokensToReversePolishNotation(tokens);
+    validateReversePolishNotationTokens(tokens);
     return evaluateReversePolishNotationTokens(tokens, context, locale);
   }
 
@@ -515,14 +515,14 @@ class ExpressionEvaluator {
   /**
    * Applies a binary operator to the given left- and right-hand operands.
    * <p>
-   * A special {@link #TRUE_RESULT_TOKEN} or {@link #FALSE_RESULT_TOKEN} is returned to indicate the result.
+   * An internal boolean-result token is returned to indicate the result.
    *
    * @param leftHandOperand  the left-hand-side token, not null
    * @param operator         the binary operator to apply, not null
    * @param rightHandOperand the right-hand-side token, not null
    * @param context          the context for the expression, not null
    * @param locale           the locale to use for evaluation, not null
-   * @return the result of the binary operator evaluation (magic TRUE_RESULT_TOKEN or FALSE_RESULT_TOKEN), not null
+   * @return the result of the binary operator evaluation, not null
    * @throws ExpressionEvaluationException if an error occurs while evaluating the operator
    */
   protected Token evaluateBinaryOperator(@NonNull Token leftHandOperand,
@@ -882,7 +882,7 @@ class ExpressionEvaluator {
   @NonNull
   protected Boolean isBooleanResult(@NonNull Token token) {
     requireNonNull(token);
-    return token == TRUE_RESULT_TOKEN || token == FALSE_RESULT_TOKEN;
+    return token.getTokenType() == TokenType.BOOLEAN_RESULT;
   }
 
   /**
@@ -1017,6 +1017,8 @@ class ExpressionEvaluator {
     requireNonNull(operand);
     requireNonNull(context);
 
+    if (isBooleanResult(operand))
+      return OperandType.BOOLEAN;
     if (operand.getTokenType() == TokenType.NUMBER)
       return OperandType.NUMBER;
     if (isCardinality(operand))
@@ -1533,35 +1535,150 @@ class ExpressionEvaluator {
   protected void validateReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens) {
     requireNonNull(tokens);
 
-    Deque<Token> valueStack = new ArrayDeque<>();
+    if (tokens.isEmpty())
+      throw new ExpressionEvaluationException("Expression must not be empty");
+
+    Deque<ExpressionValidationValue> valueStack = new ArrayDeque<>();
 
     for (Token token : tokens) {
       if (isOperand(token)) {
-        valueStack.push(token);
+        valueStack.push(new ExpressionValidationValue(expressionValueTypeForToken(token), token.getSymbol()));
       } else if (isOperator(token)) {
         if (valueStack.size() < 2)
           throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s' (%s)",
-              token.getSymbol(), valueStack.stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+              token.getSymbol(), valueStack.stream().map(value -> value.getSymbol()).collect(Collectors.toList())));
 
-        valueStack.pop();
-        valueStack.pop();
-        valueStack.push(TRUE_RESULT_TOKEN);
+        ExpressionValidationValue rightHandOperand = valueStack.pop();
+        ExpressionValidationValue leftHandOperand = valueStack.pop();
+        validateOperatorOperands(leftHandOperand, token, rightHandOperand);
+        valueStack.push(new ExpressionValidationValue(ExpressionValueType.BOOLEAN, "boolean result"));
       } else {
         throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
       }
     }
 
     if (valueStack.size() == 1) {
-      Token resultToken = valueStack.pop();
+      ExpressionValidationValue result = valueStack.pop();
 
-      if (resultToken == TRUE_RESULT_TOKEN || resultToken == FALSE_RESULT_TOKEN)
+      if (result.getExpressionValueType() == ExpressionValueType.BOOLEAN)
         return;
 
-      throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
+      throw new ExpressionEvaluationException(format(
+          "Expression must evaluate to a boolean result but ended with operand '%s' (%s)",
+          result.getSymbol(), result.getExpressionValueType()));
     }
 
     throw new ExpressionEvaluationException(format("Unexpected extra values exist on the stack: %s", valueStack
-        .stream().map(operand -> operand.getSymbol()).collect(Collectors.toList())));
+        .stream().map(value -> value.getSymbol()).collect(Collectors.toList())));
+  }
+
+  @NonNull
+  protected ExpressionValueType expressionValueTypeForToken(@NonNull Token token) {
+    requireNonNull(token);
+
+    if (token.getTokenType() == TokenType.NUMBER)
+      return ExpressionValueType.NUMBER;
+    if (isCardinality(token))
+      return ExpressionValueType.CARDINALITY;
+    if (isOrdinality(token))
+      return ExpressionValueType.ORDINALITY;
+    if (isGender(token))
+      return ExpressionValueType.GENDER;
+    if (isGrammaticalCase(token))
+      return ExpressionValueType.GRAMMATICAL_CASE;
+    if (isDefiniteness(token))
+      return ExpressionValueType.DEFINITENESS;
+    if (isClassifier(token))
+      return ExpressionValueType.CLASSIFIER;
+    if (isFormality(token))
+      return ExpressionValueType.FORMALITY;
+    if (isClusivity(token))
+      return ExpressionValueType.CLUSIVITY;
+    if (isAnimacy(token))
+      return ExpressionValueType.ANIMACY;
+    if (isPhonetic(token))
+      return ExpressionValueType.PHONETIC;
+    if (token.getTokenType() == TokenType.VARIABLE)
+      return ExpressionValueType.UNKNOWN_VARIABLE;
+
+    throw new ExpressionEvaluationException(format("Unexpected operand symbol encountered: '%s'", token.getSymbol()));
+  }
+
+  protected void validateOperatorOperands(@NonNull ExpressionValidationValue leftHandOperand,
+                                          @NonNull Token operator,
+                                          @NonNull ExpressionValidationValue rightHandOperand) {
+    requireNonNull(leftHandOperand);
+    requireNonNull(operator);
+    requireNonNull(rightHandOperand);
+
+    ExpressionValueType lhsType = leftHandOperand.getExpressionValueType();
+    ExpressionValueType rhsType = rightHandOperand.getExpressionValueType();
+
+    if (isBooleanOperator(operator)) {
+      if (lhsType == ExpressionValueType.BOOLEAN && rhsType == ExpressionValueType.BOOLEAN)
+        return;
+
+      throw new ExpressionEvaluationException(format(
+          "Operator '%s' requires boolean operands but encountered %s and %s in '%s %s %s'",
+          operator.getSymbol(), lhsType, rhsType, leftHandOperand.getSymbol(), operator.getSymbol(),
+          rightHandOperand.getSymbol()));
+    }
+
+    if (isComparisonOperator(operator)) {
+      if (lhsType == ExpressionValueType.BOOLEAN || rhsType == ExpressionValueType.BOOLEAN)
+        throw new ExpressionEvaluationException(format(
+            "Chained comparisons are not supported. Operator '%s' cannot compare %s and %s in '%s %s %s'",
+            operator.getSymbol(), lhsType, rhsType, leftHandOperand.getSymbol(), operator.getSymbol(),
+            rightHandOperand.getSymbol()));
+
+      if (isOrderingOperator(operator)) {
+        if (canBeNumericExpressionValue(lhsType) && canBeNumericExpressionValue(rhsType))
+          return;
+
+        throw new ExpressionEvaluationException(format(
+            "Operator '%s' requires numeric operands but encountered %s and %s in '%s %s %s'",
+            operator.getSymbol(), lhsType, rhsType, leftHandOperand.getSymbol(), operator.getSymbol(),
+            rightHandOperand.getSymbol()));
+      }
+
+      if (canBeEqualExpressionValue(lhsType, rhsType))
+        return;
+
+      throw new ExpressionEvaluationException(format(
+          "Operator '%s' cannot compare %s and %s operands in '%s %s %s'",
+          operator.getSymbol(), lhsType, rhsType, leftHandOperand.getSymbol(), operator.getSymbol(),
+          rightHandOperand.getSymbol()));
+    }
+
+    throw new ExpressionEvaluationException(format("Expected operator but encountered '%s'", operator.getSymbol()));
+  }
+
+  protected boolean isOrderingOperator(@NonNull Token operator) {
+    requireNonNull(operator);
+    return operator.getTokenType() == TokenType.LESS_THAN
+        || operator.getTokenType() == TokenType.LESS_THAN_OR_EQUAL_TO
+        || operator.getTokenType() == TokenType.GREATER_THAN
+        || operator.getTokenType() == TokenType.GREATER_THAN_OR_EQUAL_TO;
+  }
+
+  protected boolean canBeNumericExpressionValue(@NonNull ExpressionValueType expressionValueType) {
+    requireNonNull(expressionValueType);
+    return expressionValueType == ExpressionValueType.NUMBER
+        || expressionValueType == ExpressionValueType.UNKNOWN_VARIABLE;
+  }
+
+  protected boolean canBeEqualExpressionValue(@NonNull ExpressionValueType lhsType,
+                                              @NonNull ExpressionValueType rhsType) {
+    requireNonNull(lhsType);
+    requireNonNull(rhsType);
+
+    if (lhsType == ExpressionValueType.UNKNOWN_VARIABLE || rhsType == ExpressionValueType.UNKNOWN_VARIABLE)
+      return true;
+    if (lhsType == rhsType)
+      return true;
+
+    return (lhsType == ExpressionValueType.NUMBER && (rhsType == ExpressionValueType.CARDINALITY || rhsType == ExpressionValueType.ORDINALITY))
+        || (rhsType == ExpressionValueType.NUMBER && (lhsType == ExpressionValueType.CARDINALITY || lhsType == ExpressionValueType.ORDINALITY));
   }
 
   /**
@@ -1570,7 +1687,36 @@ class ExpressionEvaluator {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   protected enum OperandType {
-    NUMBER, GENDER, GRAMMATICAL_CASE, DEFINITENESS, CLASSIFIER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
+    NUMBER, BOOLEAN, GENDER, GRAMMATICAL_CASE, DEFINITENESS, CLASSIFIER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN;
+  }
+
+  protected enum ExpressionValueType {
+    NUMBER, BOOLEAN, GENDER, GRAMMATICAL_CASE, DEFINITENESS, CLASSIFIER, FORMALITY, CLUSIVITY, ANIMACY, CARDINALITY, ORDINALITY, PHONETIC, UNKNOWN_VARIABLE;
+  }
+
+  protected static final class ExpressionValidationValue {
+    @NonNull
+    private final ExpressionValueType expressionValueType;
+    @NonNull
+    private final String symbol;
+
+    private ExpressionValidationValue(@NonNull ExpressionValueType expressionValueType, @NonNull String symbol) {
+      requireNonNull(expressionValueType);
+      requireNonNull(symbol);
+
+      this.expressionValueType = expressionValueType;
+      this.symbol = symbol;
+    }
+
+    @NonNull
+    private ExpressionValueType getExpressionValueType() {
+      return expressionValueType;
+    }
+
+    @NonNull
+    private String getSymbol() {
+      return symbol;
+    }
   }
 
   protected static final class ExpressionNode {

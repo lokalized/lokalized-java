@@ -244,6 +244,55 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsChainedAlternativeComparisons() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount == pageCount == chapterCount\":{\"translation\":\"Hi\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected chained alternative comparisons to fail fast during load");
+
+    assertTrue(exception.getCause().getMessage().contains("Chained comparisons are not supported"));
+    assertFalse(exception.getCause().getMessage().contains("TRUE"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsBareBooleanAlternativeOperands() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount && pageCount\":{\"translation\":\"Hi\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected bare boolean alternative operands to fail fast during load");
+
+    assertTrue(exception.getCause().getMessage().contains("requires boolean operands"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsEmptyAlternativeExpressions() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"\":{\"translation\":\"Hi\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected empty alternative expressions to fail fast during load");
+
+    assertTrue(exception.getCause().getMessage().contains("must not be empty"));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsInvalidJson() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();

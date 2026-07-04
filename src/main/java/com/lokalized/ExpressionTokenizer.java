@@ -166,7 +166,7 @@ class ExpressionTokenizer {
     Matcher matcher = TOKEN_PATTERN.matcher(expression);
 
     while (matcher.find()) {
-      for (TokenType tokenType : TokenType.values()) {
+      for (TokenType tokenType : PATTERNS_BY_TOKEN_TYPE.keySet()) {
         String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
 
         if (group != null)
