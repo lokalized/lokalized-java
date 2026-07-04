@@ -293,6 +293,38 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsMalformedSimpleTranslationPlaceholders() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        "{\"Hello\":\"Hello {{ name }}\"}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected malformed simple translation placeholders to fail during load");
+
+    assertTrue(exception.getMessage().contains("invalid placeholder reference"));
+    assertTrue(exception.getMessage().contains("Hello"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnclosedTranslationPlaceholders() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{name\"}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unclosed translation placeholders to fail during load");
+
+    assertTrue(exception.getMessage().contains("Unclosed placeholder"));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsInvalidJson() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();

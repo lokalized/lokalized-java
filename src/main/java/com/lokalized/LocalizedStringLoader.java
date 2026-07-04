@@ -733,6 +733,7 @@ public final class LocalizedStringLoader {
       if (translation == null)
         throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
+      validateTranslationPlaceholders(canonicalPath, key, translation, Collections.emptyMap(), Collections.emptyMap());
       return localizedStringBuilder.translation(translation).build();
     } else if (jsonValue.isObject()) {
       // More complex case, there can be placeholders and alternatives.
@@ -938,6 +939,10 @@ public final class LocalizedStringLoader {
         throw new LocalizedStringLoadingException(format("%s: either a translation or at least one alternative expression is required for key '%s'",
             canonicalPath, key));
 
+      if (translation != null)
+        validateTranslationPlaceholders(canonicalPath, key, translation, placeholderMetadataByPlaceholder,
+            languageFormTranslationsByPlaceholder);
+
       return localizedStringBuilder.translation(translation)
           .commentary(commentary)
           .placeholderMetadataByPlaceholder(placeholderMetadataByPlaceholder)
@@ -948,6 +953,62 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("%s: either a translation string or object value is required for key '%s'",
           canonicalPath, key));
     }
+  }
+
+  private static void validateTranslationPlaceholders(@NonNull String canonicalPath,
+                                                      @NonNull String key,
+                                                      @NonNull String translation,
+                                                      @NonNull Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder,
+                                                      @NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
+    requireNonNull(canonicalPath);
+    requireNonNull(key);
+    requireNonNull(translation);
+    requireNonNull(placeholderMetadataByPlaceholder);
+    requireNonNull(languageFormTranslationsByPlaceholder);
+
+    Set<@NonNull String> referencedPlaceholderNames;
+
+    try {
+      referencedPlaceholderNames = StringInterpolator.placeholderNamesIn(translation);
+    } catch (IllegalArgumentException e) {
+      throw new LocalizedStringLoadingException(format("%s: invalid placeholder reference in translation for key '%s': %s",
+          canonicalPath, key, e.getMessage()), e);
+    }
+
+    Set<@NonNull String> languageFormTranslationInputPlaceholderNames =
+        languageFormTranslationInputPlaceholderNames(languageFormTranslationsByPlaceholder);
+
+    for (String placeholderName : languageFormTranslationsByPlaceholder.keySet())
+      if (!referencedPlaceholderNames.contains(placeholderName))
+        LOGGER.fine(format("%s: placeholder '%s' is declared for key '%s' but is not referenced by its translation",
+            canonicalPath, placeholderName, key));
+
+    for (String placeholderName : placeholderMetadataByPlaceholder.keySet())
+      if (!referencedPlaceholderNames.contains(placeholderName) &&
+          !languageFormTranslationInputPlaceholderNames.contains(placeholderName))
+        LOGGER.fine(format("%s: placeholder metadata for '%s' is declared for key '%s' but is not referenced by its translation or placeholder rules",
+            canonicalPath, placeholderName, key));
+  }
+
+  @NonNull
+  private static Set<@NonNull String> languageFormTranslationInputPlaceholderNames(
+      @NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
+    requireNonNull(languageFormTranslationsByPlaceholder);
+
+    Set<@NonNull String> placeholderNames = new LinkedHashSet<>();
+
+    for (LanguageFormTranslation languageFormTranslation : languageFormTranslationsByPlaceholder.values()) {
+      languageFormTranslation.getValue().ifPresent(placeholderNames::add);
+      languageFormTranslation.getRange().ifPresent(range -> {
+        placeholderNames.add(range.getStart());
+        placeholderNames.add(range.getEnd());
+      });
+
+      for (LanguageFormSelector selector : languageFormTranslation.getSelectors())
+        placeholderNames.add(selector.getValue());
+    }
+
+    return Collections.unmodifiableSet(placeholderNames);
   }
 
   @NonNull

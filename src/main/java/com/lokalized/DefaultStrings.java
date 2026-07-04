@@ -759,9 +759,13 @@ public class DefaultStrings implements Strings {
 			}
 		}
 
-		translation = getStringInterpolator().interpolate(translation, mutableContext);
+		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(translation, mutableContext);
 
-		return Optional.of(translation);
+		if (!interpolationResult.getUnresolvedPlaceholderNames().isEmpty())
+			throw new IllegalArgumentException(format("Missing value for placeholder(s) [%s] in key '%s'",
+					interpolationResult.getUnresolvedPlaceholderNames().stream().collect(Collectors.joining(", ")), key));
+
+		return Optional.of(interpolationResult.getValue());
 	}
 
 	@NonNull

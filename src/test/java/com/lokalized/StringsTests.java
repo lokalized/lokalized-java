@@ -955,6 +955,71 @@ public class StringsTests {
 	}
 
 	@Test
+	public void missingDirectPlaceholderValuesThrow() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello {{name}}")
+				.build();
+
+		Strings strings = buildFailFastStrings(localizedString);
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Greeting"),
+				"Expected missing direct placeholders to throw");
+
+		assertTrue(exception.getMessage().contains("name"));
+	}
+
+	@Test
+	public void defaultHandlerReturnsKeyForMissingDirectPlaceholderValues() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello {{name}}")
+				.build();
+
+		Strings strings = buildStrings(localizedString);
+
+		assertEquals("Greeting", strings.get("Greeting"),
+				"Expected default failure handling to return the key after unresolved placeholders fail resolution");
+	}
+
+	@Test
+	public void translationFailureHandlerReceivesUnresolvedPlaceholderResolutionFailure() {
+		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello {{name}}")
+				.build();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.translationFailureHandler((translationFailure) -> {
+					translationFailureHolder.set(translationFailure);
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		assertEquals("handled", strings.get("Greeting"));
+
+		TranslationFailure translationFailure = translationFailureHolder.get();
+		assertTrue(translationFailure != null);
+		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, translationFailure.getReason());
+		assertTrue(translationFailure.getCause().isPresent());
+		assertTrue(translationFailure.getCause().get() instanceof IllegalArgumentException);
+		assertTrue(translationFailure.getCause().get().getMessage().contains("name"));
+	}
+
+	@Test
+	public void placeholderValuesContainingMustachesAreNotUnresolvedPlaceholders() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello {{name}}")
+				.build();
+
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("Hello {{Ada}}", strings.get("Greeting", Map.of("name", "{{Ada}}")));
+	}
+
+	@Test
 	public void translationFailureHandlerReceivesMissingTranslation() {
 		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))

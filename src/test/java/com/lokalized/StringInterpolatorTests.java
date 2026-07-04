@@ -20,8 +20,10 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * Exercises {@link StringInterpolator}.
  *
@@ -48,5 +50,36 @@ public class StringInterpolatorTests {
     ));
 
     assertEquals("Total: $24.99", result);
+  }
+
+  @Test
+  public void strictInterpolationReportsUnresolvedPlaceholders() {
+    StringInterpolator interpolator = new StringInterpolator();
+    StringInterpolator.InterpolationResult result = interpolator.interpolateStrictly("Hi {{name}} from {{city}}", Map.of(
+        "name", "Ada"
+    ));
+
+    assertEquals("Hi Ada from {{city}}", result.getValue());
+    assertEquals(Set.of("city"), result.getUnresolvedPlaceholderNames());
+  }
+
+  @Test
+  public void strictInterpolationDoesNotTreatReplacementMustachesAsUnresolved() {
+    StringInterpolator interpolator = new StringInterpolator();
+    StringInterpolator.InterpolationResult result = interpolator.interpolateStrictly("Hi {{name}}", Map.of(
+        "name", "{{Ada}}"
+    ));
+
+    assertEquals("Hi {{Ada}}", result.getValue());
+    assertEquals(Set.of(), result.getUnresolvedPlaceholderNames());
+  }
+
+  @Test
+  public void strictInterpolationRejectsMalformedPlaceholders() {
+    StringInterpolator interpolator = new StringInterpolator();
+
+    assertThrows(IllegalArgumentException.class,
+        () -> interpolator.interpolateStrictly("Hi {{ name }}", Map.of()),
+        "Expected placeholder names with spaces to be rejected");
   }
 }
