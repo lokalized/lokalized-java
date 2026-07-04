@@ -4,15 +4,23 @@ This project includes or generates data derived from third-party materials liste
 
 ## Unicode CLDR
 
-Lokalized includes generated plural-rule data derived from Unicode CLDR 48.2 data files:
+Lokalized includes generated plural-rule and locale-metadata data derived from Unicode CLDR 48.2 data files:
 
 * `common/supplemental/plurals.xml`
 * `common/supplemental/ordinals.xml`
 * `common/supplemental/pluralRanges.xml`
+* `common/supplemental/likelySubtags.xml`
+* `common/supplemental/supplementalMetadata.xml`
+* `common/supplemental/supplementalData.xml`
+* `common/validity/language.xml`
+* `common/validity/script.xml`
+* `common/validity/region.xml`
+* `common/validity/variant.xml`
 
 Source:
 
 * https://github.com/unicode-org/cldr/tree/release-48-2/common/supplemental
+* https://github.com/unicode-org/cldr/tree/release-48-2/common/validity
 
 The pinned source files are stored under `src/test/resources/cldr/48.2/` and carry their own SPDX notices.
 Generated Java files containing CLDR-derived data identify their CLDR source version in their file headers.

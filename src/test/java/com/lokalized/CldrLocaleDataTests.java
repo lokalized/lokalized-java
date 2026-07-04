@@ -1,0 +1,60 @@
+/*
+ * Copyright 2017-2022 Product Mog LLC, 2022-2026 Revetware LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.lokalized;
+
+import org.junit.jupiter.api.Test;
+
+import javax.annotation.concurrent.ThreadSafe;
+import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+/**
+ * Exercises CLDR-backed locale metadata.
+ *
+ * @author <a href="https://revetkn.com">Mark Allen</a>
+ */
+@ThreadSafe
+public class CldrLocaleDataTests {
+  @Test
+  public void canonicalLanguageTagsUseCldrAliases() {
+    assertEquals("ro", CldrLocaleData.canonicalLanguageTag("mo"));
+    assertEquals("sr-Latn-BA", CldrLocaleData.canonicalLanguageTag("sh-BA"));
+    assertEquals("en-GB-oxendict", CldrLocaleData.canonicalLanguageTag("en-GB-oed"));
+    assertEquals("und-Zinh", CldrLocaleData.canonicalLanguageTag("und-Qaai"));
+  }
+
+  @Test
+  public void likelySubtagsUsePinnedCldrData() {
+    assertEquals("zh-Hant-TW", CldrLocaleData.likelySubtagFor("zh-TW").get());
+    assertEquals("zh-Hant-TW", CldrLocaleData.likelySubtagFor("zh-Hant").get());
+    assertEquals("sr-Latn-RS", CldrLocaleData.likelySubtagFor("sr-Latn").get());
+    assertEquals("sr-Latn-RS", CldrLocaleData.likelySubtagFor("sh").get());
+    assertEquals("sr-Cyrl-RS", CldrLocaleData.likelySubtagFor("sr").get());
+  }
+
+  @Test
+  public void fallbackLocalesIncludeCldrParentLocales() {
+    List<String> languageTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("en-AU")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+
+    assertEquals(List.of("en-AU", "en-001", "en"), languageTags);
+  }
+}

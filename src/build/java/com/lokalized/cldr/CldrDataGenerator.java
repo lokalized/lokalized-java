@@ -34,9 +34,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Formatter;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import static java.lang.String.format;
 
@@ -48,13 +50,29 @@ import static java.lang.String.format;
 public final class CldrDataGenerator {
   private static final String CLDR_VERSION = "48.2";
   private static final String SOURCE_URL = "https://github.com/unicode-org/cldr/tree/release-48-2/common/supplemental";
+  private static final String LOCALE_SOURCE_URL = "https://github.com/unicode-org/cldr/tree/release-48-2/common";
   private static final String PLURALS_RESOURCE = "common/supplemental/plurals.xml";
   private static final String ORDINALS_RESOURCE = "common/supplemental/ordinals.xml";
   private static final String PLURAL_RANGES_RESOURCE = "common/supplemental/pluralRanges.xml";
+  private static final String LIKELY_SUBTAGS_RESOURCE = "common/supplemental/likelySubtags.xml";
+  private static final String SUPPLEMENTAL_METADATA_RESOURCE = "common/supplemental/supplementalMetadata.xml";
+  private static final String SUPPLEMENTAL_DATA_RESOURCE = "common/supplemental/supplementalData.xml";
+  private static final String VALIDITY_LANGUAGE_RESOURCE = "common/validity/language.xml";
+  private static final String VALIDITY_SCRIPT_RESOURCE = "common/validity/script.xml";
+  private static final String VALIDITY_REGION_RESOURCE = "common/validity/region.xml";
+  private static final String VALIDITY_VARIANT_RESOURCE = "common/validity/variant.xml";
   private static final String PLURALS_SHA_256 = "d701d8b461afd2ba5eb21f9c1d645c8a661de225596afcf0f492ee36c69d727d";
   private static final String ORDINALS_SHA_256 = "129bf4aa6f41d47931bf908ebaa261ec0b73b768f1fe3be90c06ab11fb49880a";
   private static final String PLURAL_RANGES_SHA_256 = "42c82db9baaa8667921b4dea32b6322fd5e43004e166a43ae33b51cef5dc0f52";
+  private static final String LIKELY_SUBTAGS_SHA_256 = "b0049bc6420715b1e3010f43d95745dca227c5aa60357d1d89a1bdcb06287312";
+  private static final String SUPPLEMENTAL_METADATA_SHA_256 = "36e807ce72b15304dd993f132216f408351be1c4376edaa2fe9e9547e2efcac1";
+  private static final String SUPPLEMENTAL_DATA_SHA_256 = "cd2af39aef82fdbfba4d591c87548203350538ad2318486d104b3b38b8d62f1a";
+  private static final String VALIDITY_LANGUAGE_SHA_256 = "3f2be6cb8f4a1b506a5bc8d79d3a91349f3061ade565f836c534c00c2efd2996";
+  private static final String VALIDITY_SCRIPT_SHA_256 = "30f7f5f64be0df200bdfe42f7ce103a045ab661490885a7f060f31d4199be948";
+  private static final String VALIDITY_REGION_SHA_256 = "e751e0eedd46b52c38f3cdb72b0fab61ac8b48e052e8b28ba74b6ac26c4c8cb1";
+  private static final String VALIDITY_VARIANT_SHA_256 = "49019a8e903802a75197d47ef9854d24655bdac373b8667cf00a33fd9205676e";
   private static final int GENERATED_DATA_CHUNK_SIZE = 24;
+  private static final int GENERATED_STRING_DATA_CHUNK_SIZE = 128;
   private static final SampleRequest[] CARDINALITY_SAMPLE_REQUESTS = new SampleRequest[] {
       sample("he", "0.5"),
       sample("he", "100"),
@@ -172,11 +190,13 @@ public final class CldrDataGenerator {
   private static final class Generator {
     private final Path cldrRoot;
     private final Path runtimeOutputPath;
+    private final Path localeOutputPath;
     private final Path conformanceOutputPath;
 
     private Generator(Path projectRoot) {
       this.cldrRoot = projectRoot.resolve("src/test/resources/cldr").resolve(CLDR_VERSION);
       this.runtimeOutputPath = projectRoot.resolve("src/main/java/com/lokalized/GeneratedCldrPluralData.java");
+      this.localeOutputPath = projectRoot.resolve("src/main/java/com/lokalized/GeneratedCldrLocaleData.java");
       this.conformanceOutputPath = projectRoot.resolve("src/test/java/com/lokalized/GeneratedCldrConformanceData.java");
     }
 
@@ -184,6 +204,13 @@ public final class CldrDataGenerator {
       verifySha256(PLURALS_RESOURCE, PLURALS_SHA_256);
       verifySha256(ORDINALS_RESOURCE, ORDINALS_SHA_256);
       verifySha256(PLURAL_RANGES_RESOURCE, PLURAL_RANGES_SHA_256);
+      verifySha256(LIKELY_SUBTAGS_RESOURCE, LIKELY_SUBTAGS_SHA_256);
+      verifySha256(SUPPLEMENTAL_METADATA_RESOURCE, SUPPLEMENTAL_METADATA_SHA_256);
+      verifySha256(SUPPLEMENTAL_DATA_RESOURCE, SUPPLEMENTAL_DATA_SHA_256);
+      verifySha256(VALIDITY_LANGUAGE_RESOURCE, VALIDITY_LANGUAGE_SHA_256);
+      verifySha256(VALIDITY_SCRIPT_RESOURCE, VALIDITY_SCRIPT_SHA_256);
+      verifySha256(VALIDITY_REGION_RESOURCE, VALIDITY_REGION_SHA_256);
+      verifySha256(VALIDITY_VARIANT_RESOURCE, VALIDITY_VARIANT_SHA_256);
 
       List<LocaleRules> cardinalRules = localeRulesFor(PLURALS_RESOURCE);
       List<LocaleRules> ordinalRules = localeRulesFor(ORDINALS_RESOURCE);
@@ -191,9 +218,13 @@ public final class CldrDataGenerator {
       List<CardinalitySample> cardinalitySamples = cardinalitySamples();
       List<OrdinalitySample> ordinalitySamples = ordinalitySamples();
       List<CardinalityRangeSample> cardinalityRangeSamples = cardinalityRangeSamples();
+      LocaleData localeData = localeData();
 
       Files.createDirectories(runtimeOutputPath.getParent());
       Files.write(runtimeOutputPath, runtimeSourceFor(cardinalRules, ordinalRules, cardinalRanges).getBytes(StandardCharsets.UTF_8));
+
+      Files.createDirectories(localeOutputPath.getParent());
+      Files.write(localeOutputPath, localeSourceFor(localeData).getBytes(StandardCharsets.UTF_8));
 
       Files.createDirectories(conformanceOutputPath.getParent());
       Files.write(conformanceOutputPath, conformanceSourceFor(cardinalitySamples, ordinalitySamples, cardinalityRangeSamples).getBytes(StandardCharsets.UTF_8));
@@ -304,6 +335,203 @@ public final class CldrDataGenerator {
       return Collections.unmodifiableList(samples);
     }
 
+    private LocaleData localeData() {
+      return new LocaleData(
+          aliasesFor("languageAlias"),
+          aliasesFor("scriptAlias"),
+          aliasesFor("territoryAlias"),
+          aliasesFor("variantAlias"),
+          likelySubtags(),
+          parentLocales(),
+          validSubtags(VALIDITY_LANGUAGE_RESOURCE, "language"),
+          validSubtags(VALIDITY_SCRIPT_RESOURCE, "script"),
+          validSubtags(VALIDITY_REGION_RESOURCE, "region"),
+          validSubtags(VALIDITY_VARIANT_RESOURCE, "variant"));
+    }
+
+    private List<StringPair> aliasesFor(String elementName) {
+      Map<String, String> aliasesByType = new LinkedHashMap<>();
+      Document document = documentFor(SUPPLEMENTAL_METADATA_RESOURCE);
+      NodeList aliases = document.getElementsByTagName(elementName);
+
+      for (int i = 0; i < aliases.getLength(); ++i) {
+        Element alias = (Element) aliases.item(i);
+        String type = canonicalCldrTag(alias.getAttribute("type"));
+        String replacement = firstReplacement(alias.getAttribute("replacement"));
+
+        if (type.length() > 0 && replacement.length() > 0)
+          aliasesByType.put(type, canonicalCldrTag(replacement));
+      }
+
+      return stringPairsFor(aliasesByType);
+    }
+
+    private List<StringPair> likelySubtags() {
+      Map<String, String> likelySubtagsByFrom = new LinkedHashMap<>();
+      Document document = documentFor(LIKELY_SUBTAGS_RESOURCE);
+      NodeList likelySubtags = document.getElementsByTagName("likelySubtag");
+
+      for (int i = 0; i < likelySubtags.getLength(); ++i) {
+        Element likelySubtag = (Element) likelySubtags.item(i);
+        String from = canonicalCldrTag(likelySubtag.getAttribute("from"));
+        String to = canonicalCldrTag(likelySubtag.getAttribute("to"));
+
+        if (from.length() > 0 && to.length() > 0)
+          likelySubtagsByFrom.put(from, to);
+      }
+
+      return stringPairsFor(likelySubtagsByFrom);
+    }
+
+    private List<StringPair> parentLocales() {
+      Map<String, String> parentsByLocale = new LinkedHashMap<>();
+      Document document = documentFor(SUPPLEMENTAL_DATA_RESOURCE);
+      NodeList parentLocaleElements = document.getElementsByTagName("parentLocale");
+
+      for (int i = 0; i < parentLocaleElements.getLength(); ++i) {
+        Element parentLocale = (Element) parentLocaleElements.item(i);
+        Element parentLocales = (Element) parentLocale.getParentNode();
+
+        if (parentLocales.hasAttribute("component"))
+          continue;
+
+        String parent = canonicalCldrTag(parentLocale.getAttribute("parent"));
+
+        for (String locale : parentLocale.getAttribute("locales").split("\\s+")) {
+          String child = canonicalCldrTag(locale);
+
+          if (child.length() > 0 && parent.length() > 0)
+            parentsByLocale.put(child, parent);
+        }
+      }
+
+      return stringPairsFor(parentsByLocale);
+    }
+
+    private List<String> validSubtags(String resourceName, String type) {
+      Set<String> subtags = new LinkedHashSet<>();
+      Document document = documentFor(resourceName);
+      NodeList ids = document.getElementsByTagName("id");
+
+      for (int i = 0; i < ids.getLength(); ++i) {
+        Element id = (Element) ids.item(i);
+
+        if (!type.equals(id.getAttribute("type")))
+          continue;
+
+        for (String token : id.getTextContent().split("\\s+")) {
+          String subtag = token.trim();
+
+          if (subtag.length() == 0)
+            continue;
+
+          if (subtag.indexOf('~') >= 0)
+            subtags.addAll(expandedSubtagRange(subtag, type));
+          else
+            subtags.add(canonicalValiditySubtag(subtag, type));
+        }
+      }
+
+      List<String> sortedSubtags = new ArrayList<>(subtags);
+      sortedSubtags.sort(String::compareTo);
+      return Collections.unmodifiableList(sortedSubtags);
+    }
+
+    private List<String> expandedSubtagRange(String range, String type) {
+      String[] endpoints = range.split("~");
+
+      if (endpoints.length != 2)
+        throw new IllegalArgumentException(format("Unsupported CLDR validity range '%s'", range));
+
+      String start = endpoints[0];
+      String endSuffix = endpoints[1];
+      String end = start.substring(0, start.length() - endSuffix.length()) + endSuffix;
+
+      if (start.length() != end.length())
+        throw new IllegalArgumentException(format("Unsupported CLDR validity range '%s'", range));
+
+      List<String> subtags = new ArrayList<>();
+      char startCharacter = start.charAt(start.length() - 1);
+      char endCharacter = end.charAt(end.length() - 1);
+      String prefix = start.substring(0, start.length() - 1);
+
+      if (!prefix.equals(end.substring(0, end.length() - 1)) || startCharacter > endCharacter)
+        throw new IllegalArgumentException(format("Unsupported CLDR validity range '%s'", range));
+
+      for (char character = startCharacter; character <= endCharacter; ++character)
+        subtags.add(canonicalValiditySubtag(prefix + character, type));
+
+      return Collections.unmodifiableList(subtags);
+    }
+
+    private List<StringPair> stringPairsFor(Map<String, String> values) {
+      List<StringPair> pairs = new ArrayList<>();
+
+      for (Map.Entry<String, String> entry : values.entrySet())
+        pairs.add(new StringPair(entry.getKey(), entry.getValue()));
+
+      pairs.sort(Comparator.comparing(StringPair::getKey).thenComparing(StringPair::getValue));
+      return Collections.unmodifiableList(pairs);
+    }
+
+    private String firstReplacement(String replacement) {
+      String trimmedReplacement = replacement.trim();
+      int separatorIndex = trimmedReplacement.indexOf(' ');
+      return separatorIndex < 0 ? trimmedReplacement : trimmedReplacement.substring(0, separatorIndex);
+    }
+
+    private String canonicalCldrTag(String tag) {
+      String normalizedTag = tag.trim().replace('_', '-');
+
+      if (normalizedTag.length() == 0)
+        return "";
+
+      String[] subtags = normalizedTag.split("-");
+      List<String> canonicalSubtags = new ArrayList<>(subtags.length);
+
+      for (int i = 0; i < subtags.length; ++i) {
+        String subtag = subtags[i];
+
+        if (i == 0) {
+          canonicalSubtags.add(subtag.toLowerCase(Locale.ROOT));
+        } else if (subtag.length() == 4 && isAlphabetic(subtag)) {
+          canonicalSubtags.add(subtag.substring(0, 1).toUpperCase(Locale.ROOT) + subtag.substring(1).toLowerCase(Locale.ROOT));
+        } else if ((subtag.length() == 2 && isAlphabetic(subtag)) || (subtag.length() == 3 && isNumeric(subtag))) {
+          canonicalSubtags.add(subtag.toUpperCase(Locale.ROOT));
+        } else {
+          canonicalSubtags.add(subtag.toLowerCase(Locale.ROOT));
+        }
+      }
+
+      return String.join("-", canonicalSubtags);
+    }
+
+    private String canonicalValiditySubtag(String subtag, String type) {
+      if ("script".equals(type))
+        return subtag.substring(0, 1).toUpperCase(Locale.ROOT) + subtag.substring(1).toLowerCase(Locale.ROOT);
+
+      if ("region".equals(type))
+        return subtag.toUpperCase(Locale.ROOT);
+
+      return subtag.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isAlphabetic(String value) {
+      for (int i = 0; i < value.length(); ++i)
+        if (!Character.isLetter(value.charAt(i)))
+          return false;
+
+      return true;
+    }
+
+    private boolean isNumeric(String value) {
+      for (int i = 0; i < value.length(); ++i)
+        if (!Character.isDigit(value.charAt(i)))
+          return false;
+
+      return true;
+    }
+
     private String runtimeSourceFor(List<LocaleRules> cardinalRules,
                                     List<LocaleRules> ordinalRules,
                                     List<LocaleRanges> cardinalRanges) {
@@ -345,6 +573,75 @@ public final class CldrDataGenerator {
       appendLocaleRulesMethods(source, "cardinalRules", cardinalRules);
       appendLocaleRulesMethods(source, "ordinalRules", ordinalRules);
       appendLocaleRangesMethods(source, "cardinalRanges", cardinalRanges);
+      source.append("}\n");
+
+      return source.toString();
+    }
+
+    private String localeSourceFor(LocaleData localeData) {
+      StringBuilder source = new StringBuilder();
+      appendCopyrightAndPackage(source);
+      source.append("// Generated by src/build/java/com/lokalized/cldr/CldrDataGenerator.java from CLDR ")
+          .append(CLDR_VERSION).append(". Do not edit by hand.\n")
+          .append("final class GeneratedCldrLocaleData {\n")
+          .append("  @NonNull\n")
+          .append("  static final String CLDR_VERSION = \"").append(CLDR_VERSION).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String SOURCE_URL = \"").append(LOCALE_SOURCE_URL).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String LIKELY_SUBTAGS_RESOURCE = \"").append(LIKELY_SUBTAGS_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String SUPPLEMENTAL_METADATA_RESOURCE = \"").append(SUPPLEMENTAL_METADATA_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String SUPPLEMENTAL_DATA_RESOURCE = \"").append(SUPPLEMENTAL_DATA_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_LANGUAGE_RESOURCE = \"").append(VALIDITY_LANGUAGE_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_SCRIPT_RESOURCE = \"").append(VALIDITY_SCRIPT_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_REGION_RESOURCE = \"").append(VALIDITY_REGION_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_VARIANT_RESOURCE = \"").append(VALIDITY_VARIANT_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String LIKELY_SUBTAGS_SHA_256 = \"").append(LIKELY_SUBTAGS_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String SUPPLEMENTAL_METADATA_SHA_256 = \"").append(SUPPLEMENTAL_METADATA_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String SUPPLEMENTAL_DATA_SHA_256 = \"").append(SUPPLEMENTAL_DATA_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_LANGUAGE_SHA_256 = \"").append(VALIDITY_LANGUAGE_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_SCRIPT_SHA_256 = \"").append(VALIDITY_SCRIPT_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_REGION_SHA_256 = \"").append(VALIDITY_REGION_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
+          .append("  static final String VALIDITY_VARIANT_SHA_256 = \"").append(VALIDITY_VARIANT_SHA_256).append("\";\n");
+      appendStringPairsField(source, "LANGUAGE_ALIASES", "languageAliases", localeData.getLanguageAliases());
+      appendStringPairsField(source, "SCRIPT_ALIASES", "scriptAliases", localeData.getScriptAliases());
+      appendStringPairsField(source, "REGION_ALIASES", "regionAliases", localeData.getRegionAliases());
+      appendStringPairsField(source, "VARIANT_ALIASES", "variantAliases", localeData.getVariantAliases());
+      appendStringPairsField(source, "LIKELY_SUBTAGS", "likelySubtags", localeData.getLikelySubtags());
+      appendStringPairsField(source, "PARENT_LOCALES", "parentLocales", localeData.getParentLocales());
+      appendStringArrayField(source, "VALID_LANGUAGES", "validLanguages", localeData.getValidLanguages());
+      appendStringArrayField(source, "VALID_SCRIPTS", "validScripts", localeData.getValidScripts());
+      appendStringArrayField(source, "VALID_REGIONS", "validRegions", localeData.getValidRegions());
+      appendStringArrayField(source, "VALID_VARIANTS", "validVariants", localeData.getValidVariants());
+      source.append("\n")
+          .append("  private GeneratedCldrLocaleData() {\n")
+          .append("    // Non-instantiable\n")
+          .append("  }\n")
+          .append("\n");
+      appendLocaleDataConcatenationMethods(source);
+      appendStringPairsMethods(source, "languageAliases", localeData.getLanguageAliases());
+      appendStringPairsMethods(source, "scriptAliases", localeData.getScriptAliases());
+      appendStringPairsMethods(source, "regionAliases", localeData.getRegionAliases());
+      appendStringPairsMethods(source, "variantAliases", localeData.getVariantAliases());
+      appendStringPairsMethods(source, "likelySubtags", localeData.getLikelySubtags());
+      appendStringPairsMethods(source, "parentLocales", localeData.getParentLocales());
+      appendStringArrayMethods(source, "validLanguages", localeData.getValidLanguages());
+      appendStringArrayMethods(source, "validScripts", localeData.getValidScripts());
+      appendStringArrayMethods(source, "validRegions", localeData.getValidRegions());
+      appendStringArrayMethods(source, "validVariants", localeData.getValidVariants());
       source.append("}\n");
 
       return source.toString();
@@ -478,6 +775,38 @@ public final class CldrDataGenerator {
       source.append("  );\n");
     }
 
+    private void appendStringPairsField(StringBuilder source, String fieldName, String methodPrefix, List<StringPair> stringPairs) {
+      source.append("  @NonNull\n")
+          .append("  static final String @NonNull [] @NonNull [] ").append(fieldName).append(" = concatenateStringPairs(\n");
+
+      for (int i = 0; i < numberOfStringChunks(stringPairs.size()); ++i) {
+        source.append("      ").append(methodPrefix).append(i).append("()");
+
+        if (i < numberOfStringChunks(stringPairs.size()) - 1)
+          source.append(",");
+
+        source.append("\n");
+      }
+
+      source.append("  );\n");
+    }
+
+    private void appendStringArrayField(StringBuilder source, String fieldName, String methodPrefix, List<String> values) {
+      source.append("  @NonNull\n")
+          .append("  static final String @NonNull [] ").append(fieldName).append(" = concatenateStrings(\n");
+
+      for (int i = 0; i < numberOfStringChunks(values.size()); ++i) {
+        source.append("      ").append(methodPrefix).append(i).append("()");
+
+        if (i < numberOfStringChunks(values.size()) - 1)
+          source.append(",");
+
+        source.append("\n");
+      }
+
+      source.append("  );\n");
+    }
+
     private void appendRuntimeConcatenationMethods(StringBuilder source) {
       source.append("  @NonNull\n")
           .append("  private static LocaleRules @NonNull [] concatenateLocaleRules(@NonNull LocaleRules @NonNull [] @NonNull ... arrays) {\n")
@@ -517,6 +846,45 @@ public final class CldrDataGenerator {
           .append("\n");
     }
 
+    private void appendLocaleDataConcatenationMethods(StringBuilder source) {
+      source.append("  @NonNull\n")
+          .append("  private static String @NonNull [] @NonNull [] concatenateStringPairs(@NonNull String @NonNull [] @NonNull [] @NonNull ... arrays) {\n")
+          .append("    int size = 0;\n")
+          .append("\n")
+          .append("    for (String @NonNull [] @NonNull [] array : arrays)\n")
+          .append("      size += array.length;\n")
+          .append("\n")
+          .append("    String @NonNull [] @NonNull [] result = new String[size][2];\n")
+          .append("    int offset = 0;\n")
+          .append("\n")
+          .append("    for (String @NonNull [] @NonNull [] array : arrays) {\n")
+          .append("      System.arraycopy(array, 0, result, offset, array.length);\n")
+          .append("      offset += array.length;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    return result;\n")
+          .append("  }\n")
+          .append("\n")
+          .append("  @NonNull\n")
+          .append("  private static String @NonNull [] concatenateStrings(@NonNull String @NonNull [] @NonNull ... arrays) {\n")
+          .append("    int size = 0;\n")
+          .append("\n")
+          .append("    for (String @NonNull [] array : arrays)\n")
+          .append("      size += array.length;\n")
+          .append("\n")
+          .append("    String @NonNull [] result = new String[size];\n")
+          .append("    int offset = 0;\n")
+          .append("\n")
+          .append("    for (String @NonNull [] array : arrays) {\n")
+          .append("      System.arraycopy(array, 0, result, offset, array.length);\n")
+          .append("      offset += array.length;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    return result;\n")
+          .append("  }\n")
+          .append("\n");
+    }
+
     private void appendLocaleRulesMethods(StringBuilder source, String methodPrefix, List<LocaleRules> localeRules) {
       for (int chunkIndex = 0; chunkIndex < numberOfChunks(localeRules.size()); ++chunkIndex) {
         source.append("  @NonNull\n")
@@ -541,14 +909,48 @@ public final class CldrDataGenerator {
       }
     }
 
+    private void appendStringPairsMethods(StringBuilder source, String methodPrefix, List<StringPair> stringPairs) {
+      for (int chunkIndex = 0; chunkIndex < numberOfStringChunks(stringPairs.size()); ++chunkIndex) {
+        source.append("  @NonNull\n")
+            .append("  private static String @NonNull [] @NonNull [] ").append(methodPrefix).append(chunkIndex).append("() {\n")
+            .append("    return new String[][] {\n");
+        appendStringPairs(source, stringChunk(stringPairs, chunkIndex));
+        source.append("    };\n")
+            .append("  }\n")
+            .append("\n");
+      }
+    }
+
+    private void appendStringArrayMethods(StringBuilder source, String methodPrefix, List<String> values) {
+      for (int chunkIndex = 0; chunkIndex < numberOfStringChunks(values.size()); ++chunkIndex) {
+        source.append("  @NonNull\n")
+            .append("  private static String @NonNull [] ").append(methodPrefix).append(chunkIndex).append("() {\n")
+            .append("    return new String[] {\n");
+        appendStrings(source, stringChunk(values, chunkIndex));
+        source.append("    };\n")
+            .append("  }\n")
+            .append("\n");
+      }
+    }
+
     private <T> List<T> chunk(List<T> values, int chunkIndex) {
       int start = chunkIndex * GENERATED_DATA_CHUNK_SIZE;
       int end = Math.min(values.size(), start + GENERATED_DATA_CHUNK_SIZE);
       return values.subList(start, end);
     }
 
+    private <T> List<T> stringChunk(List<T> values, int chunkIndex) {
+      int start = chunkIndex * GENERATED_STRING_DATA_CHUNK_SIZE;
+      int end = Math.min(values.size(), start + GENERATED_STRING_DATA_CHUNK_SIZE);
+      return values.subList(start, end);
+    }
+
     private int numberOfChunks(int size) {
       return Math.max(1, (size + GENERATED_DATA_CHUNK_SIZE - 1) / GENERATED_DATA_CHUNK_SIZE);
+    }
+
+    private int numberOfStringChunks(int size) {
+      return Math.max(1, (size + GENERATED_STRING_DATA_CHUNK_SIZE - 1) / GENERATED_STRING_DATA_CHUNK_SIZE);
     }
 
     private void appendLocaleRules(StringBuilder source, List<LocaleRules> localeRules) {
@@ -601,6 +1003,30 @@ public final class CldrDataGenerator {
         source.append("        })");
 
         if (i < localeRanges.size() - 1)
+          source.append(",");
+
+        source.append("\n");
+      }
+    }
+
+    private void appendStringPairs(StringBuilder source, List<StringPair> stringPairs) {
+      for (int i = 0; i < stringPairs.size(); ++i) {
+        StringPair stringPair = stringPairs.get(i);
+        source.append("        {\"").append(escape(stringPair.getKey())).append("\", \"")
+            .append(escape(stringPair.getValue())).append("\"}");
+
+        if (i < stringPairs.size() - 1)
+          source.append(",");
+
+        source.append("\n");
+      }
+    }
+
+    private void appendStrings(StringBuilder source, List<String> values) {
+      for (int i = 0; i < values.size(); ++i) {
+        source.append("        \"").append(escape(values.get(i))).append("\"");
+
+        if (i < values.size() - 1)
           source.append(",");
 
         source.append("\n");
@@ -982,6 +1408,99 @@ public final class CldrDataGenerator {
 
   private static String escape(String value) {
     return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
+  private static final class LocaleData {
+    private final List<StringPair> languageAliases;
+    private final List<StringPair> scriptAliases;
+    private final List<StringPair> regionAliases;
+    private final List<StringPair> variantAliases;
+    private final List<StringPair> likelySubtags;
+    private final List<StringPair> parentLocales;
+    private final List<String> validLanguages;
+    private final List<String> validScripts;
+    private final List<String> validRegions;
+    private final List<String> validVariants;
+
+    private LocaleData(List<StringPair> languageAliases,
+                       List<StringPair> scriptAliases,
+                       List<StringPair> regionAliases,
+                       List<StringPair> variantAliases,
+                       List<StringPair> likelySubtags,
+                       List<StringPair> parentLocales,
+                       List<String> validLanguages,
+                       List<String> validScripts,
+                       List<String> validRegions,
+                       List<String> validVariants) {
+      this.languageAliases = languageAliases;
+      this.scriptAliases = scriptAliases;
+      this.regionAliases = regionAliases;
+      this.variantAliases = variantAliases;
+      this.likelySubtags = likelySubtags;
+      this.parentLocales = parentLocales;
+      this.validLanguages = validLanguages;
+      this.validScripts = validScripts;
+      this.validRegions = validRegions;
+      this.validVariants = validVariants;
+    }
+
+    private List<StringPair> getLanguageAliases() {
+      return languageAliases;
+    }
+
+    private List<StringPair> getScriptAliases() {
+      return scriptAliases;
+    }
+
+    private List<StringPair> getRegionAliases() {
+      return regionAliases;
+    }
+
+    private List<StringPair> getVariantAliases() {
+      return variantAliases;
+    }
+
+    private List<StringPair> getLikelySubtags() {
+      return likelySubtags;
+    }
+
+    private List<StringPair> getParentLocales() {
+      return parentLocales;
+    }
+
+    private List<String> getValidLanguages() {
+      return validLanguages;
+    }
+
+    private List<String> getValidScripts() {
+      return validScripts;
+    }
+
+    private List<String> getValidRegions() {
+      return validRegions;
+    }
+
+    private List<String> getValidVariants() {
+      return validVariants;
+    }
+  }
+
+  private static final class StringPair {
+    private final String key;
+    private final String value;
+
+    private StringPair(String key, String value) {
+      this.key = key;
+      this.value = value;
+    }
+
+    private String getKey() {
+      return key;
+    }
+
+    private String getValue() {
+      return value;
+    }
   }
 
   private static final class LocaleRules {

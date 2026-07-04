@@ -334,7 +334,7 @@ public class DefaultStrings implements Strings {
 
 		for (Locale candidateLocale : candidateLocales) {
 			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
-			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(candidateLocale);
+			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(candidateLocale);
 
 			if (localizedStrings == null)
 				continue;
@@ -965,15 +965,23 @@ public class DefaultStrings implements Strings {
 			if ("*".equals(range))
 				return getFallbackLocale();
 
-			// Exact tag match?
+			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
+
+			// Exact or CLDR-canonical tag match?
 			for (Locale locale : availableLocales)
-				if (locale.toLanguageTag().equalsIgnoreCase(range))
+				if (locale.toLanguageTag().equalsIgnoreCase(range) ||
+						CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag()).equalsIgnoreCase(canonicalRange))
 					return locale;
 
-			Optional<Locale> lookupMatch = lookupMatchByTruncation(range, availableLocales);
+			Optional<Locale> lookupMatch = lookupMatchByFallbackCandidates(range, availableLocales);
 
 			if (lookupMatch.isPresent())
 				return lookupMatch.get();
+
+			Optional<Locale> likelySubtagMatch = lookupMatchByLikelySubtag(range, availableLocales);
+
+			if (likelySubtagMatch.isPresent())
+				return likelySubtagMatch.get();
 
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
 			String primary = normalizedLanguageCode(range.split("-")[0]); // e.g. "pt"
@@ -1031,16 +1039,7 @@ public class DefaultStrings implements Strings {
 		requireNonNull(locale);
 
 		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
-		candidates.add(locale);
-
-		String languageTag = locale.toLanguageTag();
-		int subtagSeparatorIndex = languageTag.lastIndexOf('-');
-
-		while (subtagSeparatorIndex > 0) {
-			languageTag = languageTag.substring(0, subtagSeparatorIndex);
-			candidates.add(Locale.forLanguageTag(languageTag));
-			subtagSeparatorIndex = languageTag.lastIndexOf('-');
-		}
+		candidates.addAll(CldrLocaleData.fallbackLocalesFor(locale));
 
 		LocaleUtils.normalizedLanguage(locale)
 				.map(getTiebreakerLocalesByLanguageCode()::get)
@@ -1050,26 +1049,61 @@ public class DefaultStrings implements Strings {
 		return new ArrayList<>(candidates);
 	}
 
+	@Nullable
+	private Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKeyFor(@NonNull Locale locale) {
+		requireNonNull(locale);
+
+		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
+
+		if (localizedStrings != null)
+			return localizedStrings;
+
+		for (Entry<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> entry : getLocalizedStringsByKeyByLocale().entrySet())
+			if (CldrLocaleData.equivalent(entry.getKey(), locale))
+				return entry.getValue();
+
+		return null;
+	}
+
 	@NonNull
-	private Optional<@NonNull Locale> lookupMatchByTruncation(@NonNull String range,
-																														@NonNull List<@NonNull Locale> availableLocales) {
+	private Optional<@NonNull Locale> lookupMatchByFallbackCandidates(@NonNull String range,
+																																		@NonNull List<@NonNull Locale> availableLocales) {
 		requireNonNull(range);
 		requireNonNull(availableLocales);
 
 		if (range.contains("*"))
 			return Optional.empty();
 
-		String candidateTag = range;
-		int subtagSeparatorIndex = candidateTag.lastIndexOf('-');
-
-		while (subtagSeparatorIndex > 0) {
-			candidateTag = candidateTag.substring(0, subtagSeparatorIndex);
+		for (Locale candidateLocale : CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range))) {
+			String candidateTag = candidateLocale.toLanguageTag();
 
 			for (Locale locale : availableLocales)
-				if (locale.toLanguageTag().equalsIgnoreCase(candidateTag))
+				if (locale.toLanguageTag().equalsIgnoreCase(candidateTag) || CldrLocaleData.equivalent(locale, candidateLocale))
 					return Optional.of(locale);
+		}
 
-			subtagSeparatorIndex = candidateTag.lastIndexOf('-');
+		return Optional.empty();
+	}
+
+	@NonNull
+	private Optional<@NonNull Locale> lookupMatchByLikelySubtag(@NonNull String range,
+																															@NonNull List<@NonNull Locale> availableLocales) {
+		requireNonNull(range);
+		requireNonNull(availableLocales);
+
+		if (range.contains("*"))
+			return Optional.empty();
+
+		Optional<String> likelySubtag = CldrLocaleData.likelySubtagFor(range);
+
+		if (!likelySubtag.isPresent())
+			return Optional.empty();
+
+		for (Locale locale : availableLocales) {
+			Optional<String> availableLikelySubtag = CldrLocaleData.likelySubtagFor(locale);
+
+			if (availableLikelySubtag.isPresent() && availableLikelySubtag.get().equalsIgnoreCase(likelySubtag.get()))
+				return Optional.of(locale);
 		}
 
 		return Optional.empty();

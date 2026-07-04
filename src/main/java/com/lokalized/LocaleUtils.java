@@ -48,7 +48,7 @@ class LocaleUtils {
    * <li>{@code in} for {@code id} (Indonesian)</li>
    * </ul>
    * <p>
-   * This method ensures we always work with the "modern" versions.
+   * This method ensures we always work with the "modern" versions and other CLDR language aliases.
    *
    * @param locale the locale for which the language code is extracted, not null
    * @return the normalized language for the locale (if present), not null
@@ -61,12 +61,7 @@ class LocaleUtils {
     if (language == null || "".equals(language) || "*".equals(language))
       return Optional.empty();
 
-    if ("iw".equals(language))
-      language = "he";
-    else if ("ji".equals(language))
-      language = "yi";
-    else if ("in".equals(language))
-      language = "id";
+    language = CldrLocaleData.languageAliasFor(language).orElse(language);
 
     return Optional.of(language);
   }

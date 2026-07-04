@@ -49,7 +49,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.MissingResourceException;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.jar.JarEntry;
@@ -496,12 +495,7 @@ public final class LocalizedStringLoader {
     if ("".equals(locale.getLanguage()))
       return false;
 
-    try {
-      locale.getISO3Language();
-      return true;
-    } catch (MissingResourceException e) {
-      return false;
-    }
+    return CldrLocaleData.isKnownLanguageTag(languageTag);
   }
 
   private static boolean hasJsonExtension(@NonNull String fileName) {

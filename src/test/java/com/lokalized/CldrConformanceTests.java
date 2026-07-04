@@ -41,6 +41,13 @@ public class CldrConformanceTests {
     assertSha256(GeneratedCldrConformanceData.PLURALS_RESOURCE, GeneratedCldrConformanceData.PLURALS_SHA_256);
     assertSha256(GeneratedCldrConformanceData.ORDINALS_RESOURCE, GeneratedCldrConformanceData.ORDINALS_SHA_256);
     assertSha256(GeneratedCldrConformanceData.PLURAL_RANGES_RESOURCE, GeneratedCldrConformanceData.PLURAL_RANGES_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.LIKELY_SUBTAGS_RESOURCE, GeneratedCldrLocaleData.LIKELY_SUBTAGS_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.SUPPLEMENTAL_METADATA_RESOURCE, GeneratedCldrLocaleData.SUPPLEMENTAL_METADATA_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.SUPPLEMENTAL_DATA_RESOURCE, GeneratedCldrLocaleData.SUPPLEMENTAL_DATA_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.VALIDITY_LANGUAGE_RESOURCE, GeneratedCldrLocaleData.VALIDITY_LANGUAGE_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.VALIDITY_SCRIPT_RESOURCE, GeneratedCldrLocaleData.VALIDITY_SCRIPT_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.VALIDITY_REGION_RESOURCE, GeneratedCldrLocaleData.VALIDITY_REGION_SHA_256);
+    assertSha256(GeneratedCldrLocaleData.VALIDITY_VARIANT_RESOURCE, GeneratedCldrLocaleData.VALIDITY_VARIANT_SHA_256);
   }
 
   @Test

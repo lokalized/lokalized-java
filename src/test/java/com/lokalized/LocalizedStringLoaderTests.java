@@ -78,6 +78,20 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingAcceptsCldrAliasLocaleFileNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("mo.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("sh.json"), "{\"hi\":\"there\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("mo")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("sh")));
+  }
+
+  @Test
   public void testFilesystemLoadingJsonExtension() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -170,6 +184,21 @@ public class LocalizedStringLoaderTests {
         "Expected unknown locale JSON files to fail during load");
 
     assertTrue(exception.getMessage().contains("template.json"));
+    assertTrue(exception.getMessage().contains("IETF BCP 47"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnknownCldrScriptJsonLocaleFileNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en-Abcd.json"), "{}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unknown CLDR script subtags to fail during load");
+
+    assertTrue(exception.getMessage().contains("en-Abcd.json"));
     assertTrue(exception.getMessage().contains("IETF BCP 47"));
   }
 

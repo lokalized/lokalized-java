@@ -143,6 +143,55 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bestMatchUsesCldrLikelySubtags() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("zh-Hant"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("zh-Hant"), strings.bestMatchFor(Locale.forLanguageTag("zh-TW")));
+	}
+
+	@Test
+	public void bestMatchUsesCldrLanguageAliases() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("sr-Latn"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("sr-Latn"), strings.bestMatchFor(Locale.forLanguageTag("sh-BA")));
+	}
+
+	@Test
+	public void regionalLocalesFallbackPerKeyToCldrParentLocale() {
+		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Colour").translation("Fallback").build();
+		LocalizedString parentLocalizedString = new LocalizedString.Builder("Colour").translation("Colour").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(fallbackLocalizedString),
+						Locale.forLanguageTag("en-001"), Set.of(parentLocalizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en-001"), Locale.forLanguageTag("en"))
+				))
+				.build();
+
+		assertEquals("Colour", strings.get("Colour", Locale.forLanguageTag("en-AU")));
+	}
+
+	@Test
 	public void regionalLocalesFallbackPerKeyToBaseLocale() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
