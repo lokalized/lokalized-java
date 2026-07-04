@@ -5,7 +5,7 @@
     </picture>
 </a>
 
-Lokalized facilitates natural-sounding software translations on the JVM.
+Lokalized facilitates natural-sounding software translations on the JVM.  Proudly powering production systems since 2017.
 
 It is both a file format...
 
