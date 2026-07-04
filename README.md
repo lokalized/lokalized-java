@@ -1216,6 +1216,8 @@ A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PL
 
 Placeholder names may contain letters, digits, underscores, and hyphens.
 
+To render literal mustaches instead of a placeholder, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context.
+
 You are free to add as many as you like to support your translation.
 
 Placeholder values are initially specified by application code - they are the context that is passed in at string evaluation time.

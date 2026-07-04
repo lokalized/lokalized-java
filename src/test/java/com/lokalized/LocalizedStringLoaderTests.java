@@ -325,6 +325,19 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingAllowsEscapedLiteralMustaches() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        "{\"Hello\":\"Literal \\\\{{ name }} and {{name}}\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsInvalidJson() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();

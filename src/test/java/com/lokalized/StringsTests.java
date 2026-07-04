@@ -1020,6 +1020,17 @@ public class StringsTests {
 	}
 
 	@Test
+	public void escapedLiteralMustachesAreNotInterpolated() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello \\{{name}} and {{name}}")
+				.build();
+
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("Hello {{name}} and Ada", strings.get("Greeting", Map.of("name", "Ada")));
+	}
+
+	@Test
 	public void translationFailureHandlerReceivesMissingTranslation() {
 		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))

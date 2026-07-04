@@ -53,6 +53,16 @@ public class StringInterpolatorTests {
   }
 
   @Test
+  public void escapedPlaceholdersAreRenderedLiterally() {
+    StringInterpolator interpolator = new StringInterpolator();
+    String result = interpolator.interpolate("Hi \\{{name}} and {{name}}", Map.of(
+        "name", "Ada"
+    ));
+
+    assertEquals("Hi {{name}} and Ada", result);
+  }
+
+  @Test
   public void strictInterpolationReportsUnresolvedPlaceholders() {
     StringInterpolator interpolator = new StringInterpolator();
     StringInterpolator.InterpolationResult result = interpolator.interpolateStrictly("Hi {{name}} from {{city}}", Map.of(
@@ -72,6 +82,22 @@ public class StringInterpolatorTests {
 
     assertEquals("Hi {{Ada}}", result.getValue());
     assertEquals(Set.of(), result.getUnresolvedPlaceholderNames());
+  }
+
+  @Test
+  public void strictInterpolationIgnoresEscapedPlaceholders() {
+    StringInterpolator interpolator = new StringInterpolator();
+    StringInterpolator.InterpolationResult result = interpolator.interpolateStrictly("Hi \\{{name}} and {{name}}", Map.of(
+        "name", "Ada"
+    ));
+
+    assertEquals("Hi {{name}} and Ada", result.getValue());
+    assertEquals(Set.of(), result.getUnresolvedPlaceholderNames());
+  }
+
+  @Test
+  public void placeholderNameExtractionIgnoresEscapedPlaceholders() {
+    assertEquals(Set.of("real"), StringInterpolator.placeholderNamesIn("\\{{ ignored }} and {{real}}"));
   }
 
   @Test

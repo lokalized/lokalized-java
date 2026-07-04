@@ -25,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static java.lang.String.format;
@@ -33,20 +32,27 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Merges data into a string using {@code {{placeholder}} syntax}.
+ * <p>
+ * Prefix the opening mustaches with a backslash to render literal mustaches instead of a placeholder.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
 class StringInterpolator {
   @NonNull
-  private static final Pattern PLACEHOLDER_PATTERN;
-  @NonNull
   private static final Pattern PLACEHOLDER_NAME_PATTERN;
+  @NonNull
+  private static final String PLACEHOLDER_START;
+  @NonNull
+  private static final String PLACEHOLDER_END;
+  private static final char ESCAPE_CHARACTER;
 
   static {
     String placeholderNamePattern = "[\\p{Alpha}_][\\p{Alnum}_-]*";
-    PLACEHOLDER_PATTERN = Pattern.compile("\\{\\{(" + placeholderNamePattern + ")}}");
     PLACEHOLDER_NAME_PATTERN = Pattern.compile(placeholderNamePattern);
+    PLACEHOLDER_START = "{{";
+    PLACEHOLDER_END = "}}";
+    ESCAPE_CHARACTER = '\\';
   }
 
   @NonNull
@@ -54,33 +60,21 @@ class StringInterpolator {
     requireNonNull(string);
     requireNonNull(context);
 
-    Matcher matcher = PLACEHOLDER_PATTERN.matcher(string);
-
-    // Matcher#appendReplacement only accepts StringBuffer, not StringBuilder
-    StringBuffer stringBuffer = new StringBuffer();
-
-    while (matcher.find()) {
-      String name = matcher.group(1);
-      Object value = context.get(name);
-
-      if (value instanceof Optional)
-        value = ((Optional<?>) value).orElse(null);
-
-      if (value == null) {
-        matcher.appendReplacement(stringBuffer, format("{{%s}}", name));
-      } else {
-        String valueAsString = value.toString();
-        matcher.appendReplacement(stringBuffer, Matcher.quoteReplacement(valueAsString));
-      }
-    }
-
-    matcher.appendTail(stringBuffer);
-
-    return stringBuffer.toString();
+    return interpolate(string, context, false).getValue();
   }
 
   @NonNull
   public InterpolationResult interpolateStrictly(@NonNull String string, @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(string);
+    requireNonNull(context);
+
+    return interpolate(string, context, true);
+  }
+
+  @NonNull
+  private static InterpolationResult interpolate(@NonNull String string,
+                                                 @NonNull Map<@NonNull String, @Nullable Object> context,
+                                                 boolean strict) {
     requireNonNull(string);
     requireNonNull(context);
 
@@ -89,29 +83,62 @@ class StringInterpolator {
     int index = 0;
 
     while (index < string.length()) {
-      int placeholderStart = string.indexOf("{{", index);
-      int unexpectedPlaceholderEnd = string.indexOf("}}", index);
+      int placeholderStart = string.indexOf(PLACEHOLDER_START, index);
+      int unexpectedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, index);
 
-      if (unexpectedPlaceholderEnd >= 0 && (placeholderStart < 0 || unexpectedPlaceholderEnd < placeholderStart))
-        throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '}}' at index %d", unexpectedPlaceholderEnd));
+      if (unexpectedPlaceholderEnd >= 0 && (placeholderStart < 0 || unexpectedPlaceholderEnd < placeholderStart)) {
+        if (strict)
+          throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '%s' at index %d",
+              PLACEHOLDER_END, unexpectedPlaceholderEnd));
+
+        stringBuilder.append(string, index, unexpectedPlaceholderEnd + PLACEHOLDER_END.length());
+        index = unexpectedPlaceholderEnd + PLACEHOLDER_END.length();
+        continue;
+      }
 
       if (placeholderStart < 0) {
         stringBuilder.append(string, index, string.length());
         break;
       }
 
+      if (isEscapedPlaceholderStart(string, placeholderStart)) {
+        stringBuilder.append(string, index, placeholderStart - 1);
+
+        int escapedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, placeholderStart + PLACEHOLDER_START.length());
+
+        if (escapedPlaceholderEnd < 0) {
+          stringBuilder.append(string, placeholderStart, string.length());
+          break;
+        }
+
+        stringBuilder.append(string, placeholderStart, escapedPlaceholderEnd + PLACEHOLDER_END.length());
+        index = escapedPlaceholderEnd + PLACEHOLDER_END.length();
+        continue;
+      }
+
       stringBuilder.append(string, index, placeholderStart);
 
-      int placeholderEnd = string.indexOf("}}", placeholderStart + "{{".length());
+      int placeholderEnd = string.indexOf(PLACEHOLDER_END, placeholderStart + PLACEHOLDER_START.length());
 
-      if (placeholderEnd < 0)
-        throw new IllegalArgumentException(format("Unclosed placeholder starting at index %d", placeholderStart));
+      if (placeholderEnd < 0) {
+        if (strict)
+          throw new IllegalArgumentException(format("Unclosed placeholder starting at index %d", placeholderStart));
 
-      String placeholderName = string.substring(placeholderStart + "{{".length(), placeholderEnd);
+        stringBuilder.append(string, placeholderStart, string.length());
+        break;
+      }
 
-      if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
-        throw new IllegalArgumentException(format("Malformed placeholder '{{%s}}'. Placeholder names must start with a letter or underscore " +
-            "and contain only letters, digits, underscores, or hyphens", placeholderName));
+      String placeholderName = string.substring(placeholderStart + PLACEHOLDER_START.length(), placeholderEnd);
+
+      if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches()) {
+        if (strict)
+          throw new IllegalArgumentException(format("Malformed placeholder '%s%s%s'. Placeholder names must start with a letter or underscore " +
+              "and contain only letters, digits, underscores, or hyphens", PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
+
+        stringBuilder.append(string, placeholderStart, placeholderEnd + PLACEHOLDER_END.length());
+        index = placeholderEnd + PLACEHOLDER_END.length();
+        continue;
+      }
 
       Object value = context.get(placeholderName);
 
@@ -120,12 +147,12 @@ class StringInterpolator {
 
       if (value == null) {
         unresolvedPlaceholderNames.add(placeholderName);
-        stringBuilder.append("{{").append(placeholderName).append("}}");
+        stringBuilder.append(PLACEHOLDER_START).append(placeholderName).append(PLACEHOLDER_END);
       } else {
         stringBuilder.append(value);
       }
 
-      index = placeholderEnd + "}}".length();
+      index = placeholderEnd + PLACEHOLDER_END.length();
     }
 
     return new InterpolationResult(stringBuilder.toString(), unresolvedPlaceholderNames);
@@ -134,36 +161,12 @@ class StringInterpolator {
   @NonNull
   static Set<@NonNull String> placeholderNamesIn(@NonNull String string) {
     requireNonNull(string);
+    return interpolate(string, Collections.emptyMap(), true).getUnresolvedPlaceholderNames();
+  }
 
-    Set<@NonNull String> placeholderNames = new LinkedHashSet<>();
-    int index = 0;
-
-    while (index < string.length()) {
-      int placeholderStart = string.indexOf("{{", index);
-      int unexpectedPlaceholderEnd = string.indexOf("}}", index);
-
-      if (unexpectedPlaceholderEnd >= 0 && (placeholderStart < 0 || unexpectedPlaceholderEnd < placeholderStart))
-        throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '}}' at index %d", unexpectedPlaceholderEnd));
-
-      if (placeholderStart < 0)
-        break;
-
-      int placeholderEnd = string.indexOf("}}", placeholderStart + "{{".length());
-
-      if (placeholderEnd < 0)
-        throw new IllegalArgumentException(format("Unclosed placeholder starting at index %d", placeholderStart));
-
-      String placeholderName = string.substring(placeholderStart + "{{".length(), placeholderEnd);
-
-      if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
-        throw new IllegalArgumentException(format("Malformed placeholder '{{%s}}'. Placeholder names must start with a letter or underscore " +
-            "and contain only letters, digits, underscores, or hyphens", placeholderName));
-
-      placeholderNames.add(placeholderName);
-      index = placeholderEnd + "}}".length();
-    }
-
-    return Collections.unmodifiableSet(placeholderNames);
+  private static boolean isEscapedPlaceholderStart(@NonNull String string, int placeholderStart) {
+    requireNonNull(string);
+    return placeholderStart > 0 && string.charAt(placeholderStart - 1) == ESCAPE_CHARACTER;
   }
 
   static final class InterpolationResult {
