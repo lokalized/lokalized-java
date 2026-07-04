@@ -16,7 +16,6 @@
 
 package com.lokalized;
 
-import com.lokalized.Cardinality.CardinalityRangeFamily;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -108,8 +107,7 @@ public class CardinalityTests {
 
     for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
       Locale locale = Locale.forLanguageTag(languageCode);
-      CardinalityRangeFamily cardinalityRangeFamily = CardinalityRangeFamily.cardinalityRangeFamilyForLocale(locale).get();
-      SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange = cardinalityRangeFamily.getCardinalitiesByCardinalityRange();
+      SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange = CldrPluralRules.cardinalityRangesForLocale(locale);
 
       for (CardinalityRange cardinalityRange : allCardinalityRanges) {
         Cardinality expectedCardinality = cardinalitiesByCardinalityRange.get(cardinalityRange);

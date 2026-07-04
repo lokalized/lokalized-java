@@ -51,6 +51,14 @@ public class OrdinalityTests {
   }
 
   @Test
+  public void localesWithoutExplicitCldrOrdinalRulesUseRootOtherRule() {
+    Locale akanLocale = Locale.forLanguageTag("ak");
+
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(6, akanLocale),
+        format("Incorrect %s ordinality for 6", akanLocale.toLanguageTag()));
+  }
+
+  @Test
   public void exampleIntegerValues() {
     for (String languageCode : Ordinality.getSupportedLanguageCodes()) {
       Locale locale = Locale.forLanguageTag(languageCode);
