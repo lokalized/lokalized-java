@@ -43,6 +43,17 @@ public class StringInterpolatorTests {
   }
 
   @Test
+  public void unicodePlaceholderNames() {
+    StringInterpolator interpolator = new StringInterpolator();
+    String result = interpolator.interpolate("Bonjour {{caféCount}} et {{количество2}}", Map.of(
+        "caféCount", 1,
+        "количество2", 2
+    ));
+
+    assertEquals("Bonjour 1 et 2", result);
+  }
+
+  @Test
   public void replacementValuesAreSafelyEscaped() {
     StringInterpolator interpolator = new StringInterpolator();
     String result = interpolator.interpolate("Total: {{amount}}", Map.of(

@@ -1306,7 +1306,7 @@ This free-form field is used to supply context for the translator, such as how a
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
 
-Placeholder names must start with a letter or underscore. Subsequent characters may be letters, digits, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
+Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters, Unicode digits, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
 
 To render literal mustaches instead of a placeholder, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context.
 
@@ -1585,7 +1585,7 @@ PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
          | "PHONETIC_STRESSED_A"
          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" 
          | "PHONETIC_OTHER" ;
-VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" | "-" } ;
+VARIABLE = ( Unicode letter | "_" ) { Unicode letter | Unicode digit | "_" | "-" } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```

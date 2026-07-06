@@ -131,7 +131,7 @@ class ExpressionTokenizer {
       put(TokenType.ANIMACY_ANIMATE, "\\bANIMACY_ANIMATE\\b");
       put(TokenType.ANIMACY_INANIMATE, "\\bANIMACY_INANIMATE\\b");
       put(TokenType.NUMBER, "[+-]?((\\d+\\.\\d*)|(\\.\\d+)|(\\d+))([eE][+-]?\\d+)?");
-      put(TokenType.VARIABLE, "[\\p{Alpha}_][\\p{Alnum}_-]*");
+      put(TokenType.VARIABLE, LocalizedStringUtils.localizedStringIdentifierPattern());
     }});
 
     // Underscore is illegal in regex group names.

@@ -396,6 +396,27 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingAcceptsUnicodePlaceholderNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{книги}}\",\"placeholderMetadata\":{" +
+            "\"имя\":{\"type\":\"STRING\",\"example\":\"Ада\"}" +
+            "},\"placeholders\":{" +
+            "\"книги\":{\"value\":\"caféCount\",\"translations\":{\"CARDINALITY_ONE\":\"book\",\"CARDINALITY_OTHER\":\"books\"}}" +
+            "},\"alternatives\":[{\"caféCount == количество2\":{\"translation\":\"Matched {{имя}}\"}}]}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
+
+    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("имя"));
+    assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("книги"));
+    assertEquals(1, localizedString.getAlternatives().size());
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsReservedPlaceholderNames() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();

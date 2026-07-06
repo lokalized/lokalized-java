@@ -104,6 +104,26 @@ public class LocalizedStringsSchemaTests {
   }
 
   @Test
+  public void schemaValidatesUnicodePlaceholderNames() throws IOException {
+    List<Error> validationMessages = loadSchema().validate("{\n" +
+        "  \"Hello {{имя}}\" : {\n" +
+        "    \"translation\" : \"Hello {{имя}} {{книги}}\",\n" +
+        "    \"placeholderMetadata\" : {\n" +
+        "      \"имя\" : { \"type\" : \"STRING\", \"example\" : \"Ада\" }\n" +
+        "    },\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"книги\" : {\n" +
+        "        \"value\" : \"caféCount\",\n" +
+        "        \"translations\" : { \"CARDINALITY_ONE\" : \"book\", \"CARDINALITY_OTHER\" : \"books\" }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}", InputFormat.JSON);
+
+    assertTrue(validationMessages.isEmpty(), () -> validationMessageSummary(validationMessages));
+  }
+
+  @Test
   public void schemaRejectsInvalidPlaceholderShape() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello\" : {\n" +

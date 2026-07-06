@@ -273,6 +273,16 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void unicodeVariableExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertTrue(expressionEvaluator.evaluate("caféCount == количество2", Map.of(
+				"caféCount", 2,
+				"количество2", 2
+		), LOCALE), "Unicode variable comparison failed");
+	}
+
+	@Test
 	public void invalidCardinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

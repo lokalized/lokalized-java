@@ -80,8 +80,6 @@ public final class LocalizedStringLoader {
   @NonNull
   private static final ExpressionEvaluator EXPRESSION_EVALUATOR;
   @NonNull
-  private static final Pattern PLACEHOLDER_NAME_PATTERN;
-  @NonNull
   private static final Pattern LANGUAGE_TAG_PATTERN;
   @NonNull
   private static final String JSON_EXTENSION;
@@ -175,7 +173,6 @@ public final class LocalizedStringLoader {
       immutableSupportedLanguageFormNamesByType.put(entry.getKey(), Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue())));
 
     SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE = Collections.unmodifiableMap(immutableSupportedLanguageFormNamesByType);
-    PLACEHOLDER_NAME_PATTERN = Pattern.compile("^[\\p{Alpha}_][\\p{Alnum}_-]*$");
     LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
     JSON_EXTENSION = ".json";
     UTF_8_BOM = '\uFEFF';
@@ -1364,9 +1361,9 @@ public final class LocalizedStringLoader {
     requireNonNull(placeholderName);
     requireNonNull(description);
 
-    if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
-      throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a letter or underscore " +
-          "and contain only letters, digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
+    if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName))
+      throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a Unicode letter or underscore " +
+          "and contain only Unicode letters, Unicode digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
 
     if (SUPPORTED_LANGUAGE_FORMS_BY_NAME.containsKey(placeholderName))
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names may not use reserved expression constants. " +

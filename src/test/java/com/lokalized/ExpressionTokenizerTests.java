@@ -358,4 +358,16 @@ public class ExpressionTokenizerTests {
 
     assertEquals(expectedTokens, tokens);
   }
+
+  @Test
+  public void unicodeVariableTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("caféCount == количество2");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "caféCount"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.VARIABLE, "количество2"));
+
+    assertEquals(expectedTokens, tokens);
+  }
 }

@@ -18,6 +18,8 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
+import java.util.regex.Pattern;
+
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
@@ -49,6 +51,10 @@ final class LocalizedStringUtils {
   private static final String ANIMACY_NAME_PREFIX;
   @NonNull
   private static final String PHONETIC_NAME_PREFIX;
+  @NonNull
+  private static final String LOCALIZED_STRING_IDENTIFIER_PATTERN;
+  @NonNull
+  private static final Pattern LOCALIZED_STRING_IDENTIFIER_FULL_MATCH_PATTERN;
 
   static {
     CARDINALITY_NAME_PREFIX = "CARDINALITY_";
@@ -61,6 +67,8 @@ final class LocalizedStringUtils {
     CLUSIVITY_NAME_PREFIX = "CLUSIVITY_";
     ANIMACY_NAME_PREFIX = "ANIMACY_";
     PHONETIC_NAME_PREFIX = "PHONETIC_";
+    LOCALIZED_STRING_IDENTIFIER_PATTERN = "[\\p{L}_][\\p{L}\\p{N}_-]*";
+    LOCALIZED_STRING_IDENTIFIER_FULL_MATCH_PATTERN = Pattern.compile(format("^%s$", LOCALIZED_STRING_IDENTIFIER_PATTERN));
   }
 
   private LocalizedStringUtils() {
@@ -77,6 +85,27 @@ final class LocalizedStringUtils {
   static String localizedStringNameForCardinalityName(@NonNull String cardinalityName) {
     requireNonNull(cardinalityName);
     return format("%s%s", CARDINALITY_NAME_PREFIX, cardinalityName);
+  }
+
+  /**
+   * Gets the Java regular expression pattern for Lokalized placeholder names and expression variable names.
+   *
+   * @return the identifier pattern, not null
+   */
+  @NonNull
+  static String localizedStringIdentifierPattern() {
+    return LOCALIZED_STRING_IDENTIFIER_PATTERN;
+  }
+
+  /**
+   * Determines if the given value is a valid Lokalized placeholder or expression-variable identifier.
+   *
+   * @param value the value to check, not null
+   * @return true if the value is a valid identifier, false otherwise
+   */
+  static boolean isValidLocalizedStringIdentifier(@NonNull String value) {
+    requireNonNull(value);
+    return LOCALIZED_STRING_IDENTIFIER_FULL_MATCH_PATTERN.matcher(value).matches();
   }
 
   /**

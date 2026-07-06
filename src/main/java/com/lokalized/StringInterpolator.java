@@ -25,7 +25,6 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -40,16 +39,12 @@ import static java.util.Objects.requireNonNull;
 @ThreadSafe
 class StringInterpolator {
   @NonNull
-  private static final Pattern PLACEHOLDER_NAME_PATTERN;
-  @NonNull
   private static final String PLACEHOLDER_START;
   @NonNull
   private static final String PLACEHOLDER_END;
   private static final char ESCAPE_CHARACTER;
 
   static {
-    String placeholderNamePattern = "[\\p{Alpha}_][\\p{Alnum}_-]*";
-    PLACEHOLDER_NAME_PATTERN = Pattern.compile(placeholderNamePattern);
     PLACEHOLDER_START = "{{";
     PLACEHOLDER_END = "}}";
     ESCAPE_CHARACTER = '\\';
@@ -130,10 +125,10 @@ class StringInterpolator {
 
       String placeholderName = string.substring(placeholderStart + PLACEHOLDER_START.length(), placeholderEnd);
 
-      if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches()) {
+      if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName)) {
         if (strict)
-          throw new IllegalArgumentException(format("Malformed placeholder '%s%s%s'. Placeholder names must start with a letter or underscore " +
-              "and contain only letters, digits, underscores, or hyphens", PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
+          throw new IllegalArgumentException(format("Malformed placeholder '%s%s%s'. Placeholder names must start with a Unicode letter or underscore " +
+              "and contain only Unicode letters, Unicode digits, underscores, or hyphens", PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
 
         stringBuilder.append(string, placeholderStart, placeholderEnd + PLACEHOLDER_END.length());
         index = placeholderEnd + PLACEHOLDER_END.length();
