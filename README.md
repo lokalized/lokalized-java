@@ -1197,6 +1197,12 @@ In addition to `translation`, each object form supports 4 additional keys: `comm
 
 All 5 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
 
+### JSON Schema
+
+A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available in this repository at [src/main/resources/schema/lokalized-strings.schema.json](src/main/resources/schema/lokalized-strings.schema.json).
+
+The schema validates file structure, placeholder shapes, known language-form names, placeholder metadata, and alternatives. It does not parse alternative expression syntax or validate locale-specific plural completeness; those checks are performed by Lokalized when strings are loaded.
+
 ### Commentary
 
 This free-form field is used to supply context for the translator, such as how and where the phrase is used in the application.  It might also include documentation about the application-supplied placeholder values (names and types) so it's clear what data is available to perform the translation.
