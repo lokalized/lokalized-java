@@ -104,6 +104,9 @@ class ExpressionEvaluator {
   private static final Token TRUE_RESULT_TOKEN;
   @NonNull
   private static final Token FALSE_RESULT_TOKEN;
+  private static final int MAX_EXPRESSION_LENGTH = 4096;
+  private static final int MAX_EXPRESSION_TOKENS = 512;
+  private static final int MAX_EXPRESSION_GROUP_DEPTH = 64;
 
   @NonNull
   private final ExpressionTokenizer expressionTokenizer;
@@ -334,6 +337,7 @@ class ExpressionEvaluator {
     if (context == null)
       context = Collections.emptyMap();
 
+    validateExpressionSourceLength(expression);
     List<@NonNull Token> tokens = getExpressionTokenizer().extractTokens(expression);
     tokens = convertTokensToReversePolishNotation(tokens);
     validateReversePolishNotationTokens(tokens);
@@ -354,6 +358,7 @@ class ExpressionEvaluator {
   @NonNull
   protected List<@NonNull Token> convertTokensToReversePolishNotation(@NonNull List<@NonNull Token> tokens) {
     requireNonNull(tokens);
+    validateInfixTokens(tokens);
 
     List<@NonNull Token> outputTokens = new ArrayList<>(tokens.size());
     Deque<Token> operatorStack = new ArrayDeque<>();
@@ -1530,6 +1535,36 @@ class ExpressionEvaluator {
   @NonNull
   protected ExpressionTokenizer getExpressionTokenizer() {
     return expressionTokenizer;
+  }
+
+  protected void validateExpressionSourceLength(@NonNull String expression) {
+    requireNonNull(expression);
+
+    if (expression.length() > MAX_EXPRESSION_LENGTH)
+      throw new ExpressionEvaluationException(format("Expression length %d exceeds maximum supported length %d",
+          expression.length(), MAX_EXPRESSION_LENGTH));
+  }
+
+  protected void validateInfixTokens(@NonNull List<@NonNull Token> tokens) {
+    requireNonNull(tokens);
+
+    if (tokens.size() > MAX_EXPRESSION_TOKENS)
+      throw new ExpressionEvaluationException(format("Expression contains %d tokens, which exceeds maximum supported token count %d",
+          tokens.size(), MAX_EXPRESSION_TOKENS));
+
+    int groupDepth = 0;
+
+    for (Token token : tokens) {
+      if (token.getTokenType() == TokenType.GROUP_START) {
+        ++groupDepth;
+
+        if (groupDepth > MAX_EXPRESSION_GROUP_DEPTH)
+          throw new ExpressionEvaluationException(format("Expression grouping depth exceeds maximum supported depth %d",
+              MAX_EXPRESSION_GROUP_DEPTH));
+      } else if (token.getTokenType() == TokenType.GROUP_END && groupDepth > 0) {
+        --groupDepth;
+      }
+    }
   }
 
   protected void validateReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens) {

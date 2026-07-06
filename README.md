@@ -1590,7 +1590,7 @@ BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
 
-Built-in language-form constants are reserved in alternative expressions. A token like `CARDINALITY_ONE`, `GENDER_MASCULINE`, `CASE_DATIVE`, `DEFINITENESS_DEFINITE`, `CLASSIFIER_PERSON`, `FORMALITY_FORMAL`, `CLUSIVITY_INCLUSIVE`, `ANIMACY_ANIMATE`, or `PHONETIC_VOWEL` is parsed as a constant, not as a placeholder variable. Avoid using built-in constant names for placeholders that need to appear in `alternatives`.
+Built-in language-form constants are reserved in alternative expressions. A token like `CARDINALITY_ONE`, `GENDER_MASCULINE`, `CASE_DATIVE`, `DEFINITENESS_DEFINITE`, `CLASSIFIER_PERSON`, `FORMALITY_FORMAL`, `CLUSIVITY_INCLUSIVE`, `ANIMACY_ANIMATE`, or `PHONETIC_VOWEL` is parsed as a constant, not as a placeholder variable. Placeholder names may not use built-in constant names.
 
 #### What Expressions Currently Support
 

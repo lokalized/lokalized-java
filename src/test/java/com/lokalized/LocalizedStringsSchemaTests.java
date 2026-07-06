@@ -121,6 +121,23 @@ public class LocalizedStringsSchemaTests {
     assertFalse(validationMessages.isEmpty(), "Expected mixed simple and selector-driven placeholder shapes to fail schema validation");
   }
 
+  @Test
+  public void schemaRejectsReservedPlaceholderNames() throws IOException {
+    List<Error> validationMessages = loadSchema().validate("{\n" +
+        "  \"Hello\" : {\n" +
+        "    \"translation\" : \"Hello {{CARDINALITY_ONE}}\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"CARDINALITY_ONE\" : {\n" +
+        "        \"value\" : \"count\",\n" +
+        "        \"translations\" : { \"CARDINALITY_ONE\" : \"one\", \"CARDINALITY_OTHER\" : \"other\" }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}", InputFormat.JSON);
+
+    assertFalse(validationMessages.isEmpty(), "Expected reserved placeholder names to fail schema validation");
+  }
+
   @NonNull
   private Schema loadSchema() throws IOException {
     SchemaRegistry schemaRegistry = SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12);

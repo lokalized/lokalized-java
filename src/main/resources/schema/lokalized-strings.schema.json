@@ -604,7 +604,10 @@
     },
     "placeholderName": {
       "type": "string",
-      "pattern": "^[\\p{L}_][\\p{L}\\p{N}_-]*$"
+      "pattern": "^[\\p{L}_][\\p{L}\\p{N}_-]*$",
+      "not": {
+        "$ref": "#/$defs/languageFormName"
+      }
     },
     "languageFormName": {
       "enum": [

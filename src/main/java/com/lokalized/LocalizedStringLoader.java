@@ -1017,6 +1017,7 @@ public final class LocalizedStringLoader {
     requireNonNull(expression);
 
     try {
+      EXPRESSION_EVALUATOR.validateExpressionSourceLength(expression);
       List<@NonNull Token> tokens = EXPRESSION_EVALUATOR.getExpressionTokenizer().extractTokens(expression);
       List<@NonNull Token> rpnTokens = EXPRESSION_EVALUATOR.convertTokensToReversePolishNotation(tokens);
       EXPRESSION_EVALUATOR.validateReversePolishNotationTokens(rpnTokens);
@@ -1366,6 +1367,10 @@ public final class LocalizedStringLoader {
     if (!PLACEHOLDER_NAME_PATTERN.matcher(placeholderName).matches())
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a letter or underscore " +
           "and contain only letters, digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
+
+    if (SUPPORTED_LANGUAGE_FORMS_BY_NAME.containsKey(placeholderName))
+      throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names may not use reserved expression constants. " +
+          "Key is '%s'", canonicalPath, description, placeholderName, key));
   }
 
   @NonNull

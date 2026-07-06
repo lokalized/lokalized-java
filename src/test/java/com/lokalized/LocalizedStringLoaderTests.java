@@ -293,6 +293,22 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsOversizedAlternativeExpressions() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        format("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"%s\":{\"translation\":\"Hi\"}}]}}",
+            orExpressionWithClauseCount(129)).getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected oversized alternative expressions to fail fast during load");
+
+    assertTrue(exception.getCause().getMessage().contains("maximum supported token count"));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsMalformedSimpleTranslationPlaceholders() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -377,6 +393,42 @@ public class LocalizedStringLoaderTests {
     assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
         "Expected digit-leading placeholder names to be rejected");
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsReservedPlaceholderNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello {{CARDINALITY_ONE}}\",\"placeholders\":{\"CARDINALITY_ONE\":{\"value\":\"count\",\"translations\":{" +
+            "\"CARDINALITY_ONE\":\"one\",\"CARDINALITY_OTHER\":\"other\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected reserved placeholder names to be rejected");
+
+    assertTrue(exception.getMessage().contains("reserved expression constants"));
+    assertTrue(exception.getMessage().contains("CARDINALITY_ONE"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsReservedPlaceholderMetadataNames() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Hello\":{\"translation\":\"Hello\",\"placeholderMetadata\":{" +
+            "\"GENDER_MASCULINE\":{\"type\":\"STRING\",\"commentary\":\"Reserved name.\"}" +
+            "}}}").getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected reserved placeholder metadata names to be rejected");
+
+    assertTrue(exception.getMessage().contains("reserved expression constants"));
+    assertTrue(exception.getMessage().contains("GENDER_MASCULINE"));
   }
 
   @Test
@@ -654,5 +706,18 @@ public class LocalizedStringLoaderTests {
 
     for (Entry<Locale, Set<LocalizedString>> entry : localizedStringsByLocale.entrySet())
       assertTrue(entry.getValue().size() > 0, format("The '%s' strings file has no data", entry.getKey().toLanguageTag()));
+  }
+
+  private String orExpressionWithClauseCount(int clauseCount) {
+    StringBuilder expression = new StringBuilder(clauseCount * 10);
+
+    for (int i = 0; i < clauseCount; ++i) {
+      if (i > 0)
+        expression.append(" || ");
+
+      expression.append("count == 1");
+    }
+
+    return expression.toString();
   }
 }

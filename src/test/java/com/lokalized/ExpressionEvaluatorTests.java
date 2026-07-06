@@ -341,6 +341,42 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void expressionSourceLengthIsLimited() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate(overlongExpression(), Map.of("a", 1), LOCALE),
+				"Expected overlong expressions to throw");
+
+		assertTrue(exception.getMessage().contains("maximum supported length"),
+				"Expected expression length message to be clear");
+	}
+
+	@Test
+	public void expressionTokenCountIsLimited() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate(orExpressionWithClauseCount(129), Map.of("a", 1), LOCALE),
+				"Expected expressions with too many tokens to throw");
+
+		assertTrue(exception.getMessage().contains("maximum supported token count"),
+				"Expected expression token-count message to be clear");
+	}
+
+	@Test
+	public void expressionGroupingDepthIsLimited() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate(nestedExpression(65), Map.of("a", 1), LOCALE),
+				"Expected overly deep expressions to throw");
+
+		assertTrue(exception.getMessage().contains("maximum supported depth"),
+				"Expected expression depth message to be clear");
+	}
+
+	@Test
 	public void invalidOrdinalityOperator() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
@@ -386,5 +422,42 @@ public class ExpressionEvaluatorTests {
 		});
 
 		assertTrue(expressionEvaluator.evaluate("ignored", LOCALE), "Custom tokenizer output should be evaluated");
+	}
+
+	private String overlongExpression() {
+		StringBuilder expression = new StringBuilder(4_103);
+		expression.append("a == 1");
+
+		for (int i = 0; i < 4_096; ++i)
+			expression.append(' ');
+
+		return expression.toString();
+	}
+
+	private String orExpressionWithClauseCount(int clauseCount) {
+		StringBuilder expression = new StringBuilder(clauseCount * 10);
+
+		for (int i = 0; i < clauseCount; ++i) {
+			if (i > 0)
+				expression.append(" || ");
+
+			expression.append("a == 1");
+		}
+
+		return expression.toString();
+	}
+
+	private String nestedExpression(int depth) {
+		StringBuilder expression = new StringBuilder(depth * 2 + 6);
+
+		for (int i = 0; i < depth; ++i)
+			expression.append('(');
+
+		expression.append("a == 1");
+
+		for (int i = 0; i < depth; ++i)
+			expression.append(')');
+
+		return expression.toString();
 	}
 }
