@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +30,10 @@ import java.util.Locale.LanguageRange;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 
@@ -107,6 +112,43 @@ public class StringsTests {
 		String translation = strings.get("I am going on vacation");
 
 		assertEquals("I am going on holiday", translation);
+	}
+
+	@Test
+	public void sharedStringsInstanceSupportsConcurrentLookup() throws Exception {
+		Locale english = Locale.forLanguageTag("en");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier((matcher) -> matcher.bestMatchFor(english))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(english, britishEnglish)
+				))
+				.build();
+
+		ExecutorService executorService = Executors.newFixedThreadPool(8);
+
+		try {
+			List<Future<?>> futures = new ArrayList<>();
+
+			for (int i = 0; i < 8; ++i) {
+				futures.add(executorService.submit(() -> {
+					for (int j = 0; j < 100; ++j) {
+						assertEquals("I read 1 book",
+								strings.get("I read {{bookCount}} books", Map.of("bookCount", 1)));
+						assertEquals("I didn't read any books",
+								strings.get("I read {{bookCount}} books", Map.of("bookCount", 0)));
+						assertEquals("I am going on holiday",
+								strings.get("I am going on vacation", britishEnglish));
+					}
+				}));
+			}
+
+			for (Future<?> future : futures)
+				future.get(10, TimeUnit.SECONDS);
+		} finally {
+			executorService.shutdownNow();
+		}
 	}
 
 	@Test

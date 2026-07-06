@@ -40,7 +40,7 @@ public interface Strings extends LocaleMatcher {
 	/**
 	 * Gets a localized string for the given key.
 	 * <p>
-	 * If no localized string is available, the key is returned.
+	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
 	 *
 	 * @param key the localization key, not null
 	 * @return a localized string for the key, not null
@@ -67,7 +67,7 @@ public interface Strings extends LocaleMatcher {
 	/**
 	 * Gets a localized string for the given key.
 	 * <p>
-	 * If no localized string is available, the key is returned.
+	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
 	 *
 	 * @param key          the localization key, not null
 	 * @param placeholders the placeholders to insert into the string, may be null
@@ -125,10 +125,11 @@ public interface Strings extends LocaleMatcher {
 	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
 	 * <p>
-	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
-	 * 		.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-	 * 		.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-GB")))
-	 * 		.build();
+	 * <pre>{@code
+	 * Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+	 *     .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+	 *     .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-GB")))
+	 *     .build();
 	 * }</pre>
 	 *
 	 * @param fallbackLocale the fallback locale, not null

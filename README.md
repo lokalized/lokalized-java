@@ -69,13 +69,13 @@ assertEquals("I didn't read any books.", translation);
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>2.1.0</version>
+  <version>3.0.0-SNAPSHOT</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven, you can drop [lokalized-2.1.0.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/2.1.0/lokalized-2.1.0.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-3.0.0-SNAPSHOT.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.0.0-SNAPSHOT/lokalized-3.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
 ## Why Lokalized?
 
@@ -231,6 +231,78 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   })
   .build();
 ```
+
+## Loading Localized Strings
+
+Most applications load strings files from the filesystem during development and from the classpath in packaged deployments.
+
+```java
+Strings filesystemStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("strings")))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .build();
+
+Strings classpathStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .build();
+```
+
+Classpath package names use slash-separated resource paths such as `strings` or `com/example/strings`. `loadFromClasspath(String)` first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use `loadFromClasspath(ClassLoader, String)` for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
+
+Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
+
+## Explicit Locale Lookups
+
+The `localeSupplier` configured on `Strings.Builder` is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, and administrative tooling, pass the locale directly for a single lookup:
+
+```java
+String translation = strings.get(
+  "I read {{bookCount}} books.",
+  Map.of("bookCount", 1),
+  Locale.forLanguageTag("fr-CA")
+);
+```
+
+Explicit-locale lookup bypasses the configured `localeSupplier` for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior using the locale you supplied.
+
+## Translation Failure Handling
+
+When a lookup cannot be resolved, Lokalized asks the configured `TranslationFailureHandler` what to do. The default handler is `TranslationFailureHandler.returnKey()`, which returns the lookup key with any caller-supplied placeholders interpolated into it.
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler(TranslationFailureHandler.throwException())
+  .build();
+```
+
+Built-in handler factories are:
+
+* `TranslationFailureHandler.returnKey()` - returns the key with supplied placeholders interpolated
+* `TranslationFailureHandler.throwException()` - throws for missing translations and rethrows runtime resolution failures
+* `TranslationFailureHandler.logAndReturnKey(logger)` - logs the failure without placeholder values, then returns the interpolated key
+
+Custom handlers inspect a `TranslationFailure` and return a `TranslationFailureResponse`:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler((failure) -> {
+    metrics.increment("localized.translation.failure",
+      Map.of(
+        "reason", failure.getReason().name(),
+        "locale", failure.getRequestedLocale().toLanguageTag()
+      ));
+
+    return TranslationFailureResponse.returnString("Translation unavailable");
+  })
+  .build();
+```
+
+`TranslationFailure` exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging `failure.getPlaceholders()` unless your application has explicitly approved that.
 
 ## A More Complex Example
 
@@ -1166,6 +1238,20 @@ ordinality = Ordinality.forNumber(27, Locale.forLanguageTag("en"));
 assertEquals(Ordinality.OTHER, ordinality);
 ```
 
+## CLDR Data
+
+Lokalized's cardinality, ordinality, cardinality-range, locale-parent, language-alias, likely-subtag, and locale-validity behavior is generated from pinned Unicode CLDR 48.2 XML data.
+
+Pinned CLDR resources live under [src/test/resources/cldr/48.2](src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, and generated CLDR conformance fixtures are checked in under `src/test/java`.
+
+After refreshing CLDR data, regenerate the checked-in sources and run the conformance tests before committing:
+
+```shell
+javac -d target/cldr-generator src/build/java/com/lokalized/cldr/CldrDataGenerator.java
+java -cp target/cldr-generator com.lokalized.cldr.CldrDataGenerator
+mvn -q test
+```
+
 ## Localized Strings File Format
 
 ### Structure
@@ -1220,7 +1306,7 @@ This free-form field is used to supply context for the translator, such as how a
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
 
-Placeholder names may contain letters, digits, underscores, and hyphens.
+Placeholder names must start with a letter or underscore. Subsequent characters may be letters, digits, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
 
 To render literal mustaches instead of a placeholder, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context.
 
@@ -1503,6 +1589,8 @@ VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" |
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
+
+Built-in language-form constants are reserved in alternative expressions. A token like `CARDINALITY_ONE`, `GENDER_MASCULINE`, `CASE_DATIVE`, `DEFINITENESS_DEFINITE`, `CLASSIFIER_PERSON`, `FORMALITY_FORMAL`, `CLUSIVITY_INCLUSIVE`, `ANIMACY_ANIMATE`, or `PHONETIC_VOWEL` is parsed as a constant, not as a placeholder variable. Avoid using built-in constant names for placeholders that need to appear in `alternatives`.
 
 #### What Expressions Currently Support
 

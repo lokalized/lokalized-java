@@ -35,8 +35,10 @@ Once granted, make sure your ```~/.m2/settings.xml``` file has ```central-portal
 </settings>
 ```
 
-You can then push to Maven central:
+You can then push to Maven Central:
 
 ```
 $ mvn clean deploy -Prelease -Dgpg.passphrase=YOUR_PASSPHRASE
 ```
+
+The release profile is only needed when publishing signed release artifacts. Normal contributor builds should use `mvn clean verify` and do not require Central Portal or GPG credentials.
