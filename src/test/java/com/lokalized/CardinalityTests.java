@@ -61,6 +61,16 @@ public class CardinalityTests {
   }
 
   @Test
+  public void operandsCanProvideCompactExponent() {
+    Locale frenchLocale = Locale.forLanguageTag("fr");
+
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(2, frenchLocale),
+        "Expected plain French 2 to use the normal cardinality rule");
+    assertEquals(Cardinality.MANY, Cardinality.forOperands(PluralOperands.forNumber(2).compactExponent(6).build(), frenchLocale),
+        "Expected compact exponent operands to be available to CLDR rules");
+  }
+
+  @Test
   public void exampleIntegerValues() {
     for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
       Locale locale = Locale.forLanguageTag(languageCode);

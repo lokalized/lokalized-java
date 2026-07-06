@@ -18,7 +18,6 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
@@ -117,9 +116,29 @@ public enum Ordinality implements LanguageForm {
     requireNonNull(number);
     requireNonNull(locale);
 
-    BigDecimal numberAsBigDecimal = NumberUtils.toBigDecimal(number).abs();
+    return forOperands(PluralOperands.forNumber(number).build(), locale);
+  }
 
-    return CldrPluralRules.ordinalityForNumber(numberAsBigDecimal, locale);
+  /**
+   * Gets an appropriate plural ordinality for the given CLDR plural operands and locale.
+   * <p>
+   * Most applications should use {@link #forNumber(Number, Locale)}. Use this overload when the displayed number has
+   * details that are not fully represented by the Java {@link Number}, such as a compact-decimal exponent.
+   * <p>
+   * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html</a>
+   * for a cheat sheet.
+   *
+   * @param operands the CLDR plural operands that drive pluralization, not null
+   * @param locale   the locale that drives pluralization, not null
+   * @return an appropriate plural ordinality, not null
+   * @throws UnsupportedLocaleException if the locale is not supported
+   */
+  @NonNull
+  public static Ordinality forOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
+    requireNonNull(operands);
+    requireNonNull(locale);
+
+    return CldrPluralRules.ordinalityForOperands(operands, locale);
   }
 
   /**

@@ -74,8 +74,8 @@ final class CldrPluralRules {
   }
 
   @NonNull
-  static Cardinality cardinalityForNumber(@NonNull BigDecimal number, @NonNull Locale locale) {
-    requireNonNull(number);
+  static Cardinality cardinalityForOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
+    requireNonNull(operands);
     requireNonNull(locale);
 
     Optional<@NonNull LocaleRules> localeRules = cardinalRulesForLocale(locale);
@@ -83,12 +83,12 @@ final class CldrPluralRules {
     if (!localeRules.isPresent())
       throw new UnsupportedLocaleException(locale);
 
-    return cardinalityForCount(localeRules.get().countFor(number));
+    return cardinalityForCount(localeRules.get().countFor(operands));
   }
 
   @NonNull
-  static Ordinality ordinalityForNumber(@NonNull BigDecimal number, @NonNull Locale locale) {
-    requireNonNull(number);
+  static Ordinality ordinalityForOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
+    requireNonNull(operands);
     requireNonNull(locale);
 
     Optional<@NonNull LocaleRules> localeRules = ordinalRulesForLocale(locale);
@@ -96,7 +96,7 @@ final class CldrPluralRules {
     if (!localeRules.isPresent())
       throw new UnsupportedLocaleException(locale);
 
-    return ordinalityForCount(localeRules.get().countFor(number));
+    return ordinalityForCount(localeRules.get().countFor(operands));
   }
 
   @NonNull
@@ -324,9 +324,8 @@ final class CldrPluralRules {
     }
 
     @NonNull
-    String countFor(@NonNull BigDecimal number) {
-      Operands operands = new Operands(number);
-
+    String countFor(@NonNull PluralOperands operands) {
+      requireNonNull(operands);
       for (Rule rule : rules)
         if (rule.matches(operands))
           return rule.getCount();
@@ -426,7 +425,7 @@ final class CldrPluralRules {
       return decimalExample;
     }
 
-    boolean matches(@NonNull Operands operands) {
+    boolean matches(@NonNull PluralOperands operands) {
       return condition.matches(operands);
     }
   }
@@ -519,7 +518,7 @@ final class CldrPluralRules {
   }
 
   private interface Condition {
-    boolean matches(@NonNull Operands operands);
+    boolean matches(@NonNull PluralOperands operands);
   }
 
   @NonNull
@@ -568,7 +567,7 @@ final class CldrPluralRules {
     ValueSet valueSet = ValueSet.parse(matcher.group(4));
 
     return operands -> {
-      BigDecimal value = operands.valueFor(operand);
+      BigDecimal value = valueFor(operands, operand);
 
       if (modulus != null)
         value = value.remainder(modulus);
@@ -576,6 +575,33 @@ final class CldrPluralRules {
       boolean contains = valueSet.contains(value);
       return negated ? !contains : contains;
     };
+  }
+
+  @NonNull
+  private static BigDecimal valueFor(@NonNull PluralOperands operands, @NonNull Operand operand) {
+    requireNonNull(operands);
+    requireNonNull(operand);
+
+    switch (operand) {
+      case N:
+        return operands.n();
+      case I:
+        return operands.i();
+      case V:
+        return operands.v();
+      case W:
+        return operands.w();
+      case F:
+        return operands.f();
+      case T:
+        return operands.t();
+      case C:
+        return operands.c();
+      case E:
+        return operands.e();
+      default:
+        throw new IllegalArgumentException(format("Unsupported CLDR plural operand '%s'", operand));
+    }
   }
 
   private enum Operand {
@@ -591,64 +617,6 @@ final class CldrPluralRules {
     @NonNull
     static Operand forName(@NonNull String name) {
       return Operand.valueOf(name.toUpperCase(Locale.ENGLISH));
-    }
-  }
-
-  private static final class Operands {
-    @NonNull
-    private final BigDecimal n;
-    @NonNull
-    private final BigDecimal i;
-    @NonNull
-    private final BigDecimal v;
-    @NonNull
-    private final BigDecimal w;
-    @NonNull
-    private final BigDecimal f;
-    @NonNull
-    private final BigDecimal t;
-    @NonNull
-    private final BigDecimal c;
-    @NonNull
-    private final BigDecimal e;
-
-    private Operands(@NonNull BigDecimal n) {
-      requireNonNull(n);
-
-      @NonNull BigDecimal strippedNumber = n.stripTrailingZeros();
-
-      this.n = n;
-      this.i = new BigDecimal(NumberUtils.integerComponent(n));
-      this.v = BigDecimal.valueOf(NumberUtils.numberOfDecimalPlaces(n));
-      this.w = BigDecimal.valueOf(Math.max(0, strippedNumber.scale()));
-      this.f = new BigDecimal(NumberUtils.fractionalComponent(n));
-      this.t = new BigDecimal(NumberUtils.fractionalComponent(strippedNumber));
-      this.c = BigDecimal.ZERO;
-      this.e = BigDecimal.ZERO;
-    }
-
-    @NonNull
-    private BigDecimal valueFor(@NonNull Operand operand) {
-      switch (operand) {
-        case N:
-          return n;
-        case I:
-          return i;
-        case V:
-          return v;
-        case W:
-          return w;
-        case F:
-          return f;
-        case T:
-          return t;
-        case C:
-          return c;
-        case E:
-          return e;
-        default:
-          throw new IllegalArgumentException(format("Unsupported CLDR plural operand '%s'", operand));
-      }
     }
   }
 

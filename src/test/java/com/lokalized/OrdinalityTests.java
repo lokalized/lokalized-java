@@ -59,6 +59,14 @@ public class OrdinalityTests {
   }
 
   @Test
+  public void operandsCanDriveOrdinality() {
+    Locale usEnglishLocale = Locale.forLanguageTag("en-US");
+
+    assertEquals(Ordinality.ONE, Ordinality.forOperands(PluralOperands.forNumber(21).build(), usEnglishLocale),
+        format("Incorrect %s ordinality for 21", usEnglishLocale.toLanguageTag()));
+  }
+
+  @Test
   public void exampleIntegerValues() {
     for (String languageCode : Ordinality.getSupportedLanguageCodes()) {
       Locale locale = Locale.forLanguageTag(languageCode);

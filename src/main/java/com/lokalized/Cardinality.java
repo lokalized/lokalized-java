@@ -20,7 +20,6 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Locale;
@@ -151,18 +150,29 @@ public enum Cardinality implements LanguageForm {
     requireNonNull(number);
     requireNonNull(locale);
 
-    boolean numberIsBigDecimal = number instanceof BigDecimal;
-    BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
-    numberAsBigDecimal = numberAsBigDecimal.abs();
+    return forOperands(PluralOperands.forNumber(number).visibleDecimalPlaces(visibleDecimalPlaces).build(), locale);
+  }
 
-    if (visibleDecimalPlaces == null) {
-      if (!numberIsBigDecimal)
-        numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.FLOOR);
-    } else {
-      numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.FLOOR);
-    }
+  /**
+   * Gets an appropriate plural cardinality for the given CLDR plural operands and locale.
+   * <p>
+   * Most applications should use {@link #forNumber(Number, Locale)}. Use this overload when the displayed number has
+   * details that are not fully represented by the Java {@link Number}, such as a compact-decimal exponent.
+   * <p>
+   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * for further details.
+   *
+   * @param operands the CLDR plural operands that drive pluralization, not null
+   * @param locale   the locale that drives pluralization, not null
+   * @return an appropriate plural cardinality, not null
+   * @throws UnsupportedLocaleException if the locale is not supported
+   */
+  @NonNull
+  public static Cardinality forOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
+    requireNonNull(operands);
+    requireNonNull(locale);
 
-    return CldrPluralRules.cardinalityForNumber(numberAsBigDecimal, locale);
+    return CldrPluralRules.cardinalityForOperands(operands, locale);
   }
 
   /**

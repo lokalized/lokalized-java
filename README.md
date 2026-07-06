@@ -1029,6 +1029,17 @@ cardinality = Cardinality.forNumber(new BigDecimal("1.0"), Locale.forLanguageTag
 assertEquals(Cardinality.OTHER, cardinality);
 ```  
 
+For compact-decimal displays, use [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) when CLDR needs operand details that are not fully represented by the Java number itself:
+
+```java
+PluralOperands operands = PluralOperands.forNumber(2)
+    .compactExponent(6)
+    .build();
+
+cardinality = Cardinality.forOperands(operands, Locale.forLanguageTag("fr"));
+assertEquals(Cardinality.MANY, cardinality);
+```
+
 ### Plural Cardinality Ranges
 
 For example: `0-1 hours, 1-2 hours, ...`
@@ -1237,6 +1248,8 @@ assertEquals(Ordinality.ONE, ordinality);
 ordinality = Ordinality.forNumber(27, Locale.forLanguageTag("en"));
 assertEquals(Ordinality.OTHER, ordinality);
 ```
+
+[`Ordinality#forOperands(PluralOperands operands, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale)) is also available for advanced CLDR operand cases.
 
 ## CLDR Data
 
