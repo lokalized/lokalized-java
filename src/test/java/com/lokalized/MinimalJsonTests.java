@@ -20,6 +20,8 @@ import com.lokalized.MinimalJson.JsonObject;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.ArrayList;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -55,6 +57,25 @@ public class MinimalJsonTests {
         "Expected arrays beyond the nesting limit to fail");
 
     assertDoesNotThrow(() -> jsonParser.parse("[]"));
+  }
+
+  @Test
+  public void jsonParserResetsCaptureBufferBetweenParsesAfterFailure() {
+    List<String> strings = new ArrayList<>();
+    MinimalJson.JsonParser jsonParser = new MinimalJson.JsonParser(new MinimalJson.JsonHandler<Object, Object>() {
+      @Override
+      public void endString(String string) {
+        strings.add(string);
+      }
+    });
+
+    assertThrows(MinimalJson.ParseException.class,
+        () -> jsonParser.parse("\"unterminated"),
+        "Expected unterminated strings to fail");
+
+    jsonParser.parse("\"ok\"");
+
+    assertEquals(List.of("ok"), strings);
   }
 
   private String deeplyNestedArray(int depth) {
