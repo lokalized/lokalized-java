@@ -23,7 +23,6 @@ import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +38,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.logging.Logger;
@@ -59,7 +59,7 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @ThreadSafe
-public class DefaultStrings implements Strings {
+class DefaultStrings implements Strings {
 	@NonNull
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
 	@NonNull
@@ -101,20 +101,6 @@ public class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale;
-
-	/**
-	 * Vends a builder suitable for constructing {@link DefaultStrings) instances.
-	 * <p>
-	 * This method is package-private and designed to be invoked via {@link Strings#withFallbackLocale(Locale)}.
-	 *
-	 * @param fallbackLocale the fallback locale used if no others match, not null
-	 * @return the builder, not null
-	 */
-	@NonNull
-	static Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
-		requireNonNull(fallbackLocale);
-		return new Builder(fallbackLocale);
-	}
 
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
@@ -1216,6 +1202,60 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the locales for which localized strings were supplied.
+	 *
+	 * @return the supported locales, not null
+	 */
+	@NonNull
+	public Set<@NonNull Locale> getSupportedLocales() {
+		Set<@NonNull Locale> supportedLocales = new TreeSet<>(Comparator.comparing(Locale::toLanguageTag));
+		supportedLocales.addAll(getLocalizedStringsByLocale().keySet());
+		return Collections.unmodifiableSet(supportedLocales);
+	}
+
+	/**
+	 * Gets the localized string keys supplied for the given locale.
+	 *
+	 * @param locale locale to inspect, not null
+	 * @return the localized string keys for the locale, or an empty set if the locale is not supported, not null
+	 */
+	@NonNull
+	public Set<@NonNull String> getKeysForLocale(@NonNull Locale locale) {
+		requireNonNull(locale);
+
+		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(locale);
+
+		if (localizedStrings == null)
+			return Collections.emptySet();
+
+		Set<@NonNull String> keys = new TreeSet<>(localizedStrings.keySet());
+		return Collections.unmodifiableSet(keys);
+	}
+
+	/**
+	 * Gets the keys supplied by {@code sourceLocale} but missing from {@code targetLocale}.
+	 *
+	 * @param sourceLocale locale whose keys are used as the source set, not null
+	 * @param targetLocale locale whose keys are compared against the source set, not null
+	 * @return keys present in {@code sourceLocale} and missing from {@code targetLocale}, not null
+	 */
+	@NonNull
+	public Set<@NonNull String> getMissingKeys(@NonNull Locale sourceLocale, @NonNull Locale targetLocale) {
+		requireNonNull(sourceLocale);
+		requireNonNull(targetLocale);
+
+		if (localizedStringsByKeyFor(sourceLocale) == null)
+			throw new IllegalArgumentException(format("Source locale '%s' is not supported", sourceLocale.toLanguageTag()));
+
+		if (localizedStringsByKeyFor(targetLocale) == null)
+			throw new IllegalArgumentException(format("Target locale '%s' is not supported", targetLocale.toLanguageTag()));
+
+		Set<@NonNull String> missingKeys = new TreeSet<>(getKeysForLocale(sourceLocale));
+		missingKeys.removeAll(getKeysForLocale(targetLocale));
+		return Collections.unmodifiableSet(missingKeys);
+	}
+
+	/**
 	 * Gets the locale supplier.
 	 *
 	 * @return the locale supplier, not null
@@ -1303,124 +1343,6 @@ public class DefaultStrings implements Strings {
 	@NonNull
 	protected Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
-	}
-
-	/**
-	 * Builder used to construct instances of {@link DefaultStrings}.
-	 * <p>
-	 * This class is intended for use by a single thread.
-	 *
-	 * @author <a href="https://revetkn.com">Mark Allen</a>
-	 */
-	@NotThreadSafe
-	public static class Builder {
-		@NonNull
-		private final Locale fallbackLocale;
-		@Nullable
-		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
-		@Nullable
-		private Function<LocaleMatcher, Locale> localeSupplier;
-		@Nullable
-		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
-		@Nullable
-		private TranslationFailureHandler translationFailureHandler;
-		@Nullable
-		private PhoneticResolver phoneticResolver;
-		@Nullable
-		private BidiIsolation bidiIsolation;
-
-		/**
-		 * Constructs a strings builder with a default locale.
-		 *
-		 * @param fallbackLocale fallback locale, not null
-		 */
-		protected Builder(@NonNull Locale fallbackLocale) {
-			requireNonNull(fallbackLocale);
-			this.fallbackLocale = fallbackLocale;
-		}
-
-		/**
-		 * Applies a localized string supplier to this builder.
-		 *
-		 * @param localizedStringSupplier localized string supplier, may be null
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder localizedStringSupplier(@Nullable Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier) {
-			this.localizedStringSupplier = localizedStringSupplier;
-			return this;
-		}
-
-		/**
-		 * Applies a locale supplier to this builder.
-		 *
-		 * @param localeSupplier locale supplier, may be null
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder localeSupplier(@Nullable Function<LocaleMatcher, Locale> localeSupplier) {
-			this.localeSupplier = localeSupplier;
-			return this;
-		}
-
-		/**
-		 * Applies a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales to this builder.
-		 *
-		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode) {
-			this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode;
-			return this;
-		}
-
-		/**
-		 * Applies a phonetic resolver to this builder.
-		 *
-		 * @param phoneticResolver phonetic resolver, may be null (defaults to fail-fast resolver)
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder phoneticResolver(@Nullable PhoneticResolver phoneticResolver) {
-			this.phoneticResolver = phoneticResolver;
-			return this;
-		}
-
-		/**
-		 * Applies a translation failure handler to this builder.
-		 *
-		 * @param translationFailureHandler handler for failed lookups, may be null (defaults to returning the key)
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder translationFailureHandler(@Nullable TranslationFailureHandler translationFailureHandler) {
-			this.translationFailureHandler = translationFailureHandler;
-			return this;
-		}
-
-		/**
-		 * Applies bidirectional isolation behavior for caller-supplied placeholder values.
-		 *
-		 * @param bidiIsolation bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
-		 * @return this builder instance, useful for chaining. not null
-		 */
-		@NonNull
-		public Builder bidiIsolation(@Nullable BidiIsolation bidiIsolation) {
-			this.bidiIsolation = bidiIsolation;
-			return this;
-		}
-
-		/**
-		 * Constructs an instance of {@link DefaultStrings}.
-		 *
-		 * @return an instance of {@link DefaultStrings}, not null
-		 */
-		@NonNull
-		public DefaultStrings build() {
-			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
-					translationFailureHandler, phoneticResolver, bidiIsolation);
-		}
 	}
 
 	private void throwExceptionFor(@NonNull TranslationFailure translationFailure, @NonNull String message) {

@@ -1557,6 +1557,22 @@ If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a 
 }
 ```
 
+## Inspection
+
+`Strings` provides read-only inspection helpers for audit and tooling use:
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .build();
+
+Set<Locale> supportedLocales = strings.getSupportedLocales();
+Set<String> englishKeys = strings.getKeysForLocale(Locale.forLanguageTag("en"));
+Set<String> missingFrenchKeys =
+  strings.getMissingKeys(Locale.forLanguageTag("en"), Locale.forLanguageTag("fr"));
+```
+
 ## Keying Strategy
 
 Ultimately, it is up to you and your team how best to name your localization keys.  Lokalized does not impose key naming constraints. 
@@ -1581,11 +1597,28 @@ For example: `"I read {{bookCount}} books."`
 
 ### Contextual Keys
 
-For example: `"SCREEN_PROFILE_BOOKS_READ"`
+For example: `"Checkout.Title"`, `"Checkout.Submit"`, and `"Checkout.Cancel"`.
+
+```json
+{
+  "Checkout.Title" : {
+    "commentary" : "Heading shown at the top of the checkout page.",
+    "translation" : "Checkout"
+  },
+  "Checkout.Submit" : {
+    "commentary" : "Primary button that submits the order.",
+    "translation" : "Place order"
+  },
+  "Checkout.Cancel" : {
+    "commentary" : "Secondary button that returns the user to the cart.",
+    "translation" : "Return to cart"
+  }
+}
+```
 
 #### Pros
 
-* It is possible to specifically target app components, which enforces translation context
+* It is possible to target a specific product surface or component, which enforces translation context
 * Perfect for big chunks of text like legal disclaimers
 * "Constant" keys means translations can change without affecting code
 

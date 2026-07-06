@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -54,14 +55,14 @@ public class StringsTests {
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
-		}, "Should not be able to construct a DefaultStrings instance with a fallback locale that doesn't have a corresponding strings file");
+		}, "Should not be able to construct a Strings instance with a fallback locale that doesn't have a corresponding strings file");
 
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
-		}, "Should not be able to construct a DefaultStrings instance with missing tiebreaker information");
+		}, "Should not be able to construct a Strings instance with missing tiebreaker information");
 
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -71,7 +72,7 @@ public class StringsTests {
 							"en", List.of(Locale.forLanguageTag("en"))
 					))
 					.build();
-		}, "Should not be able to construct a DefaultStrings instance with incomplete tiebreaker information");
+		}, "Should not be able to construct a Strings instance with incomplete tiebreaker information");
 
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -81,7 +82,7 @@ public class StringsTests {
 							"en", List.of(Locale.forLanguageTag("ja-JA"))
 					))
 					.build();
-		}, "Should not be able to construct a DefaultStrings instance with invalid tiebreaker information");
+		}, "Should not be able to construct a Strings instance with invalid tiebreaker information");
 
 		// This is a legal construction because it provides all necessary fallbacks
 		Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -1309,6 +1310,59 @@ public class StringsTests {
 		}});
 
 		assertEquals("We were unable to charge $24.99 to your credit card.", translation);
+	}
+
+	@Test
+	public void inspectionApiReportsSupportedLocalesKeysAndMissingKeys() {
+		Locale en = Locale.forLanguageTag("en");
+		Locale enGb = Locale.forLanguageTag("en-GB");
+		LocalizedString shared = new LocalizedString.Builder("Shared").translation("Shared").build();
+		LocalizedString fallbackOnly = new LocalizedString.Builder("Fallback only").translation("Fallback only").build();
+		LocalizedString britishShared = new LocalizedString.Builder("Shared").translation("Shared").build();
+
+		Strings strings = Strings.withFallbackLocale(en)
+				.localizedStringSupplier(() -> Map.of(
+						en, Set.of(shared, fallbackOnly),
+						enGb, Set.of(britishShared)
+				))
+				.localeSupplier((matcher) -> en)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(en, enGb)
+				))
+				.build();
+
+		assertEquals(Set.of(en, enGb), strings.getSupportedLocales());
+		assertEquals(Set.of("Shared", "Fallback only"), strings.getKeysForLocale(en));
+		assertEquals(Set.of("Shared"), strings.getKeysForLocale(enGb));
+		assertEquals(Collections.emptySet(), strings.getKeysForLocale(Locale.forLanguageTag("fr")));
+
+		assertEquals(Collections.emptySet(), strings.getMissingKeys(en, en));
+		assertEquals(Set.of("Fallback only"), strings.getMissingKeys(en, enGb));
+		assertEquals(Collections.emptySet(), strings.getMissingKeys(enGb, en));
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.getMissingKeys(Locale.forLanguageTag("fr"), en),
+				"Expected unsupported source locales to fail");
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.getMissingKeys(en, Locale.forLanguageTag("fr")),
+				"Expected unsupported target locales to fail");
+	}
+
+	@Test
+	public void inspectionApiReturnsImmutableCollections() {
+		Locale en = Locale.forLanguageTag("en");
+		LocalizedString localizedString = new LocalizedString.Builder("Shared").translation("Shared").build();
+
+		Strings strings = Strings.withFallbackLocale(en)
+				.localizedStringSupplier(() -> Map.of(en, Set.of(localizedString)))
+				.localeSupplier((matcher) -> en)
+				.build();
+
+		assertThrows(UnsupportedOperationException.class,
+				() -> strings.getSupportedLocales().add(Locale.forLanguageTag("fr")));
+		assertThrows(UnsupportedOperationException.class,
+				() -> strings.getKeysForLocale(en).add("Other"));
+		assertThrows(UnsupportedOperationException.class,
+				() -> strings.getMissingKeys(en, en).add("Other"));
 	}
 
 	private Strings buildStrings(LocalizedString localizedString) {

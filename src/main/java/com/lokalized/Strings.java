@@ -19,8 +19,13 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.NotThreadSafe;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 import static java.util.Objects.requireNonNull;
 
@@ -91,6 +96,33 @@ public interface Strings extends LocaleMatcher {
 	}
 
 	/**
+	 * Gets the locales for which localized strings were supplied.
+	 *
+	 * @return the supported locales, not null
+	 */
+	@NonNull
+	Set<@NonNull Locale> getSupportedLocales();
+
+	/**
+	 * Gets the localized string keys supplied for the given locale.
+	 *
+	 * @param locale locale to inspect, not null
+	 * @return the localized string keys for the locale, or an empty set if the locale is not supported, not null
+	 */
+	@NonNull
+	Set<@NonNull String> getKeysForLocale(@NonNull Locale locale);
+
+	/**
+	 * Gets the keys supplied by {@code sourceLocale} but missing from {@code targetLocale}.
+	 *
+	 * @param sourceLocale locale whose keys are used as the source set, not null
+	 * @param targetLocale locale whose keys are compared against the source set, not null
+	 * @return keys present in {@code sourceLocale} and missing from {@code targetLocale}, not null
+	 */
+	@NonNull
+	Set<@NonNull String> getMissingKeys(@NonNull Locale sourceLocale, @NonNull Locale targetLocale);
+
+	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
 	 * <p>
 	 * <pre>{@code  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -102,8 +134,126 @@ public interface Strings extends LocaleMatcher {
 	 * @param fallbackLocale the fallback locale, not null
 	 * @return a builder for a {@link Strings} instance, not null
 	 */
-	static DefaultStrings.@NonNull Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
+	static @NonNull Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
 		requireNonNull(fallbackLocale);
-		return new DefaultStrings.Builder(fallbackLocale);
+		return new Builder(fallbackLocale);
+	}
+
+	/**
+	 * Builder used to construct {@link Strings} instances.
+	 * <p>
+	 * This class is intended for use by a single thread.
+	 *
+	 * @author <a href="https://revetkn.com">Mark Allen</a>
+	 */
+	@NotThreadSafe
+	class Builder {
+		@NonNull
+		private final Locale fallbackLocale;
+		@Nullable
+		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
+		@Nullable
+		private Function<LocaleMatcher, Locale> localeSupplier;
+		@Nullable
+		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
+		@Nullable
+		private TranslationFailureHandler translationFailureHandler;
+		@Nullable
+		private PhoneticResolver phoneticResolver;
+		@Nullable
+		private BidiIsolation bidiIsolation;
+
+		/**
+		 * Constructs a strings builder with a default locale.
+		 *
+		 * @param fallbackLocale fallback locale, not null
+		 */
+		Builder(@NonNull Locale fallbackLocale) {
+			requireNonNull(fallbackLocale);
+			this.fallbackLocale = fallbackLocale;
+		}
+
+		/**
+		 * Applies a localized string supplier to this builder.
+		 *
+		 * @param localizedStringSupplier localized string supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder localizedStringSupplier(@Nullable Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier) {
+			this.localizedStringSupplier = localizedStringSupplier;
+			return this;
+		}
+
+		/**
+		 * Applies a locale supplier to this builder.
+		 *
+		 * @param localeSupplier locale supplier, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder localeSupplier(@Nullable Function<LocaleMatcher, Locale> localeSupplier) {
+			this.localeSupplier = localeSupplier;
+			return this;
+		}
+
+		/**
+		 * Applies a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales to this builder.
+		 *
+		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode) {
+			this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode;
+			return this;
+		}
+
+		/**
+		 * Applies a phonetic resolver to this builder.
+		 *
+		 * @param phoneticResolver phonetic resolver, may be null (defaults to fail-fast resolver)
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder phoneticResolver(@Nullable PhoneticResolver phoneticResolver) {
+			this.phoneticResolver = phoneticResolver;
+			return this;
+		}
+
+		/**
+		 * Applies a translation failure handler to this builder.
+		 *
+		 * @param translationFailureHandler handler for failed lookups, may be null (defaults to returning the key)
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder translationFailureHandler(@Nullable TranslationFailureHandler translationFailureHandler) {
+			this.translationFailureHandler = translationFailureHandler;
+			return this;
+		}
+
+		/**
+		 * Applies bidirectional isolation behavior for caller-supplied placeholder values.
+		 *
+		 * @param bidiIsolation bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder bidiIsolation(@Nullable BidiIsolation bidiIsolation) {
+			this.bidiIsolation = bidiIsolation;
+			return this;
+		}
+
+		/**
+		 * Constructs a {@link Strings} instance.
+		 *
+		 * @return a {@link Strings} instance, not null
+		 */
+		@NonNull
+		public Strings build() {
+			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
+					translationFailureHandler, phoneticResolver, bidiIsolation);
+		}
 	}
 }
