@@ -1224,6 +1224,18 @@ Placeholder values are initially specified by application code - they are the co
 
 Your translation file may override passed-in placeholders if desired, but that is an uncommon use case.
 
+For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Translation-file-defined placeholder fragments, such as plural word choices, are not isolated.
+
+Disable this behavior for plain-text sinks that cannot accept Unicode bidi controls:
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.forLanguageTag("ar"))
+  .bidiIsolation(BidiIsolation.NONE)
+  .build();
+```
+
 In the below example of an `en` strings file, the application code provides the `bookCount` value and the translation file introduces a `books` value to aid final translation.
 
 ```json

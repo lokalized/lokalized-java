@@ -62,12 +62,15 @@ import static java.util.Objects.requireNonNull;
 public class DefaultStrings implements Strings {
 	@NonNull
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
+	@NonNull
+	private static final BidiIsolation DEFAULT_BIDI_ISOLATION;
 
 	static {
 		DEFAULT_PHONETIC_RESOLVER = (term, locale) -> {
 			throw new IllegalStateException(format("No %s was configured. Provide one via %s.Builder#phoneticResolver(...)",
 					PhoneticResolver.class.getSimpleName(), Strings.class.getSimpleName()));
 		};
+		DEFAULT_BIDI_ISOLATION = BidiIsolation.RTL_LOCALES;
 	}
 
 	@NonNull
@@ -86,6 +89,8 @@ public class DefaultStrings implements Strings {
 	private final ExpressionEvaluator expressionEvaluator;
 	@NonNull
 	private final PhoneticResolver phoneticResolver;
+	@NonNull
+	private final BidiIsolation bidiIsolation;
 	@NonNull
 	private final Logger logger;
 
@@ -144,6 +149,28 @@ public class DefaultStrings implements Strings {
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable TranslationFailureHandler translationFailureHandler,
 													 @Nullable PhoneticResolver phoneticResolver) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, translationFailureHandler,
+				phoneticResolver, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with builder-supplied data.
+	 *
+	 * @param fallbackLocale                  fallback locale, not null
+	 * @param localizedStringSupplier         supplier of localized strings, not null
+	 * @param localeSupplier                  locale supplier, may not be null
+	 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallbacks, may be null
+	 * @param translationFailureHandler       handler for lookup failures, may be null
+	 * @param phoneticResolver                resolver for phonetic categories, may be null (defaults to fail-fast resolver)
+	 * @param bidiIsolation                   bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+													 @Nullable TranslationFailureHandler translationFailureHandler,
+													 @Nullable PhoneticResolver phoneticResolver,
+													 @Nullable BidiIsolation bidiIsolation) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
 		requireNonNull(localeSupplier, format("You must specify a 'localeSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
@@ -255,6 +282,7 @@ public class DefaultStrings implements Strings {
 		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(finalizedTiebreakerLocalesByLanguageCode);
 
 		this.translationFailureHandler = translationFailureHandler == null ? TranslationFailureHandler.returnKey() : translationFailureHandler;
+		this.bidiIsolation = bidiIsolation == null ? DEFAULT_BIDI_ISOLATION : bidiIsolation;
 		this.stringInterpolator = new StringInterpolator();
 		this.phoneticResolver = phoneticResolver == null ? DEFAULT_PHONETIC_RESOLVER : phoneticResolver;
 		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver);
@@ -373,7 +401,9 @@ public class DefaultStrings implements Strings {
 
 		switch (translationFailureResponse.getAction()) {
 			case RETURN_KEY:
-				return getStringInterpolator().interpolate(key, new HashMap<>(placeholders));
+				Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>(placeholders);
+				return getStringInterpolator().interpolate(key, interpolationContextFor(interpolationContext, immutableContext,
+						Collections.emptySet(), locale));
 			case RETURN_STRING:
 				return translationFailureResponse.getTranslation();
 			case THROW_EXCEPTION:
@@ -759,13 +789,51 @@ public class DefaultStrings implements Strings {
 			}
 		}
 
-		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(translation, mutableContext);
+		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(translation,
+				interpolationContextFor(mutableContext, immutableContext, localizedString.getLanguageFormTranslationsByPlaceholder().keySet(), locale));
 
 		if (!interpolationResult.getUnresolvedPlaceholderNames().isEmpty())
 			throw new IllegalArgumentException(format("Missing value for placeholder(s) [%s] in key '%s'",
 					interpolationResult.getUnresolvedPlaceholderNames().stream().collect(Collectors.joining(", ")), key));
 
 		return Optional.of(interpolationResult.getValue());
+	}
+
+	@NonNull
+	private Map<@NonNull String, @Nullable Object> interpolationContextFor(@NonNull Map<@NonNull String, @Nullable Object> mutableContext,
+																																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+																																				 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
+																																				 @NonNull Locale locale) {
+		requireNonNull(mutableContext);
+		requireNonNull(immutableContext);
+		requireNonNull(fileDefinedPlaceholderNames);
+		requireNonNull(locale);
+
+		switch (getBidiIsolation()) {
+			case NONE:
+				return mutableContext;
+			case RTL_LOCALES:
+				if (!BidiUtils.localeUsesRightToLeftScript(locale))
+					return mutableContext;
+				break;
+			default:
+				throw new IllegalArgumentException(format("Unsupported %s value %s",
+						BidiIsolation.class.getSimpleName(), getBidiIsolation()));
+		}
+
+		Map<@NonNull String, @Nullable Object> isolatedContext = new HashMap<>(mutableContext);
+
+		for (String placeholderName : immutableContext.keySet()) {
+			if (fileDefinedPlaceholderNames.contains(placeholderName))
+				continue;
+
+			Object value = unwrapOptional(isolatedContext.get(placeholderName));
+
+			if (value != null)
+				isolatedContext.put(placeholderName, BidiUtils.isolate(value.toString()));
+		}
+
+		return isolatedContext;
 	}
 
 	@NonNull
@@ -1218,6 +1286,16 @@ public class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the bidirectional isolation behavior used for caller-supplied placeholder values.
+	 *
+	 * @return the bidi isolation behavior, not null
+	 */
+	@NonNull
+	public BidiIsolation getBidiIsolation() {
+		return bidiIsolation;
+	}
+
+	/**
 	 * Gets our "master" cache of localized strings by key by locale.
 	 *
 	 * @return the cache of localized strings by key by locale, not null
@@ -1248,6 +1326,8 @@ public class DefaultStrings implements Strings {
 		private TranslationFailureHandler translationFailureHandler;
 		@Nullable
 		private PhoneticResolver phoneticResolver;
+		@Nullable
+		private BidiIsolation bidiIsolation;
 
 		/**
 		 * Constructs a strings builder with a default locale.
@@ -1320,6 +1400,18 @@ public class DefaultStrings implements Strings {
 		}
 
 		/**
+		 * Applies bidirectional isolation behavior for caller-supplied placeholder values.
+		 *
+		 * @param bidiIsolation bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
+		 * @return this builder instance, useful for chaining. not null
+		 */
+		@NonNull
+		public Builder bidiIsolation(@Nullable BidiIsolation bidiIsolation) {
+			this.bidiIsolation = bidiIsolation;
+			return this;
+		}
+
+		/**
 		 * Constructs an instance of {@link DefaultStrings}.
 		 *
 		 * @return an instance of {@link DefaultStrings}, not null
@@ -1327,7 +1419,7 @@ public class DefaultStrings implements Strings {
 		@NonNull
 		public DefaultStrings build() {
 			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
-					translationFailureHandler, phoneticResolver);
+					translationFailureHandler, phoneticResolver, bidiIsolation);
 		}
 	}
 

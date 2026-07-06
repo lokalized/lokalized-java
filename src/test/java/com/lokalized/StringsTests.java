@@ -1031,6 +1031,77 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bidiIsolationWrapsExternalPlaceholdersForRtlLocalesByDefault() {
+		LocalizedString localizedString = new LocalizedString.Builder("Shipment")
+				.translation("تم تجهيز {{code}}")
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("ar"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ar"))
+				.build();
+
+		assertEquals("تم تجهيز \u2068ACME-42\u2069", strings.get("Shipment", Map.of("code", "ACME-42")));
+	}
+
+	@Test
+	public void bidiIsolationCanBeDisabled() {
+		LocalizedString localizedString = new LocalizedString.Builder("Shipment")
+				.translation("تم تجهيز {{code}}")
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("ar"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ar"))
+				.bidiIsolation(BidiIsolation.NONE)
+				.build();
+
+		assertEquals("تم تجهيز ACME-42", strings.get("Shipment", Map.of("code", "ACME-42")));
+	}
+
+	@Test
+	public void bidiIsolationDoesNotWrapFileDefinedPlaceholders() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("{{title}} {{name}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"title", new LocalizedString.LanguageFormTranslation("gender", Map.of(
+								Gender.MASCULINE, "السيد",
+								Gender.FEMININE, "السيدة",
+								Gender.NEUTER, "العضو",
+								Gender.COMMON, "العضو"
+						))
+				))
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("ar"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ar"))
+				.build();
+
+		assertEquals("السيد \u2068ACME-42\u2069", strings.get("Greeting", Map.of(
+				"gender", Gender.MASCULINE,
+				"name", "ACME-42"
+		)));
+	}
+
+	@Test
+	public void bidiIsolationDoesNotWrapExternalPlaceholdersForLtrLocales() {
+		LocalizedString localizedString = new LocalizedString.Builder("Shipment")
+				.translation("Order {{code}} is ready")
+				.build();
+
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("Order ACME-42 is ready", strings.get("Shipment", Map.of("code", "ACME-42")));
+	}
+
+	@Test
 	public void translationFailureHandlerReceivesMissingTranslation() {
 		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
