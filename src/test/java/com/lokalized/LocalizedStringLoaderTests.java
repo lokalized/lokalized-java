@@ -707,6 +707,54 @@ public class LocalizedStringLoaderTests {
     }
   }
 
+  @Test
+  public void testClasspathLoadingReportsOriginsForConflictingDuplicateKeys() throws IOException {
+    Path tempJar1 = Files.createTempFile("lokalized-strings-conflict-one", ".jar");
+    Path tempJar2 = Files.createTempFile("lokalized-strings-conflict-two", ".jar");
+    tempJar1.toFile().deleteOnExit();
+    tempJar2.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar1, "strings/en", "{\"hello\":\"world\"}");
+    writeJarEntry(tempJar2, "strings/en", "{\"hello\":\"there\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{
+        tempJar1.toUri().toURL(),
+        tempJar2.toUri().toURL()
+    }, null)) {
+      LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"),
+          "Expected duplicate keys across classpath resources to fail during merge");
+
+      assertTrue(exception.getMessage().contains("Duplicate localized string key 'hello'"));
+      assertTrue(exception.getMessage().contains("locale 'en'"));
+      assertTrue(exception.getMessage().contains(tempJar1.getFileName().toString()));
+      assertTrue(exception.getMessage().contains(tempJar2.getFileName().toString()));
+      assertTrue(exception.getMessage().contains("strings/en"));
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingIgnoresIdenticalDuplicateKeys() throws IOException {
+    Path tempJar1 = Files.createTempFile("lokalized-strings-identical-one", ".jar");
+    Path tempJar2 = Files.createTempFile("lokalized-strings-identical-two", ".jar");
+    tempJar1.toFile().deleteOnExit();
+    tempJar2.toFile().deleteOnExit();
+
+    writeJarEntry(tempJar1, "strings/en", "{\"hello\":\"world\"}");
+    writeJarEntry(tempJar2, "strings/en", "{\"hello\":\"world\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{
+        tempJar1.toUri().toURL(),
+        tempJar2.toUri().toURL()
+    }, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+      Set<LocalizedString> localizedStrings = localizedStringsByLocale.get(Locale.forLanguageTag("en"));
+
+      assertNotNull(localizedStrings);
+      assertEquals(1, localizedStrings.size());
+    }
+  }
+
   private void writeJarEntry(Path jarPath, String entryName, String json) throws IOException {
     try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
       JarEntry directoryEntry = new JarEntry(entryName.substring(0, entryName.lastIndexOf('/') + 1));

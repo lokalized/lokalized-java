@@ -30,12 +30,12 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.ThreadSafe;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -248,11 +248,11 @@ public final class LocalizedStringLoader {
     if (!urls.hasMoreElements())
       throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
-    Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> mergedByLocale = createLocaleKeyMap();
+    Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> mergedByLocale = createSourceLocaleKeyMap();
 
     while (urls.hasMoreElements()) {
       URL url = urls.nextElement();
-      Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
+      Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
       mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
     }
 
@@ -282,7 +282,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
     requireNonNull(directory);
-    return loadFromDirectory(directory.toFile());
+    return loadFromDirectory(directory);
   }
 
   // TODO: should we expose methods for loading a single file?
@@ -295,30 +295,25 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull File directory) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull Path directory) {
     requireNonNull(directory);
 
-    if (!directory.exists())
+    if (!Files.exists(directory))
       throw new LocalizedStringLoadingException(format("Location '%s' does not exist",
           directory));
 
-    if (!directory.isDirectory())
+    if (!Files.isDirectory(directory))
       throw new LocalizedStringLoadingException(format("Location '%s' exists but is not a directory",
           directory));
 
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
-    File[] files = directory.listFiles();
-
-    if (files == null)
-      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
-
-    if (files != null) {
-      for (File file : files) {
-        if (file.isDirectory())
+    try (DirectoryStream<@NonNull Path> directoryStream = Files.newDirectoryStream(directory)) {
+      for (Path file : directoryStream) {
+        if (Files.isDirectory(file))
           continue;
 
-        String fileName = file.getName();
+        String fileName = file.getFileName().toString();
         String languageTag = languageTagForFileName(fileName);
 
         if (languageTag != null) {
@@ -327,20 +322,68 @@ public final class LocalizedStringLoader {
 
           if (localizedStringsByLocale.containsKey(locale))
             throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found at '%s'",
-                locale.toLanguageTag(), file.getPath()));
+                locale.toLanguageTag(), file));
 
           localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file, locale));
         } else {
           LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
       }
+    } catch (IOException e) {
+      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
     }
 
     return Collections.unmodifiableMap(localizedStringsByLocale);
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromDirectoryWithOrigins(@NonNull Path directory) {
+    requireNonNull(directory);
+
+    if (!Files.exists(directory))
+      throw new LocalizedStringLoadingException(format("Location '%s' does not exist",
+          directory));
+
+    if (!Files.isDirectory(directory))
+      throw new LocalizedStringLoadingException(format("Location '%s' exists but is not a directory",
+          directory));
+
+    Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = createSourceLocaleMap();
+    Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
+
+    try (DirectoryStream<@NonNull Path> directoryStream = Files.newDirectoryStream(directory)) {
+      for (Path file : directoryStream) {
+        if (Files.isDirectory(file))
+          continue;
+
+        String fileName = file.getFileName().toString();
+        String languageTag = languageTagForFileName(fileName);
+
+        if (languageTag != null) {
+          LOGGER.fine(format("Loading localized strings file '%s'...", fileName));
+          Locale locale = Locale.forLanguageTag(languageTag);
+          String canonicalPath = canonicalPathForPath(file);
+          String existingOrigin = originByLocale.get(locale);
+
+          if (existingOrigin != null)
+            throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in '%s' and '%s'",
+                locale.toLanguageTag(), existingOrigin, canonicalPath));
+
+          localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStringsFile(file, locale), canonicalPath));
+          originByLocale.put(locale, canonicalPath);
+        } else {
+          LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
+        }
+      }
+    } catch (IOException e) {
+      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
+    }
+
+    return Collections.unmodifiableMap(localizedStringsByLocale);
+  }
+
+  @NonNull
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
     requireNonNull(url);
     requireNonNull(classpathPackage);
 
@@ -348,7 +391,7 @@ public final class LocalizedStringLoader {
 
     if ("file".equals(protocol)) {
       try {
-        return loadFromDirectory(Paths.get(url.toURI()).toFile());
+        return loadFromDirectoryWithOrigins(Paths.get(url.toURI()));
       } catch (URISyntaxException e) {
         throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
       }
@@ -362,12 +405,13 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromJar(@NonNull URL jarUrl,
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromJar(@NonNull URL jarUrl,
                                                                @NonNull String classpathPackage) {
     requireNonNull(jarUrl);
     requireNonNull(classpathPackage);
 
-    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
+    Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = createSourceLocaleMap();
+    Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
 
     try {
       JarURLConnection connection = (JarURLConnection) jarUrl.openConnection();
@@ -406,14 +450,17 @@ public final class LocalizedStringLoader {
             LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
             Locale locale = Locale.forLanguageTag(languageTag);
 
-            if (localizedStringsByLocale.containsKey(locale))
-              throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in %s",
-                  locale.toLanguageTag(), jarFile.getName()));
+            String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
+            String existingOrigin = originByLocale.get(locale);
+
+            if (existingOrigin != null)
+              throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in '%s' and '%s'",
+                  locale.toLanguageTag(), existingOrigin, canonicalPath));
 
             try (InputStream inputStream = jarFile.getInputStream(entry)) {
               String contents = normalizeLocalizedStringsFileContents(new String(inputStream.readAllBytes(), UTF_8));
-              String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
-              localizedStringsByLocale.put(locale, parseLocalizedStrings(canonicalPath, contents, locale));
+              localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStrings(canonicalPath, contents, locale), canonicalPath));
+              originByLocale.put(locale, canonicalPath);
             }
           } else {
             LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", relativeName));
@@ -433,51 +480,87 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> createLocaleKeyMap() {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> createSourceLocaleMap() {
+    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+  }
+
+  @NonNull
+  private static Map<@NonNull Locale, @NonNull String> createLocaleOriginMap() {
+    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+  }
+
+  @NonNull
+  private static Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> createSourceLocaleKeyMap() {
     return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
   }
 
   private static void mergeLocalizedStrings(
-      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> target,
-      @NonNull Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> source) {
+      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> target,
+      @NonNull Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> source) {
     requireNonNull(target);
     requireNonNull(source);
 
-    for (Map.Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : source.entrySet()) {
+    for (Map.Entry<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> entry : source.entrySet()) {
       Locale locale = entry.getKey();
-      Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey = target.get(locale);
+      Map<@NonNull String, @NonNull SourceLocalizedString> localizedStringsByKey = target.get(locale);
 
       if (localizedStringsByKey == null) {
         localizedStringsByKey = new LinkedHashMap<>();
         target.put(locale, localizedStringsByKey);
       }
 
-      for (LocalizedString localizedString : entry.getValue()) {
+      for (SourceLocalizedString sourceLocalizedString : entry.getValue()) {
+        LocalizedString localizedString = sourceLocalizedString.getLocalizedString();
         String key = localizedString.getKey();
-        LocalizedString existing = localizedStringsByKey.get(key);
+        SourceLocalizedString existing = localizedStringsByKey.get(key);
 
-        if (existing != null)
-          throw new LocalizedStringLoadingException(format("Duplicate localized string key '%s' found for locale '%s' while merging classpath resources",
-              key, locale.toLanguageTag()));
+        if (existing != null) {
+          if (existing.getLocalizedString().equals(localizedString)) {
+            LOGGER.fine(format("Ignoring equivalent localized string key '%s' for locale '%s' found in both '%s' and '%s'",
+                key, locale.toLanguageTag(), existing.getOrigin(), sourceLocalizedString.getOrigin()));
+            continue;
+          }
 
-        localizedStringsByKey.put(key, localizedString);
+          throw new LocalizedStringLoadingException(format("Duplicate localized string key '%s' found for locale '%s' while merging classpath resources. " +
+                  "Conflicting resources are '%s' and '%s'", key, locale.toLanguageTag(), existing.getOrigin(), sourceLocalizedString.getOrigin()));
+        }
+
+        localizedStringsByKey.put(key, sourceLocalizedString);
       }
     }
   }
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> toLocalizedStringsByLocale(
-      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale) {
+      @NonNull Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> localizedStringsByKeyByLocale) {
     requireNonNull(localizedStringsByKeyByLocale);
 
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
-    for (Map.Entry<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> entry : localizedStringsByKeyByLocale.entrySet()) {
-      localizedStringsByLocale.put(entry.getKey(),
-          Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue().values())));
+    for (Map.Entry<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> entry : localizedStringsByKeyByLocale.entrySet()) {
+      Set<@NonNull LocalizedString> localizedStrings = new LinkedHashSet<>();
+
+      for (SourceLocalizedString sourceLocalizedString : entry.getValue().values())
+        localizedStrings.add(sourceLocalizedString.getLocalizedString());
+
+      localizedStringsByLocale.put(entry.getKey(), Collections.unmodifiableSet(localizedStrings));
     }
 
     return Collections.unmodifiableMap(localizedStringsByLocale);
+  }
+
+  @NonNull
+  private static Set<@NonNull SourceLocalizedString> sourceLocalizedStrings(@NonNull Set<@NonNull LocalizedString> localizedStrings,
+                                                                            @NonNull String origin) {
+    requireNonNull(localizedStrings);
+    requireNonNull(origin);
+
+    Set<@NonNull SourceLocalizedString> sourceLocalizedStrings = new LinkedHashSet<>();
+
+    for (LocalizedString localizedString : localizedStrings)
+      sourceLocalizedStrings.add(new SourceLocalizedString(localizedString, origin));
+
+    return Collections.unmodifiableSet(sourceLocalizedStrings);
   }
 
   private static boolean isLanguageTag(@NonNull String languageTag) {
@@ -522,40 +605,45 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Parses out a set of localized strings from the given file.
+   * Parses out a set of localized strings from the given path.
    *
-   * @param file the file to parse, not null
+   * @param path the path to parse, not null
    * @param locale the locale represented by the file, not null
    * @return the set of localized strings contained in the file, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull File file, @NonNull Locale locale) {
-    requireNonNull(file);
+  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull Path path, @NonNull Locale locale) {
+    requireNonNull(path);
     requireNonNull(locale);
 
-    String canonicalPath;
+    String canonicalPath = canonicalPathForPath(path);
 
-    try {
-      canonicalPath = file.getCanonicalPath();
-    } catch (IOException e) {
-      throw new LocalizedStringLoadingException(
-          format("Unable to determine canonical path for localized strings file %s", file), e);
-    }
-
-    if (!Files.isRegularFile(file.toPath()))
+    if (!Files.isRegularFile(path))
       throw new LocalizedStringLoadingException(format("%s is not a regular file", canonicalPath));
 
     String localizedStringsFileContents;
 
     try {
-      localizedStringsFileContents = normalizeLocalizedStringsFileContents(new String(Files.readAllBytes(file.toPath()), UTF_8));
+      localizedStringsFileContents = normalizeLocalizedStringsFileContents(new String(Files.readAllBytes(path), UTF_8));
     } catch (IOException e) {
       throw new LocalizedStringLoadingException(format("Unable to load localized strings file contents for %s",
           canonicalPath), e);
     }
 
     return parseLocalizedStrings(canonicalPath, localizedStringsFileContents, locale);
+  }
+
+  @NonNull
+  private static String canonicalPathForPath(@NonNull Path path) {
+    requireNonNull(path);
+
+    try {
+      return path.toRealPath().toString();
+    } catch (IOException e) {
+      throw new LocalizedStringLoadingException(
+          format("Unable to determine canonical path for localized strings file %s", path), e);
+    }
   }
 
   @NonNull
@@ -1409,6 +1497,31 @@ public final class LocalizedStringLoader {
 
         ++index;
       }
+    }
+  }
+
+  private static final class SourceLocalizedString {
+    @NonNull
+    private final LocalizedString localizedString;
+    @NonNull
+    private final String origin;
+
+    private SourceLocalizedString(@NonNull LocalizedString localizedString, @NonNull String origin) {
+      requireNonNull(localizedString);
+      requireNonNull(origin);
+
+      this.localizedString = localizedString;
+      this.origin = origin;
+    }
+
+    @NonNull
+    private LocalizedString getLocalizedString() {
+      return localizedString;
+    }
+
+    @NonNull
+    private String getOrigin() {
+      return origin;
     }
   }
 }
