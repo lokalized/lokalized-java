@@ -69,6 +69,8 @@ class ExpressionTokenizer {
       put(TokenType.GREATER_THAN, ">");
       put(TokenType.EQUAL_TO, "==");
       put(TokenType.NOT_EQUAL_TO, "!=");
+      put(TokenType.NUMBER, "[+-]?((\\d+\\.\\d*)|(\\.\\d+)|(\\d+))([eE][+-]?\\d+)?");
+      put(TokenType.VARIABLE, LocalizedStringUtils.localizedStringIdentifierPattern());
       put(TokenType.CARDINALITY_ZERO, "\\bCARDINALITY_ZERO\\b");
       put(TokenType.CARDINALITY_ONE, "\\bCARDINALITY_ONE\\b");
       put(TokenType.CARDINALITY_TWO, "\\bCARDINALITY_TWO\\b");
@@ -130,8 +132,6 @@ class ExpressionTokenizer {
       put(TokenType.CLUSIVITY_EXCLUSIVE, "\\bCLUSIVITY_EXCLUSIVE\\b");
       put(TokenType.ANIMACY_ANIMATE, "\\bANIMACY_ANIMATE\\b");
       put(TokenType.ANIMACY_INANIMATE, "\\bANIMACY_INANIMATE\\b");
-      put(TokenType.NUMBER, "[+-]?((\\d+\\.\\d*)|(\\.\\d+)|(\\d+))([eE][+-]?\\d+)?");
-      put(TokenType.VARIABLE, LocalizedStringUtils.localizedStringIdentifierPattern());
     }});
 
     // Underscore is illegal in regex group names.
@@ -170,7 +170,7 @@ class ExpressionTokenizer {
         String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
 
         if (group != null)
-          tokens.add(new Token(tokenType, group));
+          tokens.add(tokenFor(tokenType, group));
       }
 
       if (matcher.group(WHITESPACE_GROUP_NAME) != null)
@@ -191,5 +191,20 @@ class ExpressionTokenizer {
     }
 
     return tokens;
+  }
+
+  @NonNull
+  private static Token tokenFor(@NonNull TokenType tokenType, @NonNull String symbol) {
+    requireNonNull(tokenType);
+    requireNonNull(symbol);
+
+    if (tokenType == TokenType.VARIABLE) {
+      TokenType exactSymbolTokenType = TokenType.getTokenTypesBySymbol().get(symbol);
+
+      if (exactSymbolTokenType != null)
+        return new Token(exactSymbolTokenType);
+    }
+
+    return new Token(tokenType, symbol);
   }
 }

@@ -195,6 +195,10 @@ final class CldrLocaleData {
     if (tagParts.isPrivateUse())
       return true;
 
+    if (LANGUAGE_ALIASES_BY_TAG.containsKey(keyFor(tagParts.toLanguageTag())) ||
+        LANGUAGE_ALIASES_BY_TAG.containsKey(keyFor(languageTag)))
+      return true;
+
     String language = tagParts.getLanguage();
 
     if (language.length() == 0)

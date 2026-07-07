@@ -167,6 +167,22 @@ public class StringsTests {
 	}
 
 	@Test
+	public void rootAndUndeterminedLocalesUseFallbackLocale() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("fr"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("fr"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("fr"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("fr"), strings.bestMatchFor(Locale.ROOT));
+		assertEquals(Locale.forLanguageTag("fr"), strings.bestMatchFor(Locale.forLanguageTag("und")));
+	}
+
+	@Test
 	public void lookupTruncationBeatsLanguageTiebreakers() {
 		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
 
@@ -1063,6 +1079,17 @@ public class StringsTests {
 
 		assertEquals("Greeting", strings.get("Greeting"),
 				"Expected default failure handling to return the key after unresolved placeholders fail resolution");
+	}
+
+	@Test
+	public void programmaticLocalizedStringsValidatePlaceholderSyntaxAtBuildTime() {
+		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
+				.translation("Hello name}}")
+				.build();
+
+		assertThrows(IllegalArgumentException.class,
+				() -> buildStrings(localizedString),
+				"Expected malformed programmatic translation placeholders to fail while building Strings");
 	}
 
 	@Test

@@ -284,6 +284,8 @@ class DefaultStrings implements Strings {
 				if (localizedString == null)
 					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
 
+				validateLocalizedString(locale, localizedString);
+
 				String key = localizedString.getKey();
 				LocalizedString existing = localizedStringsByKey.putIfAbsent(key, localizedString);
 
@@ -305,6 +307,23 @@ class DefaultStrings implements Strings {
 							.collect(Collectors.joining(", "))));
 
 		this.localeSupplier = localeSupplier;
+	}
+
+	private static void validateLocalizedString(@NonNull Locale locale, @NonNull LocalizedString localizedString) {
+		requireNonNull(locale);
+		requireNonNull(localizedString);
+
+		if (localizedString.getTranslation().isPresent()) {
+			try {
+				StringInterpolator.placeholderNamesIn(localizedString.getTranslation().get());
+			} catch (IllegalArgumentException e) {
+				throw new IllegalArgumentException(format("Invalid placeholder reference in translation for key '%s' and locale '%s': %s",
+						localizedString.getKey(), locale.toLanguageTag(), e.getMessage()), e);
+			}
+		}
+
+		for (LocalizedString alternative : localizedString.getAlternatives())
+			validateLocalizedString(locale, alternative);
 	}
 
 	@NonNull
@@ -1040,6 +1059,9 @@ class DefaultStrings implements Strings {
 				continue;
 
 			if ("*".equals(range))
+				return getFallbackLocale();
+
+			if ("".equals(range) || "und".equalsIgnoreCase(range))
 				return getFallbackLocale();
 
 			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);

@@ -324,6 +324,18 @@ public class ExpressionTokenizerTests {
   }
 
   @Test
+  public void reservedWordPrefixTokenization() {
+    List<Token> tokens = new ExpressionTokenizer().extractTokens("CARDINALITY_ONE-more == GENDER_MASCULINEβ");
+
+    List<Token> expectedTokens = new ArrayList<>();
+    expectedTokens.add(new Token(TokenType.VARIABLE, "CARDINALITY_ONE-more"));
+    expectedTokens.add(new Token(TokenType.EQUAL_TO));
+    expectedTokens.add(new Token(TokenType.VARIABLE, "GENDER_MASCULINEβ"));
+
+    assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
   public void hyphenatedVariableTokenization() {
     List<Token> tokens = new ExpressionTokenizer().extractTokens("user-name == 1");
 

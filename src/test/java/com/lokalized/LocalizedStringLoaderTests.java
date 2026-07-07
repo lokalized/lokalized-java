@@ -84,11 +84,15 @@ public class LocalizedStringLoaderTests {
 
     Files.write(tempDirectory.resolve("mo.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("sh.json"), "{\"hi\":\"there\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("zh-yue.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("i-klingon.json"), "{\"nuqneH\":\"world\"}".getBytes(StandardCharsets.UTF_8));
 
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("mo")));
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("sh")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("zh-yue")));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("i-klingon")));
   }
 
   @Test

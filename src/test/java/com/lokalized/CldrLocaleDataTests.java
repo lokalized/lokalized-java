@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises CLDR-backed locale metadata.
@@ -38,6 +39,12 @@ public class CldrLocaleDataTests {
     assertEquals("sr-Latn-BA", CldrLocaleData.canonicalLanguageTag("sh-BA"));
     assertEquals("en-GB-oxendict", CldrLocaleData.canonicalLanguageTag("en-GB-oed"));
     assertEquals("und-Zinh", CldrLocaleData.canonicalLanguageTag("und-Qaai"));
+  }
+
+  @Test
+  public void fullTagAliasesAreKnownLanguageTags() {
+    assertTrue(CldrLocaleData.isKnownLanguageTag("zh-yue"));
+    assertTrue(CldrLocaleData.isKnownLanguageTag("i-klingon"));
   }
 
   @Test
