@@ -24,12 +24,17 @@ import java.util.Locale.LanguageRange;
 
 /**
  * Contract for matching an input {@link Locale} or {@link List}{@code <}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
+ * <p>
+ * Lokalized's implementation prefers exact and CLDR-canonical matches, then CLDR parent-locale fallback,
+ * then script-aware likely-subtag matches. If multiple supported strings files still share the same language,
+ * configured tiebreakers determine which locale wins. Unmatched, root, and undetermined requests resolve to the
+ * configured fallback locale.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public interface LocaleMatcher {
 	/**
-	 * Given a language range, determine the best-matching localized strings file's locale.
+	 * Given a locale, determine the best-matching localized strings file's locale.
 	 *
 	 * @param locale the locale for which to find the best match.
 	 * @return the best-matching locale, not null

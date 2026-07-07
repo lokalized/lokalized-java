@@ -144,6 +144,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 By default, failed lookups return the key with supplied placeholders interpolated into it. To throw instead:
 
 ```java
+// Fail-fast
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
   .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
@@ -154,11 +155,12 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 You can also provide your own handler:
 
 ```java
+// Custom telemetry for failures
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
   .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
   .translationFailureHandler((failure) -> {
-    metrics.increment("lokalized.translation.failure");
+    exampleMetrics.increment("lokalized.translation.failure");
     return TranslationFailureResponse.returnString("Translation unavailable");
   })
   .build();
@@ -167,6 +169,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 Lokalized [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) instances are immutable and safe to share. If your application needs to reload strings files, rebuild a new instance and atomically swap the shared [`AtomicReference`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/concurrent/atomic/AtomicReference.html):
 
 ```java
+// Threadsafe reloading in your application via atomic swaps
 final class LocalizedStrings {
   private static final Locale FALLBACK_LOCALE = Locale.forLanguageTag("en-US");
   private final AtomicReference<Strings> strings = new AtomicReference<>(load());
@@ -210,6 +213,7 @@ assertEquals("I didn't read any books.", translation);
 Lokalized selects translations and interpolates placeholder values, but it does not format dates, times, numbers, percentages, or currency values. Use JDK formatters such as [`NumberFormat`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/text/NumberFormat.html) and [`DateTimeFormatter`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/time/format/DateTimeFormatter.html) for display values before passing them to Lokalized:
 
 ```java
+// Let the JDK do the formatting lift
 Locale locale = Locale.forLanguageTag("fr-FR");
 NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(locale);
 DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale);
@@ -240,6 +244,7 @@ When a value affects translation selection and also needs locale-aware display f
 ```
 
 ```java
+// Provide both "raw" and "formatted" values to support placeholder logic
 int count = 12_345;
 Locale locale = Locale.forLanguageTag("en-US");
 
@@ -299,6 +304,16 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   })
   .build();
 ```
+
+### Locale Matching Behavior
+
+[`bestMatchFor(Locale)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.Locale)) and [`bestMatchFor(List<LanguageRange>)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) match requested locale preferences against the locales loaded from your strings files. Matching is deterministic and follows these broad rules:
+
+* Exact strings-file locale matches win first, including CLDR-canonical equivalents for deprecated or legacy language tags
+* CLDR parent locales are considered before looser language-only matches. For example, `en-AU` can prefer a configured `en-001` file before `en`
+* Matching is script-aware when CLDR likely-subtag data can infer a script. For example, `zh-TW` can match `zh-Hant`, and `sr-Latn` is distinct from `sr-Cyrl`
+* If multiple supported files share the same language and no exact, parent, or script-aware match resolves the request, `tiebreakerLocalesByLanguageCode` controls which locale wins
+* `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
 
 ## Loading Localized Strings
 
@@ -1283,7 +1298,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 ## CLDR Data
 
-Lokalized's cardinality, ordinality, cardinality-range, locale-parent, language-alias, likely-subtag, and locale-validity behavior is generated from pinned Unicode CLDR 48.2 XML data.
+Lokalized's cardinality, ordinality, cardinality-range, locale matching, and locale-tag validation behavior is generated from pinned Unicode CLDR 48.2 XML data.
 
 Pinned CLDR resources live under [src/test/resources/cldr/48.2](https://github.com/lokalized/lokalized-java/tree/master/src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, and generated CLDR conformance fixtures are checked in under `src/test/java`.
 
@@ -1320,7 +1335,7 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
   .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
   .translationFailureHandler((failure) -> {
-    metrics.increment("lokalized.translation.failure",
+    exampleMetrics.increment("lokalized.translation.failure",
       Map.of(
         "reason", failure.getReason().name(),
         "locale", failure.getRequestedLocale().toLanguageTag()
