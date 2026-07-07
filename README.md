@@ -164,6 +164,30 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .build();
 ```
 
+Lokalized [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) instances are immutable and safe to share. If your application needs to reload strings files, rebuild a new instance and atomically swap the shared [`AtomicReference`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/concurrent/atomic/AtomicReference.html):
+
+```java
+final class LocalizedStrings {
+  private static final Locale FALLBACK_LOCALE = Locale.forLanguageTag("en-US");
+  private final AtomicReference<Strings> strings = new AtomicReference<>(load());
+
+  public String get(String key, Map<String, Object> placeholders) {
+    return strings.get().get(key, placeholders);
+  }
+
+  public void reload() {
+    strings.set(load());
+  }
+
+  private static Strings load() {
+    return Strings.withFallbackLocale(FALLBACK_LOCALE)
+      .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+      .localeSupplier((matcher) -> matcher.bestMatchFor(MyWebContext.getHttpServletRequest().getLocale()))
+      .build();
+  }
+}
+```
+
 ### 3. Ask Strings Instance For Translations
 
 ```java
@@ -179,6 +203,50 @@ assertEquals("I read 1 book.", translation);
 // A special alternative rule is applied when bookCount == 0
 translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
 assertEquals("I didn't read any books.", translation);
+```
+
+#### Formatting Placeholder Values
+
+Lokalized selects translations and interpolates placeholder values, but it does not format dates, times, numbers, percentages, or currency values. Use JDK formatters such as [`NumberFormat`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/text/NumberFormat.html) and [`DateTimeFormatter`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/time/format/DateTimeFormatter.html) for display values before passing them to Lokalized:
+
+```java
+Locale locale = Locale.forLanguageTag("fr-FR");
+NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(locale);
+DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale);
+
+String translation = strings.get("Your balance is {{balance}} and is due on {{dueDate}}.", Map.of(
+  "balance", currencyFormat.format(new BigDecimal("1234.56")),
+  "dueDate", dateFormat.format(LocalDate.of(2026, 7, 7))
+));
+```
+
+When a value affects translation selection and also needs locale-aware display formatting, pass separate placeholders: a raw value for Lokalized's language-form rules and a formatted value for interpolation.
+
+```json
+{
+  "You have {{formattedCount}} items." : {
+    "translation" : "You have {{formattedCount}} {{items}}.",
+    "placeholders" : {
+      "items" : {
+        "value" : "count",
+        "translations" : {
+          "CARDINALITY_ONE" : "item",
+          "CARDINALITY_OTHER" : "items"
+        }
+      }
+    }
+  }
+}
+```
+
+```java
+int count = 12_345;
+Locale locale = Locale.forLanguageTag("en-US");
+
+String translation = strings.get("You have {{formattedCount}} items.", Map.of(
+  "count", count,
+  "formattedCount", NumberFormat.getIntegerInstance(locale).format(count)
+));
 ```
 
 #### 4. Ensure Determinism via Tiebreakers
@@ -234,7 +302,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 
 ## Loading Localized Strings
 
-Most applications load strings files from the filesystem during development and from the classpath in packaged deployments.
+Most applications load strings files from the filesystem during development and from the classpath in packaged deployments using [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html).
 
 ```java
 Strings filesystemStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -248,13 +316,13 @@ Strings classpathStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"
   .build();
 ```
 
-Classpath package names use slash-separated resource paths such as `strings` or `com/example/strings`. `loadFromClasspath(String)` first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use `loadFromClasspath(ClassLoader, String)` for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
+Classpath package names use slash-separated resource paths such as `strings` or `com/example/strings`. [`loadFromClasspath(String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.String)) first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use [`loadFromClasspath(ClassLoader, String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.ClassLoader,java.lang.String)) for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
 
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
 
 ## Explicit Locale Lookups
 
-The `localeSupplier` configured on `Strings.Builder` is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, and administrative tooling, pass the locale directly for a single lookup:
+The `localeSupplier` configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, and administrative tooling, pass the locale directly for a single lookup:
 
 ```java
 String translation = strings.get(
@@ -268,7 +336,7 @@ Explicit-locale lookup bypasses the configured `localeSupplier` for that call. L
 
 ## Translation Failure Handling
 
-When a lookup cannot be resolved, Lokalized asks the configured `TranslationFailureHandler` what to do. The default handler is `TranslationFailureHandler.returnKey()`, which returns the lookup key with any caller-supplied placeholders interpolated into it.
+When a lookup cannot be resolved, Lokalized asks the configured [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to do. The default handler is [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()), which returns the lookup key with any caller-supplied placeholders interpolated into it.
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -280,11 +348,11 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 
 Built-in handler factories are:
 
-* `TranslationFailureHandler.returnKey()` - returns the key with supplied placeholders interpolated
-* `TranslationFailureHandler.throwException()` - throws for missing translations and rethrows runtime resolution failures
-* `TranslationFailureHandler.logAndReturnKey(logger)` - logs the failure without placeholder values, then returns the interpolated key
+* [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - returns the key with supplied placeholders interpolated
+* [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
+* [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
 
-Custom handlers inspect a `TranslationFailure` and return a `TranslationFailureResponse`:
+Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html):
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -302,7 +370,7 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .build();
 ```
 
-`TranslationFailure` exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging `failure.getPlaceholders()` unless your application has explicitly approved that.
+[`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging [`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders()) unless your application has explicitly approved that.
 
 ## A More Complex Example
 
@@ -1331,7 +1399,7 @@ Your translation file may override passed-in placeholders if desired, but that i
 
 For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Translation-file-defined placeholder fragments, such as plural word choices, are not isolated.
 
-Disable this behavior for plain-text sinks that cannot accept Unicode bidi controls:
+Disable this behavior with [`BidiIsolation`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html) for plain-text sinks that cannot accept Unicode bidi controls:
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
@@ -1371,7 +1439,7 @@ Lokalized supports 2 placeholder formats:
 
 In the simple format:
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/javase/8/docs/api/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/javase/8/docs/api/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
@@ -1666,7 +1734,7 @@ If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a 
 
 ## Inspection
 
-`Strings` provides read-only inspection helpers for audit and tooling use:
+[`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) provides read-only inspection helpers for audit and tooling use:
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
