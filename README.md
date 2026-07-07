@@ -1832,9 +1832,6 @@ It's possible to cherrypick and create a hybrid solution.  For example, you migh
 
 Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbook examples that show translation-file structure and Java lookup calls for that language's plural categories.
 
-<details>
-<summary>Supported language reference pages</summary>
-
 | Language | Tag |
 |---|---|
 | [Afrikaans](https://www.lokalized.com/languages/af) | `af` |
@@ -2062,7 +2059,6 @@ Each language reference page includes CLDR 48.2 cardinality, cardinality range, 
 | [Yoruba (Èdè Yorùbá)](https://www.lokalized.com/languages/yo) | `yo` |
 | [Zulu (isiZulu)](https://www.lokalized.com/languages/zu) | `zu` |
 
-</details>
 ## java.util.logging
 
 Lokalized uses ```java.util.logging``` internally.  The usual way to hook into this is with [SLF4J](http://slf4j.org), which can funnel all the different logging mechanisms in your app through a single one, normally [Logback](http://logback.qos.ch).  Your Maven configuration might look like this:
