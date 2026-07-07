@@ -31,7 +31,14 @@ jobs:
           java-version: ${{ matrix.jdk }}
           cache: maven
 
+      # The test-scoped JSON Schema validator is Java 17+ bytecode. Keep JDK 11
+      # in the matrix as a main-artifact baseline check, but run tests on JDK 17+.
+      - name: Verify main artifact
+        if: matrix.jdk == '11'
+        run: mvn -B -ntp -Dmaven.test.skip=true verify
+
       - name: Verify
+        if: matrix.jdk != '11'
         run: mvn -B -ntp verify
 
       - name: Build Javadoc

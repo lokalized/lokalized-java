@@ -77,6 +77,18 @@ assertEquals("I didn't read any books.", translation);
 
 If you don't use Maven, you can drop [lokalized-3.0.0-SNAPSHOT.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.0.0-SNAPSHOT/lokalized-3.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
+## Migrating From 2.x
+
+Lokalized 3.0 replaces the legacy failure handling and lookup APIs with explicit per-instance and per-invocation options:
+
+* Replace legacy failure handling configuration with [`Strings.Builder.translationFailureHandler(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#translationFailureHandler(com.lokalized.TranslationFailureHandler)). Use [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) for soft fallback or [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) for fail-fast behavior.
+* Replace explicit-locale lookup overloads with [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html): `strings.get(key, locale)` becomes `strings.get(key, TranslationOptions.forLocale(locale))`, and `strings.get(key, placeholders, locale)` becomes `strings.get(key, placeholders, TranslationOptions.forLocale(locale))`.
+* Build instances through [`Strings.withFallbackLocale(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#withFallbackLocale(java.util.Locale)); `DefaultStrings` is no longer a public implementation type.
+* Review strings files under the stricter loader validation. Duplicate nested JSON members, malformed placeholders, whitespace-padded mustaches such as `{{ name }}`, reserved language-form placeholder names, invalid locale filenames, and invalid alternative expressions are rejected while loading.
+* Placeholder and alternative-expression identifiers now share one rule: start with a Unicode letter or underscore, then use Unicode letters, Unicode digits, underscores, or hyphens.
+* Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in some locales.
+* Right-to-left locale output may include Unicode FSI/PDI controls around caller-supplied placeholder values. Use [`BidiIsolation.NONE`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#NONE) only for sinks that cannot accept bidi controls.
+
 ## Why Lokalized?
 
 * **As a developer**, it is unrealistic to embed per-locale translation rules in code for every text string

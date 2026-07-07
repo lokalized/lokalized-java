@@ -6,7 +6,7 @@ All notable changes to Lokalized will be documented in this file.
 
 ### Breaking Changes
 
-- Replaced the old failure-mode API with `TranslationFailureHandler`, `TranslationFailure`,
+- Replaced the legacy failure handling API with `TranslationFailureHandler`, `TranslationFailure`,
   `TranslationFailureReason`, and `TranslationFailureResponse`.
 - Removed public explicit-`Locale` `Strings.get(...)` overloads. Use `TranslationOptions.forLocale(...)`
   or `TranslationOptions.forLanguageRanges(...)` for per-invocation locale overrides.
@@ -51,11 +51,18 @@ All notable changes to Lokalized will be documented in this file.
 
 ### Migration Notes
 
-- Replace failure-mode configuration with `Strings.Builder.translationFailureHandler(...)`.
+- Replace legacy failure handling configuration with `Strings.Builder.translationFailureHandler(...)`.
+  `TranslationFailureHandler.returnKey()` preserves the default soft-fail behavior, while
+  `TranslationFailureHandler.throwException()` provides fail-fast behavior.
 - Replace `strings.get(key, locale)` with `strings.get(key, TranslationOptions.forLocale(locale))`.
 - Replace `strings.get(key, placeholders, locale)` with
   `strings.get(key, placeholders, TranslationOptions.forLocale(locale))`.
-- Review strings files under the stricter loader validation before release.
+- Replace direct construction or references to `DefaultStrings` with `Strings.withFallbackLocale(...).build()`.
+- Review strings files under the stricter loader validation before release. Duplicate nested JSON members,
+  malformed placeholders, whitespace-padded mustaches, reserved language-form placeholder names, invalid
+  locale filenames, and invalid alternative expressions are rejected while loading.
+- Placeholder and alternative-expression identifiers now follow the same rule: start with a Unicode letter
+  or underscore, then use Unicode letters, Unicode digits, underscores, or hyphens.
 - Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in
   some locales.
 - Right-to-left locale output may now include Unicode FSI/PDI controls around caller-supplied placeholder
