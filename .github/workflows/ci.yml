@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop, 'feature/**']
+  pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref to save time and reduce noise.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (JDK ${{ matrix.jdk }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Do not cancel newer-JDK jobs if another leg fails. Each JDK gives useful signal.
+      fail-fast: false
+      matrix:
+        jdk: ['11', '17', '21', '25']
+    steps:
+      - name: Check out
+        uses: actions/checkout@v6
+
+      - name: Set up JDK ${{ matrix.jdk }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: corretto
+          java-version: ${{ matrix.jdk }}
+          cache: maven
+
+      - name: Verify
+        run: mvn -B -ntp verify
+
+      - name: Build Javadoc
+        run: mvn -B -ntp javadoc:javadoc
