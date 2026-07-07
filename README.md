@@ -1328,20 +1328,17 @@ Built-in handler factories are:
 * [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
 * [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
 
-Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html):
+Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html). For example, you might fail softly for missing translations but throw for resolution failures, which usually indicate a broken placeholder, expression, or language-form rule:
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
   .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
   .translationFailureHandler((failure) -> {
-    exampleMetrics.increment("lokalized.translation.failure",
-      Map.of(
-        "reason", failure.getReason().name(),
-        "locale", failure.getRequestedLocale().toLanguageTag()
-      ));
+    if (failure.getReason() == TranslationFailureReason.RESOLUTION_FAILURE)
+      return TranslationFailureResponse.throwException();
 
-    return TranslationFailureResponse.returnString("Translation unavailable");
+    return TranslationFailureResponse.returnKey();
   })
   .build();
 ```
