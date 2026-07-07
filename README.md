@@ -1832,6 +1832,8 @@ It's possible to cherrypick and create a hybrid solution.  For example, you migh
 
 Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbook examples that show translation-file structure and Java lookup calls for that language's plural categories.
 
+These pages list CLDR plural-rule locales, not every valid IETF BCP 47 locale tag. Regional tags may inherit from a parent language when CLDR does not define separate rules; for example, `pt-BR` uses `pt`, while `pt-PT` has its own page because its rules differ.
+
 | Language | Tag |
 |---|---|
 | [Afrikaans](https://www.lokalized.com/languages/af) | `af` |
