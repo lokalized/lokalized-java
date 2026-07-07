@@ -1378,7 +1378,7 @@ All 5 are optional, with the stipulation that you must provide either a `transla
 
 ### JSON Schema
 
-A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available in this repository at [src/main/resources/schema/lokalized-strings.schema.json](src/main/resources/schema/lokalized-strings.schema.json).
+A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
 
 The schema validates file structure, placeholder shapes, known language-form names, placeholder metadata, and alternatives. It does not parse alternative expression syntax or validate locale-specific plural completeness; those checks are performed by Lokalized when strings are loaded.
 
@@ -1411,6 +1411,13 @@ Your translation file may override passed-in placeholders if desired, but that i
 
 For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Translation-file-defined placeholder fragments, such as plural word choices, are not isolated.
 
+Suppose the Arabic translation for `Shipment` is `تم تجهيز {{code}}`. By default, the caller-supplied `code` value is isolated:
+
+```java
+String translation = strings.get("Shipment", Map.of("code", "ACME-42"));
+assertEquals("تم تجهيز \u2068ACME-42\u2069", translation);
+```
+
 Disable this behavior with [`BidiIsolation`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html) for plain-text sinks that cannot accept Unicode bidi controls:
 
 ```java
@@ -1419,6 +1426,9 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
   .localeSupplier(matcher -> Locale.forLanguageTag("ar"))
   .bidiIsolation(BidiIsolation.NONE)
   .build();
+
+String translation = strings.get("Shipment", Map.of("code", "ACME-42"));
+assertEquals("تم تجهيز ACME-42", translation);
 ```
 
 In the below example of an `en` strings file, the application code provides the `bookCount` value and the translation file introduces a `books` value to aid final translation.
