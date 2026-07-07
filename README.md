@@ -51,7 +51,7 @@ assertEquals("I didn't read any books.", translation);
 
 * Support for date/time, number, percentage, and currency formatting/parsing (JDK provides these)
 * Support for collation (JDK provides this)
-* Support for Java 8 and below; Lokalized is for Java 9+ only
+* Support for Java 16 and below; Lokalized is for Java 17+ only
 
 ## Roadmap
 

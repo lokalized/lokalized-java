@@ -46,7 +46,7 @@
     </distributionManagement>
 
     <properties>
-        <project.java.version>9</project.java.version>
+        <project.java.version>17</project.java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -105,7 +105,7 @@
                 <version>3.11.2</version>
                 <configuration>
                     <links>
-                        <link>https://docs.oracle.com/en/java/javase/25/docs/api/</link>
+                        <link>https://docs.oracle.com/en/java/javase/26/docs/api/</link>
                         <link>https://javadoc.io/doc/com.google.code.findbugs/jsr305/3.0.2/</link>
                         <link>https://javadoc.io/doc/org.jspecify/jspecify/1.0.0/</link>
                     </links>
