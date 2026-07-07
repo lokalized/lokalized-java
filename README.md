@@ -158,7 +158,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
   .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
   .translationFailureHandler((failure) -> {
-    metrics.increment("localized.translation.failure");
+    metrics.increment("lokalized.translation.failure");
     return TranslationFailureResponse.returnString("Translation unavailable");
   })
   .build();
@@ -333,44 +333,6 @@ String translation = strings.get(
 ```
 
 Explicit-locale lookup bypasses the configured `localeSupplier` for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior using the locale you supplied.
-
-## Translation Failure Handling
-
-When a lookup cannot be resolved, Lokalized asks the configured [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to do. The default handler is [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()), which returns the lookup key with any caller-supplied placeholders interpolated into it.
-
-```java
-Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
-  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
-  .translationFailureHandler(TranslationFailureHandler.throwException())
-  .build();
-```
-
-Built-in handler factories are:
-
-* [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - returns the key with supplied placeholders interpolated
-* [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
-* [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
-
-Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html):
-
-```java
-Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
-  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
-  .translationFailureHandler((failure) -> {
-    metrics.increment("localized.translation.failure",
-      Map.of(
-        "reason", failure.getReason().name(),
-        "locale", failure.getRequestedLocale().toLanguageTag()
-      ));
-
-    return TranslationFailureResponse.returnString("Translation unavailable");
-  })
-  .build();
-```
-
-[`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging [`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders()) unless your application has explicitly approved that.
 
 ## A More Complex Example
 
@@ -1323,7 +1285,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 Lokalized's cardinality, ordinality, cardinality-range, locale-parent, language-alias, likely-subtag, and locale-validity behavior is generated from pinned Unicode CLDR 48.2 XML data.
 
-Pinned CLDR resources live under [src/test/resources/cldr/48.2](src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, and generated CLDR conformance fixtures are checked in under `src/test/java`.
+Pinned CLDR resources live under [src/test/resources/cldr/48.2](https://github.com/lokalized/lokalized-java/tree/master/src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, and generated CLDR conformance fixtures are checked in under `src/test/java`.
 
 After refreshing CLDR data, regenerate the checked-in sources and run the conformance tests before committing:
 
@@ -1332,6 +1294,44 @@ javac -d target/cldr-generator src/build/java/com/lokalized/cldr/CldrDataGenerat
 java -cp target/cldr-generator com.lokalized.cldr.CldrDataGenerator
 mvn -q test
 ```
+
+## Translation Failure Handling
+
+When a lookup cannot be resolved, Lokalized asks the configured [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to do. The default handler is [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()), which returns the lookup key with any caller-supplied placeholders interpolated into it.
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler(TranslationFailureHandler.throwException())
+  .build();
+```
+
+Built-in handler factories are:
+
+* [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - returns the key with supplied placeholders interpolated
+* [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
+* [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
+
+Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html):
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .translationFailureHandler((failure) -> {
+    metrics.increment("lokalized.translation.failure",
+      Map.of(
+        "reason", failure.getReason().name(),
+        "locale", failure.getRequestedLocale().toLanguageTag()
+      ));
+
+    return TranslationFailureResponse.returnString("Translation unavailable");
+  })
+  .build();
+```
+
+[`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging [`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders()) unless your application has explicitly approved that.
 
 ## Localized Strings File Format
 
