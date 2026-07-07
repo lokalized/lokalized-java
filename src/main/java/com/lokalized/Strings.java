@@ -49,20 +49,16 @@ public interface Strings extends LocaleMatcher {
 	String get(@NonNull String key);
 
 	/**
-	 * Gets a localized string for the given key and locale.
+	 * Gets a localized string for the given key and options.
 	 * <p>
-	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
+	 * If no localized string is available, the configured or per-invocation {@link TranslationFailureHandler} decides what happens.
 	 *
-	 * @param key    the localization key, not null
-	 * @param locale the locale to use, not null
+	 * @param key     the localization key, not null
+	 * @param options per-invocation options, not null
 	 * @return a localized string for the key, not null
 	 */
 	@NonNull
-	default String get(@NonNull String key, @NonNull Locale locale) {
-		requireNonNull(key);
-		requireNonNull(locale);
-		throw new UnsupportedOperationException("Explicit-locale lookup is not supported by this implementation");
-	}
+	String get(@NonNull String key, @NonNull TranslationOptions options);
 
 	/**
 	 * Gets a localized string for the given key.
@@ -77,23 +73,19 @@ public interface Strings extends LocaleMatcher {
 	String get(@NonNull String key, @Nullable Map<@NonNull String, @Nullable Object> placeholders);
 
 	/**
-	 * Gets a localized string for the given key and locale.
+	 * Gets a localized string for the given key, placeholders, and options.
 	 * <p>
-	 * If no localized string is available, the configured {@link TranslationFailureHandler} decides what happens.
+	 * If no localized string is available, the configured or per-invocation {@link TranslationFailureHandler} decides what happens.
 	 *
 	 * @param key          the localization key, not null
 	 * @param placeholders the placeholders to insert into the string, may be null
-	 * @param locale       the locale to use, not null
+	 * @param options      per-invocation options, not null
 	 * @return a localized string for the key, not null
 	 */
 	@NonNull
-	default String get(@NonNull String key,
-										 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
-										 @NonNull Locale locale) {
-		requireNonNull(key);
-		requireNonNull(locale);
-		throw new UnsupportedOperationException("Explicit-locale lookup is not supported by this implementation");
-	}
+	String get(@NonNull String key,
+						 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
+						 @NonNull TranslationOptions options);
 
 	/**
 	 * Gets the locales for which localized strings were supplied.

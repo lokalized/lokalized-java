@@ -335,19 +335,19 @@ Classpath package names use slash-separated resource paths such as `strings` or 
 
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
 
-## Explicit Locale Lookups
+## Per-Invocation Options
 
-The `localeSupplier` configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, and administrative tooling, pass the locale directly for a single lookup:
+The `localeSupplier` configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, administrative tooling, or alternate output sinks, use [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) to override lookup behavior for a single invocation:
 
 ```java
 String translation = strings.get(
   "I read {{bookCount}} books.",
   Map.of("bookCount", 1),
-  Locale.forLanguageTag("fr-CA")
+  TranslationOptions.forLocale(Locale.forLanguageTag("fr-CA"))
 );
 ```
 
-Explicit-locale lookup bypasses the configured `localeSupplier` for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior using the locale you supplied.
+Per-invocation options can supply a locale, language ranges, bidi isolation behavior, or a translation failure handler. Locale and language-range options bypass the configured `localeSupplier` for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior using the locale preference you supplied.
 
 ## A More Complex Example
 
@@ -1421,13 +1421,11 @@ assertEquals("تم تجهيز \u2068ACME-42\u2069", translation);
 Disable this behavior with [`BidiIsolation`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html) for plain-text sinks that cannot accept Unicode bidi controls:
 
 ```java
-Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
-  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-  .localeSupplier(matcher -> Locale.forLanguageTag("ar"))
+TranslationOptions options = TranslationOptions.builder()
   .bidiIsolation(BidiIsolation.NONE)
   .build();
 
-String translation = strings.get("Shipment", Map.of("code", "ACME-42"));
+String translation = strings.get("Shipment", Map.of("code", "ACME-42"), options);
 assertEquals("تم تجهيز ACME-42", translation);
 ```
 

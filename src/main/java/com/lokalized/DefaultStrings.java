@@ -330,16 +330,16 @@ class DefaultStrings implements Strings {
 	@Override
 	public String get(@NonNull String key) {
 		requireNonNull(key);
-		return get(key, null, getLocaleSupplier().apply(this));
+		return get(key, null, TranslationOptions.none());
 	}
 
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
-										@NonNull Locale locale) {
+										@NonNull TranslationOptions options) {
 		requireNonNull(key);
-		requireNonNull(locale);
-		return get(key, null, locale);
+		requireNonNull(options);
+		return get(key, null, options);
 	}
 
 	@NonNull
@@ -347,20 +347,23 @@ class DefaultStrings implements Strings {
 	public String get(@NonNull String key,
 										@Nullable Map<@NonNull String, @Nullable Object> placeholders) {
 		requireNonNull(key);
-		return get(key, placeholders, getLocaleSupplier().apply(this));
+		return get(key, placeholders, TranslationOptions.none());
 	}
 
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
 										@Nullable Map<@NonNull String, @Nullable Object> placeholders,
-										@NonNull Locale locale) {
+										@NonNull TranslationOptions options) {
 		requireNonNull(key);
-		requireNonNull(locale);
+		requireNonNull(options);
 
 		if (placeholders == null)
 			placeholders = Collections.emptyMap();
 
+		Locale locale = localeFor(options);
+		BidiIsolation bidiIsolation = options.getBidiIsolation().orElse(getBidiIsolation());
+		TranslationFailureHandler translationFailureHandler = options.getTranslationFailureHandler().orElse(getTranslationFailureHandler());
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException firstFallbackFailure = null;
 		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
@@ -378,7 +381,7 @@ class DefaultStrings implements Strings {
 				continue;
 
 			try {
-				Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext, candidateLocale);
+				Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext, candidateLocale, bidiIsolation);
 
 				if (translation.isPresent())
 					return translation.get();
@@ -402,12 +405,12 @@ class DefaultStrings implements Strings {
 		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, placeholders,
 				firstFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
 				firstFallbackFailure);
-		TranslationFailureResponse translationFailureResponse = requireNonNull(getTranslationFailureHandler().handle(translationFailure),
+		TranslationFailureResponse translationFailureResponse = requireNonNull(translationFailureHandler.handle(translationFailure),
 				format("%s returned null", TranslationFailureHandler.class.getSimpleName()));
 
 		switch (translationFailureResponse.getAction()) {
 			case RETURN_KEY:
-				return interpolateFailureKey(key, placeholders, immutableContext, locale);
+				return interpolateFailureKey(key, placeholders, immutableContext, locale, bidiIsolation);
 			case RETURN_STRING:
 				return translationFailureResponse.getTranslation();
 			case THROW_EXCEPTION:
@@ -427,18 +430,21 @@ class DefaultStrings implements Strings {
 	 * @param mutableContext   the mutable context for the translation, not null
 	 * @param immutableContext the original user-supplied translation context, not null
 	 * @param locale           the locale to use for evaluation, not null
+	 * @param bidiIsolation    the bidirectional isolation behavior to apply, not null
 	 * @return the translation, if possible (may not be possible if no translation value specified and no alternative expressions match), not null
 	 */
 	@NonNull
 	protected Optional<String> getInternal(@NonNull String key, @NonNull LocalizedString localizedString,
 																				 @NonNull Map<@NonNull String, @Nullable Object> mutableContext,
 																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																				 @NonNull Locale locale) {
+																				 @NonNull Locale locale,
+																				 @NonNull BidiIsolation bidiIsolation) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
 		requireNonNull(mutableContext);
 		requireNonNull(immutableContext);
 		requireNonNull(locale);
+		requireNonNull(bidiIsolation);
 
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
@@ -446,7 +452,7 @@ class DefaultStrings implements Strings {
 				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, mutableContext));
 
 				// If we have a matching alternative, recurse into it
-				Optional<String> translation = getInternal(key, alternative, mutableContext, immutableContext, locale);
+				Optional<String> translation = getInternal(key, alternative, mutableContext, immutableContext, locale, bidiIsolation);
 
 				if (translation.isPresent())
 					return translation;
@@ -794,7 +800,8 @@ class DefaultStrings implements Strings {
 		}
 
 		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(translation,
-				interpolationContextFor(mutableContext, immutableContext, localizedString.getLanguageFormTranslationsByPlaceholder().keySet(), locale));
+				interpolationContextFor(mutableContext, immutableContext, localizedString.getLanguageFormTranslationsByPlaceholder().keySet(), locale,
+						bidiIsolation));
 
 		if (!interpolationResult.getUnresolvedPlaceholderNames().isEmpty())
 			throw new IllegalArgumentException(format("Missing value for placeholder(s) [%s] in key '%s'",
@@ -807,16 +814,18 @@ class DefaultStrings implements Strings {
 	private String interpolateFailureKey(@NonNull String key,
 																			 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
 																			 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																			 @NonNull Locale locale) {
+																			 @NonNull Locale locale,
+																			 @NonNull BidiIsolation bidiIsolation) {
 		requireNonNull(key);
 		requireNonNull(placeholders);
 		requireNonNull(immutableContext);
 		requireNonNull(locale);
+		requireNonNull(bidiIsolation);
 
 		try {
 			Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>(placeholders);
 			return getStringInterpolator().interpolate(key, interpolationContextFor(interpolationContext, immutableContext,
-					Collections.emptySet(), locale));
+					Collections.emptySet(), locale, bidiIsolation));
 		} catch (RuntimeException e) {
 			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
 			return key;
@@ -827,13 +836,15 @@ class DefaultStrings implements Strings {
 	private Map<@NonNull String, @Nullable Object> interpolationContextFor(@NonNull Map<@NonNull String, @Nullable Object> mutableContext,
 																																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
 																																				 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
-																																				 @NonNull Locale locale) {
+																																				 @NonNull Locale locale,
+																																				 @NonNull BidiIsolation bidiIsolation) {
 		requireNonNull(mutableContext);
 		requireNonNull(immutableContext);
 		requireNonNull(fileDefinedPlaceholderNames);
 		requireNonNull(locale);
+		requireNonNull(bidiIsolation);
 
-		switch (getBidiIsolation()) {
+		switch (bidiIsolation) {
 			case NONE:
 				return mutableContext;
 			case RTL_LOCALES:
@@ -842,7 +853,7 @@ class DefaultStrings implements Strings {
 				break;
 			default:
 				throw new IllegalArgumentException(format("Unsupported %s value %s",
-						BidiIsolation.class.getSimpleName(), getBidiIsolation()));
+						BidiIsolation.class.getSimpleName(), bidiIsolation));
 		}
 
 		Map<@NonNull String, @Nullable Object> isolatedContext = new HashMap<>(mutableContext);
@@ -1131,6 +1142,23 @@ class DefaultStrings implements Strings {
 
 		// 4) Nothing matched at all
 		return getFallbackLocale();
+	}
+
+	@NonNull
+	private Locale localeFor(@NonNull TranslationOptions options) {
+		requireNonNull(options);
+
+		Optional<@NonNull Locale> locale = options.getLocale();
+
+		if (locale.isPresent())
+			return locale.get();
+
+		Optional<@NonNull List<@NonNull LanguageRange>> languageRanges = options.getLanguageRanges();
+
+		if (languageRanges.isPresent())
+			return bestMatchFor(languageRanges.get());
+
+		return requireNonNull(getLocaleSupplier().apply(this), "localeSupplier returned null");
 	}
 
 	@NonNull

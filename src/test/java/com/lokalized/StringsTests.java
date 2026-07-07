@@ -139,7 +139,7 @@ public class StringsTests {
 						assertEquals("I didn't read any books",
 								strings.get("I read {{bookCount}} books", Map.of("bookCount", 0)));
 						assertEquals("I am going on holiday",
-								strings.get("I am going on vacation", britishEnglish));
+								strings.get("I am going on vacation", TranslationOptions.forLocale(britishEnglish)));
 					}
 				}));
 			}
@@ -266,7 +266,7 @@ public class StringsTests {
 				))
 				.build();
 
-		assertEquals("Colour", strings.get("Colour", Locale.forLanguageTag("en-AU")));
+		assertEquals("Colour", strings.get("Colour", TranslationOptions.forLocale(Locale.forLanguageTag("en-AU"))));
 	}
 
 	@Test
@@ -287,8 +287,8 @@ public class StringsTests {
 				))
 				.build();
 
-		assertEquals("Checkout", strings.get("Checkout.Title", Locale.forLanguageTag("zh-Hant")));
-		assertEquals("Checkout", strings.get("Checkout.Title", Locale.forLanguageTag("zh-TW")));
+		assertEquals("Checkout", strings.get("Checkout.Title", TranslationOptions.forLocale(Locale.forLanguageTag("zh-Hant"))));
+		assertEquals("Checkout", strings.get("Checkout.Title", TranslationOptions.forLocale(Locale.forLanguageTag("zh-TW"))));
 	}
 
 	@Test
@@ -1175,6 +1175,26 @@ public class StringsTests {
 	}
 
 	@Test
+	public void translationOptionsCanOverrideBidiIsolation() {
+		LocalizedString localizedString = new LocalizedString.Builder("Shipment")
+				.translation("تم تجهيز {{code}}")
+				.build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("ar"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ar"))
+				.build();
+		TranslationOptions options = TranslationOptions.builder()
+				.bidiIsolation(BidiIsolation.NONE)
+				.build();
+
+		assertEquals("تم تجهيز \u2068ACME-42\u2069", strings.get("Shipment", Map.of("code", "ACME-42")));
+		assertEquals("تم تجهيز ACME-42", strings.get("Shipment", Map.of("code", "ACME-42"), options));
+	}
+
+	@Test
 	public void bidiIsolationDoesNotWrapFileDefinedPlaceholders() {
 		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
 				.translation("{{title}} {{name}}")
@@ -1244,6 +1264,23 @@ public class StringsTests {
 		assertEquals(Map.of("name", "Ada"), translationFailure.getPlaceholders());
 		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, translationFailure.getReason());
 		assertTrue(!translationFailure.getCause().isPresent());
+	}
+
+	@Test
+	public void translationOptionsCanOverrideTranslationFailureHandler() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(new LocalizedString.Builder("Hello").translation("Hello").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.translationFailureHandler((translationFailure) -> TranslationFailureResponse.returnString("configured"))
+				.build();
+		TranslationOptions options = TranslationOptions.builder()
+				.translationFailureHandler((translationFailure) -> TranslationFailureResponse.returnString("override"))
+				.build();
+
+		assertEquals("configured", strings.get("Missing"));
+		assertEquals("override", strings.get("Missing", options));
 	}
 
 	@Test
@@ -1344,7 +1381,7 @@ public class StringsTests {
 				.build();
 
 		IllegalStateException exception = assertThrows(IllegalStateException.class,
-				() -> strings.get("Count", Map.of("count", 5), Locale.forLanguageTag("ru")),
+				() -> strings.get("Count", Map.of("count", 5), TranslationOptions.forLocale(Locale.forLanguageTag("ru"))),
 				"Expected throwException() to rethrow the first resolution failure");
 
 		assertTrue(exception.getMessage().contains("MANY"));
@@ -1372,7 +1409,7 @@ public class StringsTests {
 	}
 
 	@Test
-	public void explicitLocaleLookupUsesProvidedLocale() {
+	public void translationOptionsLocaleUsesProvidedLocale() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 				.tiebreakerLocalesByLanguageCode(Map.of(
@@ -1381,7 +1418,22 @@ public class StringsTests {
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
 				.build();
 
-		assertEquals("I am going on holiday", strings.get("I am going on vacation", Locale.forLanguageTag("en-GB")));
+		assertEquals("I am going on holiday", strings.get("I am going on vacation",
+				TranslationOptions.forLocale(Locale.forLanguageTag("en-GB"))));
+	}
+
+	@Test
+	public void translationOptionsLanguageRangesUseProvidedLanguageRanges() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en"), Locale.forLanguageTag("en-GB"))
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals("I am going on holiday", strings.get("I am going on vacation",
+				TranslationOptions.forLanguageRanges(LanguageRange.parse("en-GB;q=1.0,en;q=0.75"))));
 	}
 
 	@Test
