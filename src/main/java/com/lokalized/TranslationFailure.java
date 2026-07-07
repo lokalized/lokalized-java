@@ -28,11 +28,11 @@ import java.util.Optional;
  * Describes a failed localized string lookup.
  * <p>
  * Instances are supplied to a {@link TranslationFailureHandler}. Lokalized constructs these objects; application
- * code should inspect them, not implement them.
+ * code should normally only inspect them.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public sealed interface TranslationFailure permits DefaultTranslationFailure {
+public interface TranslationFailure {
 	/**
 	 * Gets the translation key that could not be resolved.
 	 *

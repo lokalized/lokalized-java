@@ -17,15 +17,13 @@
 package com.lokalized;
 
 /**
- * Sealed marker interface which signifies a language construct (genders, grammatical cases, definiteness, classifiers,
+ * Marker interface which signifies a language construct (genders, grammatical cases, definiteness, classifiers,
  * animacy, clusivity, formality, cardinalities, ordinalities, phonetics).
  * <p>
- * Permitted implementations are Lokalized's built-in {@link Enum} types only.
+ * Implementors must be {@link Enum} types only.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-public sealed interface LanguageForm
-    permits Animacy, Cardinality, Classifier, Clusivity, Definiteness, Formality,
-    Gender, GrammaticalCase, Ordinality, Phonetic {
+public interface LanguageForm {
   // Marker interface
 }
