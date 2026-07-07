@@ -696,7 +696,7 @@ assertEquals("Отправить сообщение Ивану.", strings.get("S
 )));
 ```
 
-This example is intentionally partial: if application code supplies a grammatical case that is not listed here, evaluation throws.
+This example is intentionally partial: if application code supplies a grammatical case that is not listed here, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.  The default returns the key; use `TranslationFailureHandler.throwException()` to throw.
 
 ### Definiteness
 
@@ -798,7 +798,7 @@ assertEquals("3冊買いました。", strings.get("I bought {{count}} items.", 
 )));
 ```
 
-This example is intentionally partial: if application code supplies a classifier that is not listed here, evaluation throws.
+This example is intentionally partial: if application code supplies a classifier that is not listed here, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.  The default returns the key; use `TranslationFailureHandler.throwException()` to throw.
 
 ### Formality
 
@@ -1461,7 +1461,7 @@ In the selector-driven format:
 * `translations` is an ordered list of rules.  Each rule has a `value` and may optionally have a `when` object.
 * `when` is a structured match, not a general expression language.  It may only contain selector-form names such as `CASE` or `GENDER`.
 * Lokalized selects the most specific matching rule.  In the above example, `CASE + GENDER` beats `GENDER` alone.
-* A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, string evaluation fails with an exception.
+* A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.
 * Ambiguous overlapping rules with the same specificity are rejected while loading translations.
 
 Here is the selector-driven placeholder exercised with a few simple assertions:

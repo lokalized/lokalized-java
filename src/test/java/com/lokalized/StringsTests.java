@@ -201,6 +201,25 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bestMatchUsesCldrLikelySubtagScriptsAcrossRegions() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("zh"), Set.of(localizedString),
+						Locale.forLanguageTag("zh-Hant"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"zh", List.of(Locale.forLanguageTag("zh"), Locale.forLanguageTag("zh-Hant"))
+				))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("zh-Hant"), strings.bestMatchFor(Locale.forLanguageTag("zh-HK")));
+	}
+
+	@Test
 	public void bestMatchUsesCldrLanguageAliases() {
 		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
 
@@ -232,6 +251,28 @@ public class StringsTests {
 				.build();
 
 		assertEquals("Colour", strings.get("Colour", Locale.forLanguageTag("en-AU")));
+	}
+
+	@Test
+	public void perKeyFallbackDoesNotCrossLikelyScriptBoundaries() {
+		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Checkout.Title").translation("Checkout").build();
+		LocalizedString simplifiedLocalizedString = new LocalizedString.Builder("Checkout.Title").translation("结账").build();
+		LocalizedString traditionalLocalizedString = new LocalizedString.Builder("Checkout.Submit").translation("結帳").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(fallbackLocalizedString),
+						Locale.forLanguageTag("zh"), Set.of(simplifiedLocalizedString),
+						Locale.forLanguageTag("zh-Hant"), Set.of(traditionalLocalizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"zh", List.of(Locale.forLanguageTag("zh"), Locale.forLanguageTag("zh-Hant"))
+				))
+				.build();
+
+		assertEquals("Checkout", strings.get("Checkout.Title", Locale.forLanguageTag("zh-Hant")));
+		assertEquals("Checkout", strings.get("Checkout.Title", Locale.forLanguageTag("zh-TW")));
 	}
 
 	@Test
@@ -1205,6 +1246,86 @@ public class StringsTests {
 	}
 
 	@Test
+	public void translationFailureHandlerReceivesUnexpectedRuntimeResolutionFailure() {
+		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
+		LocalizedString localizedString = new LocalizedString.Builder("Phonetic")
+				.translation("{{term}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"term", new LocalizedString.LanguageFormTranslation("term", Map.of(
+								Phonetic.CONSONANT, "consonant",
+								Phonetic.VOWEL, "vowel"
+						))
+				))
+				.build();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.phoneticResolver((term, locale) -> {
+					throw new UnsupportedOperationException("resolver failed");
+				})
+				.translationFailureHandler((translationFailure) -> {
+					translationFailureHolder.set(translationFailure);
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		assertEquals("handled", strings.get("Phonetic", Map.of("term", "apple")));
+		assertTrue(translationFailureHolder.get().getCause().get() instanceof UnsupportedOperationException);
+	}
+
+	@Test
+	public void defaultReturnKeyHandlerDoesNotThrowWhenKeyInterpolationFails() {
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("ar"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("ar"), Set.of(new LocalizedString.Builder("Present").translation("Present").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ar"))
+				.build();
+
+		String translation = strings.get("Missing {{value}}", Map.of("value", new ThrowingToString()));
+
+		assertEquals("Missing {{value}}", translation);
+	}
+
+	@Test
+	public void throwExceptionTranslationFailureHandlerPreservesFirstResolutionFailure() {
+		LocalizedString requestedLocalizedString = new LocalizedString.Builder("Count")
+				.translation("{{count}} {{items}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item"
+						))
+				))
+				.build();
+		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Count")
+				.translation("{{count}} {{items}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.FEW, "items"
+						))
+				))
+				.build();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(fallbackLocalizedString),
+						Locale.forLanguageTag("ru"), Set.of(requestedLocalizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("ru"))
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		IllegalStateException exception = assertThrows(IllegalStateException.class,
+				() -> strings.get("Count", Map.of("count", 5), Locale.forLanguageTag("ru")),
+				"Expected throwException() to rethrow the first resolution failure");
+
+		assertTrue(exception.getMessage().contains("MANY"));
+		assertEquals(1, exception.getSuppressed().length);
+		assertTrue(exception.getSuppressed()[0].getMessage().contains("OTHER"));
+	}
+
+	@Test
 	public void throwExceptionTranslationFailureHandlerThrowsForMissingTranslations() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> Map.of(
@@ -1424,5 +1545,12 @@ public class StringsTests {
 				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
 				.translationFailureHandler(TranslationFailureHandler.throwException())
 				.build();
+	}
+
+	private static final class ThrowingToString {
+		@Override
+		public String toString() {
+			throw new UnsupportedOperationException("toString failed");
+		}
 	}
 }

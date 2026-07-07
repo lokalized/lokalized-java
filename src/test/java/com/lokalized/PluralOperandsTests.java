@@ -65,6 +65,20 @@ public class PluralOperandsTests {
   }
 
   @Test
+  public void compactExponentShiftsNumberOperands() {
+    PluralOperands operands = PluralOperands.forNumber(new BigDecimal("1.2")).compactExponent(6).build();
+
+    assertEquals(new BigDecimal("1200000"), operands.getNumber());
+    assertEquals(new BigDecimal("1200000"), operands.i());
+    assertEquals(new BigDecimal("0"), operands.v());
+    assertEquals(new BigDecimal("0"), operands.w());
+    assertEquals(new BigDecimal("0"), operands.f());
+    assertEquals(new BigDecimal("0"), operands.t());
+    assertEquals(new BigDecimal("6"), operands.c());
+    assertEquals(new BigDecimal("6"), operands.e());
+  }
+
+  @Test
   public void equalityIncludesNumberScaleAndCompactExponent() {
     PluralOperands onePointZero = PluralOperands.forNumber(new BigDecimal("1.0")).build();
     PluralOperands onePointZeroAgain = PluralOperands.forNumber(new BigDecimal("1.0")).build();

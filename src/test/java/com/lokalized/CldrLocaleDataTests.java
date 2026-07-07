@@ -57,4 +57,17 @@ public class CldrLocaleDataTests {
 
     assertEquals(List.of("en-AU", "en-001", "en"), languageTags);
   }
+
+  @Test
+  public void fallbackLocalesDoNotCrossLikelyScriptBoundaries() {
+    List<String> traditionalChineseTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("zh-Hant-TW")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+    List<String> taiwanChineseTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("zh-TW")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+
+    assertEquals(List.of("zh-Hant-TW", "zh-Hant"), traditionalChineseTags);
+    assertEquals(List.of("zh-TW"), taiwanChineseTags);
+  }
 }

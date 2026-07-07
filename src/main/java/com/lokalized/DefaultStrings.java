@@ -343,7 +343,7 @@ class DefaultStrings implements Strings {
 			placeholders = Collections.emptyMap();
 
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
-		RuntimeException lastFallbackFailure = null;
+		RuntimeException firstFallbackFailure = null;
 		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
 
 		for (Locale candidateLocale : candidateLocales) {
@@ -364,10 +364,11 @@ class DefaultStrings implements Strings {
 				if (translation.isPresent())
 					return translation.get();
 			} catch (RuntimeException e) {
-				if (!isFallbackEligible(e))
-					throw e;
+				if (firstFallbackFailure == null)
+					firstFallbackFailure = e;
+				else if (firstFallbackFailure != e)
+					firstFallbackFailure.addSuppressed(e);
 
-				lastFallbackFailure = e;
 				logger.finer(format("Unable to resolve key '%s' for locale '%s'; trying fallback candidates. Cause: %s",
 						key, candidateLocale.toLanguageTag(), e.getMessage()));
 			}
@@ -376,20 +377,18 @@ class DefaultStrings implements Strings {
 		String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
 		logger.finer(message);
 
-		if (lastFallbackFailure != null)
-			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, lastFallbackFailure.getMessage()));
+		if (firstFallbackFailure != null)
+			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, firstFallbackFailure.getMessage()));
 
 		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, placeholders,
-				lastFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
-				lastFallbackFailure);
+				firstFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
+				firstFallbackFailure);
 		TranslationFailureResponse translationFailureResponse = requireNonNull(getTranslationFailureHandler().handle(translationFailure),
 				format("%s returned null", TranslationFailureHandler.class.getSimpleName()));
 
 		switch (translationFailureResponse.getAction()) {
 			case RETURN_KEY:
-				Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>(placeholders);
-				return getStringInterpolator().interpolate(key, interpolationContextFor(interpolationContext, immutableContext,
-						Collections.emptySet(), locale));
+				return interpolateFailureKey(key, placeholders, immutableContext, locale);
 			case RETURN_STRING:
 				return translationFailureResponse.getTranslation();
 			case THROW_EXCEPTION:
@@ -786,6 +785,26 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
+	private String interpolateFailureKey(@NonNull String key,
+																			 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
+																			 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+																			 @NonNull Locale locale) {
+		requireNonNull(key);
+		requireNonNull(placeholders);
+		requireNonNull(immutableContext);
+		requireNonNull(locale);
+
+		try {
+			Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>(placeholders);
+			return getStringInterpolator().interpolate(key, interpolationContextFor(interpolationContext, immutableContext,
+					Collections.emptySet(), locale));
+		} catch (RuntimeException e) {
+			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
+			return key;
+		}
+	}
+
+	@NonNull
 	private Map<@NonNull String, @Nullable Object> interpolationContextFor(@NonNull Map<@NonNull String, @Nullable Object> mutableContext,
 																																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
 																																				 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
@@ -1099,9 +1118,17 @@ class DefaultStrings implements Strings {
 		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
 		candidates.addAll(CldrLocaleData.fallbackLocalesFor(locale));
 
+		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
+		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
+		lookupMatchByLikelySubtag(locale.toLanguageTag(), availableLocales).ifPresent(candidates::add);
+
 		LocaleUtils.normalizedLanguage(locale)
 				.map(getTiebreakerLocalesByLanguageCode()::get)
-				.ifPresent(candidates::addAll);
+				.ifPresent(tiebreakerLocales -> {
+					for (Locale tiebreakerLocale : tiebreakerLocales)
+						if (matchesLikelyLanguageScript(locale, tiebreakerLocale))
+							candidates.add(tiebreakerLocale);
+				});
 		candidates.add(getFallbackLocale());
 
 		return new ArrayList<>(candidates);
@@ -1143,6 +1170,16 @@ class DefaultStrings implements Strings {
 		return Optional.empty();
 	}
 
+	private boolean matchesLikelyLanguageScript(@NonNull Locale requestedLocale, @NonNull Locale candidateLocale) {
+		requireNonNull(requestedLocale);
+		requireNonNull(candidateLocale);
+
+		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(requestedLocale);
+		Optional<String> candidateLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(candidateLocale);
+		return !requestedLanguageScript.isPresent() || !candidateLanguageScript.isPresent() ||
+				requestedLanguageScript.get().equalsIgnoreCase(candidateLanguageScript.get());
+	}
+
 	@NonNull
 	private Optional<@NonNull Locale> lookupMatchByLikelySubtag(@NonNull String range,
 																															@NonNull List<@NonNull Locale> availableLocales) {
@@ -1152,13 +1189,16 @@ class DefaultStrings implements Strings {
 		if (range.contains("*"))
 			return Optional.empty();
 
-		Optional<String> likelySubtag = CldrLocaleData.likelySubtagFor(range);
+		if (range.length() == 0 || "und".equalsIgnoreCase(range))
+			return Optional.empty();
+
+		Optional<String> likelySubtag = CldrLocaleData.languageScriptForLikelySubtag(range);
 
 		if (!likelySubtag.isPresent())
 			return Optional.empty();
 
 		for (Locale locale : availableLocales) {
-			Optional<String> availableLikelySubtag = CldrLocaleData.likelySubtagFor(locale);
+			Optional<String> availableLikelySubtag = CldrLocaleData.languageScriptForLikelySubtag(locale);
 
 			if (availableLikelySubtag.isPresent() && availableLikelySubtag.get().equalsIgnoreCase(likelySubtag.get()))
 				return Optional.of(locale);
@@ -1173,14 +1213,6 @@ class DefaultStrings implements Strings {
 		return LocaleUtils.normalizedLanguage(Locale.forLanguageTag(languageCode))
 				.orElse(languageCode)
 				.toLowerCase(Locale.ROOT);
-	}
-
-	private boolean isFallbackEligible(@NonNull RuntimeException e) {
-		requireNonNull(e);
-		return e instanceof ExpressionEvaluationException ||
-				e instanceof UnsupportedLocaleException ||
-				e instanceof IllegalArgumentException ||
-				e instanceof IllegalStateException;
 	}
 
 	@Nullable

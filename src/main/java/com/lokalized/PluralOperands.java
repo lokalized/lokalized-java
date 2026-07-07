@@ -59,14 +59,15 @@ public final class PluralOperands {
     requireNonNull(number);
     requireNonNull(compactExponent);
 
-    @NonNull BigDecimal strippedNumber = number.stripTrailingZeros();
+    @NonNull BigDecimal operandNumber = number.movePointRight(compactExponent);
+    @NonNull BigDecimal strippedNumber = operandNumber.stripTrailingZeros();
     @NonNull BigDecimal exponent = BigDecimal.valueOf(compactExponent);
 
-    this.n = number;
-    this.i = new BigDecimal(NumberUtils.integerComponent(number));
-    this.v = BigDecimal.valueOf(NumberUtils.numberOfDecimalPlaces(number));
+    this.n = operandNumber;
+    this.i = new BigDecimal(NumberUtils.integerComponent(operandNumber));
+    this.v = BigDecimal.valueOf(NumberUtils.numberOfDecimalPlaces(operandNumber));
     this.w = BigDecimal.valueOf(NumberUtils.numberOfDecimalPlaces(strippedNumber));
-    this.f = new BigDecimal(NumberUtils.fractionalComponent(number));
+    this.f = new BigDecimal(NumberUtils.fractionalComponent(operandNumber));
     this.t = new BigDecimal(NumberUtils.fractionalComponent(strippedNumber));
     this.c = exponent;
     this.e = exponent;

@@ -140,6 +140,29 @@ final class CldrLocaleData {
   }
 
   @NonNull
+  static Optional<String> languageScriptForLikelySubtag(@NonNull Locale locale) {
+    requireNonNull(locale);
+    return languageScriptForLikelySubtag(locale.toLanguageTag());
+  }
+
+  @NonNull
+  static Optional<String> languageScriptForLikelySubtag(@NonNull String languageTag) {
+    requireNonNull(languageTag);
+
+    Optional<String> likelySubtag = likelySubtagFor(languageTag);
+
+    if (!likelySubtag.isPresent())
+      return Optional.empty();
+
+    TagParts likelySubtagParts = TagParts.forLanguageTag(likelySubtag.get());
+
+    if (likelySubtagParts.getLanguage().length() == 0 || likelySubtagParts.getScript().length() == 0)
+      return Optional.empty();
+
+    return Optional.of(likelySubtagParts.getLanguage() + "-" + likelySubtagParts.getScript());
+  }
+
+  @NonNull
   static Optional<String> likelySubtagFor(@NonNull Locale locale) {
     requireNonNull(locale);
     return likelySubtagFor(locale.toLanguageTag());
@@ -276,22 +299,27 @@ final class CldrLocaleData {
 
   private static void addFallbackTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
                                       @NonNull String languageTag) {
+    Optional<String> requestedLanguageScript = languageScriptForLikelySubtag(languageTag);
     candidateTags.add(languageTag);
-    addParentTags(candidateTags, languageTag);
+    boolean rootParentReached = addParentTags(candidateTags, languageTag);
 
     String candidateTag = languageTag;
     int subtagSeparatorIndex = candidateTag.lastIndexOf('-');
 
-    while (subtagSeparatorIndex > 0) {
+    while (!rootParentReached && subtagSeparatorIndex > 0) {
       candidateTag = candidateTag.substring(0, subtagSeparatorIndex);
+
+      if (crossesLikelyScriptBoundary(requestedLanguageScript, candidateTag))
+        break;
+
       candidateTags.add(candidateTag);
-      addParentTags(candidateTags, candidateTag);
+      rootParentReached = addParentTags(candidateTags, candidateTag);
       subtagSeparatorIndex = candidateTag.lastIndexOf('-');
     }
   }
 
-  private static void addParentTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
-                                    @NonNull String languageTag) {
+  private static boolean addParentTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
+                                       @NonNull String languageTag) {
     String candidateTag = languageTag;
     Set<@NonNull String> seenTags = new HashSet<>();
 
@@ -299,15 +327,30 @@ final class CldrLocaleData {
       @Nullable String parentTag = PARENT_LOCALES_BY_TAG.get(keyFor(candidateTag));
 
       if (parentTag == null)
-        return;
+        return false;
 
       candidateTags.add(parentTag);
 
       if (ROOT_PARENT.equals(parentTag))
-        return;
+        return true;
 
       candidateTag = parentTag;
     }
+
+    return false;
+  }
+
+  private static boolean crossesLikelyScriptBoundary(@NonNull Optional<String> requestedLanguageScript,
+                                                     @NonNull String candidateTag) {
+    requireNonNull(requestedLanguageScript);
+    requireNonNull(candidateTag);
+
+    if (!requestedLanguageScript.isPresent())
+      return false;
+
+    Optional<String> candidateLanguageScript = languageScriptForLikelySubtag(candidateTag);
+    return candidateLanguageScript.isPresent() &&
+        !candidateLanguageScript.get().equalsIgnoreCase(requestedLanguageScript.get());
   }
 
   @NonNull

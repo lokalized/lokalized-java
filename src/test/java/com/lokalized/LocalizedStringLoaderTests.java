@@ -158,6 +158,20 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingSkipsHiddenJsonSidecars() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("._en.json"), "{}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertEquals(1, localizedStringsByLocale.size());
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsInvalidJsonLocaleFileNames() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -467,7 +481,7 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testFilesystemLoadingRejectsIncompleteCardinalityTranslations() throws IOException {
+  public void testFilesystemLoadingAcceptsIncompleteCardinalityTranslations() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
 
@@ -476,17 +490,13 @@ public class LocalizedStringLoaderTests {
             "\"CARDINALITY_ONE\":\"книга\",\"CARDINALITY_FEW\":\"книги\",\"CARDINALITY_OTHER\":\"книги\"}}}}}")
             .getBytes(StandardCharsets.UTF_8));
 
-    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected incomplete cardinality translations to fail during load");
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
-    assertTrue(exception.getMessage().contains("CARDINALITY_MANY"));
-    assertTrue(exception.getMessage().contains("books"));
-    assertTrue(exception.getMessage().contains("ru"));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("ru")));
   }
 
   @Test
-  public void testFilesystemLoadingRejectsIncompleteOrdinalityTranslations() throws IOException {
+  public void testFilesystemLoadingAcceptsIncompleteOrdinalityTranslations() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
 
@@ -495,13 +505,9 @@ public class LocalizedStringLoaderTests {
             "\"ORDINALITY_ONE\":\"st\",\"ORDINALITY_OTHER\":\"th\"}}}}}")
             .getBytes(StandardCharsets.UTF_8));
 
-    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected incomplete ordinality translations to fail during load");
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
-    assertTrue(exception.getMessage().contains("ORDINALITY_TWO"));
-    assertTrue(exception.getMessage().contains("ORDINALITY_FEW"));
-    assertTrue(exception.getMessage().contains("suffix"));
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
   }
 
   @Test
