@@ -34,8 +34,8 @@ It is both a file format...
 ...and a library that operates on it. 
 
 ```java
-String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("I didn't read any books.", translation);
+String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
+assertEquals("I didn't read any books.", message);
 ```
 
 ## Design Goals
@@ -196,16 +196,16 @@ final class LocalizedStrings {
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
 // That is, it understands that 3 means CARDINALITY_OTHER ("livros") in Brazilian Portuguese
-String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
-assertEquals("Li 3 livros.", translation);
+String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
+assertEquals("Li 3 livros.", message);
 
 // 1 means CARDINALITY_ONE ("livro") in Brazilian Portuguese
-translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
-assertEquals("Li 1 livro.", translation);
+message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
+assertEquals("Li 1 livro.", message);
 
 // A special alternative rule is applied when bookCount == 0
-translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("Não li nenhum livro.", translation);
+message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
+assertEquals("Não li nenhum livro.", message);
 ```
 
 #### Formatting Placeholder Values
@@ -218,7 +218,7 @@ Locale locale = Locale.forLanguageTag("fr-FR");
 NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(locale);
 DateTimeFormatter dateFormat = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale);
 
-String translation = strings.get("Your balance is {{balance}} and is due on {{dueDate}}.", Map.of(
+String message = strings.get("Your balance is {{balance}} and is due on {{dueDate}}.", Map.of(
   "balance", currencyFormat.format(new BigDecimal("1234.56")),
   "dueDate", dateFormat.format(LocalDate.of(2026, 7, 7))
 ));
@@ -248,7 +248,7 @@ When a value affects translation selection and also needs locale-aware display f
 int count = 12_345;
 Locale locale = Locale.forLanguageTag("en-US");
 
-String translation = strings.get("You have {{formattedCount}} items.", Map.of(
+String message = strings.get("You have {{formattedCount}} items.", Map.of(
   "count", count,
   "formattedCount", NumberFormat.getIntegerInstance(locale).format(count)
 ));
@@ -341,7 +341,7 @@ Filesystem and classpath loading both scan only the specified directory or packa
 The `localeSupplier` configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, administrative tooling, or alternate output sinks, use [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) to override lookup behavior for a single invocation:
 
 ```java
-String translation = strings.get(
+String message = strings.get(
   "I read {{bookCount}} books.",
   Map.of("bookCount", 1),
   TranslationOptions.forLocale(Locale.forLanguageTag("fr-CA"))
@@ -447,32 +447,32 @@ Notice that we keep the gender and plural logic out of our code entirely and lea
 
 ```java
 // "Normal" translation
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+String message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   Map.of(
     "heOrShe", Gender.MASCULINE,
     "groupSize", 10
   ));
 
-assertEquals("He was one of the 10 best baseball players.", translation);
+assertEquals("He was one of the 10 best baseball players.", message);
 
 // Alternative expression triggered
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   Map.of(
     "heOrShe", Gender.MASCULINE,
     "groupSize", 1
   ));
 
-assertEquals("He was the best baseball player.", translation);
+assertEquals("He was the best baseball player.", message);
 
 // ...now, here's what a Mexican Spanish (`es-MX`) user might see: 
-translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
   Map.of(
     "heOrShe", Gender.FEMININE,
     "groupSize", 3
   ));
 
 // Note that the correct feminine forms were applied
-assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", translation);
+assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", message);
 ```
 
 ### Recursive Alternatives
@@ -545,22 +545,22 @@ All English range forms evaluate to [`CARDINALITY_OTHER`](https://javadoc.lokali
 
 ```java
 // French CARDINALITY_OTHER case 
-String translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
+String message = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
   Map.of(
     "minHours", 1,
     "maxHours", 3
   ));
 
-assertEquals("La réunion aura une durée de 1 à 3 heures.", translation);
+assertEquals("La réunion aura une durée de 1 à 3 heures.", message);
 
 // French CARDINALITY_ONE case
-translation = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
+message = strings.get("The meeting will be {{minHours}}-{{maxHours}} hours long.",
   Map.of(
     "minHours", 0,
     "maxHours", 1
   ));
 
-assertEquals("La réunion aura une durée de 0 à 1 heure.", translation);
+assertEquals("La réunion aura une durée de 0 à 1 heure.", message);
 ```
 
 ## Ordinal Forms
@@ -627,48 +627,48 @@ Spanish doesn't have ordinals, so we can disregard them.  But we do have a few s
 
 ```java
 // The ORDINALITY_OTHER rule is applied for 18 in English
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+String message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "hisOrHer", Gender.MASCULINE,
     "year", 18
   ));
 
-assertEquals("His 18th birthday party is next week.", translation);
+assertEquals("His 18th birthday party is next week.", message);
 
 // The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 11, 21, ...) in English
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "hisOrHer", Gender.FEMININE,
     "year", 21
   ));
 
-assertEquals("Her 21st birthday party is next week.", translation);
+assertEquals("Her 21st birthday party is next week.", message);
 
 // Spanish - normal case
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "hisOrHer", Gender.MASCULINE,
     "year", 18
   ));
 
-assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", translation);
+assertEquals("Su fiesta de cumpleaños número 18 es la próxima semana.", message);
 
 // Spanish - special case for first birthday
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "year", 1
   ));
 
-assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", translation);
+assertEquals("Su primera fiesta de cumpleaños es la próxima semana.", message);
 
 // Spanish - special case for a girl's 15th birthday
-translation = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
+message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "hisOrHer", Gender.FEMININE,
     "year", 15
   ));
 
-assertEquals("Su quinceañera es la próxima semana.", translation);
+assertEquals("Su quinceañera es la próxima semana.", message);
 ```
 
 ## Language Forms
@@ -1419,8 +1419,8 @@ For right-to-left resolved locales, Lokalized wraps application-supplied placeho
 Suppose the Arabic translation for `Shipment` is `تم تجهيز {{code}}`. By default, the caller-supplied `code` value is isolated:
 
 ```java
-String translation = strings.get("Shipment", Map.of("code", "ACME-42"));
-assertEquals("تم تجهيز \u2068ACME-42\u2069", translation);
+String message = strings.get("Shipment", Map.of("code", "ACME-42"));
+assertEquals("تم تجهيز \u2068ACME-42\u2069", message);
 ```
 
 Disable this behavior with [`BidiIsolation`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html) for plain-text sinks that cannot accept Unicode bidi controls:
@@ -1430,8 +1430,8 @@ TranslationOptions options = TranslationOptions.builder()
   .bidiIsolation(BidiIsolation.NONE)
   .build();
 
-String translation = strings.get("Shipment", Map.of("code", "ACME-42"), options);
-assertEquals("تم تجهيز ACME-42", translation);
+String message = strings.get("Shipment", Map.of("code", "ACME-42"), options);
+assertEquals("تم تجهيز ACME-42", message);
 ```
 
 In the below example of an `en` strings file, the application code provides the `bookCount` value and the translation file introduces a `books` value to aid final translation.
@@ -1655,16 +1655,16 @@ Evaluation works as you might expect.
 
 ```java
 // Deepest recursion
-String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("I'm ashamed to admit I didn't read anything.", translation);
+String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
+assertEquals("I'm ashamed to admit I didn't read anything.", message);
 
 // 1 level deep recursion
-translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
-assertEquals("I only read a few books. 1, in fact!", translation);
+message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
+assertEquals("I only read a few books. 1, in fact!", message);
 
 // Normal case
-translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
-assertEquals("I read 3 books.", translation);
+message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
+assertEquals("I read 3 books.", message);
 ```
 
 A grammar for alternative expressions follows.
