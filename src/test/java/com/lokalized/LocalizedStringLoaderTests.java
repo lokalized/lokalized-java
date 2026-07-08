@@ -453,6 +453,62 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsReservedTranslationPlaceholderReferences() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        "{\"Hello\":{\"translation\":\"Hello {{GENDER_MASCULINE}}\"}}"
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected reserved translation placeholder references to be rejected");
+
+    assertTrue(exception.getMessage().contains("reserved expression constants"));
+    assertTrue(exception.getMessage().contains("GENDER_MASCULINE"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsMalformedLanguageFormTranslationPlaceholders() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\",\"translations\":{" +
+            "\"CARDINALITY_ONE\":\"{{ count }} book\",\"CARDINALITY_OTHER\":\"books\"}}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected malformed placeholder references in language-form fragments to be rejected");
+
+    assertTrue(exception.getMessage().contains("invalid placeholder reference in placeholder translation"));
+    assertTrue(exception.getMessage().contains("Malformed placeholder"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsMalformedSelectorTranslationPlaceholders() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
+            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}" +
+            "],\"translations\":[" +
+            "{\"when\":{\"CASE\":\"CASE_NOMINATIVE\"},\"value\":\"the {{ noun }}\"}," +
+            "{\"value\":\"the\"}" +
+            "]}}}}").getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected malformed placeholder references in selector fragments to be rejected");
+
+    assertTrue(exception.getMessage().contains("invalid placeholder reference in selector-based translation rule"));
+    assertTrue(exception.getMessage().contains("Malformed placeholder"));
+  }
+
+  @Test
   public void testFilesystemLoadingRejectsReservedPlaceholderMetadataNames() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();

@@ -42,6 +42,10 @@ public interface TranslationFailureHandler {
 
 	/**
 	 * Returns the lookup key itself after interpolating supplied placeholders into it.
+	 * <p>
+	 * Runtime resolution failures are handled the same way as missing translations. Use {@link #throwException()} or
+	 * a custom handler that throws for {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken placeholder
+	 * rules, expressions, or custom resolvers.
 	 *
 	 * @return the handler, not null
 	 */
@@ -70,6 +74,10 @@ public interface TranslationFailureHandler {
 	 * Logs the failed lookup at warning level and then returns the lookup key itself.
 	 * <p>
 	 * Placeholder values are not logged.
+	 * <p>
+	 * Runtime resolution failures are handled the same way as missing translations after logging. Use
+	 * {@link #throwException()} or a custom handler that throws for {@link TranslationFailureReason#RESOLUTION_FAILURE}
+	 * to surface broken placeholder rules, expressions, or custom resolvers.
 	 *
 	 * @param logger logger to use, not null
 	 * @return the handler, not null

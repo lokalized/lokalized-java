@@ -1072,8 +1072,8 @@ class DefaultStrings implements Strings {
 			if ("*".equals(range))
 				return getFallbackLocale();
 
-			if ("".equals(range) || "und".equalsIgnoreCase(range))
-				return getFallbackLocale();
+			if (CldrLocaleData.hasUndeterminedLanguage(range))
+				continue;
 
 			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
 
@@ -1239,7 +1239,7 @@ class DefaultStrings implements Strings {
 		if (range.contains("*"))
 			return Optional.empty();
 
-		if (range.length() == 0 || "und".equalsIgnoreCase(range))
+		if (CldrLocaleData.hasUndeterminedLanguage(range))
 			return Optional.empty();
 
 		Optional<String> likelySubtag = CldrLocaleData.languageScriptForLikelySubtag(range);
@@ -1247,12 +1247,45 @@ class DefaultStrings implements Strings {
 		if (!likelySubtag.isPresent())
 			return Optional.empty();
 
+		List<@NonNull Locale> matchingLocales = new ArrayList<>();
+
 		for (Locale locale : availableLocales) {
 			Optional<String> availableLikelySubtag = CldrLocaleData.languageScriptForLikelySubtag(locale);
 
 			if (availableLikelySubtag.isPresent() && availableLikelySubtag.get().equalsIgnoreCase(likelySubtag.get()))
-				return Optional.of(locale);
+				matchingLocales.add(locale);
 		}
+
+		if (matchingLocales.isEmpty())
+			return Optional.empty();
+
+		if (matchingLocales.size() == 1)
+			return Optional.of(matchingLocales.get(0));
+
+		String primary = normalizedLanguageCode(range.split("-")[0]);
+		Optional<@NonNull Locale> tiebreakerMatch = lookupMatchByTiebreakers(primary, matchingLocales);
+
+		if (tiebreakerMatch.isPresent())
+			return tiebreakerMatch;
+
+		if (matchingLocales.contains(getFallbackLocale()))
+			return Optional.of(getFallbackLocale());
+
+		return Optional.of(matchingLocales.get(0));
+	}
+
+	@NonNull
+	private Optional<@NonNull Locale> lookupMatchByTiebreakers(@NonNull String languageCode,
+																														 @NonNull List<@NonNull Locale> candidates) {
+		requireNonNull(languageCode);
+		requireNonNull(candidates);
+
+		@Nullable List<@NonNull Locale> tiebreakers = getTiebreakerLocalesByLanguageCode().get(languageCode);
+
+		if (tiebreakers != null)
+			for (Locale tiebreaker : tiebreakers)
+				if (candidates.contains(tiebreaker))
+					return Optional.of(tiebreaker);
 
 		return Optional.empty();
 	}

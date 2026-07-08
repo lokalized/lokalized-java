@@ -333,7 +333,7 @@ public final class LocalizedStringLoader {
         }
       }
     } catch (IOException e) {
-      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
+      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory), e);
     }
 
     return Collections.unmodifiableMap(localizedStringsByLocale);
@@ -385,7 +385,7 @@ public final class LocalizedStringLoader {
         }
       }
     } catch (IOException e) {
-      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory));
+      throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory), e);
     }
 
     return Collections.unmodifiableMap(localizedStringsByLocale);
@@ -974,14 +974,8 @@ public final class LocalizedStringLoader {
     requireNonNull(placeholderMetadataByPlaceholder);
     requireNonNull(languageFormTranslationsByPlaceholder);
 
-    Set<@NonNull String> referencedPlaceholderNames;
-
-    try {
-      referencedPlaceholderNames = StringInterpolator.placeholderNamesIn(translation);
-    } catch (IllegalArgumentException e) {
-      throw new LocalizedStringLoadingException(format("%s: invalid placeholder reference in translation for key '%s': %s",
-          canonicalPath, key, e.getMessage()), e);
-    }
+    Set<@NonNull String> referencedPlaceholderNames =
+        validatePlaceholderReferences(canonicalPath, key, translation, "translation");
 
     Set<@NonNull String> languageFormTranslationInputPlaceholderNames =
         languageFormTranslationInputPlaceholderNames(languageFormTranslationsByPlaceholder);
@@ -996,6 +990,31 @@ public final class LocalizedStringLoader {
           !languageFormTranslationInputPlaceholderNames.contains(placeholderName))
         LOGGER.fine(format("%s: placeholder metadata for '%s' is declared for key '%s' but is not referenced by its translation or placeholder rules",
             canonicalPath, placeholderName, key));
+  }
+
+  @NonNull
+  private static Set<@NonNull String> validatePlaceholderReferences(@NonNull String canonicalPath,
+                                                                    @NonNull String key,
+                                                                    @NonNull String translation,
+                                                                    @NonNull String description) {
+    requireNonNull(canonicalPath);
+    requireNonNull(key);
+    requireNonNull(translation);
+    requireNonNull(description);
+
+    Set<@NonNull String> referencedPlaceholderNames;
+
+    try {
+      referencedPlaceholderNames = StringInterpolator.placeholderNamesIn(translation);
+    } catch (IllegalArgumentException e) {
+      throw new LocalizedStringLoadingException(format("%s: invalid placeholder reference in %s for key '%s': %s",
+          canonicalPath, description, key, e.getMessage()), e);
+    }
+
+    for (String placeholderName : referencedPlaceholderNames)
+      ensureValidPlaceholderName(canonicalPath, key, placeholderName, description + " placeholder reference");
+
+    return referencedPlaceholderNames;
   }
 
   @NonNull
@@ -1143,7 +1162,9 @@ public final class LocalizedStringLoader {
       if (!languageFormTranslationJsonValue.isString())
         throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key is '%s'", canonicalPath, key));
 
-      translationsByLanguageForm.put(languageForm, languageFormTranslationJsonValue.asString());
+      String languageFormTranslation = languageFormTranslationJsonValue.asString();
+      validatePlaceholderReferences(canonicalPath, key, languageFormTranslation, "placeholder translation");
+      translationsByLanguageForm.put(languageForm, languageFormTranslation);
     }
 
     if (translationsByLanguageForm.isEmpty())
@@ -1312,7 +1333,9 @@ public final class LocalizedStringLoader {
         }
       }
 
-      translationRules.add(new LanguageFormTranslationRule(whenByLanguageFormType, ruleValueJsonValue.asString()));
+      String ruleValue = ruleValueJsonValue.asString();
+      validatePlaceholderReferences(canonicalPath, key, ruleValue, "selector-based translation rule");
+      translationRules.add(new LanguageFormTranslationRule(whenByLanguageFormType, ruleValue));
     }
 
     if (translationRules.isEmpty())

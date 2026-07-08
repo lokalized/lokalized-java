@@ -229,6 +229,13 @@ final class CldrLocaleData {
     return canonicalLanguageTag(locale1.toLanguageTag()).equalsIgnoreCase(canonicalLanguageTag(locale2.toLanguageTag()));
   }
 
+  static boolean hasUndeterminedLanguage(@NonNull String languageTag) {
+    requireNonNull(languageTag);
+
+    TagParts tagParts = TagParts.forLanguageTag(languageTag);
+    return tagParts.getLanguage().length() == 0 || UNDETERMINED_LANGUAGE.equalsIgnoreCase(tagParts.getLanguage());
+  }
+
   private static boolean isKnownLanguage(String language) {
     return VALID_LANGUAGES.contains(keyFor(language));
   }

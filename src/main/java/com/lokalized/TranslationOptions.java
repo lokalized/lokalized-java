@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
+import java.util.Objects;
 import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
@@ -115,7 +116,7 @@ public final class TranslationOptions {
 	/**
 	 * Gets the locale override, if configured.
 	 *
-	 * @return the locale override, not null
+	 * @return an optional containing the locale override when configured, otherwise empty. not null
 	 */
 	@NonNull
 	public Optional<@NonNull Locale> getLocale() {
@@ -125,7 +126,7 @@ public final class TranslationOptions {
 	/**
 	 * Gets the language-range override, if configured.
 	 *
-	 * @return the language-range override, not null
+	 * @return an optional containing the language-range override when configured, otherwise empty. not null
 	 */
 	@NonNull
 	public Optional<@NonNull List<@NonNull LanguageRange>> getLanguageRanges() {
@@ -135,7 +136,7 @@ public final class TranslationOptions {
 	/**
 	 * Gets the bidirectional isolation override, if configured.
 	 *
-	 * @return the bidirectional isolation override, not null
+	 * @return an optional containing the bidirectional isolation override when configured, otherwise empty. not null
 	 */
 	@NonNull
 	public Optional<@NonNull BidiIsolation> getBidiIsolation() {
@@ -145,7 +146,7 @@ public final class TranslationOptions {
 	/**
 	 * Gets the translation failure handler override, if configured.
 	 *
-	 * @return the translation failure handler override, not null
+	 * @return an optional containing the translation failure handler override when configured, otherwise empty. not null
 	 */
 	@NonNull
 	public Optional<@NonNull TranslationFailureHandler> getTranslationFailureHandler() {
@@ -166,6 +167,62 @@ public final class TranslationOptions {
 				.translationFailureHandler(translationFailureHandler);
 	}
 
+	/**
+	 * Generates a {@code String} representation of this object.
+	 *
+	 * @return a string representation of this object, not null
+	 */
+	@Override
+	@NonNull
+	public String toString() {
+		List<@NonNull String> components = new ArrayList<>(4);
+
+		if (locale != null)
+			components.add("locale=" + locale.toLanguageTag());
+
+		if (languageRanges != null)
+			components.add("languageRanges=" + languageRanges);
+
+		if (bidiIsolation != null)
+			components.add("bidiIsolation=" + bidiIsolation);
+
+		if (translationFailureHandler != null)
+			components.add("translationFailureHandler=" + translationFailureHandler);
+
+		return String.format("%s{%s}", getClass().getSimpleName(), String.join(", ", components));
+	}
+
+	/**
+	 * Checks if this object is equal to another one.
+	 *
+	 * @param other the object to check, null returns false
+	 * @return true if this is equal to the other object, false otherwise
+	 */
+	@Override
+	public boolean equals(@Nullable Object other) {
+		if (this == other)
+			return true;
+
+		if (other == null || !getClass().equals(other.getClass()))
+			return false;
+
+		TranslationOptions translationOptions = (TranslationOptions) other;
+		return Objects.equals(locale, translationOptions.locale)
+				&& Objects.equals(languageRanges, translationOptions.languageRanges)
+				&& Objects.equals(bidiIsolation, translationOptions.bidiIsolation)
+				&& Objects.equals(translationFailureHandler, translationOptions.translationFailureHandler);
+	}
+
+	/**
+	 * A hash code for this object.
+	 *
+	 * @return a suitable hash code
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(locale, languageRanges, bidiIsolation, translationFailureHandler);
+	}
+
 	@NonNull
 	private static List<@NonNull LanguageRange> immutableLanguageRanges(@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
@@ -182,6 +239,9 @@ public final class TranslationOptions {
 	 * Builder used to construct {@link TranslationOptions} instances.
 	 * <p>
 	 * This class is intended for use by a single thread.
+	 * <p>
+	 * Locale and language-range overrides are mutually exclusive. If both setters are used, the last non-null setter wins
+	 * and clears the earlier override.
 	 */
 	@NotThreadSafe
 	public static final class Builder {

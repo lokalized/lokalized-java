@@ -183,6 +183,77 @@ public class StringsTests {
 	}
 
 	@Test
+	public void undeterminedLanguageRangesDoNotAbortRangeResolution() {
+		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(localizedString),
+						Locale.forLanguageTag("de"), Set.of(localizedString),
+						Locale.forLanguageTag("fr"), Set.of(localizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("fr"), strings.bestMatchFor(LanguageRange.parse("und,fr;q=0.9")));
+		assertEquals(Locale.forLanguageTag("de"), strings.bestMatchFor(LanguageRange.parse("und,de;q=0.9,fr;q=0.8")));
+		assertEquals(Locale.forLanguageTag("en"), strings.bestMatchFor(LanguageRange.parse("und")));
+	}
+
+	@Test
+	public void undeterminedLanguageSubtagsUseFallbackLocale() {
+		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Hello").translation("Bonjour").build();
+		LocalizedString englishLocalizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("fr"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(englishLocalizedString),
+						Locale.forLanguageTag("fr"), Set.of(fallbackLocalizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("fr"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("fr"), strings.bestMatchFor(Locale.forLanguageTag("und-Latn")));
+		assertEquals(Locale.forLanguageTag("fr"), strings.bestMatchFor(Locale.forLanguageTag("und-US")));
+		assertEquals("Bonjour", strings.get("Hello", TranslationOptions.forLocale(Locale.forLanguageTag("und-Latn"))));
+	}
+
+	@Test
+	public void likelySubtagTiesUseConfiguredTiebreakers() {
+		LocalizedString enUs = new LocalizedString.Builder("Hello").translation("Hello from en-US").build();
+		LocalizedString enGb = new LocalizedString.Builder("Hello").translation("Hello from en-GB").build();
+		LocalizedString frFr = new LocalizedString.Builder("Hello").translation("Bonjour de fr-FR").build();
+		LocalizedString frCa = new LocalizedString.Builder("Hello").translation("Bonjour de fr-CA").build();
+		LocalizedString deDe = new LocalizedString.Builder("Hello").translation("Hallo aus de-DE").build();
+		LocalizedString deAt = new LocalizedString.Builder("Hello").translation("Servus aus de-AT").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en-US"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en-US"), Set.of(enUs),
+						Locale.forLanguageTag("en-GB"), Set.of(enGb),
+						Locale.forLanguageTag("fr-FR"), Set.of(frFr),
+						Locale.forLanguageTag("fr-CA"), Set.of(frCa),
+						Locale.forLanguageTag("de-DE"), Set.of(deDe),
+						Locale.forLanguageTag("de-AT"), Set.of(deAt)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-US"))
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en-GB")),
+						"fr", List.of(Locale.forLanguageTag("fr-FR"), Locale.forLanguageTag("fr-CA")),
+						"de", List.of(Locale.forLanguageTag("de-DE"), Locale.forLanguageTag("de-AT"))
+				))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("en-US"), strings.bestMatchFor(Locale.forLanguageTag("en")));
+		assertEquals(Locale.forLanguageTag("fr-FR"), strings.bestMatchFor(Locale.forLanguageTag("fr")));
+		assertEquals(Locale.forLanguageTag("de-DE"), strings.bestMatchFor(Locale.forLanguageTag("de")));
+		assertEquals(Locale.forLanguageTag("fr-FR"), strings.bestMatchFor(Locale.forLanguageTag("fr-BE")));
+
+		assertEquals("Bonjour de fr-FR", strings.get("Hello", TranslationOptions.forLocale(Locale.forLanguageTag("fr-BE"))));
+		assertEquals("Hello from en-US", strings.get("Hello", TranslationOptions.forLanguageRanges(LanguageRange.parse("en"))));
+	}
+
+	@Test
 	public void lookupTruncationBeatsLanguageTiebreakers() {
 		LocalizedString localizedString = new LocalizedString.Builder("Hello").translation("Hello").build();
 
