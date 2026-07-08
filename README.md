@@ -1385,7 +1385,26 @@ All 5 are optional, with the stipulation that you must provide either a `transla
 
 A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
 
-The schema validates file structure, placeholder shapes, known language-form names, placeholder metadata, and alternatives. It does not parse alternative expression syntax or validate locale-specific plural completeness; those checks are performed by Lokalized when strings are loaded.
+The schema validates file structure, placeholder shapes, known language-form names, placeholder metadata, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits `CARDINALITY_MANY`). Values that resolve to a missing form surface during resolution according to the configured failure handler.
+
+Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each `LocalizedStringLoader.load*` method accepts as an optional argument:
+
+```java
+// Default: log each warning at WARNING level.
+Map<Locale, Set<LocalizedString>> strings = LocalizedStringLoader.loadFromClasspath("strings");
+
+// Collect warnings for inspection or your own logging framework.
+List<LocalizedStringWarning> warnings = new ArrayList<>();
+LocalizedStringLoader.loadFromClasspath("strings", warnings::add);
+
+// Fail fast: treat any incomplete file as a load error (useful in tests/CI).
+LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.throwException());
+
+// Suppress entirely.
+LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.ignore());
+```
+
+Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, `getLocale()`, `getKey()`, `getPlaceholder()`, `getMissingLanguageForms()`) alongside a human-readable `getMessage()`.
 
 ### Commentary
 

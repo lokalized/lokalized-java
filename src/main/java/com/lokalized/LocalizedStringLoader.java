@@ -51,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.logging.Logger;
@@ -211,12 +212,29 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
+    return loadFromClasspath(classpathPackage, LocalizedStringWarningHandler.log());
+  }
+
+  /**
+   * Loads all localized string files present in the specified package, routing validation warnings to the given handler.
+   *
+   * @param classpathPackage location of a package on the classpath, not null
+   * @param warningHandler   handler for non-fatal validation warnings, not null
+   * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   */
+  @NonNull
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage,
+                                                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
+    requireNonNull(classpathPackage);
+    requireNonNull(warningHandler);
+
     ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
     if (classLoader == null)
       classLoader = LocalizedStringLoader.class.getClassLoader();
 
-    return loadFromClasspath(classLoader, classpathPackage);
+    return loadFromClasspath(classLoader, classpathPackage, warningHandler);
   }
 
   /**
@@ -233,8 +251,26 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
                                                                                                @NonNull String classpathPackage) {
+    return loadFromClasspath(classLoader, classpathPackage, LocalizedStringWarningHandler.log());
+  }
+
+  /**
+   * Loads all localized string files present in the specified package using the specified classloader, routing
+   * validation warnings to the given handler.
+   *
+   * @param classLoader      classloader to search, not null
+   * @param classpathPackage location of a package on the classpath, not null
+   * @param warningHandler   handler for non-fatal validation warnings, not null
+   * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   */
+  @NonNull
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
+                                                                                               @NonNull String classpathPackage,
+                                                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(classpathPackage);
     requireNonNull(classLoader);
+    requireNonNull(warningHandler);
 
     Enumeration<URL> urls;
 
@@ -251,7 +287,7 @@ public final class LocalizedStringLoader {
 
     while (urls.hasMoreElements()) {
       URL url = urls.nextElement();
-      Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage);
+      Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = loadFromUrl(url, classpathPackage, warningHandler);
       mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
     }
 
@@ -280,8 +316,23 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
+    return loadFromFilesystem(directory, LocalizedStringWarningHandler.log());
+  }
+
+  /**
+   * Loads all localized string files present in the specified directory, routing validation warnings to the given handler.
+   *
+   * @param directory      directory in which to search for localized string files, not null
+   * @param warningHandler handler for non-fatal validation warnings, not null
+   * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   */
+  @NonNull
+  public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory,
+                                                                                                @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(directory);
-    return loadFromDirectory(directory);
+    requireNonNull(warningHandler);
+    return loadFromDirectory(directory, warningHandler);
   }
 
   /**
@@ -292,8 +343,10 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
    */
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull Path directory) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull Path directory,
+                                                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(directory);
+    requireNonNull(warningHandler);
 
     if (!Files.exists(directory))
       throw new LocalizedStringLoadingException(format("Location '%s' does not exist",
@@ -327,7 +380,7 @@ public final class LocalizedStringLoader {
             throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found at '%s'",
                 locale.toLanguageTag(), file));
 
-          localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file, locale));
+          localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file, locale, warningHandler));
         } else {
           LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
@@ -340,8 +393,10 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromDirectoryWithOrigins(@NonNull Path directory) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromDirectoryWithOrigins(@NonNull Path directory,
+                                                                                                                @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(directory);
+    requireNonNull(warningHandler);
 
     if (!Files.exists(directory))
       throw new LocalizedStringLoadingException(format("Location '%s' does not exist",
@@ -378,7 +433,7 @@ public final class LocalizedStringLoader {
             throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in '%s' and '%s'",
                 locale.toLanguageTag(), existingOrigin, canonicalPath));
 
-          localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStringsFile(file, locale), canonicalPath));
+          localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStringsFile(file, locale, warningHandler), canonicalPath));
           originByLocale.put(locale, canonicalPath);
         } else {
           LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
@@ -392,22 +447,24 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage) {
+  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromUrl(@NonNull URL url, @NonNull String classpathPackage,
+                                                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(url);
     requireNonNull(classpathPackage);
+    requireNonNull(warningHandler);
 
     String protocol = url.getProtocol();
 
     if ("file".equals(protocol)) {
       try {
-        return loadFromDirectoryWithOrigins(Paths.get(url.toURI()));
+        return loadFromDirectoryWithOrigins(Paths.get(url.toURI()), warningHandler);
       } catch (URISyntaxException e) {
         throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
       }
     }
 
     if ("jar".equals(protocol))
-      return loadFromJar(url, classpathPackage);
+      return loadFromJar(url, classpathPackage, warningHandler);
 
     throw new LocalizedStringLoadingException(format("Unsupported classpath protocol '%s' for location '%s'",
         protocol, url));
@@ -415,9 +472,11 @@ public final class LocalizedStringLoader {
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromJar(@NonNull URL jarUrl,
-                                                               @NonNull String classpathPackage) {
+                                                               @NonNull String classpathPackage,
+                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(jarUrl);
     requireNonNull(classpathPackage);
+    requireNonNull(warningHandler);
 
     Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = createSourceLocaleMap();
     Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
@@ -473,7 +532,7 @@ public final class LocalizedStringLoader {
 
             try (InputStream inputStream = jarFile.getInputStream(entry)) {
               String contents = normalizeLocalizedStringsFileContents(new String(inputStream.readAllBytes(), UTF_8));
-              localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStrings(canonicalPath, contents, locale), canonicalPath));
+              localizedStringsByLocale.put(locale, sourceLocalizedStrings(parseLocalizedStrings(canonicalPath, contents, locale, warningHandler), canonicalPath));
               originByLocale.put(locale, canonicalPath);
             }
           } else {
@@ -632,9 +691,11 @@ public final class LocalizedStringLoader {
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull Path path, @NonNull Locale locale) {
+  private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull Path path, @NonNull Locale locale,
+                                                                         @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(path);
     requireNonNull(locale);
+    requireNonNull(warningHandler);
 
     String canonicalPath = canonicalPathForPath(path);
 
@@ -650,7 +711,7 @@ public final class LocalizedStringLoader {
           canonicalPath), e);
     }
 
-    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents, locale);
+    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents, locale, warningHandler);
   }
 
   @NonNull
@@ -668,10 +729,12 @@ public final class LocalizedStringLoader {
   @NonNull
   private static Set<@NonNull LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
                                                                      @NonNull String localizedStringsFileContents,
-                                                                     @NonNull Locale locale) {
+                                                                     @NonNull Locale locale,
+                                                                     @NonNull LocalizedStringWarningHandler warningHandler) {
     requireNonNull(canonicalPath);
     requireNonNull(localizedStringsFileContents);
     requireNonNull(locale);
+    requireNonNull(warningHandler);
 
     if ("".equals(localizedStringsFileContents))
       return Collections.emptySet();
@@ -701,10 +764,154 @@ public final class LocalizedStringLoader {
       JsonValue value = member.getValue();
       validateNoDuplicateObjectMembers(canonicalPath, value, "$." + key);
       LocalizedString localizedString = parseLocalizedString(canonicalPath, key, value, null);
+      warnOnIncompleteLanguageFormTranslations(canonicalPath, locale, localizedString, warningHandler);
       localizedStrings.add(localizedString);
     }
 
     return Collections.unmodifiableSet(localizedStrings);
+  }
+
+  /**
+   * Emits a validation warning if a cardinality- or ordinality-driven placeholder omits a language form that its
+   * locale requires per CLDR (for example, a Russian file that provides {@code CARDINALITY_ONE}/{@code FEW}/
+   * {@code OTHER} but omits {@code CARDINALITY_MANY}).
+   * <p>
+   * This is intentionally a warning rather than a hard failure: a translation whose placeholder can only ever
+   * receive a subset of values may legitimately supply a subset of forms. Selector-driven and range-driven
+   * translations are not checked because they are expected to be partial by design. Values that resolve to a
+   * missing form are treated as resolution failures at runtime according to the configured
+   * {@link TranslationFailureHandler}, so surfacing the gap here turns a silent runtime degradation into a visible
+   * validation signal.
+   *
+   * @param canonicalPath   the unique path to the file (or URL) being parsed, used for reporting, not null
+   * @param locale          the locale the file is being loaded for, not null
+   * @param localizedString the parsed localized string to inspect (recursively, including alternatives), not null
+   * @param warningHandler  handler to receive any warnings, not null
+   */
+  private static void warnOnIncompleteLanguageFormTranslations(@NonNull String canonicalPath,
+                                                               @NonNull Locale locale,
+                                                               @NonNull LocalizedString localizedString,
+                                                               @NonNull LocalizedStringWarningHandler warningHandler) {
+    requireNonNull(canonicalPath);
+    requireNonNull(locale);
+    requireNonNull(localizedString);
+    requireNonNull(warningHandler);
+
+    for (Map.Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
+        localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+      String placeholderKey = entry.getKey();
+      LanguageFormTranslation languageFormTranslation = entry.getValue();
+
+      // Selector-driven and range-driven translations legitimately supply a subset of forms; do not check them.
+      if (languageFormTranslation.isSelectorDriven() || languageFormTranslation.getRange().isPresent())
+        continue;
+
+      warnOnIncompleteCardinalityTranslations(canonicalPath, locale, localizedString, placeholderKey, languageFormTranslation, warningHandler);
+      warnOnIncompleteOrdinalityTranslations(canonicalPath, locale, localizedString, placeholderKey, languageFormTranslation, warningHandler);
+    }
+
+    for (LocalizedString alternative : localizedString.getAlternatives())
+      warnOnIncompleteLanguageFormTranslations(canonicalPath, locale, alternative, warningHandler);
+  }
+
+  private static void warnOnIncompleteCardinalityTranslations(@NonNull String canonicalPath,
+                                                              @NonNull Locale locale,
+                                                              @NonNull LocalizedString localizedString,
+                                                              @NonNull String placeholderKey,
+                                                              @NonNull LanguageFormTranslation languageFormTranslation,
+                                                              @NonNull LocalizedStringWarningHandler warningHandler) {
+    Set<@NonNull Cardinality> providedCardinalities = new TreeSet<>();
+
+    for (LanguageForm languageForm : languageFormTranslation.getTranslationsByLanguageForm().keySet())
+      if (languageForm instanceof Cardinality)
+        providedCardinalities.add((Cardinality) languageForm);
+
+    // An empty set means this placeholder is not cardinality-driven; nothing to check.
+    if (providedCardinalities.isEmpty())
+      return;
+
+    Set<@NonNull Cardinality> supportedCardinalities = new TreeSet<>(Cardinality.supportedCardinalitiesForLocale(locale));
+
+    if (supportedCardinalities.isEmpty())
+      return;
+
+    Set<@NonNull Cardinality> missingCardinalities = new TreeSet<>(supportedCardinalities);
+    missingCardinalities.removeAll(providedCardinalities);
+
+    if (missingCardinalities.isEmpty())
+      return;
+
+    Set<@NonNull String> missingLanguageForms = new LinkedHashSet<>();
+
+    for (Cardinality missingCardinality : missingCardinalities)
+      missingLanguageForms.add(LocalizedStringUtils.localizedStringNameForCardinalityName(missingCardinality.name()));
+
+    String message = format("%s: placeholder '%s' for key '%s' is missing %s translation[s] for locale '%s': [%s]. " +
+            "Supported forms are [%s]. Values that resolve to a missing form are treated as resolution failures at runtime.",
+        canonicalPath, placeholderKey, localizedString.getKey(), Cardinality.class.getSimpleName(),
+        locale.toLanguageTag(), cardinalityNamesFor(missingCardinalities), cardinalityNamesFor(supportedCardinalities));
+
+    warningHandler.handle(new LocalizedStringWarning(
+        LocalizedStringWarning.Type.INCOMPLETE_CARDINALITY_TRANSLATIONS, canonicalPath, locale,
+        localizedString.getKey(), placeholderKey, missingLanguageForms, message));
+  }
+
+  private static void warnOnIncompleteOrdinalityTranslations(@NonNull String canonicalPath,
+                                                             @NonNull Locale locale,
+                                                             @NonNull LocalizedString localizedString,
+                                                             @NonNull String placeholderKey,
+                                                             @NonNull LanguageFormTranslation languageFormTranslation,
+                                                             @NonNull LocalizedStringWarningHandler warningHandler) {
+    Set<@NonNull Ordinality> providedOrdinalities = new TreeSet<>();
+
+    for (LanguageForm languageForm : languageFormTranslation.getTranslationsByLanguageForm().keySet())
+      if (languageForm instanceof Ordinality)
+        providedOrdinalities.add((Ordinality) languageForm);
+
+    // An empty set means this placeholder is not ordinality-driven; nothing to check.
+    if (providedOrdinalities.isEmpty())
+      return;
+
+    Set<@NonNull Ordinality> supportedOrdinalities = new TreeSet<>(Ordinality.supportedOrdinalitiesForLocale(locale));
+
+    if (supportedOrdinalities.isEmpty())
+      return;
+
+    Set<@NonNull Ordinality> missingOrdinalities = new TreeSet<>(supportedOrdinalities);
+    missingOrdinalities.removeAll(providedOrdinalities);
+
+    if (missingOrdinalities.isEmpty())
+      return;
+
+    Set<@NonNull String> missingLanguageForms = new LinkedHashSet<>();
+
+    for (Ordinality missingOrdinality : missingOrdinalities)
+      missingLanguageForms.add(LocalizedStringUtils.localizedStringNameForOrdinalityName(missingOrdinality.name()));
+
+    String message = format("%s: placeholder '%s' for key '%s' is missing %s translation[s] for locale '%s': [%s]. " +
+            "Supported forms are [%s]. Values that resolve to a missing form are treated as resolution failures at runtime.",
+        canonicalPath, placeholderKey, localizedString.getKey(), Ordinality.class.getSimpleName(),
+        locale.toLanguageTag(), ordinalityNamesFor(missingOrdinalities), ordinalityNamesFor(supportedOrdinalities));
+
+    warningHandler.handle(new LocalizedStringWarning(
+        LocalizedStringWarning.Type.INCOMPLETE_ORDINALITY_TRANSLATIONS, canonicalPath, locale,
+        localizedString.getKey(), placeholderKey, missingLanguageForms, message));
+  }
+
+  @NonNull
+  private static String cardinalityNamesFor(@NonNull Set<@NonNull Cardinality> cardinalities) {
+    requireNonNull(cardinalities);
+    return cardinalities.stream()
+        .map(cardinality -> LocalizedStringUtils.localizedStringNameForCardinalityName(cardinality.name()))
+        .collect(Collectors.joining(", "));
+  }
+
+  @NonNull
+  private static String ordinalityNamesFor(@NonNull Set<@NonNull Ordinality> ordinalities) {
+    requireNonNull(ordinalities);
+    return ordinalities.stream()
+        .map(ordinality -> LocalizedStringUtils.localizedStringNameForOrdinalityName(ordinality.name()))
+        .collect(Collectors.joining(", "));
   }
 
   /**

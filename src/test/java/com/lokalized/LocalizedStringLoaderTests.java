@@ -28,6 +28,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -58,6 +60,124 @@ public class LocalizedStringLoaderTests {
   @Test
   public void testFilesystemLoading() {
     verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromFilesystem(Paths.get("src/test/resources/strings")));
+  }
+
+  @Test
+  public void testIncompletePluralMapWarnsButStillLoads() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    // Russian requires CARDINALITY_MANY; this file omits it.
+    String incompleteRussian = "{\n" +
+        "  \"I read {{bookCount}} books\" : {\n" +
+        "    \"translation\" : \"Я прочитал {{bookCount}} {{books}}\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"books\" : {\n" +
+        "        \"value\" : \"bookCount\",\n" +
+        "        \"translations\" : {\n" +
+        "          \"CARDINALITY_ONE\" : \"книга\",\n" +
+        "          \"CARDINALITY_FEW\" : \"книги\",\n" +
+        "          \"CARDINALITY_OTHER\" : \"книг\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    // English is fully specified (ONE + OTHER) and must not warn.
+    String completeEnglish = "{\n" +
+        "  \"I read {{bookCount}} books\" : {\n" +
+        "    \"translation\" : \"I read {{bookCount}} {{books}}\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"books\" : {\n" +
+        "        \"value\" : \"bookCount\",\n" +
+        "        \"translations\" : { \"CARDINALITY_ONE\" : \"book\", \"CARDINALITY_OTHER\" : \"books\" }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    Files.write(tempDirectory.resolve("ru"), incompleteRussian.getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("en"), completeEnglish.getBytes(StandardCharsets.UTF_8));
+
+    // Capture warnings via the validation warning-handler hook.
+    List<@NonNull LocalizedStringWarning> warnings = new ArrayList<>();
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, warnings::add);
+
+    // The incomplete file must still load (this is a warning, not a hard failure).
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("ru")),
+        "Incomplete plural file should still load");
+    assertFalse(localizedStringsByLocale.get(Locale.forLanguageTag("ru")).isEmpty(),
+        "Incomplete plural file should retain its translation");
+
+    // Exactly one warning, for the Russian file's missing MANY form; the complete English file must not warn.
+    assertEquals(1, warnings.size(), format("Expected one completeness warning, got %s", warnings));
+
+    LocalizedStringWarning warning = warnings.get(0);
+    assertEquals(LocalizedStringWarning.Type.INCOMPLETE_CARDINALITY_TRANSLATIONS, warning.getType());
+    assertEquals(Locale.forLanguageTag("ru"), warning.getLocale());
+    assertTrue(warning.getMissingLanguageForms().contains("CARDINALITY_MANY"),
+        format("Warning should identify the missing form: %s", warning.getMissingLanguageForms()));
+    assertTrue(warning.getMessage().contains("CARDINALITY_MANY"),
+        format("Warning message should name the missing form: %s", warning.getMessage()));
+
+    // The throwException() handler makes an incomplete file a hard failure (opt-in strictness).
+    assertThrows(LocalizedStringLoadingException.class, () ->
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, LocalizedStringWarningHandler.throwException()));
+
+    // The ignore() handler suppresses the warning while still loading.
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> ignored =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, LocalizedStringWarningHandler.ignore());
+    assertTrue(ignored.containsKey(Locale.forLanguageTag("ru")),
+        "Incomplete plural file should still load when warnings are ignored");
+  }
+
+  @Test
+  public void testIncompleteOrdinalMapWarnsButStillLoads() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    // English ordinals require ONE, TWO, FEW, and OTHER; this file omits TWO and FEW.
+    String incompleteEnglish = "{\n" +
+        "  \"{{year}}th birthday\" : {\n" +
+        "    \"translation\" : \"{{year}}{{suffix}} birthday\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"suffix\" : {\n" +
+        "        \"value\" : \"year\",\n" +
+        "        \"translations\" : {\n" +
+        "          \"ORDINALITY_ONE\" : \"st\",\n" +
+        "          \"ORDINALITY_OTHER\" : \"th\"\n" +
+        "        }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    Files.write(tempDirectory.resolve("en"), incompleteEnglish.getBytes(StandardCharsets.UTF_8));
+
+    List<@NonNull LocalizedStringWarning> warnings = new ArrayList<>();
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, warnings::add);
+
+    assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")),
+        "Incomplete ordinal file should still load");
+    assertFalse(localizedStringsByLocale.get(Locale.forLanguageTag("en")).isEmpty(),
+        "Incomplete ordinal file should retain its translation");
+
+    assertEquals(1, warnings.size(), format("Expected one ordinality completeness warning, got %s", warnings));
+
+    LocalizedStringWarning warning = warnings.get(0);
+    assertEquals(LocalizedStringWarning.Type.INCOMPLETE_ORDINALITY_TRANSLATIONS, warning.getType());
+    assertEquals(Locale.forLanguageTag("en"), warning.getLocale());
+    assertTrue(warning.getMissingLanguageForms().contains("ORDINALITY_TWO"),
+        format("Warning should identify the missing TWO form: %s", warning.getMissingLanguageForms()));
+    assertTrue(warning.getMissingLanguageForms().contains("ORDINALITY_FEW"),
+        format("Warning should identify the missing FEW form: %s", warning.getMissingLanguageForms()));
+    assertTrue(warning.getMessage().contains("ORDINALITY_TWO"),
+        format("Warning message should name the missing TWO form: %s", warning.getMessage()));
+    assertTrue(warning.getMessage().contains("ORDINALITY_FEW"),
+        format("Warning message should name the missing FEW form: %s", warning.getMessage()));
   }
 
   @Test
@@ -605,7 +725,8 @@ public class LocalizedStringLoaderTests {
             "\"CARDINALITY_ONE\":\"книга\",\"CARDINALITY_FEW\":\"книги\",\"CARDINALITY_OTHER\":\"книги\"}}}}}")
             .getBytes(StandardCharsets.UTF_8));
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, LocalizedStringWarningHandler.ignore());
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("ru")));
   }
@@ -620,7 +741,8 @@ public class LocalizedStringLoaderTests {
             "\"ORDINALITY_ONE\":\"st\",\"ORDINALITY_OTHER\":\"th\"}}}}}")
             .getBytes(StandardCharsets.UTF_8));
 
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, LocalizedStringWarningHandler.ignore());
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
   }
