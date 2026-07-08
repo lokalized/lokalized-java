@@ -32,12 +32,16 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 final class BidiUtils {
+  private static final char LEFT_TO_RIGHT_ISOLATE;
+  private static final char RIGHT_TO_LEFT_ISOLATE;
   private static final char FIRST_STRONG_ISOLATE;
   private static final char POP_DIRECTIONAL_ISOLATE;
   @NonNull
   private static final Set<@NonNull String> RIGHT_TO_LEFT_SCRIPT_CODES;
 
   static {
+    LEFT_TO_RIGHT_ISOLATE = '\u2066';
+    RIGHT_TO_LEFT_ISOLATE = '\u2067';
     FIRST_STRONG_ISOLATE = '\u2068';
     POP_DIRECTIONAL_ISOLATE = '\u2069';
     RIGHT_TO_LEFT_SCRIPT_CODES = Set.of(
@@ -102,17 +106,71 @@ final class BidiUtils {
     if (value.length() == 0 || isIsolated(value))
       return value;
 
-    return new StringBuilder(value.length() + 2)
+    String balancedValue = balanceEmbeddedIsolates(value);
+    return new StringBuilder(balancedValue.length() + 2)
         .append(FIRST_STRONG_ISOLATE)
-        .append(value)
+        .append(balancedValue)
         .append(POP_DIRECTIONAL_ISOLATE)
         .toString();
   }
 
   private static boolean isIsolated(@NonNull String value) {
     requireNonNull(value);
-    return value.length() >= 2 &&
-        value.charAt(0) == FIRST_STRONG_ISOLATE &&
-        value.charAt(value.length() - 1) == POP_DIRECTIONAL_ISOLATE;
+
+    if (value.length() < 2 || !isIsolateInitiator(value.charAt(0)))
+      return false;
+
+    int isolateDepth = 0;
+
+    for (int i = 0; i < value.length(); ++i) {
+      char character = value.charAt(i);
+
+      if (isIsolateInitiator(character)) {
+        ++isolateDepth;
+      } else if (character == POP_DIRECTIONAL_ISOLATE) {
+        --isolateDepth;
+
+        if (isolateDepth < 0)
+          return false;
+
+        if (isolateDepth == 0 && i < value.length() - 1)
+          return false;
+      }
+    }
+
+    return isolateDepth == 0;
+  }
+
+  @NonNull
+  private static String balanceEmbeddedIsolates(@NonNull String value) {
+    requireNonNull(value);
+
+    StringBuilder stringBuilder = new StringBuilder(value.length());
+    int isolateDepth = 0;
+
+    for (int i = 0; i < value.length(); ++i) {
+      char character = value.charAt(i);
+
+      if (isIsolateInitiator(character)) {
+        ++isolateDepth;
+        stringBuilder.append(character);
+      } else if (character == POP_DIRECTIONAL_ISOLATE) {
+        if (isolateDepth > 0) {
+          --isolateDepth;
+          stringBuilder.append(character);
+        }
+      } else {
+        stringBuilder.append(character);
+      }
+    }
+
+    for (int i = 0; i < isolateDepth; ++i)
+      stringBuilder.append(POP_DIRECTIONAL_ISOLATE);
+
+    return stringBuilder.toString();
+  }
+
+  private static boolean isIsolateInitiator(char character) {
+    return character == LEFT_TO_RIGHT_ISOLATE || character == RIGHT_TO_LEFT_ISOLATE || character == FIRST_STRONG_ISOLATE;
   }
 }

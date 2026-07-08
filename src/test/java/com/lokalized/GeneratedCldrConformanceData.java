@@ -48,84 +48,90 @@ final class GeneratedCldrConformanceData {
   static final String PLURAL_RANGES_SHA_256 = "42c82db9baaa8667921b4dea32b6322fd5e43004e166a43ae33b51cef5dc0f52";
   @NonNull
   private static final List<@NonNull CardinalitySample> CARDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(
-      new CardinalitySample("he", "0.5", Cardinality.ONE),
-      new CardinalitySample("he", "100", Cardinality.OTHER),
-      new CardinalitySample("is", "0.1", Cardinality.ONE),
-      new CardinalitySample("is", "0.2", Cardinality.OTHER),
-      new CardinalitySample("mk", "11", Cardinality.OTHER),
-      new CardinalitySample("mk", "21", Cardinality.ONE),
-      new CardinalitySample("mt", "2", Cardinality.TWO),
-      new CardinalitySample("mt", "20", Cardinality.OTHER),
-      new CardinalitySample("fr", "1000000", Cardinality.MANY),
-      new CardinalitySample("es", "1000000", Cardinality.MANY),
-      new CardinalitySample("pt", "1000000", Cardinality.MANY),
-      new CardinalitySample("ca", "1000000", Cardinality.MANY),
-      new CardinalitySample("it", "1000000", Cardinality.MANY),
-      new CardinalitySample("pt-PT", "0", Cardinality.OTHER),
-      new CardinalitySample("pt-PT", "1", Cardinality.ONE),
-      new CardinalitySample("pt-PT", "1000000", Cardinality.MANY)
+      new CardinalitySample("he", "0.5", "0.5", -1, Cardinality.ONE),
+      new CardinalitySample("he", "100", "100", -1, Cardinality.OTHER),
+      new CardinalitySample("is", "0.1", "0.1", -1, Cardinality.ONE),
+      new CardinalitySample("is", "0.2", "0.2", -1, Cardinality.OTHER),
+      new CardinalitySample("mk", "11", "11", -1, Cardinality.OTHER),
+      new CardinalitySample("mk", "21", "21", -1, Cardinality.ONE),
+      new CardinalitySample("mt", "2", "2", -1, Cardinality.TWO),
+      new CardinalitySample("mt", "20", "20", -1, Cardinality.OTHER),
+      new CardinalitySample("fr", "1000000", "1000000", -1, Cardinality.MANY),
+      new CardinalitySample("fr", "1c6", "1", 6, Cardinality.MANY),
+      new CardinalitySample("fr", "1c3", "1", 3, Cardinality.OTHER),
+      new CardinalitySample("fr", "1.1c6", "1.1", 6, Cardinality.MANY),
+      new CardinalitySample("fr", "1.1c3", "1.1", 3, Cardinality.OTHER),
+      new CardinalitySample("es", "1000000", "1000000", -1, Cardinality.MANY),
+      new CardinalitySample("es", "1c6", "1", 6, Cardinality.MANY),
+      new CardinalitySample("es", "1c3", "1", 3, Cardinality.OTHER),
+      new CardinalitySample("pt", "1000000", "1000000", -1, Cardinality.MANY),
+      new CardinalitySample("ca", "1000000", "1000000", -1, Cardinality.MANY),
+      new CardinalitySample("it", "1000000", "1000000", -1, Cardinality.MANY),
+      new CardinalitySample("pt-PT", "0", "0", -1, Cardinality.OTHER),
+      new CardinalitySample("pt-PT", "1", "1", -1, Cardinality.ONE),
+      new CardinalitySample("pt-PT", "1000000", "1000000", -1, Cardinality.MANY)
   ));
   @NonNull
   private static final List<@NonNull OrdinalitySample> ORDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(
-      new OrdinalitySample("en", "1", Ordinality.ONE),
-      new OrdinalitySample("en", "2", Ordinality.TWO),
-      new OrdinalitySample("en", "3", Ordinality.FEW),
-      new OrdinalitySample("en", "4", Ordinality.OTHER),
-      new OrdinalitySample("en", "11", Ordinality.OTHER),
-      new OrdinalitySample("en", "12", Ordinality.OTHER),
-      new OrdinalitySample("en", "13", Ordinality.OTHER),
-      new OrdinalitySample("en", "21", Ordinality.ONE),
-      new OrdinalitySample("it", "8", Ordinality.MANY),
-      new OrdinalitySample("it", "11", Ordinality.MANY),
-      new OrdinalitySample("it", "80", Ordinality.MANY),
-      new OrdinalitySample("it", "800", Ordinality.MANY),
-      new OrdinalitySample("it", "1", Ordinality.OTHER),
-      new OrdinalitySample("cy", "0", Ordinality.ZERO),
-      new OrdinalitySample("cy", "1", Ordinality.ONE),
-      new OrdinalitySample("cy", "2", Ordinality.TWO),
-      new OrdinalitySample("cy", "3", Ordinality.FEW),
-      new OrdinalitySample("cy", "5", Ordinality.MANY),
-      new OrdinalitySample("cy", "10", Ordinality.OTHER),
-      new OrdinalitySample("as", "1", Ordinality.ONE),
-      new OrdinalitySample("as", "2", Ordinality.TWO),
-      new OrdinalitySample("as", "4", Ordinality.FEW),
-      new OrdinalitySample("as", "6", Ordinality.MANY),
-      new OrdinalitySample("as", "11", Ordinality.OTHER),
-      new OrdinalitySample("gu", "1", Ordinality.ONE),
-      new OrdinalitySample("gu", "2", Ordinality.TWO),
-      new OrdinalitySample("gu", "4", Ordinality.FEW),
-      new OrdinalitySample("gu", "6", Ordinality.MANY),
-      new OrdinalitySample("gu", "5", Ordinality.OTHER),
-      new OrdinalitySample("mk", "1", Ordinality.ONE),
-      new OrdinalitySample("mk", "2", Ordinality.TWO),
-      new OrdinalitySample("mk", "7", Ordinality.MANY),
-      new OrdinalitySample("mk", "8", Ordinality.MANY),
-      new OrdinalitySample("mk", "11", Ordinality.OTHER),
-      new OrdinalitySample("mk", "12", Ordinality.OTHER),
-      new OrdinalitySample("mk", "17", Ordinality.OTHER),
-      new OrdinalitySample("mk", "18", Ordinality.OTHER),
-      new OrdinalitySample("mk", "21", Ordinality.ONE),
-      new OrdinalitySample("sv", "1", Ordinality.ONE),
-      new OrdinalitySample("sv", "2", Ordinality.ONE),
-      new OrdinalitySample("sv", "11", Ordinality.OTHER),
-      new OrdinalitySample("sv", "12", Ordinality.OTHER),
-      new OrdinalitySample("sv", "21", Ordinality.ONE),
-      new OrdinalitySample("sv", "22", Ordinality.ONE),
-      new OrdinalitySample("be", "2", Ordinality.FEW),
-      new OrdinalitySample("be", "3", Ordinality.FEW),
-      new OrdinalitySample("be", "12", Ordinality.OTHER),
-      new OrdinalitySample("be", "13", Ordinality.OTHER),
-      new OrdinalitySample("be", "22", Ordinality.FEW),
-      new OrdinalitySample("az", "0", Ordinality.MANY),
-      new OrdinalitySample("az", "1", Ordinality.ONE),
-      new OrdinalitySample("az", "3", Ordinality.FEW),
-      new OrdinalitySample("az", "6", Ordinality.MANY),
-      new OrdinalitySample("az", "9", Ordinality.OTHER),
-      new OrdinalitySample("tk", "6", Ordinality.FEW),
-      new OrdinalitySample("tk", "10", Ordinality.FEW),
-      new OrdinalitySample("gd", "11", Ordinality.ONE),
-      new OrdinalitySample("or", "6", Ordinality.MANY),
-      new OrdinalitySample("kw", "5", Ordinality.MANY)
+      new OrdinalitySample("en", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("en", "2", "2", -1, Ordinality.TWO),
+      new OrdinalitySample("en", "3", "3", -1, Ordinality.FEW),
+      new OrdinalitySample("en", "4", "4", -1, Ordinality.OTHER),
+      new OrdinalitySample("en", "11", "11", -1, Ordinality.OTHER),
+      new OrdinalitySample("en", "12", "12", -1, Ordinality.OTHER),
+      new OrdinalitySample("en", "13", "13", -1, Ordinality.OTHER),
+      new OrdinalitySample("en", "21", "21", -1, Ordinality.ONE),
+      new OrdinalitySample("it", "8", "8", -1, Ordinality.MANY),
+      new OrdinalitySample("it", "11", "11", -1, Ordinality.MANY),
+      new OrdinalitySample("it", "80", "80", -1, Ordinality.MANY),
+      new OrdinalitySample("it", "800", "800", -1, Ordinality.MANY),
+      new OrdinalitySample("it", "1", "1", -1, Ordinality.OTHER),
+      new OrdinalitySample("cy", "0", "0", -1, Ordinality.ZERO),
+      new OrdinalitySample("cy", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("cy", "2", "2", -1, Ordinality.TWO),
+      new OrdinalitySample("cy", "3", "3", -1, Ordinality.FEW),
+      new OrdinalitySample("cy", "5", "5", -1, Ordinality.MANY),
+      new OrdinalitySample("cy", "10", "10", -1, Ordinality.OTHER),
+      new OrdinalitySample("as", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("as", "2", "2", -1, Ordinality.TWO),
+      new OrdinalitySample("as", "4", "4", -1, Ordinality.FEW),
+      new OrdinalitySample("as", "6", "6", -1, Ordinality.MANY),
+      new OrdinalitySample("as", "11", "11", -1, Ordinality.OTHER),
+      new OrdinalitySample("gu", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("gu", "2", "2", -1, Ordinality.TWO),
+      new OrdinalitySample("gu", "4", "4", -1, Ordinality.FEW),
+      new OrdinalitySample("gu", "6", "6", -1, Ordinality.MANY),
+      new OrdinalitySample("gu", "5", "5", -1, Ordinality.OTHER),
+      new OrdinalitySample("mk", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("mk", "2", "2", -1, Ordinality.TWO),
+      new OrdinalitySample("mk", "7", "7", -1, Ordinality.MANY),
+      new OrdinalitySample("mk", "8", "8", -1, Ordinality.MANY),
+      new OrdinalitySample("mk", "11", "11", -1, Ordinality.OTHER),
+      new OrdinalitySample("mk", "12", "12", -1, Ordinality.OTHER),
+      new OrdinalitySample("mk", "17", "17", -1, Ordinality.OTHER),
+      new OrdinalitySample("mk", "18", "18", -1, Ordinality.OTHER),
+      new OrdinalitySample("mk", "21", "21", -1, Ordinality.ONE),
+      new OrdinalitySample("sv", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("sv", "2", "2", -1, Ordinality.ONE),
+      new OrdinalitySample("sv", "11", "11", -1, Ordinality.OTHER),
+      new OrdinalitySample("sv", "12", "12", -1, Ordinality.OTHER),
+      new OrdinalitySample("sv", "21", "21", -1, Ordinality.ONE),
+      new OrdinalitySample("sv", "22", "22", -1, Ordinality.ONE),
+      new OrdinalitySample("be", "2", "2", -1, Ordinality.FEW),
+      new OrdinalitySample("be", "3", "3", -1, Ordinality.FEW),
+      new OrdinalitySample("be", "12", "12", -1, Ordinality.OTHER),
+      new OrdinalitySample("be", "13", "13", -1, Ordinality.OTHER),
+      new OrdinalitySample("be", "22", "22", -1, Ordinality.FEW),
+      new OrdinalitySample("az", "0", "0", -1, Ordinality.MANY),
+      new OrdinalitySample("az", "1", "1", -1, Ordinality.ONE),
+      new OrdinalitySample("az", "3", "3", -1, Ordinality.FEW),
+      new OrdinalitySample("az", "6", "6", -1, Ordinality.MANY),
+      new OrdinalitySample("az", "9", "9", -1, Ordinality.OTHER),
+      new OrdinalitySample("tk", "6", "6", -1, Ordinality.FEW),
+      new OrdinalitySample("tk", "10", "10", -1, Ordinality.FEW),
+      new OrdinalitySample("gd", "11", "11", -1, Ordinality.ONE),
+      new OrdinalitySample("or", "6", "6", -1, Ordinality.MANY),
+      new OrdinalitySample("kw", "5", "5", -1, Ordinality.MANY)
   ));
   @NonNull
   private static final List<@NonNull CardinalityRangeSample> CARDINALITY_RANGE_SAMPLES = Collections.unmodifiableList(Arrays.asList(
@@ -162,15 +168,22 @@ final class GeneratedCldrConformanceData {
     @NonNull
     private final String sample;
     @NonNull
+    private final String numericSample;
+    private final int compactExponent;
+    @NonNull
     private final Cardinality expected;
 
-    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull Cardinality expected) {
+    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,
+                              int compactExponent, @NonNull Cardinality expected) {
       requireNonNull(cldrLocale);
       requireNonNull(sample);
+      requireNonNull(numericSample);
       requireNonNull(expected);
 
       this.cldrLocale = cldrLocale;
       this.sample = sample;
+      this.numericSample = numericSample;
+      this.compactExponent = compactExponent;
       this.expected = expected;
     }
 
@@ -182,6 +195,19 @@ final class GeneratedCldrConformanceData {
     @NonNull
     String getSample() {
       return sample;
+    }
+
+    @NonNull
+    String getNumericSample() {
+      return numericSample;
+    }
+
+    boolean hasCompactExponent() {
+      return compactExponent >= 0;
+    }
+
+    int getCompactExponent() {
+      return compactExponent;
     }
 
     @NonNull
@@ -196,15 +222,22 @@ final class GeneratedCldrConformanceData {
     @NonNull
     private final String sample;
     @NonNull
+    private final String numericSample;
+    private final int compactExponent;
+    @NonNull
     private final Ordinality expected;
 
-    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull Ordinality expected) {
+    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,
+                             int compactExponent, @NonNull Ordinality expected) {
       requireNonNull(cldrLocale);
       requireNonNull(sample);
+      requireNonNull(numericSample);
       requireNonNull(expected);
 
       this.cldrLocale = cldrLocale;
       this.sample = sample;
+      this.numericSample = numericSample;
+      this.compactExponent = compactExponent;
       this.expected = expected;
     }
 
@@ -216,6 +249,19 @@ final class GeneratedCldrConformanceData {
     @NonNull
     String getSample() {
       return sample;
+    }
+
+    @NonNull
+    String getNumericSample() {
+      return numericSample;
+    }
+
+    boolean hasCompactExponent() {
+      return compactExponent >= 0;
+    }
+
+    int getCompactExponent() {
+      return compactExponent;
     }
 
     @NonNull

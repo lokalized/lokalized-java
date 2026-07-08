@@ -772,6 +772,8 @@ public final class LocalizedStringLoader {
       // }
 
       JsonObject localizedStringObject = jsonValue.asObject();
+      validateNoUnexpectedObjectMembers(canonicalPath, key, localizedStringObject, "localized string",
+          Set.of("translation", "commentary", "placeholderMetadata", "placeholders", "alternatives"));
 
       String translation = null;
 
@@ -815,6 +817,8 @@ public final class LocalizedStringLoader {
             throw new LocalizedStringLoadingException(format("%s: placeholder metadata must be an object. Key is '%s'", canonicalPath, key));
 
           JsonObject placeholderMetadataObject = placeholderMetadataValue.asObject();
+          validateNoUnexpectedObjectMembers(canonicalPath, key, placeholderMetadataObject,
+              format("placeholder metadata '%s'", placeholderKey), Set.of("type", "commentary", "example", "allowedValues"));
           JsonValue typeJsonValue = placeholderMetadataObject.get("type");
           JsonValue commentaryJsonValueForPlaceholder = placeholderMetadataObject.get("commentary");
           JsonValue exampleJsonValue = placeholderMetadataObject.get("example");
@@ -1044,14 +1048,10 @@ public final class LocalizedStringLoader {
     requireNonNull(expression);
 
     try {
-      EXPRESSION_EVALUATOR.validateExpressionSourceLength(expression);
-      List<@NonNull Token> tokens = EXPRESSION_EVALUATOR.getExpressionTokenizer().extractTokens(expression);
-      List<@NonNull Token> rpnTokens = EXPRESSION_EVALUATOR.convertTokensToReversePolishNotation(tokens);
-      EXPRESSION_EVALUATOR.validateReversePolishNotationTokens(rpnTokens);
-      return rpnTokens;
+      return EXPRESSION_EVALUATOR.parseAndValidateExpressionTokens(expression);
     } catch (ExpressionEvaluationException e) {
       throw new LocalizedStringLoadingException(
-          format("%s: unable to parse alternative expression '%s'", canonicalPath, expression), e);
+          format("%s: unable to parse alternative expression '%s': %s", canonicalPath, expression, e.getMessage()), e);
     }
   }
 
@@ -1067,6 +1067,8 @@ public final class LocalizedStringLoader {
     JsonValue rangeJsonValue = placeholderJsonObject.get("range");
     JsonValue selectorsJsonValue = placeholderJsonObject.get("selectors");
     JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
+    validateNoUnexpectedObjectMembers(canonicalPath, key, placeholderJsonObject,
+        format("placeholder '%s'", placeholderKey), Set.of("value", "range", "selectors", "translations"));
     boolean hasValue = valueJsonValue != null && !valueJsonValue.isNull();
     boolean hasRangeValue = rangeJsonValue != null && !rangeJsonValue.isNull();
     boolean hasSelectors = selectorsJsonValue != null && !selectorsJsonValue.isNull();
@@ -1108,6 +1110,8 @@ public final class LocalizedStringLoader {
         throw new LocalizedStringLoadingException(format("%s: the placeholder translation range must be an object. Key is '%s'", canonicalPath, key));
 
       JsonObject rangeJsonObject = rangeJsonValue.asObject();
+      validateNoUnexpectedObjectMembers(canonicalPath, key, rangeJsonObject,
+          format("range for placeholder '%s'", placeholderKey), Set.of("start", "end"));
       JsonValue rangeValueStartJsonValue = rangeJsonObject.get("start");
       JsonValue rangeValueEndJsonValue = rangeJsonObject.get("end");
 
@@ -1219,6 +1223,8 @@ public final class LocalizedStringLoader {
             canonicalPath, placeholderKey, key));
 
       JsonObject selectorJsonObject = selectorJsonValue.asObject();
+      validateNoUnexpectedObjectMembers(canonicalPath, key, selectorJsonObject,
+          format("selector for placeholder '%s'", placeholderKey), Set.of("value", "form"));
       JsonValue selectorValueJsonValue = selectorJsonObject.get("value");
       JsonValue selectorFormJsonValue = selectorJsonObject.get("form");
 
@@ -1280,6 +1286,8 @@ public final class LocalizedStringLoader {
             canonicalPath, placeholderKey, key));
 
       JsonObject translationJsonObject = translationJsonValue.asObject();
+      validateNoUnexpectedObjectMembers(canonicalPath, key, translationJsonObject,
+          format("selector-based translation rule for placeholder '%s'", placeholderKey), Set.of("when", "value"));
       JsonValue ruleValueJsonValue = translationJsonObject.get("value");
       JsonValue whenJsonValue = translationJsonObject.get("when");
 
@@ -1388,6 +1396,23 @@ public final class LocalizedStringLoader {
     return true;
   }
 
+  private static void validateNoUnexpectedObjectMembers(@NonNull String canonicalPath,
+                                                        @NonNull String key,
+                                                        @NonNull JsonObject jsonObject,
+                                                        @NonNull String description,
+                                                        @NonNull Set<@NonNull String> expectedMemberNames) {
+    requireNonNull(canonicalPath);
+    requireNonNull(key);
+    requireNonNull(jsonObject);
+    requireNonNull(description);
+    requireNonNull(expectedMemberNames);
+
+    for (Member member : jsonObject)
+      if (!expectedMemberNames.contains(member.getName()))
+        throw new LocalizedStringLoadingException(format("%s: unexpected field '%s' in %s for key '%s'. Valid fields are [%s]",
+            canonicalPath, member.getName(), description, key, expectedMemberNames.stream().collect(Collectors.joining(", "))));
+  }
+
   private static void ensureValidPlaceholderName(@NonNull String canonicalPath, @NonNull String key,
                                                  @NonNull String placeholderName, @NonNull String description) {
     requireNonNull(canonicalPath);
@@ -1397,7 +1422,8 @@ public final class LocalizedStringLoader {
 
     if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName))
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a Unicode letter or underscore " +
-          "and contain only Unicode letters, Unicode digits, underscores, or hyphens. Key is '%s'", canonicalPath, description, placeholderName, key));
+          "and contain only Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens. Key is '%s'",
+          canonicalPath, description, placeholderName, key));
 
     if (SUPPORTED_LANGUAGE_FORMS_BY_NAME.containsKey(placeholderName))
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names may not use reserved expression constants. " +

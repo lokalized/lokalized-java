@@ -67,7 +67,7 @@ final class LocalizedStringUtils {
     CLUSIVITY_NAME_PREFIX = "CLUSIVITY_";
     ANIMACY_NAME_PREFIX = "ANIMACY_";
     PHONETIC_NAME_PREFIX = "PHONETIC_";
-    LOCALIZED_STRING_IDENTIFIER_PATTERN = "[\\p{L}_][\\p{L}\\p{N}_-]*";
+    LOCALIZED_STRING_IDENTIFIER_PATTERN = "[\\p{L}_][\\p{L}\\p{N}\\p{Mn}\\p{Mc}_-]*";
     LOCALIZED_STRING_IDENTIFIER_FULL_MATCH_PATTERN = Pattern.compile(format("^%s$", LOCALIZED_STRING_IDENTIFIER_PATTERN));
   }
 

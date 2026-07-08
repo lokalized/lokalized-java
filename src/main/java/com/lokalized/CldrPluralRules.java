@@ -241,7 +241,7 @@ final class CldrPluralRules {
     Optional<@NonNull String> language = LocaleUtils.normalizedLanguage(locale);
 
     if (!language.isPresent())
-      return Collections.emptyList();
+      return CldrLocaleData.hasUndeterminedLanguage(locale.toLanguageTag()) ? List.of("root") : Collections.emptyList();
 
     @NonNull String script = locale.getScript();
     @NonNull String country = locale.getCountry();
@@ -282,7 +282,12 @@ final class CldrPluralRules {
 
   @NonNull
   private static SortedSet<@NonNull String> supportedLocales(@NonNull Map<@NonNull String, @NonNull LocaleRules> rulesByLocale) {
-    return Collections.unmodifiableSortedSet(new TreeSet<>(rulesByLocale.keySet()));
+    SortedSet<@NonNull String> supportedLocales = new TreeSet<>();
+
+    for (String locale : rulesByLocale.keySet())
+      supportedLocales.add(publicLocaleTag(locale));
+
+    return Collections.unmodifiableSortedSet(supportedLocales);
   }
 
   @NonNull
@@ -291,7 +296,14 @@ final class CldrPluralRules {
       @NonNull Map<@NonNull String, @NonNull LocaleRules> ordinalRulesByLocale) {
     SortedSet<@NonNull String> supportedLocales = new TreeSet<>(cardinalRulesByLocale.keySet());
     supportedLocales.addAll(ordinalRulesByLocale.keySet());
+    supportedLocales.remove("root");
+    supportedLocales.add("und");
     return Collections.unmodifiableSortedSet(supportedLocales);
+  }
+
+  @NonNull
+  private static String publicLocaleTag(@NonNull String locale) {
+    return "root".equals(locale) ? "und" : locale;
   }
 
   @NonNull

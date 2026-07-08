@@ -45,6 +45,10 @@ final class CldrLocaleData {
   @NonNull
   private static final String UNDETERMINED_LANGUAGE = "und";
   @NonNull
+  private static final String NORWEGIAN_MACROLANGUAGE = "no";
+  @NonNull
+  private static final String NORWEGIAN_BOKMAL = "nb";
+  @NonNull
   private static final Map<@NonNull String, @NonNull String> LANGUAGE_ALIASES_BY_TAG;
   @NonNull
   private static final Map<@NonNull String, @NonNull String> SCRIPT_ALIASES_BY_TAG;
@@ -310,6 +314,12 @@ final class CldrLocaleData {
 
   private static void addFallbackTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
                                       @NonNull String languageTag) {
+    addFallbackTags(candidateTags, languageTag, true);
+  }
+
+  private static void addFallbackTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
+                                      @NonNull String languageTag,
+                                      boolean includeLanguageBridges) {
     Optional<String> requestedLanguageScript = languageScriptForLikelySubtag(languageTag);
     candidateTags.add(languageTag);
     boolean rootParentReached = addParentTags(candidateTags, languageTag);
@@ -327,6 +337,20 @@ final class CldrLocaleData {
       rootParentReached = addParentTags(candidateTags, candidateTag);
       subtagSeparatorIndex = candidateTag.lastIndexOf('-');
     }
+
+    if (includeLanguageBridges)
+      addMacrolanguageBridgeTags(candidateTags, languageTag);
+  }
+
+  private static void addMacrolanguageBridgeTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
+                                                 @NonNull String languageTag) {
+    TagParts tagParts = TagParts.forLanguageTag(languageTag);
+    String language = tagParts.getLanguage();
+
+    if (NORWEGIAN_MACROLANGUAGE.equals(language))
+      addFallbackTags(candidateTags, tagParts.withLanguage(NORWEGIAN_BOKMAL).toLanguageTag(), false);
+    else if (NORWEGIAN_BOKMAL.equals(language))
+      addFallbackTags(candidateTags, tagParts.withLanguage(NORWEGIAN_MACROLANGUAGE).toLanguageTag(), false);
   }
 
   private static boolean addParentTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,

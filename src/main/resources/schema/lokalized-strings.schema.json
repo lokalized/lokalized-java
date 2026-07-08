@@ -604,7 +604,7 @@
     },
     "placeholderName": {
       "type": "string",
-      "pattern": "^[\\p{L}_][\\p{L}\\p{N}_-]*$",
+      "pattern": "^[\\p{L}_][\\p{L}\\p{N}\\p{Mn}\\p{Mc}_-]*$",
       "not": {
         "$ref": "#/$defs/languageFormName"
       }

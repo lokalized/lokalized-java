@@ -337,11 +337,25 @@ class ExpressionEvaluator {
     if (context == null)
       context = Collections.emptyMap();
 
+    List<@NonNull Token> tokens = parseAndValidateExpressionTokens(expression);
+    return evaluateReversePolishNotationTokens(tokens, context, locale);
+  }
+
+  @NonNull
+  protected List<@NonNull Token> parseAndValidateExpressionTokens(@NonNull String expression) {
+    requireNonNull(expression);
+
     validateExpressionSourceLength(expression);
     List<@NonNull Token> tokens = getExpressionTokenizer().extractTokens(expression);
     tokens = convertTokensToReversePolishNotation(tokens);
-    validateReversePolishNotationTokens(tokens);
-    return evaluateReversePolishNotationTokens(tokens, context, locale);
+
+    try {
+      validateReversePolishNotationTokens(tokens);
+    } catch (ExpressionEvaluationException e) {
+      throw new ExpressionEvaluationException(format("Invalid expression '%s': %s", expression, e.getMessage()), e);
+    }
+
+    return tokens;
   }
 
   /**
@@ -1580,13 +1594,12 @@ class ExpressionEvaluator {
         valueStack.push(new ExpressionValidationValue(expressionValueTypeForToken(token), token.getSymbol()));
       } else if (isOperator(token)) {
         if (valueStack.size() < 2)
-          throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s' (%s)",
-              token.getSymbol(), valueStack.stream().map(value -> value.getSymbol()).collect(Collectors.toList())));
+          throw new ExpressionEvaluationException(format("Insufficient arguments provided for operator '%s'", token.getSymbol()));
 
         ExpressionValidationValue rightHandOperand = valueStack.pop();
         ExpressionValidationValue leftHandOperand = valueStack.pop();
         validateOperatorOperands(leftHandOperand, token, rightHandOperand);
-        valueStack.push(new ExpressionValidationValue(ExpressionValueType.BOOLEAN, "boolean result"));
+        valueStack.push(new ExpressionValidationValue(ExpressionValueType.BOOLEAN, "previous comparison"));
       } else {
         throw new ExpressionEvaluationException(format("Unexpected symbol encountered: '%s'", token.getSymbol()));
       }

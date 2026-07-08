@@ -69,18 +69,24 @@ public class CldrConformanceTests {
   }
 
   private void assertCardinality(GeneratedCldrConformanceData.CardinalitySample sample) {
-    BigDecimal number = new BigDecimal(sample.getSample());
+    BigDecimal number = new BigDecimal(sample.getNumericSample());
     Locale locale = Locale.forLanguageTag(sample.getCldrLocale().replace('_', '-'));
-    Cardinality actual = Cardinality.forNumber(number, locale);
+    PluralOperands.Builder operandsBuilder = PluralOperands.forNumber(number);
+    Cardinality actual = sample.hasCompactExponent()
+        ? Cardinality.forOperands(operandsBuilder.compactExponent(sample.getCompactExponent()).build(), locale)
+        : Cardinality.forNumber(number, locale);
 
     assertEquals(sample.getExpected(), actual, format("Mismatched CLDR %s cardinality for locale %s and sample %s",
         GeneratedCldrConformanceData.CLDR_VERSION, sample.getCldrLocale(), sample.getSample()));
   }
 
   private void assertOrdinality(GeneratedCldrConformanceData.OrdinalitySample sample) {
-    BigDecimal number = new BigDecimal(sample.getSample());
+    BigDecimal number = new BigDecimal(sample.getNumericSample());
     Locale locale = Locale.forLanguageTag(sample.getCldrLocale().replace('_', '-'));
-    Ordinality actual = Ordinality.forNumber(number, locale);
+    PluralOperands.Builder operandsBuilder = PluralOperands.forNumber(number);
+    Ordinality actual = sample.hasCompactExponent()
+        ? Ordinality.forOperands(operandsBuilder.compactExponent(sample.getCompactExponent()).build(), locale)
+        : Ordinality.forNumber(number, locale);
 
     assertEquals(sample.getExpected(), actual, format("Mismatched CLDR %s ordinality for locale %s and sample %s",
         GeneratedCldrConformanceData.CLDR_VERSION, sample.getCldrLocale(), sample.getSample()));

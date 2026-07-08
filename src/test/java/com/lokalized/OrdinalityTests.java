@@ -24,6 +24,8 @@ import java.util.Map;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link Cardinality}.
@@ -64,6 +66,13 @@ public class OrdinalityTests {
 
     assertEquals(Ordinality.ONE, Ordinality.forOperands(PluralOperands.forNumber(21).build(), usEnglishLocale),
         format("Incorrect %s ordinality for 21", usEnglishLocale.toLanguageTag()));
+  }
+
+  @Test
+  public void supportedLanguageCodesExposeUndInsteadOfRoot() {
+    assertTrue(Ordinality.getSupportedLanguageCodes().contains("und"));
+    assertFalse(Ordinality.getSupportedLanguageCodes().contains("root"));
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, Locale.forLanguageTag("und")));
   }
 
   @Test

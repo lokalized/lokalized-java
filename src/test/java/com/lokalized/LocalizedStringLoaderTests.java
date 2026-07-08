@@ -276,6 +276,7 @@ public class LocalizedStringLoaderTests {
 
     assertTrue(exception.getCause().getMessage().contains("Chained comparisons are not supported"));
     assertFalse(exception.getCause().getMessage().contains("TRUE"));
+    assertFalse(exception.getCause().getMessage().contains("boolean result"));
   }
 
   @Test
@@ -419,8 +420,9 @@ public class LocalizedStringLoaderTests {
     tempDirectory.toFile().deleteOnExit();
 
     Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{книги}}\",\"placeholderMetadata\":{" +
-            "\"имя\":{\"type\":\"STRING\",\"example\":\"Ада\"}" +
+        ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{नाम}} {{книги}}\",\"placeholderMetadata\":{" +
+            "\"имя\":{\"type\":\"STRING\",\"example\":\"Ада\"}," +
+            "\"नाम\":{\"type\":\"STRING\",\"example\":\"Ada\"}" +
             "},\"placeholders\":{" +
             "\"книги\":{\"value\":\"caféCount\",\"translations\":{\"CARDINALITY_ONE\":\"book\",\"CARDINALITY_OTHER\":\"books\"}}" +
             "},\"alternatives\":[{\"caféCount == количество2\":{\"translation\":\"Matched {{имя}}\"}}]}}")
@@ -430,8 +432,61 @@ public class LocalizedStringLoaderTests {
     LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
 
     assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("имя"));
+    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("नाम"));
     assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("книги"));
     assertEquals(1, localizedString.getAlternatives().size());
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnknownLocalizedStringObjectFields() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        "{\"Hello\":{\"translation\":\"Hello\",\"notes\":\"unexpected\"}}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unknown localized string fields to be rejected");
+
+    assertTrue(exception.getMessage().contains("unexpected field 'notes'"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnknownPlaceholderFields() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\"," +
+            "\"translations\":{\"CARDINALITY_ONE\":\"book\",\"CARDINALITY_OTHER\":\"books\"},\"notes\":\"unexpected\"}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unknown placeholder fields to be rejected");
+
+    assertTrue(exception.getMessage().contains("unexpected field 'notes'"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsUnknownSelectorRuleFields() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
+            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
+            "],\"translations\":[" +
+            "{\"when\":{\"GENDER\":\"GENDER_MASCULINE\"},\"value\":\"el\",\"notes\":\"unexpected\"}," +
+            "{\"value\":\"la\"}" +
+            "]}}}}").getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
+        "Expected unknown selector rule fields to be rejected");
+
+    assertTrue(exception.getMessage().contains("unexpected field 'notes'"));
   }
 
   @Test

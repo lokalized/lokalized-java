@@ -28,6 +28,8 @@ import java.util.SortedMap;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link Cardinality}.
@@ -68,6 +70,13 @@ public class CardinalityTests {
         "Expected plain French 2 to use the normal cardinality rule");
     assertEquals(Cardinality.MANY, Cardinality.forOperands(PluralOperands.forNumber(2).compactExponent(6).build(), frenchLocale),
         "Expected compact exponent operands to be available to CLDR rules");
+  }
+
+  @Test
+  public void supportedLanguageCodesExposeUndInsteadOfRoot() {
+    assertTrue(Cardinality.getSupportedLanguageCodes().contains("und"));
+    assertFalse(Cardinality.getSupportedLanguageCodes().contains("root"));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, Locale.forLanguageTag("und")));
   }
 
   @Test

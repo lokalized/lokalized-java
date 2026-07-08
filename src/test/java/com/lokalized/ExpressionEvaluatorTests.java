@@ -313,6 +313,8 @@ public class ExpressionEvaluatorTests {
 
 		assertTrue(exception.getMessage().contains("requires boolean operands"),
 				"Expected boolean operator message to explain required operands");
+		assertTrue(exception.getMessage().contains("a && b"),
+				"Expected boolean operator message to include the original expression");
 	}
 
 	@Test
@@ -327,6 +329,8 @@ public class ExpressionEvaluatorTests {
 				"Expected chained comparison message to be explicit");
 		assertFalse(exception.getMessage().contains("TRUE"),
 				"Expected chained comparison message not to expose internal boolean sentinels");
+		assertFalse(exception.getMessage().contains("boolean result"),
+				"Expected chained comparison message not to expose internal validation sentinels");
 	}
 
 	@Test

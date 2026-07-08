@@ -45,12 +45,13 @@ public class StringInterpolatorTests {
   @Test
   public void unicodePlaceholderNames() {
     StringInterpolator interpolator = new StringInterpolator();
-    String result = interpolator.interpolate("Bonjour {{caféCount}} et {{количество2}}", Map.of(
+    String result = interpolator.interpolate("Bonjour {{caféCount}} et {{количество2}} et {{नाम}}", Map.of(
         "caféCount", 1,
-        "количество2", 2
+        "количество2", 2,
+        "नाम", 3
     ));
 
-    assertEquals("Bonjour 1 et 2", result);
+    assertEquals("Bonjour 1 et 2 et 3", result);
   }
 
   @Test
@@ -71,6 +72,26 @@ public class StringInterpolatorTests {
     ));
 
     assertEquals("Hi {{name}} and Ada", result);
+  }
+
+  @Test
+  public void escapedClosingDelimitersAreRenderedLiterally() {
+    StringInterpolator interpolator = new StringInterpolator();
+    String result = interpolator.interpolate("Literal \\}} and {{name}}", Map.of(
+        "name", "Ada"
+    ));
+
+    assertEquals("Literal }} and Ada", result);
+  }
+
+  @Test
+  public void escapedBackslashCanPrecedeLivePlaceholder() {
+    StringInterpolator interpolator = new StringInterpolator();
+    String result = interpolator.interpolate("Literal \\\\{{name}}", Map.of(
+        "name", "Ada"
+    ));
+
+    assertEquals("Literal \\Ada", result);
   }
 
   @Test
@@ -109,6 +130,11 @@ public class StringInterpolatorTests {
   @Test
   public void placeholderNameExtractionIgnoresEscapedPlaceholders() {
     assertEquals(Set.of("real"), StringInterpolator.placeholderNamesIn("\\{{ ignored }} and {{real}}"));
+  }
+
+  @Test
+  public void placeholderNameExtractionHonorsEscapedBackslashBeforeLivePlaceholder() {
+    assertEquals(Set.of("real"), StringInterpolator.placeholderNamesIn("\\\\{{real}} and \\{{ignored}}"));
   }
 
   @Test

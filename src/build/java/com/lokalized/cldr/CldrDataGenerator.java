@@ -83,7 +83,13 @@ public final class CldrDataGenerator {
       sample("mt", "2"),
       sample("mt", "20"),
       sample("fr", "1000000"),
+      sample("fr", "1c6"),
+      sample("fr", "1c3"),
+      sample("fr", "1.1c6"),
+      sample("fr", "1.1c3"),
       sample("es", "1000000"),
+      sample("es", "1c6"),
+      sample("es", "1c3"),
       sample("pt", "1000000"),
       sample("ca", "1000000"),
       sample("it", "1000000"),
@@ -308,9 +314,11 @@ public final class CldrDataGenerator {
     private List<CardinalitySample> cardinalitySamples() {
       List<CardinalitySample> samples = new ArrayList<>();
 
-      for (SampleRequest request : CARDINALITY_SAMPLE_REQUESTS)
-        samples.add(new CardinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(),
-            countForSample(PLURALS_RESOURCE, request.getCldrLocale(), new BigDecimal(request.getSample()))));
+      for (SampleRequest request : CARDINALITY_SAMPLE_REQUESTS) {
+        SampleValue sampleValue = SampleValue.forToken(request.getSample());
+        samples.add(new CardinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(), sampleValue.getNumericSample(),
+            sampleValue.getCompactExponent(), countForSample(PLURALS_RESOURCE, request.getCldrLocale(), sampleValue)));
+      }
 
       return Collections.unmodifiableList(samples);
     }
@@ -318,9 +326,11 @@ public final class CldrDataGenerator {
     private List<OrdinalitySample> ordinalitySamples() {
       List<OrdinalitySample> samples = new ArrayList<>();
 
-      for (SampleRequest request : ORDINALITY_SAMPLE_REQUESTS)
-        samples.add(new OrdinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(),
-            countForSample(ORDINALS_RESOURCE, request.getCldrLocale(), new BigDecimal(request.getSample()))));
+      for (SampleRequest request : ORDINALITY_SAMPLE_REQUESTS) {
+        SampleValue sampleValue = SampleValue.forToken(request.getSample());
+        samples.add(new OrdinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(), sampleValue.getNumericSample(),
+            sampleValue.getCompactExponent(), countForSample(ORDINALS_RESOURCE, request.getCldrLocale(), sampleValue)));
+      }
 
       return Collections.unmodifiableList(samples);
     }
@@ -1055,7 +1065,8 @@ public final class CldrDataGenerator {
       for (int i = 0; i < samples.size(); ++i) {
         CardinalitySample sample = samples.get(i);
         source.append("      new CardinalitySample(\"").append(sample.getCldrLocale()).append("\", \"")
-            .append(sample.getSample()).append("\", Cardinality.").append(javaEnumName(sample.getExpected())).append(")");
+            .append(sample.getSample()).append("\", \"").append(sample.getNumericSample()).append("\", ")
+            .append(sample.getCompactExponent()).append(", Cardinality.").append(javaEnumName(sample.getExpected())).append(")");
 
         if (i < samples.size() - 1)
           source.append(",");
@@ -1068,7 +1079,8 @@ public final class CldrDataGenerator {
       for (int i = 0; i < samples.size(); ++i) {
         OrdinalitySample sample = samples.get(i);
         source.append("      new OrdinalitySample(\"").append(sample.getCldrLocale()).append("\", \"")
-            .append(sample.getSample()).append("\", Ordinality.").append(javaEnumName(sample.getExpected())).append(")");
+            .append(sample.getSample()).append("\", \"").append(sample.getNumericSample()).append("\", ")
+            .append(sample.getCompactExponent()).append(", Ordinality.").append(javaEnumName(sample.getExpected())).append(")");
 
         if (i < samples.size() - 1)
           source.append(",");
@@ -1099,15 +1111,22 @@ public final class CldrDataGenerator {
           .append("    @NonNull\n")
           .append("    private final String sample;\n")
           .append("    @NonNull\n")
+          .append("    private final String numericSample;\n")
+          .append("    private final int compactExponent;\n")
+          .append("    @NonNull\n")
           .append("    private final Cardinality expected;\n")
           .append("\n")
-          .append("    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull Cardinality expected) {\n")
+          .append("    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,\n")
+          .append("                              int compactExponent, @NonNull Cardinality expected) {\n")
           .append("      requireNonNull(cldrLocale);\n")
           .append("      requireNonNull(sample);\n")
+          .append("      requireNonNull(numericSample);\n")
           .append("      requireNonNull(expected);\n")
           .append("\n")
           .append("      this.cldrLocale = cldrLocale;\n")
           .append("      this.sample = sample;\n")
+          .append("      this.numericSample = numericSample;\n")
+          .append("      this.compactExponent = compactExponent;\n")
           .append("      this.expected = expected;\n")
           .append("    }\n")
           .append("\n")
@@ -1119,6 +1138,19 @@ public final class CldrDataGenerator {
           .append("    @NonNull\n")
           .append("    String getSample() {\n")
           .append("      return sample;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    @NonNull\n")
+          .append("    String getNumericSample() {\n")
+          .append("      return numericSample;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    boolean hasCompactExponent() {\n")
+          .append("      return compactExponent >= 0;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    int getCompactExponent() {\n")
+          .append("      return compactExponent;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
@@ -1133,15 +1165,22 @@ public final class CldrDataGenerator {
           .append("    @NonNull\n")
           .append("    private final String sample;\n")
           .append("    @NonNull\n")
+          .append("    private final String numericSample;\n")
+          .append("    private final int compactExponent;\n")
+          .append("    @NonNull\n")
           .append("    private final Ordinality expected;\n")
           .append("\n")
-          .append("    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull Ordinality expected) {\n")
+          .append("    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,\n")
+          .append("                             int compactExponent, @NonNull Ordinality expected) {\n")
           .append("      requireNonNull(cldrLocale);\n")
           .append("      requireNonNull(sample);\n")
+          .append("      requireNonNull(numericSample);\n")
           .append("      requireNonNull(expected);\n")
           .append("\n")
           .append("      this.cldrLocale = cldrLocale;\n")
           .append("      this.sample = sample;\n")
+          .append("      this.numericSample = numericSample;\n")
+          .append("      this.compactExponent = compactExponent;\n")
           .append("      this.expected = expected;\n")
           .append("    }\n")
           .append("\n")
@@ -1153,6 +1192,19 @@ public final class CldrDataGenerator {
           .append("    @NonNull\n")
           .append("    String getSample() {\n")
           .append("      return sample;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    @NonNull\n")
+          .append("    String getNumericSample() {\n")
+          .append("      return numericSample;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    boolean hasCompactExponent() {\n")
+          .append("      return compactExponent >= 0;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    int getCompactExponent() {\n")
+          .append("      return compactExponent;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
@@ -1206,7 +1258,7 @@ public final class CldrDataGenerator {
           .append("  }\n");
     }
 
-    private String countForSample(String resourceName, String cldrLocale, BigDecimal sample) {
+    private String countForSample(String resourceName, String cldrLocale, SampleValue sample) {
       Document document = documentFor(resourceName);
       NodeList pluralRules = document.getElementsByTagName("pluralRules");
 
@@ -1225,7 +1277,7 @@ public final class CldrDataGenerator {
             return pluralRule.getAttribute("count");
         }
 
-        throw new IllegalArgumentException(format("No pinned CLDR sample '%s' for locale '%s' in %s", sample, cldrLocale, resourceName));
+        throw new IllegalArgumentException(format("No pinned CLDR sample '%s' for locale '%s' in %s", sample.getCldrToken(), cldrLocale, resourceName));
       }
 
       throw new IllegalArgumentException(format("No pinned CLDR pluralRules data for locale '%s' in %s", cldrLocale, resourceName));
@@ -1311,8 +1363,8 @@ public final class CldrDataGenerator {
         values.add(value);
     }
 
-    private boolean samplesContain(String ruleText, BigDecimal sample) {
-      String marker = sample.scale() > 0 ? "@decimal" : "@integer";
+    private boolean samplesContain(String ruleText, SampleValue sample) {
+      String marker = sample.isDecimal() ? "@decimal" : "@integer";
       int startIndex = ruleText.indexOf(marker);
 
       if (startIndex < 0)
@@ -1325,7 +1377,7 @@ public final class CldrDataGenerator {
       for (String rawToken : sampleList.split(",")) {
         String token = rawToken.trim();
 
-        if (token.length() == 0 || token.indexOf('c') >= 0 || token.indexOf('\u2026') >= 0)
+        if (token.length() == 0 || token.indexOf('\u2026') >= 0)
           continue;
 
         if (token.indexOf('~') >= 0) {
@@ -1333,7 +1385,7 @@ public final class CldrDataGenerator {
 
           if (endpoints.length == 2 && inRange(sample, endpoints[0], endpoints[1]))
             return true;
-        } else if (sample.compareTo(new BigDecimal(token)) == 0) {
+        } else if (sample.equals(SampleValue.forToken(token))) {
           return true;
         }
       }
@@ -1341,8 +1393,16 @@ public final class CldrDataGenerator {
       return false;
     }
 
-    private boolean inRange(BigDecimal sample, String minimum, String maximum) {
-      return sample.compareTo(new BigDecimal(minimum.trim())) >= 0 && sample.compareTo(new BigDecimal(maximum.trim())) <= 0;
+    private boolean inRange(SampleValue sample, String minimum, String maximum) {
+      SampleValue minimumSample = SampleValue.forToken(minimum);
+      SampleValue maximumSample = SampleValue.forToken(maximum);
+
+      if (sample.getCompactExponent() != minimumSample.getCompactExponent() ||
+          sample.getCompactExponent() != maximumSample.getCompactExponent())
+        return false;
+
+      return sample.getNumber().compareTo(minimumSample.getNumber()) >= 0 &&
+          sample.getNumber().compareTo(maximumSample.getNumber()) <= 0;
     }
 
     private Document documentFor(String resourceName) {
@@ -1569,6 +1629,72 @@ public final class CldrDataGenerator {
     }
   }
 
+  private static final class SampleValue {
+    private static final int NO_COMPACT_EXPONENT = -1;
+    private final String cldrToken;
+    private final BigDecimal number;
+    private final int compactExponent;
+
+    private SampleValue(String cldrToken, BigDecimal number, int compactExponent) {
+      this.cldrToken = cldrToken;
+      this.number = number;
+      this.compactExponent = compactExponent;
+    }
+
+    private static SampleValue forToken(String token) {
+      String cldrToken = token.trim();
+      int compactSeparator = cldrToken.indexOf('c');
+
+      if (compactSeparator < 0)
+        return new SampleValue(cldrToken, new BigDecimal(cldrToken), NO_COMPACT_EXPONENT);
+
+      String number = cldrToken.substring(0, compactSeparator);
+      String compactExponent = cldrToken.substring(compactSeparator + 1);
+
+      if (number.length() == 0 || compactExponent.length() == 0 || compactExponent.indexOf('c') >= 0)
+        throw new IllegalArgumentException(format("Unsupported CLDR compact sample token '%s'", token));
+
+      return new SampleValue(cldrToken, new BigDecimal(number), Integer.parseInt(compactExponent));
+    }
+
+    private String getCldrToken() {
+      return cldrToken;
+    }
+
+    private BigDecimal getNumber() {
+      return number;
+    }
+
+    private String getNumericSample() {
+      return number.toPlainString();
+    }
+
+    private int getCompactExponent() {
+      return compactExponent;
+    }
+
+    private boolean isDecimal() {
+      return number.scale() > 0;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      SampleValue that = (SampleValue) other;
+      return compactExponent == that.compactExponent && number.compareTo(that.number) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+      return number.stripTrailingZeros().hashCode() * 31 + compactExponent;
+    }
+  }
+
   private static final class LocaleRanges {
     private final String locale;
     private final List<RangeRule> rangeRules;
@@ -1656,11 +1782,15 @@ public final class CldrDataGenerator {
   private static final class CardinalitySample {
     private final String cldrLocale;
     private final String sample;
+    private final String numericSample;
+    private final int compactExponent;
     private final String expected;
 
-    private CardinalitySample(String cldrLocale, String sample, String expected) {
+    private CardinalitySample(String cldrLocale, String sample, String numericSample, int compactExponent, String expected) {
       this.cldrLocale = cldrLocale;
       this.sample = sample;
+      this.numericSample = numericSample;
+      this.compactExponent = compactExponent;
       this.expected = expected;
     }
 
@@ -1670,6 +1800,14 @@ public final class CldrDataGenerator {
 
     private String getSample() {
       return sample;
+    }
+
+    private String getNumericSample() {
+      return numericSample;
+    }
+
+    private int getCompactExponent() {
+      return compactExponent;
     }
 
     private String getExpected() {
@@ -1680,11 +1818,15 @@ public final class CldrDataGenerator {
   private static final class OrdinalitySample {
     private final String cldrLocale;
     private final String sample;
+    private final String numericSample;
+    private final int compactExponent;
     private final String expected;
 
-    private OrdinalitySample(String cldrLocale, String sample, String expected) {
+    private OrdinalitySample(String cldrLocale, String sample, String numericSample, int compactExponent, String expected) {
       this.cldrLocale = cldrLocale;
       this.sample = sample;
+      this.numericSample = numericSample;
+      this.compactExponent = compactExponent;
       this.expected = expected;
     }
 
@@ -1694,6 +1836,14 @@ public final class CldrDataGenerator {
 
     private String getSample() {
       return sample;
+    }
+
+    private String getNumericSample() {
+      return numericSample;
+    }
+
+    private int getCompactExponent() {
+      return compactExponent;
     }
 
     private String getExpected() {

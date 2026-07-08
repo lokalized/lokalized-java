@@ -66,6 +66,19 @@ public class CldrLocaleDataTests {
   }
 
   @Test
+  public void fallbackLocalesBridgeNorwegianMacrolanguageAndBokmal() {
+    List<String> macrolanguageTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("no-NO")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+    List<String> bokmalTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("nb-NO")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+
+    assertEquals(List.of("no-NO", "no", "nb-NO", "nb"), macrolanguageTags);
+    assertEquals(List.of("nb-NO", "nb", "no", "no-NO"), bokmalTags);
+  }
+
+  @Test
   public void fallbackLocalesDoNotCrossLikelyScriptBoundaries() {
     List<String> traditionalChineseTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("zh-Hant-TW")).stream()
         .map(Locale::toLanguageTag)

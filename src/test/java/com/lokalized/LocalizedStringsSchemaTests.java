@@ -107,9 +107,10 @@ public class LocalizedStringsSchemaTests {
   public void schemaValidatesUnicodePlaceholderNames() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello {{имя}}\" : {\n" +
-        "    \"translation\" : \"Hello {{имя}} {{книги}}\",\n" +
+        "    \"translation\" : \"Hello {{имя}} {{नाम}} {{книги}}\",\n" +
         "    \"placeholderMetadata\" : {\n" +
-        "      \"имя\" : { \"type\" : \"STRING\", \"example\" : \"Ада\" }\n" +
+        "      \"имя\" : { \"type\" : \"STRING\", \"example\" : \"Ада\" },\n" +
+        "      \"नाम\" : { \"type\" : \"STRING\", \"example\" : \"Ada\" }\n" +
         "    },\n" +
         "    \"placeholders\" : {\n" +
         "      \"книги\" : {\n" +

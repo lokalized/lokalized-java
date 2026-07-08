@@ -312,6 +312,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 * Exact strings-file locale matches win first, including CLDR-canonical equivalents for deprecated or legacy language tags
 * CLDR parent locales are considered before looser language-only matches. For example, `en-AU` can prefer a configured `en-001` file before `en`
 * Matching is script-aware when CLDR likely-subtag data can infer a script. For example, `zh-TW` can match `zh-Hant`, and `sr-Latn` is distinct from `sr-Cyrl`
+* The Norwegian macrolanguage tag `no` and Norwegian Bokmål tag `nb` bridge to each other as a compatibility fallback; exact files still win first
 * If multiple supported files share the same language and no exact, parent, or script-aware match resolves the request, `tiebreakerLocalesByLanguageCode` controls which locale wins
 * `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
 
@@ -1310,6 +1311,8 @@ java -cp target/cldr-generator com.lokalized.cldr.CldrDataGenerator
 mvn -q test
 ```
 
+The normal Maven build also compiles the generator sources as test sources, so `mvn verify` catches generator compile failures without packaging the generator in the runtime jar.
+
 ## Translation Failure Handling
 
 When a lookup cannot be resolved, Lokalized asks the configured [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to do. The default handler is [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()), which returns the lookup key with any caller-supplied placeholders interpolated into it.
@@ -1401,9 +1404,9 @@ This free-form field is used to supply context for the translator, such as how a
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
 
-Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters, Unicode digits, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
+Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
 
-To render literal mustaches instead of a placeholder, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context.
+To render a literal placeholder instead of resolving it, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context. You can also write `\\}}` for a literal closing delimiter, or `\\\\{{name}}` when you need a literal backslash immediately before a live placeholder.
 
 You are free to add as many as you like to support your translation.
 
@@ -1770,6 +1773,8 @@ Set<String> missingFrenchKeys =
   strings.getMissingKeys(Locale.forLanguageTag("en"), Locale.forLanguageTag("fr"));
 ```
 
+`getKeysForLocale(Locale)` and `getMissingKeys(Locale sourceLocale, Locale targetLocale)` are intentionally strict: inspected locales must be supported, and unsupported locales throw `IllegalArgumentException`. Use `getSupportedLocales()` first when you need to probe availability.
+
 ## Keying Strategy
 
 Ultimately, it is up to you and your team how best to name your localization keys.  Lokalized does not impose key naming constraints. 
@@ -1829,6 +1834,39 @@ For example: `"Checkout.Title"`, `"Checkout.Submit"`, and `"Checkout.Cancel"`.
 ### Or - Mix Both!
 
 It's possible to cherrypick and create a hybrid solution.  For example, you might use natural language keys in most cases but switch to contextual for legalese and other special cases.
+
+## Comparing Localization Formats
+
+Lokalized overlaps with ICU MessageFormat, MF2, Fluent, and gettext, but it is optimized for a narrower job: selecting natural-sounding translated phrases from structured JSON while application code supplies typed placeholder values.
+
+For simple plural messages, ICU MessageFormat and MF2 are compact and widely supported:
+
+```text
+{bookCount, plural, one {I read # book.} other {I read # books.}}
+```
+
+The equivalent Lokalized file separates the sentence shape from the plural word choice:
+
+```json
+{
+  "I read {{bookCount}} books." : {
+    "translation" : "I read {{bookCount}} {{books}}.",
+    "placeholders" : {
+      "books" : {
+        "value" : "bookCount",
+        "translations" : {
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
+        }
+      }
+    }
+  }
+}
+```
+
+That extra structure pays off when a phrase needs several agreement dimensions. A Spanish baseball translation can select gender-specific fragments such as `uno`/`una`, `jugadores`/`jugadoras`, and plural forms independently, while German address text can select `Herr`, `Herrn`, or `Frau` from the same selector-driven placeholder rules. Cardinality ranges use CLDR plural-range data, and phonetic choices such as English `a`/`an` or Spanish `el agua` use an application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html).
+
+Use the standard JDK formatters for dates, times, numbers, percentages, and currency. Consider ICU MessageFormat/MF2 or Fluent when your team already has those translation workflows and needs broad ecosystem tooling. Consider gettext when PO-file tooling and translator workflows are the main constraint. Lokalized is strongest when the hard part is runtime agreement across plural, gender, case, range, definiteness, classifier, formality, clusivity, animacy, or phonetic forms.
 
 ## Language Reference
 
@@ -1989,7 +2027,7 @@ These pages list CLDR plural-rule locales, not every valid IETF BCP 47 locale ta
 | [Romanian (română)](https://www.lokalized.com/languages/ro) | `ro` |
 | [Romansh (rumàntsch)](https://www.lokalized.com/languages/rm) | `rm` |
 | [Rombo (Kirombo)](https://www.lokalized.com/languages/rof) | `rof` |
-| [Root](https://www.lokalized.com/languages/root) | `root` |
+| [Undetermined (CLDR root)](https://www.lokalized.com/languages/root) | `und` |
 | [Russian (русский)](https://www.lokalized.com/languages/ru) | `ru` |
 | [Rwa (West Chaga)](https://www.lokalized.com/languages/rwk) | `rwk` |
 | [Saho (ሳሆኛ)](https://www.lokalized.com/languages/ssy) | `ssy` |

@@ -50,4 +50,17 @@ public class BidiUtilsTests {
     assertEquals("\u2068ACME-42\u2069", BidiUtils.isolate("\u2068ACME-42\u2069"));
     assertEquals("", BidiUtils.isolate(""));
   }
+
+  @Test
+  public void isolateRecognizesBalancedDirectionalIsolates() {
+    assertEquals("\u2066ACME-42\u2069", BidiUtils.isolate("\u2066ACME-42\u2069"));
+    assertEquals("\u2067ACME-42\u2069", BidiUtils.isolate("\u2067ACME-42\u2069"));
+    assertEquals("\u2068A \u2066B\u2069 C\u2069", BidiUtils.isolate("\u2068A \u2066B\u2069 C\u2069"));
+  }
+
+  @Test
+  public void isolateBalancesMalformedEmbeddedIsolatesWhenWrapping() {
+    assertEquals("\u2068\u2068ACME-42\u2069\u2069", BidiUtils.isolate("\u2068ACME-42"));
+    assertEquals("\u2068ACME-42\u2069", BidiUtils.isolate("ACME-42\u2069"));
+  }
 }

@@ -1332,7 +1332,8 @@ class DefaultStrings implements Strings {
 	 * Gets the localized string keys supplied for the given locale.
 	 *
 	 * @param locale locale to inspect, not null
-	 * @return the localized string keys for the locale, or an empty set if the locale is not supported, not null
+	 * @return the localized string keys for the locale, not null
+	 * @throws IllegalArgumentException if the locale is not supported
 	 */
 	@NonNull
 	public Set<@NonNull String> getKeysForLocale(@NonNull Locale locale) {
@@ -1341,7 +1342,7 @@ class DefaultStrings implements Strings {
 		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(locale);
 
 		if (localizedStrings == null)
-			return Collections.emptySet();
+			throw new IllegalArgumentException(format("Locale '%s' is not supported", locale.toLanguageTag()));
 
 		Set<@NonNull String> keys = new TreeSet<>(localizedStrings.keySet());
 		return Collections.unmodifiableSet(keys);
@@ -1353,6 +1354,7 @@ class DefaultStrings implements Strings {
 	 * @param sourceLocale locale whose keys are used as the source set, not null
 	 * @param targetLocale locale whose keys are compared against the source set, not null
 	 * @return keys present in {@code sourceLocale} and missing from {@code targetLocale}, not null
+	 * @throws IllegalArgumentException if either locale is not supported
 	 */
 	@NonNull
 	public Set<@NonNull String> getMissingKeys(@NonNull Locale sourceLocale, @NonNull Locale targetLocale) {

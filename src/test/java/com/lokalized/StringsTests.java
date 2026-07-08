@@ -322,6 +322,23 @@ public class StringsTests {
 	}
 
 	@Test
+	public void norwegianMacrolanguageBridgesToBokmal() {
+		LocalizedString englishLocalizedString = new LocalizedString.Builder("Checkout.Title").translation("Checkout").build();
+		LocalizedString bokmalLocalizedString = new LocalizedString.Builder("Checkout.Title").translation("Kasse").build();
+
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(englishLocalizedString),
+						Locale.forLanguageTag("nb"), Set.of(bokmalLocalizedString)
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.build();
+
+		assertEquals(Locale.forLanguageTag("nb"), strings.bestMatchFor(Locale.forLanguageTag("no")));
+		assertEquals("Kasse", strings.get("Checkout.Title", TranslationOptions.forLocale(Locale.forLanguageTag("no"))));
+	}
+
+	@Test
 	public void regionalLocalesFallbackPerKeyToCldrParentLocale() {
 		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Colour").translation("Fallback").build();
 		LocalizedString parentLocalizedString = new LocalizedString.Builder("Colour").translation("Colour").build();
@@ -1647,7 +1664,9 @@ public class StringsTests {
 		assertEquals(Set.of(en, enGb), strings.getSupportedLocales());
 		assertEquals(Set.of("Shared", "Fallback only"), strings.getKeysForLocale(en));
 		assertEquals(Set.of("Shared"), strings.getKeysForLocale(enGb));
-		assertEquals(Collections.emptySet(), strings.getKeysForLocale(Locale.forLanguageTag("fr")));
+		assertThrows(IllegalArgumentException.class,
+				() -> strings.getKeysForLocale(Locale.forLanguageTag("fr")),
+				"Expected unsupported locales to fail");
 
 		assertEquals(Collections.emptySet(), strings.getMissingKeys(en, en));
 		assertEquals(Set.of("Fallback only"), strings.getMissingKeys(en, enGb));

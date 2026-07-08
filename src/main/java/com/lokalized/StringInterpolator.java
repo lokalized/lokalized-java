@@ -78,41 +78,55 @@ class StringInterpolator {
     int index = 0;
 
     while (index < string.length()) {
-      int placeholderStart = string.indexOf(PLACEHOLDER_START, index);
-      int unexpectedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, index);
-
-      if (unexpectedPlaceholderEnd >= 0 && (placeholderStart < 0 || unexpectedPlaceholderEnd < placeholderStart)) {
-        if (strict)
-          throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '%s' at index %d",
-              PLACEHOLDER_END, unexpectedPlaceholderEnd));
-
-        stringBuilder.append(string, index, unexpectedPlaceholderEnd + PLACEHOLDER_END.length());
-        index = unexpectedPlaceholderEnd + PLACEHOLDER_END.length();
-        continue;
-      }
-
-      if (placeholderStart < 0) {
-        stringBuilder.append(string, index, string.length());
-        break;
-      }
-
-      if (isEscapedPlaceholderStart(string, placeholderStart)) {
-        stringBuilder.append(string, index, placeholderStart - 1);
-
-        int escapedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, placeholderStart + PLACEHOLDER_START.length());
-
-        if (escapedPlaceholderEnd < 0) {
-          stringBuilder.append(string, placeholderStart, string.length());
-          break;
+      if (string.charAt(index) == ESCAPE_CHARACTER) {
+        if (startsWith(string, String.valueOf(ESCAPE_CHARACTER), index + 1)) {
+          stringBuilder.append(ESCAPE_CHARACTER);
+          index += 2;
+          continue;
         }
 
-        stringBuilder.append(string, placeholderStart, escapedPlaceholderEnd + PLACEHOLDER_END.length());
-        index = escapedPlaceholderEnd + PLACEHOLDER_END.length();
+        if (startsWith(string, PLACEHOLDER_START, index + 1)) {
+          int escapedPlaceholderStart = index + 1;
+          int escapedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, escapedPlaceholderStart + PLACEHOLDER_START.length());
+
+          if (escapedPlaceholderEnd < 0) {
+            stringBuilder.append(string, escapedPlaceholderStart, string.length());
+            break;
+          }
+
+          stringBuilder.append(string, escapedPlaceholderStart, escapedPlaceholderEnd + PLACEHOLDER_END.length());
+          index = escapedPlaceholderEnd + PLACEHOLDER_END.length();
+          continue;
+        }
+
+        if (startsWith(string, PLACEHOLDER_END, index + 1)) {
+          stringBuilder.append(PLACEHOLDER_END);
+          index += 1 + PLACEHOLDER_END.length();
+          continue;
+        }
+
+        stringBuilder.append(ESCAPE_CHARACTER);
+        ++index;
         continue;
       }
 
-      stringBuilder.append(string, index, placeholderStart);
+      if (startsWith(string, PLACEHOLDER_END, index)) {
+        if (strict)
+          throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '%s' at index %d",
+              PLACEHOLDER_END, index));
 
+        stringBuilder.append(PLACEHOLDER_END);
+        index += PLACEHOLDER_END.length();
+        continue;
+      }
+
+      if (!startsWith(string, PLACEHOLDER_START, index)) {
+        stringBuilder.append(string.charAt(index));
+        ++index;
+        continue;
+      }
+
+      int placeholderStart = index;
       int placeholderEnd = string.indexOf(PLACEHOLDER_END, placeholderStart + PLACEHOLDER_START.length());
 
       if (placeholderEnd < 0) {
@@ -128,7 +142,8 @@ class StringInterpolator {
       if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName)) {
         if (strict)
           throw new IllegalArgumentException(format("Malformed placeholder '%s%s%s'. Placeholder names must start with a Unicode letter or underscore " +
-              "and contain only Unicode letters, Unicode digits, underscores, or hyphens", PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
+              "and contain only Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens",
+              PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
 
         stringBuilder.append(string, placeholderStart, placeholderEnd + PLACEHOLDER_END.length());
         index = placeholderEnd + PLACEHOLDER_END.length();
@@ -159,9 +174,10 @@ class StringInterpolator {
     return interpolate(string, Collections.emptyMap(), true).getUnresolvedPlaceholderNames();
   }
 
-  private static boolean isEscapedPlaceholderStart(@NonNull String string, int placeholderStart) {
+  private static boolean startsWith(@NonNull String string, @NonNull String prefix, int index) {
     requireNonNull(string);
-    return placeholderStart > 0 && string.charAt(placeholderStart - 1) == ESCAPE_CHARACTER;
+    requireNonNull(prefix);
+    return index >= 0 && string.startsWith(prefix, index);
   }
 
   static final class InterpolationResult {
