@@ -12,19 +12,19 @@ It is both a file format...
 ```json
 {
   "I read {{bookCount}} books." : {
-    "translation" : "Li {{bookCount}} {{books}}.",
+    "translation" : "I read {{bookCount}} {{books}}.",
     "placeholders" : {
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "CARDINALITY_ONE" : "livro",
-          "CARDINALITY_OTHER" : "livros"
+          "CARDINALITY_ONE" : "book",
+          "CARDINALITY_OTHER" : "books"
         }
       }
     },
     "alternatives" : [
       {
-        "bookCount == 0" : "Não li nenhum livro."
+        "bookCount == 0" : "I didn't read any books."
       }
     ]
   }  
@@ -35,7 +35,7 @@ It is both a file format...
 
 ```java
 String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("Não li nenhum livro.", translation);
+assertEquals("I didn't read any books.", translation);
 ```
 
 ## Design Goals
