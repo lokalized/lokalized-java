@@ -12,19 +12,19 @@ It is both a file format...
 ```json
 {
   "I read {{bookCount}} books." : {
-    "translation" : "I read {{bookCount}} {{books}}.",    
+    "translation" : "Li {{bookCount}} {{books}}.",
     "placeholders" : {
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "CARDINALITY_ONE" : "book",
-          "CARDINALITY_OTHER" : "books"
+          "CARDINALITY_ONE" : "livro",
+          "CARDINALITY_OTHER" : "livros"
         }
       }
     },
     "alternatives" : [
       {
-        "bookCount == 0" : "I didn't read any books."        
+        "bookCount == 0" : "Não li nenhum livro."
       }
     ]
   }  
@@ -35,7 +35,7 @@ It is both a file format...
 
 ```java
 String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("I didn't read any books.", translation);
+assertEquals("Não li nenhum livro.", translation);
 ```
 
 ## Design Goals
@@ -93,24 +93,24 @@ We'll start with hands-on examples to illustrate key features.
 
 Filenames must conform to the IETF BCP 47 language tag format, optionally suffixed with `.json`.
 
-Here is a US English (`en-US`) localized strings file which includes a single localization:
+Here is a Brazilian Portuguese (`pt-BR`) localized strings file which includes a single localization. The English source text remains the lookup key; the file supplies the Brazilian Portuguese rendering:
 
 ```json
 {
   "I read {{bookCount}} books." : {
-    "translation" : "I read {{bookCount}} {{books}}.",    
+    "translation" : "Li {{bookCount}} {{books}}.",
     "placeholders" : {
       "books" : {
         "value" : "bookCount",
         "translations" : {
-          "CARDINALITY_ONE" : "book",
-          "CARDINALITY_OTHER" : "books"
+          "CARDINALITY_ONE" : "livro",
+          "CARDINALITY_OTHER" : "livros"
         }
       }
     },
     "alternatives" : [
       {
-        "bookCount == 0" : "I didn't read any books."        
+        "bookCount == 0" : "Não li nenhum livro."
       }
     ]
   }  
@@ -120,8 +120,8 @@ Here is a US English (`en-US`) localized strings file which includes a single lo
 ### 2. Create a Strings Instance
    
 ```java
-// Your "native" fallback strings file, used in case no specific locale match is found.
-final Locale FALLBACK_LOCALE = Locale.forLanguageTag("en-US");
+// Your fallback strings file, used in case no specific locale match is found.
+final Locale FALLBACK_LOCALE = Locale.forLanguageTag("pt-BR");
 
 // Creates a Strings instance which loads localized strings files from the given directory.
 // Normally you'll only need a single shared instance to support your entire application,
@@ -147,7 +147,7 @@ By default, failed lookups return the key with supplied placeholders interpolate
 // Fail-fast
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(FALLBACK_LOCALE))
   .translationFailureHandler(TranslationFailureHandler.throwException())
   .build();
 ```
@@ -158,7 +158,7 @@ You can also provide your own handler:
 // Custom telemetry for failures
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  .localeSupplier((matcher) -> matcher.bestMatchFor(Locale.US))
+  .localeSupplier((matcher) -> matcher.bestMatchFor(FALLBACK_LOCALE))
   .translationFailureHandler((failure) -> {
     exampleMetrics.increment("lokalized.translation.failure");
     return TranslationFailureResponse.returnString("Translation unavailable");
@@ -171,7 +171,7 @@ Lokalized [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) 
 ```java
 // Threadsafe reloading in your application via atomic swaps
 final class LocalizedStrings {
-  private static final Locale FALLBACK_LOCALE = Locale.forLanguageTag("en-US");
+  private static final Locale FALLBACK_LOCALE = Locale.forLanguageTag("pt-BR");
   private final AtomicReference<Strings> strings = new AtomicReference<>(load());
 
   public String get(String key, Map<String, Object> placeholders) {
@@ -195,17 +195,17 @@ final class LocalizedStrings {
 
 ```java
 // Lokalized knows how to map numbers to plural cardinalities per locale.
-// That is, it understands that 3 means CARDINALITY_OTHER ("books") in English
+// That is, it understands that 3 means CARDINALITY_OTHER ("livros") in Brazilian Portuguese
 String translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
-assertEquals("I read 3 books.", translation);
+assertEquals("Li 3 livros.", translation);
 
-// 1 means CARDINALITY_ONE ("book") in English
+// 1 means CARDINALITY_ONE ("livro") in Brazilian Portuguese
 translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
-assertEquals("I read 1 book.", translation);
+assertEquals("Li 1 livro.", translation);
 
 // A special alternative rule is applied when bookCount == 0
 translation = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("I didn't read any books.", translation);
+assertEquals("Não li nenhum livro.", translation);
 ```
 
 #### Formatting Placeholder Values
@@ -1837,7 +1837,7 @@ It's possible to cherrypick and create a hybrid solution.  For example, you migh
 
 ## Comparing Localization Formats
 
-Lokalized overlaps with ICU MessageFormat, MF2, Fluent, and gettext, but it is optimized for a narrower job: selecting natural-sounding translated phrases from structured JSON while application code supplies typed placeholder values.
+Lokalized overlaps with [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), [MF2](https://messageformat.unicode.org/), [Fluent](https://projectfluent.org/), and [gettext](https://www.gnu.org/software/gettext/), but it is optimized for a narrower job: selecting natural-sounding translated phrases from structured JSON while application code supplies typed placeholder values.
 
 For simple plural messages, ICU MessageFormat and MF2 are compact and widely supported:
 
