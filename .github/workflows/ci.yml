@@ -19,7 +19,17 @@ jobs:
       # Do not cancel newer-JDK jobs if another leg fails. Each JDK gives useful signal.
       fail-fast: false
       matrix:
-        jdk: ['11', '17', '21', '25']
+        include:
+          - jdk: '9'
+            distribution: zulu
+          - jdk: '11'
+            distribution: corretto
+          - jdk: '17'
+            distribution: corretto
+          - jdk: '21'
+            distribution: corretto
+          - jdk: '25'
+            distribution: corretto
     steps:
       - name: Check out
         uses: actions/checkout@v6
@@ -27,19 +37,16 @@ jobs:
       - name: Set up JDK ${{ matrix.jdk }}
         uses: actions/setup-java@v5
         with:
-          distribution: corretto
+          distribution: ${{ matrix.distribution }}
           java-version: ${{ matrix.jdk }}
           cache: maven
 
-      # The test-scoped JSON Schema validator is Java 17+ bytecode. Keep JDK 11
-      # in the matrix as a main-artifact baseline check, but run tests on JDK 17+.
-      - name: Verify main artifact
-        if: matrix.jdk == '11'
-        run: mvn -B -ntp -Dmaven.test.skip=true verify
+      # JDK 9 is the runtime/test baseline. Build attached Javadocs on newer JDKs,
+      # whose TLS and doclet implementations can consume the current external links.
+      - name: Verify baseline tests
+        if: matrix.jdk == '9'
+        run: mvn -B -ntp -Dmaven.javadoc.skip=true verify
 
       - name: Verify
-        if: matrix.jdk != '11'
+        if: matrix.jdk != '9'
         run: mvn -B -ntp verify
-
-      - name: Build Javadoc
-        run: mvn -B -ntp javadoc:javadoc

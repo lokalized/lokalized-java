@@ -47,100 +47,401 @@ final class GeneratedCldrConformanceData {
   @NonNull
   static final String PLURAL_RANGES_SHA_256 = "42c82db9baaa8667921b4dea32b6322fd5e43004e166a43ae33b51cef5dc0f52";
   @NonNull
-  private static final List<@NonNull CardinalitySample> CARDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(
-      new CardinalitySample("he", "0.5", "0.5", -1, Cardinality.ONE),
-      new CardinalitySample("he", "100", "100", -1, Cardinality.OTHER),
-      new CardinalitySample("is", "0.1", "0.1", -1, Cardinality.ONE),
-      new CardinalitySample("is", "0.2", "0.2", -1, Cardinality.OTHER),
-      new CardinalitySample("mk", "11", "11", -1, Cardinality.OTHER),
-      new CardinalitySample("mk", "21", "21", -1, Cardinality.ONE),
-      new CardinalitySample("mt", "2", "2", -1, Cardinality.TWO),
-      new CardinalitySample("mt", "20", "20", -1, Cardinality.OTHER),
-      new CardinalitySample("fr", "1000000", "1000000", -1, Cardinality.MANY),
-      new CardinalitySample("fr", "1c6", "1", 6, Cardinality.MANY),
-      new CardinalitySample("fr", "1c3", "1", 3, Cardinality.OTHER),
-      new CardinalitySample("fr", "1.1c6", "1.1", 6, Cardinality.MANY),
-      new CardinalitySample("fr", "1.1c3", "1.1", 3, Cardinality.OTHER),
-      new CardinalitySample("es", "1000000", "1000000", -1, Cardinality.MANY),
-      new CardinalitySample("es", "1c6", "1", 6, Cardinality.MANY),
-      new CardinalitySample("es", "1c3", "1", 3, Cardinality.OTHER),
-      new CardinalitySample("pt", "1000000", "1000000", -1, Cardinality.MANY),
-      new CardinalitySample("ca", "1000000", "1000000", -1, Cardinality.MANY),
-      new CardinalitySample("it", "1000000", "1000000", -1, Cardinality.MANY),
-      new CardinalitySample("pt-PT", "0", "0", -1, Cardinality.OTHER),
-      new CardinalitySample("pt-PT", "1", "1", -1, Cardinality.ONE),
-      new CardinalitySample("pt-PT", "1000000", "1000000", -1, Cardinality.MANY)
+  private static final List<@NonNull PluralRule<@NonNull Cardinality>> CARDINALITY_RULES = Collections.unmodifiableList(Arrays.asList(
+      new PluralRule<>("af an asa az bal bem bez bg brx ce cgg chr ckb dv ee el eo eu fo fur gsw ha haw hu jgo jmc ka kaj kcg kk kkj kl ks ksb ku ky lb lg mas mgo ml mn mr nah nb nd ne nn nnh no nr ny nyn om or os pap ps rm rof rwk saq sd sdh seh sn so sq ss ssy st syr ta te teo tig tk tn tr ts ug uz ve vo vun wae xh xog", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("af an asa az bal bem bez bg brx ce cgg chr ckb dv ee el eo eu fo fur gsw ha haw hu jgo jmc ka kaj kcg kk kkj kl ks ksb ku ky lb lg mas mgo ml mn mr nah nb nd ne nn nnh no nr ny nyn om or os pap ps rm rof rwk saq sd sdh seh sn so sq ss ssy st syr ta te teo tig tk tn tr ts ug uz ve vo vun wae xh xog", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("ak bho csw guw ln mg nso pa ti wa", Cardinality.ONE, "0 1 0.0 1.0 0.00 1.00 0.000 1.000 0.0000 1.0000"),
+      new PluralRule<>("ak bho csw guw ln mg nso pa ti wa", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("am as bn doi fa gu hi kn kok kok-Latn pcm zu", Cardinality.ONE, "0 1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 0.00 0.01 0.02 0.03 0.04"),
+      new PluralRule<>("am as bn doi fa gu hi kn kok kok-Latn pcm zu", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.1 2.2 2.3 2.4 2.5 2.6 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("ar ars", Cardinality.ZERO, "0 0.0 0.00 0.000 0.0000"),
+      new PluralRule<>("ar ars", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("ar ars", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("ar ars", Cardinality.FEW, "3 4 5 6 7 8 9 10 103 104 105 106 107 108 109 110 1003 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 103.0 1003.0"),
+      new PluralRule<>("ar ars", Cardinality.MANY, "11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 111 1011 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 111.0 1011.0"),
+      new PluralRule<>("ar ars", Cardinality.OTHER, "100 101 102 200 201 202 300 301 302 400 401 402 500 501 502 600 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.1 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("ast de en et fi fy gl ia ie io lij nl sc sv sw ur yi", Cardinality.ONE, "1"),
+      new PluralRule<>("ast de en et fi fy gl ia ie io lij nl sc sv sw ur yi", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("be", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 1.0 21.0 31.0 41.0 51.0 61.0 71.0 81.0 101.0 1001.0"),
+      new PluralRule<>("be", Cardinality.FEW, "2 3 4 22 23 24 32 33 34 42 43 44 52 53 54 62 102 1002 2.0 3.0 4.0 22.0 23.0 24.0 32.0 33.0 102.0 1002.0"),
+      new PluralRule<>("be", Cardinality.MANY, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000 0.0 5.0 6.0 7.0 8.0 9.0 10.0 11.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("be", Cardinality.OTHER, "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.1 100.1 1000.1"),
+      new PluralRule<>("blo cv ksh", Cardinality.ZERO, "0 0.0 0.00 0.000 0.0000"),
+      new PluralRule<>("blo cv ksh", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("blo cv ksh", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("bm bo dz hnj id ig ii ja jbo jv jw kde kea km ko lkt lo ms my nqo osa und sah ses sg su th to tpi vi wo yo yue zh", Cardinality.OTHER, "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("br", Cardinality.ONE, "1 21 31 41 51 61 81 101 1001 1.0 21.0 31.0 41.0 51.0 61.0 81.0 101.0 1001.0"),
+      new PluralRule<>("br", Cardinality.TWO, "2 22 32 42 52 62 82 102 1002 2.0 22.0 32.0 42.0 52.0 62.0 82.0 102.0 1002.0"),
+      new PluralRule<>("br", Cardinality.FEW, "3 4 9 23 24 29 33 34 39 43 44 49 103 1003 3.0 4.0 9.0 23.0 24.0 29.0 33.0 34.0 103.0 1003.0"),
+      new PluralRule<>("br", Cardinality.MANY, "1000000 1000000.0 1000000.00 1000000.000 1000000.0000"),
+      new PluralRule<>("br", Cardinality.OTHER, "0 5 6 7 8 10 11 12 13 14 15 16 17 18 19 20 100 1000 10000 100000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.0 100.0 1000.0 10000.0 100000.0"),
+      new PluralRule<>("bs hr sh sr", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 0.1 1.1 2.1 3.1 4.1 5.1 6.1 7.1 10.1 100.1 1000.1"),
+      new PluralRule<>("bs hr sh sr", Cardinality.FEW, "2 3 4 22 23 24 32 33 34 42 43 44 52 53 54 62 102 1002 0.2 0.3 0.4 1.2 1.3 1.4 2.2 2.3 2.4 3.2 3.3 3.4 4.2 4.3 4.4 5.2 10.2 100.2 1000.2"),
+      new PluralRule<>("bs hr sh sr", Cardinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000 0.0 0.5 0.6 0.7 0.8 0.9 1.0 1.5 1.6 1.7 1.8 1.9 2.0 2.5 2.6 2.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("ca it lld pt-PT scn vec", Cardinality.ONE, "1"),
+      new PluralRule<>("ca it lld pt-PT scn vec", Cardinality.MANY, "1000000 1c6 2c6 3c6 4c6 5c6 6c6 1.0000001c6 1.1c6 2.0000001c6 2.1c6 3.0000001c6 3.1c6"),
+      new PluralRule<>("ca it lld pt-PT scn vec", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1c3 2c3 3c3 4c3 5c3 6c3 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0 1.0001c3 1.1c3 2.0001c3 2.1c3 3.0001c3 3.1c3"),
+      new PluralRule<>("ceb fil tl", Cardinality.ONE, "0 1 2 3 5 7 8 10 11 12 13 15 17 18 20 21 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.5 0.7 0.8 1.0 1.1 1.2 1.3 1.5 1.7 1.8 2.0 2.1 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("ceb fil tl", Cardinality.OTHER, "4 6 9 14 16 19 24 26 104 1004 0.4 0.6 0.9 1.4 1.6 1.9 2.4 2.6 10.4 100.4 1000.4"),
+      new PluralRule<>("cs sk", Cardinality.ONE, "1"),
+      new PluralRule<>("cs sk", Cardinality.FEW, "2 3 4"),
+      new PluralRule<>("cs sk", Cardinality.MANY, "0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("cs sk", Cardinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("cy", Cardinality.ZERO, "0 0.0 0.00 0.000 0.0000"),
+      new PluralRule<>("cy", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("cy", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("cy", Cardinality.FEW, "3 3.0 3.00 3.000 3.0000"),
+      new PluralRule<>("cy", Cardinality.MANY, "6 6.0 6.00 6.000 6.0000"),
+      new PluralRule<>("cy", Cardinality.OTHER, "4 5 7 8 9 10 11 12 13 14 15 16 17 18 19 20 100 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("da", Cardinality.ONE, "1 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6"),
+      new PluralRule<>("da", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000 0.0 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("dsb hsb", Cardinality.ONE, "1 101 201 301 401 501 601 701 1001 0.1 1.1 2.1 3.1 4.1 5.1 6.1 7.1 10.1 100.1 1000.1"),
+      new PluralRule<>("dsb hsb", Cardinality.TWO, "2 102 202 302 402 502 602 702 1002 0.2 1.2 2.2 3.2 4.2 5.2 6.2 7.2 10.2 100.2 1000.2"),
+      new PluralRule<>("dsb hsb", Cardinality.FEW, "3 4 103 104 203 204 303 304 403 404 503 504 603 604 703 704 1003 0.3 0.4 1.3 1.4 2.3 2.4 3.3 3.4 4.3 4.4 5.3 5.4 6.3 6.4 7.3 7.4 10.3 100.3 1000.3"),
+      new PluralRule<>("dsb hsb", Cardinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000 0.0 0.5 0.6 0.7 0.8 0.9 1.0 1.5 1.6 1.7 1.8 1.9 2.0 2.5 2.6 2.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("es", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("es", Cardinality.MANY, "1000000 1c6 2c6 3c6 4c6 5c6 6c6 1.0000001c6 1.1c6 2.0000001c6 2.1c6 3.0000001c6 3.1c6"),
+      new PluralRule<>("es", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1c3 2c3 3c3 4c3 5c3 6c3 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.0 100.0 1000.0 10000.0 100000.0 1000000.0 1.0001c3 1.1c3 2.0001c3 2.1c3 3.0001c3 3.1c3"),
+      new PluralRule<>("ff hy kab", Cardinality.ONE, "0 1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"),
+      new PluralRule<>("ff hy kab", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 3.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("fr", Cardinality.ONE, "0 1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"),
+      new PluralRule<>("fr", Cardinality.MANY, "1000000 1c6 2c6 3c6 4c6 5c6 6c6 1.0000001c6 1.1c6 2.0000001c6 2.1c6 3.0000001c6 3.1c6"),
+      new PluralRule<>("fr", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1c3 2c3 3c3 4c3 5c3 6c3 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 3.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0 1.0001c3 1.1c3 2.0001c3 2.1c3 3.0001c3 3.1c3"),
+      new PluralRule<>("ga", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("ga", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("ga", Cardinality.FEW, "3 4 5 6 3.0 4.0 5.0 6.0 3.00 4.00 5.00 6.00 3.000 4.000 5.000 6.000 3.0000 4.0000 5.0000 6.0000"),
+      new PluralRule<>("ga", Cardinality.MANY, "7 8 9 10 7.0 8.0 9.0 10.0 7.00 8.00 9.00 10.00 7.000 8.000 9.000 10.000 7.0000 8.0000 9.0000 10.0000"),
+      new PluralRule<>("ga", Cardinality.OTHER, "0 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.1 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("gd", Cardinality.ONE, "1 11 1.0 11.0 1.00 11.00 1.000 11.000 1.0000"),
+      new PluralRule<>("gd", Cardinality.TWO, "2 12 2.0 12.0 2.00 12.00 2.000 12.000 2.0000"),
+      new PluralRule<>("gd", Cardinality.FEW, "3 4 5 6 7 8 9 10 13 14 15 16 17 18 19 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 3.00"),
+      new PluralRule<>("gd", Cardinality.OTHER, "0 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.1 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("gv", Cardinality.ONE, "1 11 21 31 41 51 61 71 101 1001"),
+      new PluralRule<>("gv", Cardinality.TWO, "2 12 22 32 42 52 62 72 102 1002"),
+      new PluralRule<>("gv", Cardinality.FEW, "0 20 40 60 80 100 120 140 1000 10000 100000 1000000"),
+      new PluralRule<>("gv", Cardinality.MANY, "0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("gv", Cardinality.OTHER, "3 4 5 6 7 8 9 10 13 14 15 16 17 18 19 23 103 1003"),
+      new PluralRule<>("he", Cardinality.ONE, "1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 0.00 0.01 0.02 0.03 0.04 0.05"),
+      new PluralRule<>("he", Cardinality.TWO, "2"),
+      new PluralRule<>("he", Cardinality.OTHER, "0 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 1.0 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.0 2.1 2.2 2.3 2.4 2.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("is", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 0.1 1.0 1.1 2.1 3.1 4.1 5.1 6.1 7.1 10.1 100.1 1000.1"),
+      new PluralRule<>("is", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.2 1.3 1.4 1.5 1.6 1.7 1.8 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("iu naq sat se sma smi smj smn sms", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("iu naq sat se sma smi smj smn sms", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("iu naq sat se sma smi smj smn sms", Cardinality.OTHER, "0 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("kw", Cardinality.ZERO, "0 0.0 0.00 0.000 0.0000"),
+      new PluralRule<>("kw", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("kw", Cardinality.TWO, "2 22 42 62 82 102 122 142 1000 10000 100000 2.0 22.0 42.0 62.0 82.0 102.0 122.0 142.0 1000.0 10000.0 100000.0"),
+      new PluralRule<>("kw", Cardinality.FEW, "3 23 43 63 83 103 123 143 1003 3.0 23.0 43.0 63.0 83.0 103.0 123.0 143.0 1003.0"),
+      new PluralRule<>("kw", Cardinality.MANY, "21 41 61 81 101 121 141 161 1001 21.0 41.0 61.0 81.0 101.0 121.0 141.0 161.0 1001.0"),
+      new PluralRule<>("kw", Cardinality.OTHER, "4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1004 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.1 1000000.0"),
+      new PluralRule<>("lag", Cardinality.ZERO, "0 0.0 0.00 0.000 0.0000"),
+      new PluralRule<>("lag", Cardinality.ONE, "1 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 1.6"),
+      new PluralRule<>("lag", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 3.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("lt", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 1.0 21.0 31.0 41.0 51.0 61.0 71.0 81.0 101.0 1001.0"),
+      new PluralRule<>("lt", Cardinality.FEW, "2 3 4 5 6 7 8 9 22 23 24 25 26 27 28 29 102 1002 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 22.0 102.0 1002.0"),
+      new PluralRule<>("lt", Cardinality.MANY, "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.1 100.1 1000.1"),
+      new PluralRule<>("lt", Cardinality.OTHER, "0 10 11 12 13 14 15 16 17 18 19 20 30 40 50 60 100 1000 10000 100000 1000000 0.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("lv prg", Cardinality.ZERO, "0 10 11 12 13 14 15 16 17 18 19 20 30 40 50 60 100 1000 10000 100000 1000000 0.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("lv prg", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 0.1 1.0 1.1 2.1 3.1 4.1 5.1 6.1 7.1 10.1 100.1 1000.1"),
+      new PluralRule<>("lv prg", Cardinality.OTHER, "2 3 4 5 6 7 8 9 22 23 24 25 26 27 28 29 102 1002 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 10.2 100.2 1000.2"),
+      new PluralRule<>("mk", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 0.1 1.1 2.1 3.1 4.1 5.1 6.1 7.1 10.1 100.1 1000.1"),
+      new PluralRule<>("mk", Cardinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000 0.0 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("mo ro", Cardinality.ONE, "1"),
+      new PluralRule<>("mo ro", Cardinality.FEW, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 101 1001 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("mo ro", Cardinality.OTHER, "20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 100 1000 10000 100000 1000000"),
+      new PluralRule<>("mt", Cardinality.ONE, "1 1.0 1.00 1.000 1.0000"),
+      new PluralRule<>("mt", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("mt", Cardinality.FEW, "0 3 4 5 6 7 8 9 10 103 104 105 106 107 108 109 1003 0.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 103.0 1003.0"),
+      new PluralRule<>("mt", Cardinality.MANY, "11 12 13 14 15 16 17 18 19 111 112 113 114 115 116 117 1011 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 111.0 1011.0"),
+      new PluralRule<>("mt", Cardinality.OTHER, "20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 100 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.1 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("pl", Cardinality.ONE, "1"),
+      new PluralRule<>("pl", Cardinality.FEW, "2 3 4 22 23 24 32 33 34 42 43 44 52 53 54 62 102 1002"),
+      new PluralRule<>("pl", Cardinality.MANY, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("pl", Cardinality.OTHER, "0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("pt", Cardinality.ONE, "0 1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5"),
+      new PluralRule<>("pt", Cardinality.MANY, "1000000 1c6 2c6 3c6 4c6 5c6 6c6 1.0000001c6 1.1c6 2.0000001c6 2.1c6 3.0000001c6 3.1c6"),
+      new PluralRule<>("pt", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1c3 2c3 3c3 4c3 5c3 6c3 2.0 2.1 2.2 2.3 2.4 2.5 2.6 2.7 2.8 2.9 3.0 3.1 3.2 3.3 3.4 3.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0 1.0001c3 1.1c3 2.0001c3 2.1c3 3.0001c3 3.1c3"),
+      new PluralRule<>("ru uk", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001"),
+      new PluralRule<>("ru uk", Cardinality.FEW, "2 3 4 22 23 24 32 33 34 42 43 44 52 53 54 62 102 1002"),
+      new PluralRule<>("ru uk", Cardinality.MANY, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("ru uk", Cardinality.OTHER, "0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("sgs", Cardinality.ONE, "1 21 31 41 51 61 71 81 101 1001 1.0 21.0 31.0 41.0 51.0 61.0 71.0 81.0 101.0 1001.0"),
+      new PluralRule<>("sgs", Cardinality.TWO, "2 2.0 2.00 2.000 2.0000"),
+      new PluralRule<>("sgs", Cardinality.FEW, "3 4 5 6 7 8 9 22 23 24 25 26 27 28 29 32 102 1002 3.0 4.0 5.0 6.0 7.0 8.0 9.0 22.0 102.0 1002.0"),
+      new PluralRule<>("sgs", Cardinality.MANY, "0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.1 100.1 1000.1"),
+      new PluralRule<>("sgs", Cardinality.OTHER, "0 10 11 12 13 14 15 16 17 18 19 20 30 40 50 60 100 1000 10000 100000 1000000 0.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("shi", Cardinality.ONE, "0 1 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 0.00 0.01 0.02 0.03 0.04"),
+      new PluralRule<>("shi", Cardinality.FEW, "2 3 4 5 6 7 8 9 10 2.0 3.0 4.0 5.0 6.0 7.0 8.0 9.0 10.0 2.00 3.00 4.00 5.00 6.00 7.00 8.00"),
+      new PluralRule<>("shi", Cardinality.OTHER, "11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 100 1000 10000 100000 1000000 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 1.9 2.1 2.2 2.3 2.4 2.5 2.6 2.7 10.1 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("si", Cardinality.ONE, "0 1 0.0 0.1 1.0 0.00 0.01 1.00 0.000 0.001 1.000 0.0000 0.0001 1.0000"),
+      new PluralRule<>("si", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 1.8 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("sl", Cardinality.ONE, "1 101 201 301 401 501 601 701 1001"),
+      new PluralRule<>("sl", Cardinality.TWO, "2 102 202 302 402 502 602 702 1002"),
+      new PluralRule<>("sl", Cardinality.FEW, "3 4 103 104 203 204 303 304 403 404 503 504 603 604 703 704 1003 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1 1.2 1.3 1.4 1.5 10.0 100.0 1000.0 10000.0 100000.0 1000000.0"),
+      new PluralRule<>("sl", Cardinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("tzm", Cardinality.ONE, "0 1 11 12 13 14 15 16 17 18 19 20 21 22 23 24 0.0 1.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0 18.0 19.0 20.0 21.0 22.0 23.0 24.0"),
+      new PluralRule<>("tzm", Cardinality.OTHER, "2 3 4 5 6 7 8 9 10 100 101 102 103 104 105 106 1000 10000 100000 1000000 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.1 1.2 1.3 1.4 1.5 1.6 1.7 10.0 100.0 1000.0 10000.0 100000.0 1000000.0")
   ));
   @NonNull
-  private static final List<@NonNull OrdinalitySample> ORDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(
-      new OrdinalitySample("en", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("en", "2", "2", -1, Ordinality.TWO),
-      new OrdinalitySample("en", "3", "3", -1, Ordinality.FEW),
-      new OrdinalitySample("en", "4", "4", -1, Ordinality.OTHER),
-      new OrdinalitySample("en", "11", "11", -1, Ordinality.OTHER),
-      new OrdinalitySample("en", "12", "12", -1, Ordinality.OTHER),
-      new OrdinalitySample("en", "13", "13", -1, Ordinality.OTHER),
-      new OrdinalitySample("en", "21", "21", -1, Ordinality.ONE),
-      new OrdinalitySample("it", "8", "8", -1, Ordinality.MANY),
-      new OrdinalitySample("it", "11", "11", -1, Ordinality.MANY),
-      new OrdinalitySample("it", "80", "80", -1, Ordinality.MANY),
-      new OrdinalitySample("it", "800", "800", -1, Ordinality.MANY),
-      new OrdinalitySample("it", "1", "1", -1, Ordinality.OTHER),
-      new OrdinalitySample("cy", "0", "0", -1, Ordinality.ZERO),
-      new OrdinalitySample("cy", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("cy", "2", "2", -1, Ordinality.TWO),
-      new OrdinalitySample("cy", "3", "3", -1, Ordinality.FEW),
-      new OrdinalitySample("cy", "5", "5", -1, Ordinality.MANY),
-      new OrdinalitySample("cy", "10", "10", -1, Ordinality.OTHER),
-      new OrdinalitySample("as", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("as", "2", "2", -1, Ordinality.TWO),
-      new OrdinalitySample("as", "4", "4", -1, Ordinality.FEW),
-      new OrdinalitySample("as", "6", "6", -1, Ordinality.MANY),
-      new OrdinalitySample("as", "11", "11", -1, Ordinality.OTHER),
-      new OrdinalitySample("gu", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("gu", "2", "2", -1, Ordinality.TWO),
-      new OrdinalitySample("gu", "4", "4", -1, Ordinality.FEW),
-      new OrdinalitySample("gu", "6", "6", -1, Ordinality.MANY),
-      new OrdinalitySample("gu", "5", "5", -1, Ordinality.OTHER),
-      new OrdinalitySample("mk", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("mk", "2", "2", -1, Ordinality.TWO),
-      new OrdinalitySample("mk", "7", "7", -1, Ordinality.MANY),
-      new OrdinalitySample("mk", "8", "8", -1, Ordinality.MANY),
-      new OrdinalitySample("mk", "11", "11", -1, Ordinality.OTHER),
-      new OrdinalitySample("mk", "12", "12", -1, Ordinality.OTHER),
-      new OrdinalitySample("mk", "17", "17", -1, Ordinality.OTHER),
-      new OrdinalitySample("mk", "18", "18", -1, Ordinality.OTHER),
-      new OrdinalitySample("mk", "21", "21", -1, Ordinality.ONE),
-      new OrdinalitySample("sv", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("sv", "2", "2", -1, Ordinality.ONE),
-      new OrdinalitySample("sv", "11", "11", -1, Ordinality.OTHER),
-      new OrdinalitySample("sv", "12", "12", -1, Ordinality.OTHER),
-      new OrdinalitySample("sv", "21", "21", -1, Ordinality.ONE),
-      new OrdinalitySample("sv", "22", "22", -1, Ordinality.ONE),
-      new OrdinalitySample("be", "2", "2", -1, Ordinality.FEW),
-      new OrdinalitySample("be", "3", "3", -1, Ordinality.FEW),
-      new OrdinalitySample("be", "12", "12", -1, Ordinality.OTHER),
-      new OrdinalitySample("be", "13", "13", -1, Ordinality.OTHER),
-      new OrdinalitySample("be", "22", "22", -1, Ordinality.FEW),
-      new OrdinalitySample("az", "0", "0", -1, Ordinality.MANY),
-      new OrdinalitySample("az", "1", "1", -1, Ordinality.ONE),
-      new OrdinalitySample("az", "3", "3", -1, Ordinality.FEW),
-      new OrdinalitySample("az", "6", "6", -1, Ordinality.MANY),
-      new OrdinalitySample("az", "9", "9", -1, Ordinality.OTHER),
-      new OrdinalitySample("tk", "6", "6", -1, Ordinality.FEW),
-      new OrdinalitySample("tk", "10", "10", -1, Ordinality.FEW),
-      new OrdinalitySample("gd", "11", "11", -1, Ordinality.ONE),
-      new OrdinalitySample("or", "6", "6", -1, Ordinality.MANY),
-      new OrdinalitySample("kw", "5", "5", -1, Ordinality.MANY)
+  private static final List<@NonNull PluralRule<@NonNull Ordinality>> ORDINALITY_RULES = Collections.unmodifiableList(Arrays.asList(
+      new PluralRule<>("af am an ar ast bg bs ce cs cv da de dsb el es et eu fa fi fy gl gsw he hr hsb ia id ie is ja km kn ko ky lt lv ml mn my nb nl no pa pl prg ps pt und ru sd sh si sk sl sr sw ta te th tpi tr ur uz yue zh zu", Ordinality.OTHER, "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 100 1000 10000 100000 1000000"),
+      new PluralRule<>("as bn", Ordinality.ONE, "1 5 7 8 9 10"),
+      new PluralRule<>("as bn", Ordinality.TWO, "2 3"),
+      new PluralRule<>("as bn", Ordinality.FEW, "4"),
+      new PluralRule<>("as bn", Ordinality.MANY, "6"),
+      new PluralRule<>("as bn", Ordinality.OTHER, "0 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 100 1000 10000 100000 1000000"),
+      new PluralRule<>("az", Ordinality.ONE, "1 2 5 7 8 11 12 15 17 18 20 21 22 25 101 1001"),
+      new PluralRule<>("az", Ordinality.FEW, "3 4 13 14 23 24 33 34 43 44 53 54 63 64 73 74 100 1003"),
+      new PluralRule<>("az", Ordinality.MANY, "0 6 16 26 36 40 46 56 106 1006"),
+      new PluralRule<>("az", Ordinality.OTHER, "9 10 19 29 30 39 49 59 69 79 109 1000 10000 100000 1000000"),
+      new PluralRule<>("bal fil fr ga hy lo mo ms ro tl vi", Ordinality.ONE, "1"),
+      new PluralRule<>("bal fil fr ga hy lo mo ms ro tl vi", Ordinality.OTHER, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000"),
+      new PluralRule<>("be", Ordinality.FEW, "2 3 22 23 32 33 42 43 52 53 62 63 72 73 82 83 102 1002"),
+      new PluralRule<>("be", Ordinality.OTHER, "0 1 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("blo", Ordinality.ZERO, "0"),
+      new PluralRule<>("blo", Ordinality.ONE, "1"),
+      new PluralRule<>("blo", Ordinality.FEW, "2 3 4 5 6"),
+      new PluralRule<>("blo", Ordinality.OTHER, "7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 100 1000 10000 100000 1000000"),
+      new PluralRule<>("ca", Ordinality.ONE, "1 3"),
+      new PluralRule<>("ca", Ordinality.TWO, "2"),
+      new PluralRule<>("ca", Ordinality.FEW, "4"),
+      new PluralRule<>("ca", Ordinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("cy", Ordinality.ZERO, "0 7 8 9"),
+      new PluralRule<>("cy", Ordinality.ONE, "1"),
+      new PluralRule<>("cy", Ordinality.TWO, "2"),
+      new PluralRule<>("cy", Ordinality.FEW, "3 4"),
+      new PluralRule<>("cy", Ordinality.MANY, "5 6"),
+      new PluralRule<>("cy", Ordinality.OTHER, "10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 100 1000 10000 100000 1000000"),
+      new PluralRule<>("en", Ordinality.ONE, "1 21 31 41 51 61 71 81 101 1001"),
+      new PluralRule<>("en", Ordinality.TWO, "2 22 32 42 52 62 72 82 102 1002"),
+      new PluralRule<>("en", Ordinality.FEW, "3 23 33 43 53 63 73 83 103 1003"),
+      new PluralRule<>("en", Ordinality.OTHER, "0 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 100 1000 10000 100000 1000000"),
+      new PluralRule<>("gd", Ordinality.ONE, "1 11"),
+      new PluralRule<>("gd", Ordinality.TWO, "2 12"),
+      new PluralRule<>("gd", Ordinality.FEW, "3 13"),
+      new PluralRule<>("gd", Ordinality.OTHER, "0 4 5 6 7 8 9 10 14 15 16 17 18 19 20 21 100 1000 10000 100000 1000000"),
+      new PluralRule<>("gu hi", Ordinality.ONE, "1"),
+      new PluralRule<>("gu hi", Ordinality.TWO, "2 3"),
+      new PluralRule<>("gu hi", Ordinality.FEW, "4"),
+      new PluralRule<>("gu hi", Ordinality.MANY, "6"),
+      new PluralRule<>("gu hi", Ordinality.OTHER, "0 5 7 8 9 10 11 12 13 14 15 16 17 18 19 20 100 1000 10000 100000 1000000"),
+      new PluralRule<>("hu", Ordinality.ONE, "1 5"),
+      new PluralRule<>("hu", Ordinality.OTHER, "0 2 3 4 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("it lld sc vec", Ordinality.MANY, "8 11 80 800"),
+      new PluralRule<>("it lld sc vec", Ordinality.OTHER, "0 1 2 3 4 5 6 7 9 10 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("ka", Ordinality.ONE, "1"),
+      new PluralRule<>("ka", Ordinality.MANY, "0 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 102 1002"),
+      new PluralRule<>("ka", Ordinality.OTHER, "21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 100 1000 10000 100000 1000000"),
+      new PluralRule<>("kk", Ordinality.MANY, "6 9 10 16 19 20 26 29 30 36 39 40 100 1000 10000 100000 1000000"),
+      new PluralRule<>("kk", Ordinality.OTHER, "0 1 2 3 4 5 7 8 11 12 13 14 15 17 18 21 101 1001"),
+      new PluralRule<>("kok kok-Latn mr", Ordinality.ONE, "1"),
+      new PluralRule<>("kok kok-Latn mr", Ordinality.TWO, "2 3"),
+      new PluralRule<>("kok kok-Latn mr", Ordinality.FEW, "4"),
+      new PluralRule<>("kok kok-Latn mr", Ordinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("kw", Ordinality.ONE, "1 2 3 4 21 22 23 24 41 42 43 44 61 62 63 64 101 1001"),
+      new PluralRule<>("kw", Ordinality.MANY, "5 105 205 305 405 505 605 705 1005"),
+      new PluralRule<>("kw", Ordinality.OTHER, "0 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 100 1000 10000 100000 1000000"),
+      new PluralRule<>("lij scn", Ordinality.MANY, "8 11 80 81 82 83 84 85 86 87 88 89 800 801 802 803"),
+      new PluralRule<>("lij scn", Ordinality.OTHER, "0 1 2 3 4 5 6 7 9 10 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("mk", Ordinality.ONE, "1 21 31 41 51 61 71 81 101 1001"),
+      new PluralRule<>("mk", Ordinality.TWO, "2 22 32 42 52 62 72 82 102 1002"),
+      new PluralRule<>("mk", Ordinality.MANY, "7 8 27 28 37 38 47 48 57 58 67 68 77 78 87 88 107 1007"),
+      new PluralRule<>("mk", Ordinality.OTHER, "0 3 4 5 6 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("ne", Ordinality.ONE, "1 2 3 4"),
+      new PluralRule<>("ne", Ordinality.OTHER, "0 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 100 1000 10000 100000 1000000"),
+      new PluralRule<>("or", Ordinality.ONE, "1 5 7 8 9"),
+      new PluralRule<>("or", Ordinality.TWO, "2 3"),
+      new PluralRule<>("or", Ordinality.FEW, "4"),
+      new PluralRule<>("or", Ordinality.MANY, "6"),
+      new PluralRule<>("or", Ordinality.OTHER, "0 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 100 1000 10000 100000 1000000"),
+      new PluralRule<>("sq", Ordinality.ONE, "1"),
+      new PluralRule<>("sq", Ordinality.MANY, "4 24 34 44 54 64 74 84 104 1004"),
+      new PluralRule<>("sq", Ordinality.OTHER, "0 2 3 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("sv", Ordinality.ONE, "1 2 21 22 31 32 41 42 51 52 61 62 71 72 81 82 101 1001"),
+      new PluralRule<>("sv", Ordinality.OTHER, "0 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 100 1000 10000 100000 1000000"),
+      new PluralRule<>("tk", Ordinality.FEW, "6 9 10 16 19 26 29 36 39 106 1006"),
+      new PluralRule<>("tk", Ordinality.OTHER, "0 1 2 3 4 5 7 8 11 12 13 14 15 17 18 20 100 1000 10000 100000 1000000"),
+      new PluralRule<>("uk", Ordinality.FEW, "3 23 33 43 53 63 73 83 103 1003"),
+      new PluralRule<>("uk", Ordinality.OTHER, "0 1 2 4 5 6 7 8 9 10 11 12 13 14 15 16 100 1000 10000 100000 1000000")
   ));
   @NonNull
-  private static final List<@NonNull CardinalityRangeSample> CARDINALITY_RANGE_SAMPLES = Collections.unmodifiableList(Arrays.asList(
-      new CardinalityRangeSample("fa", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
-      new CardinalityRangeSample("ak", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
-      new CardinalityRangeSample("or", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
-      new CardinalityRangeSample("as", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
-      new CardinalityRangeSample("ps", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
-      new CardinalityRangeSample("tk", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE)
+  private static final List<@NonNull CardinalityRangeRule> CARDINALITY_RANGE_RULES = Collections.unmodifiableList(Arrays.asList(
+      new CardinalityRangeRule("af an bg en et eu fi ia io nb no pcm sv ur", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("af an bg en et eu fi ia io nb no pcm sv ur", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("af an bg en et eu fi ia io nb no pcm sv ur", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ak fa or sd", Cardinality.ONE, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("ak fa or sd", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ak fa or sd", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("ak fa or sd", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("am as bn gu hi hy kn mr ps zu", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("am as bn gu hi hy kn mr ps zu", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("am as bn gu hi hy kn mr ps zu", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.ZERO, Cardinality.ONE, Cardinality.ZERO),
+      new CardinalityRangeRule("ar", Cardinality.ZERO, Cardinality.TWO, Cardinality.ZERO),
+      new CardinalityRangeRule("ar", Cardinality.ZERO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.ZERO, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.ZERO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.ONE, Cardinality.TWO, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.ONE, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.TWO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.TWO, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.TWO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.FEW, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.MANY, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.MANY, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.MANY, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.OTHER, Cardinality.TWO, Cardinality.OTHER),
+      new CardinalityRangeRule("ar", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ar", Cardinality.OTHER, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ar", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("az de el gl gsw hu kk ky lij ml mn ne nl sc sq sw ta te tk tr ug uz", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("az de el gl gsw hu kk ky lij ml mn ne nl sc sq sw ta te tk tr ug uz", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("az de el gl gsw hu kk ky lij ml mn ne nl sc sq sw ta te tk tr ug uz", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.ONE, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.FEW, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.FEW, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.MANY, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.MANY, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.MANY, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.MANY, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.OTHER, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("be lt ru uk", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("bs hr sr", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("bs hr sr", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("bs hr sr", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("bs hr sr", Cardinality.FEW, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("bs hr sr", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("bs hr sr", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("bs hr sr", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("bs hr sr", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("bs hr sr", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ca es", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ca es", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("ca es", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cs pl sk", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cs pl sk", Cardinality.ONE, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cs pl sk", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cs pl sk", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cs pl sk", Cardinality.FEW, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cs pl sk", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cs pl sk", Cardinality.MANY, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("cs pl sk", Cardinality.MANY, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cs pl sk", Cardinality.MANY, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cs pl sk", Cardinality.MANY, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cs pl sk", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("cs pl sk", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cs pl sk", Cardinality.OTHER, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cs pl sk", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.ZERO, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("cy", Cardinality.ZERO, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("cy", Cardinality.ZERO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cy", Cardinality.ZERO, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cy", Cardinality.ZERO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.ONE, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("cy", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cy", Cardinality.ONE, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cy", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.TWO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cy", Cardinality.TWO, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cy", Cardinality.TWO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.FEW, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cy", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.MANY, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("cy", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("cy", Cardinality.OTHER, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("cy", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("cy", Cardinality.OTHER, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("cy", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("da fil is pa", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("da fil is pa", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("da fil is pa", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("da fil is pa", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("fr pt", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("fr pt", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("fr pt", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ga", Cardinality.ONE, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("ga", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ga", Cardinality.ONE, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ga", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ga", Cardinality.TWO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ga", Cardinality.TWO, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ga", Cardinality.TWO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ga", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ga", Cardinality.FEW, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ga", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ga", Cardinality.MANY, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ga", Cardinality.MANY, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ga", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("ga", Cardinality.OTHER, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("ga", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ga", Cardinality.OTHER, Cardinality.MANY, Cardinality.MANY),
+      new CardinalityRangeRule("ga", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.ONE, Cardinality.TWO, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.TWO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.OTHER, Cardinality.TWO, Cardinality.OTHER),
+      new CardinalityRangeRule("he", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("id ja km ko lo ms my th vi yue zh", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("it scn", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("it scn", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("it scn", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ka", Cardinality.ONE, Cardinality.OTHER, Cardinality.ONE),
+      new CardinalityRangeRule("ka", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("ka", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.ZERO, Cardinality.ZERO, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.ZERO, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("lv", Cardinality.ZERO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.ONE, Cardinality.ZERO, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("lv", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.OTHER, Cardinality.ZERO, Cardinality.OTHER),
+      new CardinalityRangeRule("lv", Cardinality.OTHER, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("lv", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("mk", Cardinality.ONE, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("mk", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("mk", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("mk", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ro", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ro", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ro", Cardinality.FEW, Cardinality.ONE, Cardinality.FEW),
+      new CardinalityRangeRule("ro", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ro", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("ro", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("ro", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("si", Cardinality.ONE, Cardinality.ONE, Cardinality.ONE),
+      new CardinalityRangeRule("si", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("si", Cardinality.OTHER, Cardinality.ONE, Cardinality.OTHER),
+      new CardinalityRangeRule("si", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("sl", Cardinality.ONE, Cardinality.ONE, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.ONE, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("sl", Cardinality.ONE, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.ONE, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("sl", Cardinality.TWO, Cardinality.ONE, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.TWO, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("sl", Cardinality.TWO, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.TWO, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("sl", Cardinality.FEW, Cardinality.ONE, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.FEW, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("sl", Cardinality.FEW, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.FEW, Cardinality.OTHER, Cardinality.OTHER),
+      new CardinalityRangeRule("sl", Cardinality.OTHER, Cardinality.ONE, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.OTHER, Cardinality.TWO, Cardinality.TWO),
+      new CardinalityRangeRule("sl", Cardinality.OTHER, Cardinality.FEW, Cardinality.FEW),
+      new CardinalityRangeRule("sl", Cardinality.OTHER, Cardinality.OTHER, Cardinality.OTHER)
   ));
 
   private GeneratedCldrConformanceData() {
@@ -148,131 +449,56 @@ final class GeneratedCldrConformanceData {
   }
 
   @NonNull
-  static List<@NonNull CardinalitySample> cardinalitySamples() {
-    return CARDINALITY_SAMPLES;
+  static List<@NonNull PluralRule<@NonNull Cardinality>> cardinalityRules() {
+    return CARDINALITY_RULES;
   }
 
   @NonNull
-  static List<@NonNull OrdinalitySample> ordinalitySamples() {
-    return ORDINALITY_SAMPLES;
+  static List<@NonNull PluralRule<@NonNull Ordinality>> ordinalityRules() {
+    return ORDINALITY_RULES;
   }
 
   @NonNull
-  static List<@NonNull CardinalityRangeSample> cardinalityRangeSamples() {
-    return CARDINALITY_RANGE_SAMPLES;
+  static List<@NonNull CardinalityRangeRule> cardinalityRangeRules() {
+    return CARDINALITY_RANGE_RULES;
   }
 
-  static final class CardinalitySample {
+  static final class PluralRule<T> {
     @NonNull
-    private final String cldrLocale;
+    private final String locales;
     @NonNull
-    private final String sample;
+    private final T expected;
     @NonNull
-    private final String numericSample;
-    private final int compactExponent;
-    @NonNull
-    private final Cardinality expected;
+    private final String samples;
 
-    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,
-                              int compactExponent, @NonNull Cardinality expected) {
-      requireNonNull(cldrLocale);
-      requireNonNull(sample);
-      requireNonNull(numericSample);
+    private PluralRule(@NonNull String locales, @NonNull T expected, @NonNull String samples) {
+      requireNonNull(locales);
       requireNonNull(expected);
-
-      this.cldrLocale = cldrLocale;
-      this.sample = sample;
-      this.numericSample = numericSample;
-      this.compactExponent = compactExponent;
+      requireNonNull(samples);
+      this.locales = locales;
       this.expected = expected;
+      this.samples = samples;
     }
 
     @NonNull
-    String getCldrLocale() {
-      return cldrLocale;
+    String getLocales() {
+      return locales;
     }
 
     @NonNull
-    String getSample() {
-      return sample;
-    }
-
-    @NonNull
-    String getNumericSample() {
-      return numericSample;
-    }
-
-    boolean hasCompactExponent() {
-      return compactExponent >= 0;
-    }
-
-    int getCompactExponent() {
-      return compactExponent;
-    }
-
-    @NonNull
-    Cardinality getExpected() {
+    T getExpected() {
       return expected;
     }
-  }
-
-  static final class OrdinalitySample {
-    @NonNull
-    private final String cldrLocale;
-    @NonNull
-    private final String sample;
-    @NonNull
-    private final String numericSample;
-    private final int compactExponent;
-    @NonNull
-    private final Ordinality expected;
-
-    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,
-                             int compactExponent, @NonNull Ordinality expected) {
-      requireNonNull(cldrLocale);
-      requireNonNull(sample);
-      requireNonNull(numericSample);
-      requireNonNull(expected);
-
-      this.cldrLocale = cldrLocale;
-      this.sample = sample;
-      this.numericSample = numericSample;
-      this.compactExponent = compactExponent;
-      this.expected = expected;
-    }
 
     @NonNull
-    String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    @NonNull
-    String getSample() {
-      return sample;
-    }
-
-    @NonNull
-    String getNumericSample() {
-      return numericSample;
-    }
-
-    boolean hasCompactExponent() {
-      return compactExponent >= 0;
-    }
-
-    int getCompactExponent() {
-      return compactExponent;
-    }
-
-    @NonNull
-    Ordinality getExpected() {
-      return expected;
+    String getSamples() {
+      return samples;
     }
   }
 
-  static final class CardinalityRangeSample {
+  static final class CardinalityRangeRule {
     @NonNull
-    private final String cldrLocale;
+    private final String locales;
     @NonNull
     private final Cardinality start;
     @NonNull
@@ -280,22 +506,21 @@ final class GeneratedCldrConformanceData {
     @NonNull
     private final Cardinality expected;
 
-    private CardinalityRangeSample(@NonNull String cldrLocale, @NonNull Cardinality start, @NonNull Cardinality end,
-                                   @NonNull Cardinality expected) {
-      requireNonNull(cldrLocale);
+    private CardinalityRangeRule(@NonNull String locales, @NonNull Cardinality start, @NonNull Cardinality end,
+                                 @NonNull Cardinality expected) {
+      requireNonNull(locales);
       requireNonNull(start);
       requireNonNull(end);
       requireNonNull(expected);
-
-      this.cldrLocale = cldrLocale;
+      this.locales = locales;
       this.start = start;
       this.end = end;
       this.expected = expected;
     }
 
     @NonNull
-    String getCldrLocale() {
-      return cldrLocale;
+    String getLocales() {
+      return locales;
     }
 
     @NonNull

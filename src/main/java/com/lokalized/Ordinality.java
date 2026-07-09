@@ -181,7 +181,7 @@ public enum Ordinality implements LanguageForm {
    * @return the BCP 47 locale tags for which ordinality operations are supported, not null
    */
   @NonNull
-  public static SortedSet<@NonNull String> getSupportedLanguageCodes() {
+  public static SortedSet<@NonNull String> getSupportedLocaleTags() {
     return CldrPluralRules.ordinalitySupportedLocales();
   }
 

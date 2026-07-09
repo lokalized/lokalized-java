@@ -12,6 +12,7 @@ Lokalized includes generated plural-rule and locale-metadata data derived from U
 * `common/supplemental/likelySubtags.xml`
 * `common/supplemental/supplementalMetadata.xml`
 * `common/supplemental/supplementalData.xml`
+* `common/properties/scriptMetadata.txt`
 * `common/validity/language.xml`
 * `common/validity/script.xml`
 * `common/validity/region.xml`
@@ -20,6 +21,7 @@ Lokalized includes generated plural-rule and locale-metadata data derived from U
 Source:
 
 * https://github.com/unicode-org/cldr/tree/release-48-2/common/supplemental
+* https://github.com/unicode-org/cldr/tree/release-48-2/common/properties
 * https://github.com/unicode-org/cldr/tree/release-48-2/common/validity
 
 The pinned source files are stored under `src/test/resources/cldr/48.2/` and carry their own SPDX notices.

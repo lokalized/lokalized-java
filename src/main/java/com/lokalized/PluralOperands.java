@@ -55,9 +55,8 @@ public final class PluralOperands {
   @NonNull
   private final BigDecimal e;
 
-  private PluralOperands(@NonNull BigDecimal number, @NonNull Integer compactExponent) {
+  private PluralOperands(@NonNull BigDecimal number, int compactExponent) {
     requireNonNull(number);
-    requireNonNull(compactExponent);
 
     @NonNull BigDecimal operandNumber = number.movePointRight(compactExponent);
     @NonNull BigDecimal strippedNumber = operandNumber.stripTrailingZeros();
@@ -208,6 +207,8 @@ public final class PluralOperands {
      * Specifies the number of decimal places that will be visible to the user.
      * <p>
      * If omitted, {@link BigDecimal} scale is preserved and other {@link Number} types use their normalized decimal places.
+     * Reducing the scale does not round implicitly: callers must supply an already-rounded number, otherwise
+     * {@link #build()} throws {@link ArithmeticException}.
      *
      * @param visibleDecimalPlaces the visible decimal places, may be null to use the number's natural scale
      * @return this builder, not null
@@ -236,6 +237,7 @@ public final class PluralOperands {
      * Builds immutable plural operands.
      *
      * @return immutable plural operands, not null
+     * @throws ArithmeticException if the requested visible decimal places would require rounding
      */
     @NonNull
     public PluralOperands build() {
@@ -245,15 +247,15 @@ public final class PluralOperands {
 
       if (visibleDecimalPlaces == null) {
         if (!numberIsBigDecimal)
-          numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.FLOOR);
+          numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.UNNECESSARY);
       } else {
         if (visibleDecimalPlaces < 0)
           throw new IllegalArgumentException(format("Visible decimal places must be non-negative, but was %d", visibleDecimalPlaces));
 
-        numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.FLOOR);
+        numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.UNNECESSARY);
       }
 
-      Integer effectiveCompactExponent = compactExponent == null ? 0 : compactExponent;
+      int effectiveCompactExponent = compactExponent == null ? 0 : compactExponent;
 
       if (effectiveCompactExponent < 0)
         throw new IllegalArgumentException(format("Compact exponent must be non-negative, but was %d", effectiveCompactExponent));

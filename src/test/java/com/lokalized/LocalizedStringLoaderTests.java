@@ -20,7 +20,9 @@ import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.StringReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
@@ -181,6 +183,23 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testIncompleteAlternativeWarningRetainsRootTranslationKey() {
+    String catalog = "{\"root.key\":{\"translation\":\"fallback\",\"alternatives\":[" +
+        "{\"count == 1\":{\"translation\":\"{{count}} {{books}}\",\"placeholders\":{" +
+        "\"books\":{\"value\":\"count\",\"translations\":{" +
+        "\"CARDINALITY_ONE\":\"книга\",\"CARDINALITY_OTHER\":\"книг\"}}}}}]}}";
+    List<@NonNull LocalizedStringWarning> warnings = new ArrayList<>();
+
+    LocalizedStringLoader.parse(new StringReader(catalog), Locale.forLanguageTag("ru"),
+        "alternative-warning-test", warnings::add, LocalizedStringLoadingOptions.defaults());
+
+    assertEquals(1, warnings.size());
+    assertEquals("root.key", warnings.get(0).getKey());
+    assertTrue(warnings.get(0).getMessage().contains("key 'root.key'"));
+    assertFalse(warnings.get(0).getMessage().contains("key 'count == 1'"));
+  }
+
+  @Test
   public void testFilesystemLoadingAcceptsNonJreTagsAndCase() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -251,6 +270,165 @@ public class LocalizedStringLoaderTests {
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
 
     assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en")));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsBlankAndBomOnlyCatalogs() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings-blank");
+    tempDirectory.toFile().deleteOnExit();
+
+    Files.write(tempDirectory.resolve("en"), " \t\r\n".getBytes(StandardCharsets.UTF_8));
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
+
+    Files.write(tempDirectory.resolve("en"), "\uFEFF \t\r\n".getBytes(StandardCharsets.UTF_8));
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsStructurallyInvalidLanguageTags() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings-invalid-tag");
+    tempDirectory.toFile().deleteOnExit();
+    Files.write(tempDirectory.resolve("en-a.json"), "{}".getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
+
+    assertTrue(exception.getMessage().contains("en-a.json"));
+    assertTrue(exception.getMessage().contains("IETF BCP 47"));
+  }
+
+  @Test
+  public void testFilesystemLoadingRejectsMalformedUtf8() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings-invalid-utf8");
+    tempDirectory.toFile().deleteOnExit();
+    byte[] invalidUtf8 = new byte[]{'{', '"', 'k', '"', ':', '"', (byte) 0xC3, 0x28, '"', '}'};
+    Files.write(tempDirectory.resolve("en"), invalidUtf8);
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
+
+    assertTrue(exception.getMessage().contains("valid UTF-8"));
+  }
+
+  @Test
+  public void testSingleResourceParseOverloads() throws IOException {
+    String catalog = "{\"hello\":\"world\"}";
+    Path file = Files.createTempFile("lokalized-single-resource", ".json");
+    file.toFile().deleteOnExit();
+    Files.write(file, catalog.getBytes(StandardCharsets.UTF_8));
+
+    Set<LocalizedString> fromPath = LocalizedStringLoader.parse(file, Locale.ENGLISH);
+    Set<LocalizedString> fromInputStream = LocalizedStringLoader.parse(
+        new ByteArrayInputStream(catalog.getBytes(StandardCharsets.UTF_8)), Locale.ENGLISH, "memory-bytes");
+    Set<LocalizedString> fromReader = LocalizedStringLoader.parse(
+        new StringReader(catalog), Locale.ENGLISH, "memory-characters");
+
+    assertEquals(1, fromPath.size());
+    assertEquals(fromPath, fromInputStream);
+    assertEquals(fromPath, fromReader);
+  }
+
+  @Test
+  public void testSingleResourceParseEnforcesByteCharacterAndNestingLimits() {
+    String catalog = "{\"hello\":\"world\"}";
+    LocalizedStringLoadingOptions byteLimited = LocalizedStringLoadingOptions.builder()
+        .maximumInputBytes(catalog.getBytes(StandardCharsets.UTF_8).length - 1)
+        .build();
+    LocalizedStringLoadingOptions characterLimited = LocalizedStringLoadingOptions.builder()
+        .maximumReaderCharacters(catalog.length() - 1)
+        .build();
+    LocalizedStringLoadingOptions nestingLimited = LocalizedStringLoadingOptions.builder()
+        .maximumJsonNestingDepth(1)
+        .build();
+
+    LocalizedStringLoadingException byteException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new ByteArrayInputStream(catalog.getBytes(StandardCharsets.UTF_8)),
+            Locale.ENGLISH, "byte-limited", LocalizedStringWarningHandler.ignore(), byteLimited));
+    LocalizedStringLoadingException characterException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "character-limited",
+            LocalizedStringWarningHandler.ignore(), characterLimited));
+    LocalizedStringLoadingException nestingException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader("{\"hello\":{\"translation\":\"world\"}}"),
+            Locale.ENGLISH, "nesting-limited", LocalizedStringWarningHandler.ignore(), nestingLimited));
+
+    assertTrue(byteException.getMessage().contains("maximum size"));
+    assertTrue(characterException.getMessage().contains("maximum size"));
+    assertTrue(nestingException.getMessage().contains("nesting depth"));
+  }
+
+  @Test
+  public void testLoadingOptionsRejectInvalidLimits() {
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumInputBytes(0));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumInputBytes(Integer.MAX_VALUE));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumReaderCharacters(0));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumJsonNestingDepth(0));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumJsonNestingDepth(
+            LocalizedStringLoadingOptions.MAXIMUM_JSON_NESTING_DEPTH + 1));
+  }
+
+  @Test
+  public void testLoaderRejectsExplicitNullsAndIncompleteAlternativeShapes() {
+    String[] invalidCatalogs = {
+        "{\"key\":{\"translation\":null}}",
+        "{\"key\":{\"translation\":\"value\",\"commentary\":null}}",
+        "{\"key\":{\"translation\":\"value\",\"placeholderMetadata\":null}}",
+        "{\"key\":{\"translation\":\"value\",\"placeholderMetadata\":{\"name\":{\"type\":null}}}}",
+        "{\"key\":{\"translation\":\"value\",\"placeholders\":null}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"range\":null}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":null,\"range\":{\"start\":\"a\",\"end\":\"b\"}}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"selectors\":null}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":null,\"selectors\":[{\"value\":\"count\",\"form\":\"CARDINALITY\"}]}}}}",
+        "{\"key\":{\"translation\":\"value\",\"alternatives\":null}}",
+        "{\"key\":{\"translation\":\"value\",\"alternatives\":[]}}",
+        "{\"key\":{\"translation\":\"value\",\"alternatives\":[null]}}",
+        "{\"key\":{\"translation\":\"value\",\"alternatives\":[{}]}}",
+        "{\"key\":{\"translation\":\"{{article}}\",\"placeholders\":{\"article\":{" +
+            "\"selectors\":[{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}]," +
+            "\"translations\":[{\"when\":null,\"value\":\"the\"}]}}}}"
+    };
+
+    for (String invalidCatalog : invalidCatalogs)
+      assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.parse(new StringReader(invalidCatalog), Locale.ENGLISH,
+              "schema-parity-test", LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults()),
+          invalidCatalog);
+  }
+
+  @Test
+  public void testClasspathLoadingRejectsEscapingPackagePaths() {
+    ClassLoader classLoader = getClass().getClassLoader();
+
+    for (String invalidPackage : List.of("", "/strings", "strings/", "../strings", "strings/../other", "strings\\other"))
+      assertThrows(IllegalArgumentException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, invalidPackage), invalidPackage);
+  }
+
+  @Test
+  public void testDuplicateMemberDiagnosticPathIsBounded() {
+    String longMemberName = String.join("", java.util.Collections.nCopies(10_000, "a"));
+    String catalog = "{\"root\":{\"translation\":\"value\",\"" + longMemberName +
+        "\":{\"duplicate\":1,\"duplicate\":2}}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "bounded-path"));
+
+    assertTrue(exception.getMessage().length() < 5_000);
+    assertTrue(exception.getMessage().contains("duplicate JSON object member"));
+
+    String duplicateLongMemberCatalog = "{\"root\":{\"" + longMemberName + "\":1,\"" +
+        longMemberName + "\":2}}";
+    LocalizedStringLoadingException longMemberException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(duplicateLongMemberCatalog), Locale.ENGLISH,
+            "bounded-member"));
+
+    assertTrue(longMemberException.getMessage().length() < 5_000);
   }
 
   @Test
@@ -897,6 +1075,21 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testClasspathLoadingFromJarWithoutDirectoryEntry() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-no-directory-entry", ".jar");
+    tempJar.toFile().deleteOnExit();
+    writeJarEntryWithoutDirectory(tempJar, "strings/en.json", "{\"hello\":\"world\"}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+
+      assertTrue(localizedStringsByLocale.containsKey(Locale.ENGLISH));
+      assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+    }
+  }
+
+  @Test
   public void testClasspathLoadingStripsUtf8BomFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings-bom", ".jar");
     tempJar.toFile().deleteOnExit();
@@ -1004,6 +1197,15 @@ public class LocalizedStringLoaderTests {
       jarOutputStream.putNextEntry(directoryEntry);
       jarOutputStream.closeEntry();
 
+      JarEntry entry = new JarEntry(entryName);
+      jarOutputStream.putNextEntry(entry);
+      jarOutputStream.write(json.getBytes(StandardCharsets.UTF_8));
+      jarOutputStream.closeEntry();
+    }
+  }
+
+  private void writeJarEntryWithoutDirectory(Path jarPath, String entryName, String json) throws IOException {
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(jarPath))) {
       JarEntry entry = new JarEntry(entryName);
       jarOutputStream.putNextEntry(entry);
       jarOutputStream.write(json.getBytes(StandardCharsets.UTF_8));

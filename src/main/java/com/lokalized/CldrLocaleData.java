@@ -45,6 +45,10 @@ final class CldrLocaleData {
   @NonNull
   private static final String UNDETERMINED_LANGUAGE = "und";
   @NonNull
+  private static final String UNKNOWN_SCRIPT = "Zzzz";
+  @NonNull
+  private static final String UNKNOWN_REGION = "ZZ";
+  @NonNull
   private static final String NORWEGIAN_MACROLANGUAGE = "no";
   @NonNull
   private static final String NORWEGIAN_BOKMAL = "nb";
@@ -53,7 +57,7 @@ final class CldrLocaleData {
   @NonNull
   private static final Map<@NonNull String, @NonNull String> SCRIPT_ALIASES_BY_TAG;
   @NonNull
-  private static final Map<@NonNull String, @NonNull String> REGION_ALIASES_BY_TAG;
+  private static final Map<@NonNull String, @NonNull List<@NonNull String>> REGION_ALIASES_BY_TAG;
   @NonNull
   private static final Map<@NonNull String, @NonNull String> VARIANT_ALIASES_BY_TAG;
   @NonNull
@@ -68,11 +72,15 @@ final class CldrLocaleData {
   private static final Set<@NonNull String> VALID_REGIONS;
   @NonNull
   private static final Set<@NonNull String> VALID_VARIANTS;
+  @NonNull
+  private static final Set<@NonNull String> RIGHT_TO_LEFT_SCRIPTS;
+  @NonNull
+  private static final List<@NonNull String> COMPOUND_LANGUAGE_ALIAS_KEYS;
 
   static {
     LANGUAGE_ALIASES_BY_TAG = mapFor(GeneratedCldrLocaleData.LANGUAGE_ALIASES);
     SCRIPT_ALIASES_BY_TAG = mapFor(GeneratedCldrLocaleData.SCRIPT_ALIASES);
-    REGION_ALIASES_BY_TAG = mapFor(GeneratedCldrLocaleData.REGION_ALIASES);
+    REGION_ALIASES_BY_TAG = listMapFor(GeneratedCldrLocaleData.REGION_ALIASES);
     VARIANT_ALIASES_BY_TAG = mapFor(GeneratedCldrLocaleData.VARIANT_ALIASES);
     LIKELY_SUBTAGS_BY_TAG = mapFor(GeneratedCldrLocaleData.LIKELY_SUBTAGS);
     PARENT_LOCALES_BY_TAG = mapFor(GeneratedCldrLocaleData.PARENT_LOCALES);
@@ -80,6 +88,8 @@ final class CldrLocaleData {
     VALID_SCRIPTS = setFor(GeneratedCldrLocaleData.VALID_SCRIPTS);
     VALID_REGIONS = setFor(GeneratedCldrLocaleData.VALID_REGIONS);
     VALID_VARIANTS = setFor(GeneratedCldrLocaleData.VALID_VARIANTS);
+    RIGHT_TO_LEFT_SCRIPTS = setFor(GeneratedCldrLocaleData.RTL_SCRIPTS);
+    COMPOUND_LANGUAGE_ALIAS_KEYS = compoundLanguageAliasKeys();
   }
 
   private CldrLocaleData() {
@@ -109,8 +119,9 @@ final class CldrLocaleData {
     requireNonNull(languageTag);
 
     String canonicalLanguageTag = TagParts.forLanguageTag(languageTag).toLanguageTag();
+    Set<@NonNull String> seenLanguageTags = new HashSet<>();
 
-    for (int i = 0; i < 8; ++i) {
+    while (seenLanguageTags.add(keyFor(canonicalLanguageTag))) {
       String aliasedLanguageTag = aliasLanguageTagOnce(canonicalLanguageTag);
 
       if (aliasedLanguageTag.equals(canonicalLanguageTag))
@@ -120,6 +131,11 @@ final class CldrLocaleData {
     }
 
     return canonicalLanguageTag;
+  }
+
+  static boolean isRightToLeftScript(@NonNull String script) {
+    requireNonNull(script);
+    return RIGHT_TO_LEFT_SCRIPTS.contains(keyFor(script));
   }
 
   @NonNull
@@ -263,6 +279,11 @@ final class CldrLocaleData {
     if (directAlias != null)
       return directAlias;
 
+    @Nullable String compoundAlias = compoundLanguageAliasFor(languageTag);
+
+    if (compoundAlias != null)
+      return compoundAlias;
+
     TagParts tagParts = TagParts.forLanguageTag(languageTag);
 
     if (tagParts.isPrivateUse())
@@ -292,10 +313,10 @@ final class CldrLocaleData {
     }
 
     if (tagParts.getRegion().length() > 0) {
-      @Nullable String regionAlias = REGION_ALIASES_BY_TAG.get(keyFor(tagParts.getRegion()));
+      @Nullable List<@NonNull String> regionAliases = REGION_ALIASES_BY_TAG.get(keyFor(tagParts.getRegion()));
 
-      if (regionAlias != null)
-        tagParts = tagParts.withRegion(regionAlias);
+      if (regionAliases != null)
+        tagParts = tagParts.withRegion(preferredRegionAlias(tagParts, regionAliases));
     }
 
     if (!tagParts.getVariants().isEmpty()) {
@@ -310,6 +331,47 @@ final class CldrLocaleData {
     }
 
     return tagParts.toLanguageTag();
+  }
+
+  @Nullable
+  private static String compoundLanguageAliasFor(@NonNull String languageTag) {
+    String key = keyFor(languageTag);
+
+    for (String aliasKey : COMPOUND_LANGUAGE_ALIAS_KEYS) {
+      if (!key.startsWith(aliasKey + "-"))
+        continue;
+
+      @Nullable String replacement = LANGUAGE_ALIASES_BY_TAG.get(aliasKey);
+
+      if (replacement != null)
+        return replacement + languageTag.substring(aliasKey.length());
+    }
+
+    return null;
+  }
+
+  @NonNull
+  private static String preferredRegionAlias(@NonNull TagParts tagParts,
+                                             @NonNull List<@NonNull String> regionAliases) {
+    if (regionAliases.size() == 1)
+      return regionAliases.get(0);
+
+    TagParts languageAndScript = tagParts.withRegion("");
+
+    for (String candidateTag : likelySubtagCandidateTags(languageAndScript)) {
+      @Nullable String likelySubtag = LIKELY_SUBTAGS_BY_TAG.get(keyFor(candidateTag));
+
+      if (likelySubtag == null)
+        continue;
+
+      String likelyRegion = TagParts.forLanguageTag(likelySubtag).getRegion();
+
+      for (String regionAlias : regionAliases)
+        if (regionAlias.equalsIgnoreCase(likelyRegion))
+          return regionAlias;
+    }
+
+    return regionAliases.get(0);
   }
 
   private static void addFallbackTags(@NonNull LinkedHashSet<@NonNull String> candidateTags,
@@ -456,6 +518,38 @@ final class CldrLocaleData {
   }
 
   @NonNull
+  private static Map<@NonNull String, @NonNull List<@NonNull String>> listMapFor(@NonNull String @NonNull [] @NonNull [] pairs) {
+    Map<@NonNull String, @NonNull List<@NonNull String>> map = new HashMap<>(pairs.length);
+
+    for (String @NonNull [] pair : pairs) {
+      List<@NonNull String> values = new ArrayList<>();
+
+      for (String value : pair[1].split("\\s+"))
+        if (value.length() > 0)
+          values.add(value);
+
+      map.put(keyFor(pair[0]), Collections.unmodifiableList(values));
+    }
+
+    return Collections.unmodifiableMap(map);
+  }
+
+  @NonNull
+  private static List<@NonNull String> compoundLanguageAliasKeys() {
+    List<@NonNull String> aliasKeys = new ArrayList<>();
+
+    for (String aliasKey : LANGUAGE_ALIASES_BY_TAG.keySet())
+      if (aliasKey.indexOf('-') >= 0)
+        aliasKeys.add(aliasKey);
+
+    aliasKeys.sort((aliasKey1, aliasKey2) -> {
+      int lengthComparison = Integer.compare(aliasKey2.length(), aliasKey1.length());
+      return lengthComparison == 0 ? aliasKey1.compareTo(aliasKey2) : lengthComparison;
+    });
+    return Collections.unmodifiableList(aliasKeys);
+  }
+
+  @NonNull
   private static Set<@NonNull String> setFor(@NonNull String @NonNull [] values) {
     Set<@NonNull String> set = new HashSet<>(values.length);
 
@@ -490,8 +584,8 @@ final class CldrLocaleData {
                      @NonNull List<@NonNull String> extensions,
                      boolean privateUse) {
       this.language = language;
-      this.script = script;
-      this.region = region;
+      this.script = UNKNOWN_SCRIPT.equalsIgnoreCase(script) ? "" : script;
+      this.region = UNKNOWN_REGION.equalsIgnoreCase(region) ? "" : region;
       this.variants = Collections.unmodifiableList(new ArrayList<>(variants));
       this.extensions = Collections.unmodifiableList(new ArrayList<>(extensions));
       this.privateUse = privateUse;
@@ -542,7 +636,7 @@ final class CldrLocaleData {
 
       while (index < subtags.length) {
         String subtag = subtags[index];
-        extensions.add(subtag.length() == 1 ? subtag.toLowerCase(Locale.ROOT) : subtag.toLowerCase(Locale.ROOT));
+        extensions.add(subtag.toLowerCase(Locale.ROOT));
         ++index;
       }
 

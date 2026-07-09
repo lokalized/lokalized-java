@@ -1,0 +1,1898 @@
+{
+  "formatVersion": 1,
+  "cldrVersion": "48.2",
+  "cardinalRuleGroups": [
+    {
+      "locales": ["af", "an", "asa", "az", "bal", "bem", "bez", "bg", "brx", "ce", "cgg", "chr", "ckb", "dv", "ee", "el", "eo", "eu", "fo", "fur", "gsw", "ha", "haw", "hu", "jgo", "jmc", "ka", "kaj", "kcg", "kk", "kkj", "kl", "ks", "ksb", "ku", "ky", "lb", "lg", "mas", "mgo", "ml", "mn", "mr", "nah", "nb", "nd", "ne", "nn", "nnh", "no", "nr", "ny", "nyn", "om", "or", "os", "pap", "ps", "rm", "rof", "rwk", "saq", "sd", "sdh", "seh", "sn", "so", "sq", "ss", "ssy", "st", "syr", "ta", "te", "teo", "tig", "tk", "tn", "tr", "ts", "ug", "uz", "ve", "vo", "vun", "wae", "xh", "xog"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ak", "bho", "csw", "guw", "ln", "mg", "nso", "pa", "ti", "wa"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 0..1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.0", "0.00", "1.00", "0.000", "1.000", "0.0000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["am", "as", "bn", "doi", "fa", "gu", "hi", "kn", "kok", "kok-Latn", "pcm", "zu"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 0 or n = 1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.0", "0.00", "0.04"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["1.1", "2.6", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ar", "ars"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.00", "0.000", "0.0000"], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n % 100 = 3..10",
+          "integerExample": {"values": ["3", "10", "103", "110", "1003"], "infinite": true},
+          "decimalExample": {"values": ["3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "103.0", "1003.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "n % 100 = 11..99",
+          "integerExample": {"values": ["11", "26", "111", "1011"], "infinite": true},
+          "decimalExample": {"values": ["11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "17.0", "18.0", "111.0", "1011.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["100", "102", "200", "202", "300", "302", "400", "402", "500", "502", "600", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.1", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ast", "de", "en", "et", "fi", "fy", "gl", "ia", "ie", "io", "lij", "nl", "sc", "sv", "sw", "ur", "yi"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["be"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["1.0", "21.0", "31.0", "41.0", "51.0", "61.0", "71.0", "81.0", "101.0", "1001.0"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "n % 10 = 2..4 and n % 100 != 12..14",
+          "integerExample": {"values": ["2", "4", "22", "24", "32", "34", "42", "44", "52", "54", "62", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.0", "4.0", "22.0", "23.0", "24.0", "32.0", "33.0", "102.0", "1002.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "n % 10 = 0 or n % 10 = 5..9 or n % 100 = 11..14",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "11.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.1", "100.1", "1000.1"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["blo", "cv", "ksh"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.00", "0.000", "0.0000"], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["bm", "bo", "dz", "hnj", "id", "ig", "ii", "ja", "jbo", "jv", "jw", "kde", "kea", "km", "ko", "lkt", "lo", "ms", "my", "nqo", "osa", "und", "sah", "ses", "sg", "su", "th", "to", "tpi", "vi", "wo", "yo", "yue", "zh"],
+      "rules": [
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "15", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["br"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11,71,91",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["1.0", "21.0", "31.0", "41.0", "51.0", "61.0", "81.0", "101.0", "1001.0"], "infinite": true}
+        },
+        {
+          "count": "two",
+          "condition": "n % 10 = 2 and n % 100 != 12,72,92",
+          "integerExample": {"values": ["2", "22", "32", "42", "52", "62", "82", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "22.0", "32.0", "42.0", "52.0", "62.0", "82.0", "102.0", "1002.0"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "n % 10 = 3..4,9 and n % 100 != 10..19,70..79,90..99",
+          "integerExample": {"values": ["3", "4", "9", "23", "24", "29", "33", "34", "39", "43", "44", "49", "103", "1003"], "infinite": true},
+          "decimalExample": {"values": ["3.0", "4.0", "9.0", "23.0", "24.0", "29.0", "33.0", "34.0", "103.0", "1003.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "n != 0 and n % 1000000 = 0",
+          "integerExample": {"values": ["1000000"], "infinite": true},
+          "decimalExample": {"values": ["1000000.0", "1000000.00", "1000000.000", "1000000.0000"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "8", "10", "20", "100", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.0", "100.0", "1000.0", "10000.0", "100000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["bs", "hr", "sh", "sr"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 10 = 2..4 and i % 100 != 12..14 or f % 10 = 2..4 and f % 100 != 12..14",
+          "integerExample": {"values": ["2", "4", "22", "24", "32", "34", "42", "44", "52", "54", "62", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["0.2", "0.4", "1.2", "1.4", "2.2", "2.4", "3.2", "3.4", "4.2", "4.4", "5.2", "10.2", "100.2", "1000.2"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.5", "1.0", "1.5", "2.0", "2.5", "2.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ca", "it", "lld", "pt-PT", "scn", "vec"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5",
+          "integerExample": {"values": ["1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ceb", "fil", "tl"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i = 1,2,3 or v = 0 and i % 10 != 4,6,9 or v != 0 and f % 10 != 4,6,9",
+          "integerExample": {"values": ["0", "3", "5", "7", "8", "10", "13", "15", "17", "18", "20", "21", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.3", "0.5", "0.7", "0.8", "1.0", "1.3", "1.5", "1.7", "1.8", "2.0", "2.1", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["4", "6", "9", "14", "16", "19", "24", "26", "104", "1004"], "infinite": true},
+          "decimalExample": {"values": ["0.4", "0.6", "0.9", "1.4", "1.6", "1.9", "2.4", "2.6", "10.4", "100.4", "1000.4"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["cs", "sk"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "i = 2..4 and v = 0",
+          "integerExample": {"values": ["2", "4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "v != 0",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["cy"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.00", "0.000", "0.0000"], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 3",
+          "integerExample": {"values": ["3"], "infinite": false},
+          "decimalExample": {"values": ["3.0", "3.00", "3.000", "3.0000"], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 6",
+          "integerExample": {"values": ["6"], "infinite": false},
+          "decimalExample": {"values": ["6.0", "6.00", "6.000", "6.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["4", "5", "7", "20", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["da"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1 or t != 0 and i = 0,1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["0.1", "1.6"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "2.0", "3.4", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["dsb", "hsb"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 100 = 1 or f % 100 = 1",
+          "integerExample": {"values": ["1", "101", "201", "301", "401", "501", "601", "701", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "two",
+          "condition": "v = 0 and i % 100 = 2 or f % 100 = 2",
+          "integerExample": {"values": ["2", "102", "202", "302", "402", "502", "602", "702", "1002"], "infinite": true},
+          "decimalExample": {"values": ["0.2", "1.2", "2.2", "3.2", "4.2", "5.2", "6.2", "7.2", "10.2", "100.2", "1000.2"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 100 = 3..4 or f % 100 = 3..4",
+          "integerExample": {"values": ["3", "4", "103", "104", "203", "204", "303", "304", "403", "404", "503", "504", "603", "604", "703", "704", "1003"], "infinite": true},
+          "decimalExample": {"values": ["0.3", "0.4", "1.3", "1.4", "2.3", "2.4", "3.3", "3.4", "4.3", "4.4", "5.3", "5.4", "6.3", "6.4", "7.3", "7.4", "10.3", "100.3", "1000.3"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.5", "1.0", "1.5", "2.0", "2.5", "2.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["es"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5",
+          "integerExample": {"values": ["1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ff", "hy", "kab"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 0,1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["fr"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 0,1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5"], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5",
+          "integerExample": {"values": ["1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ga"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 3..6",
+          "integerExample": {"values": ["3", "6"], "infinite": false},
+          "decimalExample": {"values": ["3.0", "4.0", "5.0", "6.0", "3.00", "4.00", "5.00", "6.00", "3.000", "4.000", "5.000", "6.000", "3.0000", "4.0000", "5.0000", "6.0000"], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 7..10",
+          "integerExample": {"values": ["7", "10"], "infinite": false},
+          "decimalExample": {"values": ["7.0", "8.0", "9.0", "10.0", "7.00", "8.00", "9.00", "10.00", "7.000", "8.000", "9.000", "10.000", "7.0000", "8.0000", "9.0000", "10.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "11", "25", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.1", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["gd"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,11",
+          "integerExample": {"values": ["1", "11"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "11.0", "1.00", "11.00", "1.000", "11.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,12",
+          "integerExample": {"values": ["2", "12"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "12.0", "2.00", "12.00", "2.000", "12.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 3..10,13..19",
+          "integerExample": {"values": ["3", "10", "13", "19"], "infinite": false},
+          "decimalExample": {"values": ["3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "13.0", "14.0", "15.0", "16.0", "17.0", "18.0", "19.0", "3.00"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "20", "34", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.1", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["gv"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 10 = 1",
+          "integerExample": {"values": ["1", "11", "21", "31", "41", "51", "61", "71", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "v = 0 and i % 10 = 2",
+          "integerExample": {"values": ["2", "12", "22", "32", "42", "52", "62", "72", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 100 = 0,20,40,60,80",
+          "integerExample": {"values": ["0", "20", "40", "60", "80", "100", "120", "140", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "v != 0",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["3", "10", "13", "19", "23", "103", "1003"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["he"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0 or i = 0 and v != 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.9", "0.00", "0.05"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "i = 2 and v = 0",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "3", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["1.0", "2.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["is"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "t = 0 and i % 10 = 1 and i % 100 != 11 or t % 10 = 1 and t % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "1.0", "1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.2", "0.9", "1.2", "1.8", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["iu", "naq", "sat", "se", "sma", "smi", "smj", "smn", "sms"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "3", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.9", "1.1", "1.6", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["kw"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.00", "0.000", "0.0000"], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n % 100 = 2,22,42,62,82 or n % 1000 = 0 and n % 100000 = 1000..20000,40000,60000,80000 or n != 0 and n % 1000000 = 100000",
+          "integerExample": {"values": ["2", "22", "42", "62", "82", "102", "122", "142", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "22.0", "42.0", "62.0", "82.0", "102.0", "122.0", "142.0", "1000.0", "10000.0", "100000.0"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "n % 100 = 3,23,43,63,83",
+          "integerExample": {"values": ["3", "23", "43", "63", "83", "103", "123", "143", "1003"], "infinite": true},
+          "decimalExample": {"values": ["3.0", "23.0", "43.0", "63.0", "83.0", "103.0", "123.0", "143.0", "1003.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "n != 1 and n % 100 = 1,21,41,61,81",
+          "integerExample": {"values": ["21", "41", "61", "81", "101", "121", "141", "161", "1001"], "infinite": true},
+          "decimalExample": {"values": ["21.0", "41.0", "61.0", "81.0", "101.0", "121.0", "141.0", "161.0", "1001.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["4", "19", "100", "1004", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.0", "100.0", "1000.1", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["lag"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.00", "0.000", "0.0000"], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "i = 0,1 and n != 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["0.1", "1.6"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["lt"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11..19",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["1.0", "21.0", "31.0", "41.0", "51.0", "61.0", "71.0", "81.0", "101.0", "1001.0"], "infinite": true}
+        },
+        {
+          "count": "few",
+          "condition": "n % 10 = 2..9 and n % 100 != 11..19",
+          "integerExample": {"values": ["2", "9", "22", "29", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "22.0", "102.0", "1002.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "f != 0",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "10", "20", "30", "40", "50", "60", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "10.0", "11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["lv", "prg"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n % 10 = 0 or n % 100 = 11..19 or v = 2 and f % 100 = 11..19",
+          "integerExample": {"values": ["0", "10", "20", "30", "40", "50", "60", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "10.0", "11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11 or v = 2 and f % 10 = 1 and f % 100 != 11 or v != 2 and f % 10 = 1",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "1.0", "1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "9", "22", "29", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["0.2", "0.9", "1.2", "1.9", "10.2", "100.2", "1000.2"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["mk"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 10 = 1 and i % 100 != 11 or f % 10 = 1 and f % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "1.1", "2.1", "3.1", "4.1", "5.1", "6.1", "7.1", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "0.2", "1.0", "1.2", "1.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["mo", "ro"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "v != 0 or n = 0 or n != 1 and n % 100 = 1..19",
+          "integerExample": {"values": ["0", "2", "16", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["20", "35", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["mt"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": ["1.0", "1.00", "1.000", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 0 or n % 100 = 3..10",
+          "integerExample": {"values": ["0", "3", "10", "103", "109", "1003"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "103.0", "1003.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "n % 100 = 11..19",
+          "integerExample": {"values": ["11", "19", "111", "117", "1011"], "infinite": true},
+          "decimalExample": {"values": ["11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "17.0", "18.0", "111.0", "1011.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["20", "35", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.1", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["pl"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1 and v = 0",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 10 = 2..4 and i % 100 != 12..14",
+          "integerExample": {"values": ["2", "4", "22", "24", "32", "34", "42", "44", "52", "54", "62", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "v = 0 and i != 1 and i % 10 = 0..1 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 12..14",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["pt"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 0..1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5"], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "e = 0 and i != 0 and i % 1000000 = 0 and v = 0 or e != 0..5",
+          "integerExample": {"values": ["1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000"], "infinite": true},
+          "decimalExample": {"values": ["2.0", "3.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["ru", "uk"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 10 = 1 and i % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 10 = 2..4 and i % 100 != 12..14",
+          "integerExample": {"values": ["2", "4", "22", "24", "32", "34", "42", "44", "52", "54", "62", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "v = 0 and i % 10 = 0 or v = 0 and i % 10 = 5..9 or v = 0 and i % 100 = 11..14",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["sgs"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": ["1.0", "21.0", "31.0", "41.0", "51.0", "61.0", "71.0", "81.0", "101.0", "1001.0"], "infinite": true}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "2.00", "2.000", "2.0000"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n != 2 and n % 10 = 2..9 and n % 100 != 11..19",
+          "integerExample": {"values": ["3", "9", "22", "29", "32", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": ["3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "22.0", "102.0", "1002.0"], "infinite": true}
+        },
+        {
+          "count": "many",
+          "condition": "f != 0",
+          "integerExample": {"values": [], "infinite": false},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.1", "100.1", "1000.1"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "10", "20", "30", "40", "50", "60", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "10.0", "11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["shi"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 0 or n = 1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.0", "0.00", "0.04"], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 2..10",
+          "integerExample": {"values": ["2", "10"], "infinite": false},
+          "decimalExample": {"values": ["2.0", "3.0", "4.0", "5.0", "6.0", "7.0", "8.0", "9.0", "10.0", "2.00", "3.00", "4.00", "5.00", "6.00", "7.00", "8.00"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["11", "26", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["1.1", "1.9", "2.1", "2.7", "10.1", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["si"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 0,1 or i = 0 and f = 1",
+          "integerExample": {"values": ["0", "1"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "0.1", "1.0", "0.00", "0.01", "1.00", "0.000", "0.001", "1.000", "0.0000", "0.0001", "1.0000"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.2", "0.9", "1.1", "1.8", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    },
+    {
+      "locales": ["sl"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "v = 0 and i % 100 = 1",
+          "integerExample": {"values": ["1", "101", "201", "301", "401", "501", "601", "701", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "v = 0 and i % 100 = 2",
+          "integerExample": {"values": ["2", "102", "202", "302", "402", "502", "602", "702", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "v = 0 and i % 100 = 3..4 or v != 0",
+          "integerExample": {"values": ["3", "4", "103", "104", "203", "204", "303", "304", "403", "404", "503", "504", "603", "604", "703", "704", "1003"], "infinite": true},
+          "decimalExample": {"values": ["0.0", "1.5", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["tzm"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 0..1 or n = 11..99",
+          "integerExample": {"values": ["0", "1", "11", "24"], "infinite": false},
+          "decimalExample": {"values": ["0.0", "1.0", "11.0", "12.0", "13.0", "14.0", "15.0", "16.0", "17.0", "18.0", "19.0", "20.0", "21.0", "22.0", "23.0", "24.0"], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["2", "10", "100", "106", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": ["0.1", "0.9", "1.1", "1.7", "10.0", "100.0", "1000.0", "10000.0", "100000.0", "1000000.0"], "infinite": true}
+        }
+      ]
+    }
+  ],
+  "ordinalRuleGroups": [
+    {
+      "locales": ["af", "am", "an", "ar", "ast", "bg", "bs", "ce", "cs", "cv", "da", "de", "dsb", "el", "es", "et", "eu", "fa", "fi", "fy", "gl", "gsw", "he", "hr", "hsb", "ia", "id", "ie", "is", "ja", "km", "kn", "ko", "ky", "lt", "lv", "ml", "mn", "my", "nb", "nl", "no", "pa", "pl", "prg", "ps", "pt", "und", "ru", "sd", "sh", "si", "sk", "sl", "sr", "sw", "ta", "te", "th", "tpi", "tr", "ur", "uz", "yue", "zh", "zu"],
+      "rules": [
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "15", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["as", "bn"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,5,7,8,9,10",
+          "integerExample": {"values": ["1", "5", "7", "10"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,3",
+          "integerExample": {"values": ["2", "3"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 4",
+          "integerExample": {"values": ["4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 6",
+          "integerExample": {"values": ["6"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "11", "25", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["az"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i % 10 = 1,2,5,7,8 or i % 100 = 20,50,70,80",
+          "integerExample": {"values": ["1", "2", "5", "7", "8", "11", "12", "15", "17", "18", "20", "22", "25", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "i % 10 = 3,4 or i % 1000 = 100,200,300,400,500,600,700,800,900",
+          "integerExample": {"values": ["3", "4", "13", "14", "23", "24", "33", "34", "43", "44", "53", "54", "63", "64", "73", "74", "100", "1003"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "i = 0 or i % 10 = 6 or i % 100 = 40,60,90",
+          "integerExample": {"values": ["0", "6", "16", "26", "36", "40", "46", "56", "106", "1006"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["9", "10", "19", "29", "30", "39", "49", "59", "69", "79", "109", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["bal", "fil", "fr", "ga", "hy", "lo", "mo", "ms", "ro", "tl", "vi"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["be"],
+      "rules": [
+        {
+          "count": "few",
+          "condition": "n % 10 = 2,3 and n % 100 != 12,13",
+          "integerExample": {"values": ["2", "3", "22", "23", "32", "33", "42", "43", "52", "53", "62", "63", "72", "73", "82", "83", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "1", "4", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["blo"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "i = 0",
+          "integerExample": {"values": ["0"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "i = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "i = 2,3,4,5,6",
+          "integerExample": {"values": ["2", "6"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["7", "22", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["ca"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,3",
+          "integerExample": {"values": ["1", "3"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 4",
+          "integerExample": {"values": ["4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["cy"],
+      "rules": [
+        {
+          "count": "zero",
+          "condition": "n = 0,7,8,9",
+          "integerExample": {"values": ["0", "7", "9"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2",
+          "integerExample": {"values": ["2"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 3,4",
+          "integerExample": {"values": ["3", "4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 5,6",
+          "integerExample": {"values": ["5", "6"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["10", "25", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["en"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1 and n % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n % 10 = 2 and n % 100 != 12",
+          "integerExample": {"values": ["2", "22", "32", "42", "52", "62", "72", "82", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n % 10 = 3 and n % 100 != 13",
+          "integerExample": {"values": ["3", "23", "33", "43", "53", "63", "73", "83", "103", "1003"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "4", "18", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["gd"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,11",
+          "integerExample": {"values": ["1", "11"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,12",
+          "integerExample": {"values": ["2", "12"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 3,13",
+          "integerExample": {"values": ["3", "13"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "4", "10", "14", "21", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["gu", "hi"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,3",
+          "integerExample": {"values": ["2", "3"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 4",
+          "integerExample": {"values": ["4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 6",
+          "integerExample": {"values": ["6"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "7", "20", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["hu"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,5",
+          "integerExample": {"values": ["1", "5"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "4", "6", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["it", "lld", "sc", "vec"],
+      "rules": [
+        {
+          "count": "many",
+          "condition": "n = 11,8,80,800",
+          "integerExample": {"values": ["8", "11", "80", "800"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "7", "9", "10", "12", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["ka"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "i = 0 or i % 100 = 2..20,40,60,80",
+          "integerExample": {"values": ["0", "2", "16", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["21", "36", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["kk"],
+      "rules": [
+        {
+          "count": "many",
+          "condition": "n % 10 = 6 or n % 10 = 9 or n % 10 = 0 and n != 0",
+          "integerExample": {"values": ["6", "9", "10", "16", "19", "20", "26", "29", "30", "36", "39", "40", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "7", "8", "11", "15", "17", "18", "21", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["kok", "kok-Latn", "mr"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,3",
+          "integerExample": {"values": ["2", "3"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 4",
+          "integerExample": {"values": ["4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["kw"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1..4 or n % 100 = 1..4,21..24,41..44,61..64,81..84",
+          "integerExample": {"values": ["1", "4", "21", "24", "41", "44", "61", "64", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 5 or n % 100 = 5",
+          "integerExample": {"values": ["5", "105", "205", "305", "405", "505", "605", "705", "1005"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "6", "20", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["lij", "scn"],
+      "rules": [
+        {
+          "count": "many",
+          "condition": "n = 11,8,80..89,800..899",
+          "integerExample": {"values": ["8", "11", "80", "89", "800", "803"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "7", "9", "10", "12", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["mk"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "i % 10 = 1 and i % 100 != 11",
+          "integerExample": {"values": ["1", "21", "31", "41", "51", "61", "71", "81", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "i % 10 = 2 and i % 100 != 12",
+          "integerExample": {"values": ["2", "22", "32", "42", "52", "62", "72", "82", "102", "1002"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "i % 10 = 7,8 and i % 100 != 17,18",
+          "integerExample": {"values": ["7", "8", "27", "28", "37", "38", "47", "48", "57", "58", "67", "68", "77", "78", "87", "88", "107", "1007"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "3", "6", "9", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["ne"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1..4",
+          "integerExample": {"values": ["1", "4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "19", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["or"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1,5,7..9",
+          "integerExample": {"values": ["1", "5", "7", "9"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "two",
+          "condition": "n = 2,3",
+          "integerExample": {"values": ["2", "3"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "few",
+          "condition": "n = 4",
+          "integerExample": {"values": ["4"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n = 6",
+          "integerExample": {"values": ["6"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "10", "24", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["sq"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n = 1",
+          "integerExample": {"values": ["1"], "infinite": false},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "many",
+          "condition": "n % 10 = 4 and n % 100 != 14",
+          "integerExample": {"values": ["4", "24", "34", "44", "54", "64", "74", "84", "104", "1004"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "3", "5", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["sv"],
+      "rules": [
+        {
+          "count": "one",
+          "condition": "n % 10 = 1,2 and n % 100 != 11,12",
+          "integerExample": {"values": ["1", "2", "21", "22", "31", "32", "41", "42", "51", "52", "61", "62", "71", "72", "81", "82", "101", "1001"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "3", "17", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["tk"],
+      "rules": [
+        {
+          "count": "few",
+          "condition": "n % 10 = 6,9 or n = 10",
+          "integerExample": {"values": ["6", "9", "10", "16", "19", "26", "29", "36", "39", "106", "1006"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "5", "7", "8", "11", "15", "17", "18", "20", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    },
+    {
+      "locales": ["uk"],
+      "rules": [
+        {
+          "count": "few",
+          "condition": "n % 10 = 3 and n % 100 != 13",
+          "integerExample": {"values": ["3", "23", "33", "43", "53", "63", "73", "83", "103", "1003"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        },
+        {
+          "count": "other",
+          "condition": "",
+          "integerExample": {"values": ["0", "2", "4", "16", "100", "1000", "10000", "100000", "1000000"], "infinite": true},
+          "decimalExample": {"values": [], "infinite": false}
+        }
+      ]
+    }
+  ],
+  "cardinalRangeGroups": [
+    {
+      "locales": ["af", "an", "bg", "en", "et", "eu", "fi", "ia", "io", "nb", "no", "pcm", "sv", "ur"],
+      "ranges": [
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ak", "fa", "or", "sd"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "other"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["am", "as", "bn", "gu", "hi", "hy", "kn", "mr", "ps", "zu"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ar"],
+      "ranges": [
+        {"start": "zero", "end": "one", "result": "zero"},
+        {"start": "zero", "end": "two", "result": "zero"},
+        {"start": "zero", "end": "few", "result": "few"},
+        {"start": "zero", "end": "many", "result": "many"},
+        {"start": "zero", "end": "other", "result": "other"},
+        {"start": "one", "end": "two", "result": "other"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "many", "result": "many"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "two", "end": "few", "result": "few"},
+        {"start": "two", "end": "many", "result": "many"},
+        {"start": "two", "end": "other", "result": "other"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "many", "result": "many"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "many", "end": "few", "result": "few"},
+        {"start": "many", "end": "many", "result": "many"},
+        {"start": "many", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "two", "result": "other"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "many", "result": "many"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["az", "de", "el", "gl", "gsw", "hu", "kk", "ky", "lij", "ml", "mn", "ne", "nl", "sc", "sq", "sw", "ta", "te", "tk", "tr", "ug", "uz"],
+      "ranges": [
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["be", "lt", "ru", "uk"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "many", "result": "many"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "few", "end": "one", "result": "one"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "many", "result": "many"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "many", "end": "one", "result": "one"},
+        {"start": "many", "end": "few", "result": "few"},
+        {"start": "many", "end": "many", "result": "many"},
+        {"start": "many", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "many", "result": "many"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["bs", "hr", "sr"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "few", "end": "one", "result": "one"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ca", "es"],
+      "ranges": [
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["cs", "pl", "sk"],
+      "ranges": [
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "many", "result": "many"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "many", "result": "many"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "many", "end": "one", "result": "one"},
+        {"start": "many", "end": "few", "result": "few"},
+        {"start": "many", "end": "many", "result": "many"},
+        {"start": "many", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "many", "result": "many"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["cy"],
+      "ranges": [
+        {"start": "zero", "end": "one", "result": "one"},
+        {"start": "zero", "end": "two", "result": "two"},
+        {"start": "zero", "end": "few", "result": "few"},
+        {"start": "zero", "end": "many", "result": "many"},
+        {"start": "zero", "end": "other", "result": "other"},
+        {"start": "one", "end": "two", "result": "two"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "many", "result": "many"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "two", "end": "few", "result": "few"},
+        {"start": "two", "end": "many", "result": "many"},
+        {"start": "two", "end": "other", "result": "other"},
+        {"start": "few", "end": "many", "result": "many"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "many", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "two", "result": "two"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "many", "result": "many"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["da", "fil", "is", "pa"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["fr", "pt"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ga"],
+      "ranges": [
+        {"start": "one", "end": "two", "result": "two"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "many", "result": "many"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "two", "end": "few", "result": "few"},
+        {"start": "two", "end": "many", "result": "many"},
+        {"start": "two", "end": "other", "result": "other"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "many", "result": "many"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "many", "end": "many", "result": "many"},
+        {"start": "many", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "two", "result": "two"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "many", "result": "many"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["he"],
+      "ranges": [
+        {"start": "one", "end": "two", "result": "other"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "two", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "two", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["id", "ja", "km", "ko", "lo", "ms", "my", "th", "vi", "yue", "zh"],
+      "ranges": [
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["it", "scn"],
+      "ranges": [
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ka"],
+      "ranges": [
+        {"start": "one", "end": "other", "result": "one"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["lv"],
+      "ranges": [
+        {"start": "zero", "end": "zero", "result": "other"},
+        {"start": "zero", "end": "one", "result": "one"},
+        {"start": "zero", "end": "other", "result": "other"},
+        {"start": "one", "end": "zero", "result": "other"},
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "zero", "result": "other"},
+        {"start": "other", "end": "one", "result": "one"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["mk"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "other"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["ro"],
+      "ranges": [
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "few", "end": "one", "result": "few"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["si"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "one"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "other"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    },
+    {
+      "locales": ["sl"],
+      "ranges": [
+        {"start": "one", "end": "one", "result": "few"},
+        {"start": "one", "end": "two", "result": "two"},
+        {"start": "one", "end": "few", "result": "few"},
+        {"start": "one", "end": "other", "result": "other"},
+        {"start": "two", "end": "one", "result": "few"},
+        {"start": "two", "end": "two", "result": "two"},
+        {"start": "two", "end": "few", "result": "few"},
+        {"start": "two", "end": "other", "result": "other"},
+        {"start": "few", "end": "one", "result": "few"},
+        {"start": "few", "end": "two", "result": "two"},
+        {"start": "few", "end": "few", "result": "few"},
+        {"start": "few", "end": "other", "result": "other"},
+        {"start": "other", "end": "one", "result": "few"},
+        {"start": "other", "end": "two", "result": "two"},
+        {"start": "other", "end": "few", "result": "few"},
+        {"start": "other", "end": "other", "result": "other"}
+      ]
+    }
+  ]
+}

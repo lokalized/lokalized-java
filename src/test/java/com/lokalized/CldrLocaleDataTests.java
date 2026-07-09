@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -39,6 +40,36 @@ public class CldrLocaleDataTests {
     assertEquals("sr-Latn-BA", CldrLocaleData.canonicalLanguageTag("sh-BA"));
     assertEquals("en-GB-oxendict", CldrLocaleData.canonicalLanguageTag("en-GB-oed"));
     assertEquals("und-Zinh", CldrLocaleData.canonicalLanguageTag("und-Qaai"));
+    assertEquals("yue-HK-u-nu-hanidec", CldrLocaleData.canonicalLanguageTag("zh-yue-HK-u-nu-hanidec"));
+  }
+
+  @Test
+  public void canonicalLanguageTagsUseContextualMultiTerritoryAliases() {
+    assertEquals("hy-AM", CldrLocaleData.canonicalLanguageTag("hy-SU"));
+    assertEquals("ru-RU", CldrLocaleData.canonicalLanguageTag("ru-SU"));
+    assertEquals("pap-CW", CldrLocaleData.canonicalLanguageTag("pap-AN"));
+  }
+
+  @Test
+  public void canonicalLanguageTagsRemoveUnknownRegionAndScriptPlaceholders() {
+    assertEquals("en", CldrLocaleData.canonicalLanguageTag("en-Zzzz-ZZ"));
+    assertEquals("und-Latn", CldrLocaleData.canonicalLanguageTag("und-Latn-ZZ"));
+    assertEquals("und-US", CldrLocaleData.canonicalLanguageTag("und-Zzzz-US"));
+  }
+
+  @Test
+  public void generatedAliasesCanonicalizeIdempotently() {
+    for (String[] alias : GeneratedCldrLocaleData.LANGUAGE_ALIASES)
+      assertCanonicalizationIsStable(alias[0]);
+
+    for (String[] alias : GeneratedCldrLocaleData.SCRIPT_ALIASES)
+      assertCanonicalizationIsStable("und-" + alias[0]);
+
+    for (String[] alias : GeneratedCldrLocaleData.REGION_ALIASES)
+      assertCanonicalizationIsStable("und-" + alias[0]);
+
+    for (String[] alias : GeneratedCldrLocaleData.VARIANT_ALIASES)
+      assertCanonicalizationIsStable("und-" + alias[0]);
   }
 
   @Test
@@ -89,5 +120,14 @@ public class CldrLocaleDataTests {
 
     assertEquals(List.of("zh-Hant-TW", "zh-Hant"), traditionalChineseTags);
     assertEquals(List.of("zh-TW"), taiwanChineseTags);
+  }
+
+  private void assertCanonicalizationIsStable(String languageTag) {
+    String canonical = CldrLocaleData.canonicalLanguageTag(languageTag);
+    assertEquals(canonical, CldrLocaleData.canonicalLanguageTag(canonical),
+        "Expected canonicalization to be idempotent for " + languageTag);
+    assertFalse(canonical.contains("-Zzzz"), "Expected unknown script to be removed from " + languageTag);
+    assertFalse(canonical.endsWith("-ZZ") || canonical.contains("-ZZ-"),
+        "Expected unknown region to be removed from " + languageTag);
   }
 }

@@ -19,7 +19,10 @@ package com.lokalized;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Locale;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -42,6 +45,21 @@ public class BidiUtilsTests {
 
     assertFalse(BidiUtils.localeUsesRightToLeftScript(Locale.forLanguageTag("en")));
     assertFalse(BidiUtils.localeUsesRightToLeftScript(Locale.forLanguageTag("az-Latn")));
+  }
+
+  @Test
+  public void rightToLeftScriptDetectionCoversPinnedCldrMetadata() {
+    Set<String> expectedScripts = Set.of(
+        "Adlm", "Arab", "Armi", "Avst", "Chrs", "Cprt", "Elym", "Gara", "Hatr", "Hebr", "Hung", "Khar",
+        "Lydi", "Mand", "Mani", "Mend", "Merc", "Mero", "Narb", "Nbat", "Nkoo", "Orkh", "Ougr", "Palm",
+        "Phli", "Phlp", "Phnx", "Prti", "Rohg", "Samr", "Sarb", "Sidt", "Sogd", "Sogo", "Syrc", "Thaa",
+        "Yezi");
+
+    assertEquals(expectedScripts, new HashSet<>(Arrays.asList(GeneratedCldrLocaleData.RTL_SCRIPTS)));
+
+    for (String script : expectedScripts)
+      assertTrue(BidiUtils.localeUsesRightToLeftScript(Locale.forLanguageTag("und-" + script)),
+          "Expected CLDR RTL script to be recognized: " + script);
   }
 
   @Test

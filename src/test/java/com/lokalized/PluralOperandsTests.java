@@ -56,6 +56,15 @@ public class PluralOperandsTests {
   }
 
   @Test
+  public void visibleDecimalPlacesDoNotRoundImplicitly() {
+    assertThrows(ArithmeticException.class,
+        () -> PluralOperands.forNumber(new BigDecimal("1.15")).visibleDecimalPlaces(1).build());
+
+    assertEquals(new BigDecimal("1.2"),
+        PluralOperands.forNumber(new BigDecimal("1.2")).visibleDecimalPlaces(1).build().getNumber());
+  }
+
+  @Test
   public void compactExponentSetsCAndEOperands() {
     PluralOperands operands = PluralOperands.forNumber(1).compactExponent(6).build();
 

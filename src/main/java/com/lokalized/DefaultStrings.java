@@ -60,6 +60,9 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 class DefaultStrings implements Strings {
+	private static final int MAX_GENERATED_PLACEHOLDER_DEPTH = 64;
+	private static final int MAX_INTERPOLATED_OUTPUT_CHARACTERS = 1024 * 1024;
+	private static final int MAX_LANGUAGE_RANGES = 1000;
 	@NonNull
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
 	@NonNull
@@ -179,7 +182,19 @@ class DefaultStrings implements Strings {
 						}
 				));
 
-		this.fallbackLocale = fallbackLocale;
+		List<@NonNull Locale> equivalentFallbackLocales = localizedStringsByLocale.keySet().stream()
+				.filter(locale -> CldrLocaleData.equivalent(locale, fallbackLocale))
+				.sorted(Comparator.comparing(Locale::toLanguageTag))
+				.collect(Collectors.toList());
+
+		if (equivalentFallbackLocales.isEmpty())
+			throw new IllegalArgumentException(format("Specified fallback locale is '%s' but no matching " +
+							"localized strings locale was found. Known locales: [%s]", fallbackLocale.toLanguageTag(),
+					localizedStringsByLocale.keySet().stream()
+							.map(locale -> locale.toLanguageTag())
+							.sorted()
+							.collect(Collectors.joining(", "))));
+
 		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 
 		// Make our own mapping of tiebreakers based on the provided mapping.
@@ -267,6 +282,32 @@ class DefaultStrings implements Strings {
 
 		this.tiebreakerLocalesByLanguageCode = Collections.unmodifiableMap(finalizedTiebreakerLocalesByLanguageCode);
 
+		Locale resolvedFallbackLocale = localizedStringsByLocale.containsKey(fallbackLocale) ? fallbackLocale : null;
+
+		if (resolvedFallbackLocale == null && equivalentFallbackLocales.size() == 1)
+			resolvedFallbackLocale = equivalentFallbackLocales.get(0);
+
+		if (resolvedFallbackLocale == null) {
+			String canonicalFallbackTag = CldrLocaleData.canonicalLanguageTag(fallbackLocale.toLanguageTag());
+			String fallbackLanguageCode = normalizedLanguageCode(canonicalFallbackTag.split("-")[0]);
+			@Nullable List<@NonNull Locale> fallbackTiebreakers =
+					finalizedTiebreakerLocalesByLanguageCode.get(fallbackLanguageCode);
+
+			if (fallbackTiebreakers != null)
+				for (Locale fallbackTiebreaker : fallbackTiebreakers)
+					if (equivalentFallbackLocales.contains(fallbackTiebreaker)) {
+						resolvedFallbackLocale = fallbackTiebreaker;
+						break;
+					}
+		}
+
+		if (resolvedFallbackLocale == null)
+			throw new IllegalArgumentException(format("Fallback locale '%s' is canonically equivalent to multiple loaded locales %s; " +
+						"configure tiebreakerLocalesByLanguageCode to choose one", fallbackLocale.toLanguageTag(),
+					equivalentFallbackLocales.stream().map(Locale::toLanguageTag).collect(Collectors.toList())));
+
+		this.fallbackLocale = resolvedFallbackLocale;
+
 		this.translationFailureHandler = translationFailureHandler == null ? TranslationFailureHandler.returnKey() : translationFailureHandler;
 		this.bidiIsolation = bidiIsolation == null ? DEFAULT_BIDI_ISOLATION : bidiIsolation;
 		this.stringInterpolator = new StringInterpolator();
@@ -298,32 +339,13 @@ class DefaultStrings implements Strings {
 
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByKeyByLocale);
 
-		if (!localizedStringsByLocale.containsKey(getFallbackLocale()))
-			throw new IllegalArgumentException(format("Specified fallback locale is '%s' but no matching " +
-							"localized strings locale was found. Known locales: [%s]", fallbackLocale.toLanguageTag(),
-					localizedStringsByLocale.keySet().stream()
-							.map(locale -> locale.toLanguageTag())
-							.sorted()
-							.collect(Collectors.joining(", "))));
-
 		this.localeSupplier = localeSupplier;
 	}
 
 	private static void validateLocalizedString(@NonNull Locale locale, @NonNull LocalizedString localizedString) {
 		requireNonNull(locale);
 		requireNonNull(localizedString);
-
-		if (localizedString.getTranslation().isPresent()) {
-			try {
-				StringInterpolator.placeholderNamesIn(localizedString.getTranslation().get());
-			} catch (IllegalArgumentException e) {
-				throw new IllegalArgumentException(format("Invalid placeholder reference in translation for key '%s' and locale '%s': %s",
-						localizedString.getKey(), locale.toLanguageTag(), e.getMessage()), e);
-			}
-		}
-
-		for (LocalizedString alternative : localizedString.getAlternatives())
-			validateLocalizedString(locale, alternative);
+		LocalizedStringValidator.validate(locale, localizedString);
 	}
 
 	@NonNull
@@ -364,12 +386,13 @@ class DefaultStrings implements Strings {
 		Locale locale = localeFor(options);
 		BidiIsolation bidiIsolation = options.getBidiIsolation().orElse(getBidiIsolation());
 		TranslationFailureHandler translationFailureHandler = options.getTranslationFailureHandler().orElse(getTranslationFailureHandler());
+		// All locale candidates, failure reporting, and interpolation must observe one coherent caller-input snapshot.
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException firstFallbackFailure = null;
 		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
 
 		for (Locale candidateLocale : candidateLocales) {
-			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(placeholders);
+			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(immutableContext);
 			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(candidateLocale);
 
 			if (localizedStrings == null)
@@ -385,6 +408,10 @@ class DefaultStrings implements Strings {
 
 				if (translation.isPresent())
 					return translation.get();
+
+				throw new ExpressionEvaluationException(format(
+						"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'",
+						key, candidateLocale.toLanguageTag()));
 			} catch (RuntimeException e) {
 				if (firstFallbackFailure == null)
 					firstFallbackFailure = e;
@@ -402,7 +429,7 @@ class DefaultStrings implements Strings {
 		if (firstFallbackFailure != null)
 			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, firstFallbackFailure.getMessage()));
 
-		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, placeholders,
+		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, immutableContext,
 				firstFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
 				firstFallbackFailure);
 		TranslationFailureResponse translationFailureResponse = requireNonNull(translationFailureHandler.handle(translationFailure),
@@ -410,7 +437,7 @@ class DefaultStrings implements Strings {
 
 		switch (translationFailureResponse.getAction()) {
 			case RETURN_KEY:
-				return interpolateFailureKey(key, placeholders, immutableContext, locale, bidiIsolation);
+				return interpolateFailureKey(key, immutableContext, locale, bidiIsolation);
 			case RETURN_STRING:
 				return translationFailureResponse.getTranslation();
 			case THROW_EXCEPTION:
@@ -428,7 +455,7 @@ class DefaultStrings implements Strings {
 	 * @param key              the toplevel translation key (always the same regardless of recursion depth), not null
 	 * @param localizedString  the localized string on which to operate, not null
 	 * @param mutableContext   the mutable context for the translation, not null
-	 * @param immutableContext the original user-supplied translation context, not null
+	 * @param immutableContext an immutable snapshot of the user-supplied translation context, not null
 	 * @param locale           the locale to use for evaluation, not null
 	 * @param bidiIsolation    the bidirectional isolation behavior to apply, not null
 	 * @return the translation, if possible (may not be possible if no translation value specified and no alternative expressions match), not null
@@ -449,7 +476,7 @@ class DefaultStrings implements Strings {
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
 			if (alternativeMatches(alternative, mutableContext, locale)) {
-				logger.finer(format("An alternative match for '%s' was found for key '%s' and context %s", alternative.getKey(), key, mutableContext));
+				logger.finer(format("An alternative match for '%s' was found for key '%s'", alternative.getKey(), key));
 
 				// If we have a matching alternative, recurse into it
 				Optional<String> translation = getInternal(key, alternative, mutableContext, immutableContext, locale, bidiIsolation);
@@ -463,14 +490,30 @@ class DefaultStrings implements Strings {
 			return Optional.empty();
 
 		String translation = localizedString.getTranslation().get();
+		Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder =
+				localizedString.getLanguageFormTranslationsByPlaceholder();
+		Set<@NonNull String> pendingGeneratedPlaceholderNames = new LinkedHashSet<>();
+		Set<@NonNull String> resolvedGeneratedPlaceholderNames = new HashSet<>();
+		enqueueGeneratedPlaceholderDependencies(translation, languageFormTranslationsByPlaceholder,
+				pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
 
-		for (Entry<@NonNull String, @NonNull LanguageFormTranslation> entry : localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
-			String placeholderName = entry.getKey();
-			LanguageFormTranslation languageFormTranslation = entry.getValue();
+		while (!pendingGeneratedPlaceholderNames.isEmpty()) {
+			String placeholderName = pendingGeneratedPlaceholderNames.iterator().next();
+			pendingGeneratedPlaceholderNames.remove(placeholderName);
+
+			if (!resolvedGeneratedPlaceholderNames.add(placeholderName))
+				continue;
+
+			// File-defined generated placeholders take precedence over same-named caller values.
+			mutableContext.remove(placeholderName);
+			LanguageFormTranslation languageFormTranslation = languageFormTranslationsByPlaceholder.get(placeholderName);
 
 			if (languageFormTranslation.isSelectorDriven()) {
-				mutableContext.put(placeholderName, resolveSelectorDrivenLanguageFormTranslation(key, placeholderName,
-						languageFormTranslation, localizedString, immutableContext, locale));
+				String generatedTranslation = resolveSelectorDrivenLanguageFormTranslation(key, placeholderName,
+						languageFormTranslation, localizedString, immutableContext, locale);
+				mutableContext.put(placeholderName, generatedTranslation);
+				enqueueGeneratedPlaceholderDependencies(generatedTranslation, languageFormTranslationsByPlaceholder,
+						pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
 				continue;
 			}
 
@@ -559,18 +602,10 @@ class DefaultStrings implements Strings {
 						throw new IllegalArgumentException(format("Missing range end placeholder '%s' for key '%s'",
 								languageFormTranslationRange.getEnd(), key));
 
-					if (!(rangeStart instanceof Number)) {
-						throw new IllegalArgumentException(format("Range start placeholder '%s' for key '%s' must be a %s but was %s",
-								languageFormTranslationRange.getStart(), key, Number.class.getSimpleName(), rangeStart.getClass().getSimpleName()));
-					}
-
-					if (!(rangeEnd instanceof Number)) {
-						throw new IllegalArgumentException(format("Range end placeholder '%s' for key '%s' must be a %s but was %s",
-								languageFormTranslationRange.getEnd(), key, Number.class.getSimpleName(), rangeEnd.getClass().getSimpleName()));
-					}
-
-					Cardinality startCardinality = Cardinality.forNumber((Number) rangeStart, locale);
-					Cardinality endCardinality = Cardinality.forNumber((Number) rangeEnd, locale);
+					Cardinality startCardinality = cardinalityForValue(key, languageFormTranslationRange.getStart(),
+							rangeStart, locale, "Range start placeholder");
+					Cardinality endCardinality = cardinalityForValue(key, languageFormTranslationRange.getEnd(),
+							rangeEnd, locale, "Range end placeholder");
 					Cardinality rangeCardinality = Cardinality.forRange(startCardinality, endCardinality, locale);
 
 					String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
@@ -586,12 +621,8 @@ class DefaultStrings implements Strings {
 						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
 								languageFormTranslation.getValue().get(), key));
 
-					if (!(value instanceof Number)) {
-						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-								languageFormTranslation.getValue().get(), key, Number.class.getSimpleName(), value.getClass().getSimpleName()));
-					}
-
-					Cardinality cardinality = Cardinality.forNumber((Number) value, locale);
+					Cardinality cardinality = cardinalityForValue(key, languageFormTranslation.getValue().get(),
+							value, locale, "Placeholder");
 					String cardinalityTranslation = translationsByCardinality.get(cardinality);
 
 					if (cardinalityTranslation == null)
@@ -608,12 +639,8 @@ class DefaultStrings implements Strings {
 					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
 							languageFormTranslation.getValue().get(), key));
 
-				if (!(value instanceof Number)) {
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Number.class.getSimpleName(), value.getClass().getSimpleName()));
-				}
-
-				Ordinality ordinality = Ordinality.forNumber((Number) value, locale);
+				Ordinality ordinality = ordinalityForValue(key, languageFormTranslation.getValue().get(),
+						value, locale, "Placeholder");
 				String ordinalityTranslation = translationsByOrdinality.get(ordinality);
 
 				if (ordinalityTranslation == null)
@@ -797,78 +824,151 @@ class DefaultStrings implements Strings {
 
 				mutableContext.put(placeholderName, phoneticTranslation);
 			}
+
+			Object generatedTranslation = mutableContext.get(placeholderName);
+
+			if (generatedTranslation instanceof String)
+				enqueueGeneratedPlaceholderDependencies((String) generatedTranslation, languageFormTranslationsByPlaceholder,
+						pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
 		}
 
-		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(translation,
-				interpolationContextFor(mutableContext, immutableContext, localizedString.getLanguageFormTranslationsByPlaceholder().keySet(), locale,
-						bidiIsolation));
+		return Optional.of(interpolateTemplate(key, translation, mutableContext, immutableContext,
+				languageFormTranslationsByPlaceholder.keySet(), locale, bidiIsolation, new HashMap<>(), new ArrayList<>(), 0));
+	}
+
+	private static void enqueueGeneratedPlaceholderDependencies(@NonNull String template,
+																							@NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
+																							@NonNull Set<@NonNull String> pendingGeneratedPlaceholderNames,
+																							@NonNull Set<@NonNull String> resolvedGeneratedPlaceholderNames) {
+		requireNonNull(template);
+		requireNonNull(languageFormTranslationsByPlaceholder);
+		requireNonNull(pendingGeneratedPlaceholderNames);
+		requireNonNull(resolvedGeneratedPlaceholderNames);
+
+		for (String placeholderName : StringInterpolator.placeholderNamesIn(template))
+			if (languageFormTranslationsByPlaceholder.containsKey(placeholderName) &&
+					!resolvedGeneratedPlaceholderNames.contains(placeholderName))
+				pendingGeneratedPlaceholderNames.add(placeholderName);
+	}
+
+	@NonNull
+	private String interpolateTemplate(@NonNull String key, @NonNull String template,
+														 @NonNull Map<@NonNull String, @Nullable Object> generatedContext,
+														 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+														 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
+														 @NonNull Locale locale, @NonNull BidiIsolation bidiIsolation,
+														 @NonNull Map<@NonNull String, @NonNull String> expandedGeneratedValues,
+														 @NonNull List<@NonNull String> generatedPlaceholderPath, int depth) {
+		requireNonNull(key);
+		requireNonNull(template);
+		requireNonNull(generatedContext);
+		requireNonNull(immutableContext);
+		requireNonNull(fileDefinedPlaceholderNames);
+		requireNonNull(locale);
+		requireNonNull(bidiIsolation);
+		requireNonNull(expandedGeneratedValues);
+		requireNonNull(generatedPlaceholderPath);
+
+		if (depth > MAX_GENERATED_PLACEHOLDER_DEPTH)
+			throw new IllegalStateException(format(
+					"Generated placeholder nesting for key '%s' exceeds the maximum depth of %d: %s",
+					key, MAX_GENERATED_PLACEHOLDER_DEPTH, generatedPlaceholderPath));
+
+		Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>();
+
+		for (String placeholderName : StringInterpolator.placeholderNamesIn(template)) {
+			if (fileDefinedPlaceholderNames.contains(placeholderName)) {
+				if (expandedGeneratedValues.containsKey(placeholderName)) {
+					interpolationContext.put(placeholderName, expandedGeneratedValues.get(placeholderName));
+					continue;
+				}
+
+				int cycleStart = generatedPlaceholderPath.indexOf(placeholderName);
+
+				if (cycleStart >= 0) {
+					List<@NonNull String> cycle = new ArrayList<>(generatedPlaceholderPath.subList(cycleStart,
+							generatedPlaceholderPath.size()));
+					cycle.add(placeholderName);
+					throw new IllegalStateException(format("Generated placeholder cycle for key '%s': %s",
+							key, cycle.stream().collect(Collectors.joining(" -> "))));
+				}
+
+				Object generatedValue = generatedContext.get(placeholderName);
+
+				if (generatedValue instanceof String) {
+					generatedPlaceholderPath.add(placeholderName);
+					try {
+						String expandedValue = interpolateTemplate(key, (String) generatedValue,
+								generatedContext, immutableContext, fileDefinedPlaceholderNames, locale, bidiIsolation,
+								expandedGeneratedValues, generatedPlaceholderPath, depth + 1);
+						expandedGeneratedValues.put(placeholderName, expandedValue);
+						interpolationContext.put(placeholderName, expandedValue);
+					} finally {
+						generatedPlaceholderPath.remove(generatedPlaceholderPath.size() - 1);
+					}
+				}
+			} else {
+				Object value = unwrapOptional(immutableContext.get(placeholderName));
+
+				if (value != null && shouldApplyBidiIsolation(locale, bidiIsolation))
+					value = BidiUtils.isolate(value.toString());
+
+				interpolationContext.put(placeholderName, value);
+			}
+		}
+
+		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(template,
+				interpolationContext, MAX_INTERPOLATED_OUTPUT_CHARACTERS);
 
 		if (!interpolationResult.getUnresolvedPlaceholderNames().isEmpty())
 			throw new IllegalArgumentException(format("Missing value for placeholder(s) [%s] in key '%s'",
 					interpolationResult.getUnresolvedPlaceholderNames().stream().collect(Collectors.joining(", ")), key));
 
-		return Optional.of(interpolationResult.getValue());
+		return interpolationResult.getValue();
 	}
 
 	@NonNull
 	private String interpolateFailureKey(@NonNull String key,
-																			 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
-																			 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																			 @NonNull Locale locale,
-																			 @NonNull BidiIsolation bidiIsolation) {
+														 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+														 @NonNull Locale locale,
+														 @NonNull BidiIsolation bidiIsolation) {
 		requireNonNull(key);
-		requireNonNull(placeholders);
 		requireNonNull(immutableContext);
 		requireNonNull(locale);
 		requireNonNull(bidiIsolation);
 
 		try {
-			Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>(placeholders);
-			return getStringInterpolator().interpolate(key, interpolationContextFor(interpolationContext, immutableContext,
-					Collections.emptySet(), locale, bidiIsolation));
+			Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>();
+
+			for (String placeholderName : StringInterpolator.placeholderNamesInLeniently(key)) {
+				Object value = unwrapOptional(immutableContext.get(placeholderName));
+
+				if (value != null && shouldApplyBidiIsolation(locale, bidiIsolation))
+					value = BidiUtils.isolate(value.toString());
+
+				interpolationContext.put(placeholderName, value);
+			}
+
+			return getStringInterpolator().interpolate(key, interpolationContext);
 		} catch (RuntimeException e) {
 			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
 			return key;
 		}
 	}
 
-	@NonNull
-	private Map<@NonNull String, @Nullable Object> interpolationContextFor(@NonNull Map<@NonNull String, @Nullable Object> mutableContext,
-																																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																																				 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
-																																				 @NonNull Locale locale,
-																																				 @NonNull BidiIsolation bidiIsolation) {
-		requireNonNull(mutableContext);
-		requireNonNull(immutableContext);
-		requireNonNull(fileDefinedPlaceholderNames);
+	private static boolean shouldApplyBidiIsolation(@NonNull Locale locale, @NonNull BidiIsolation bidiIsolation) {
 		requireNonNull(locale);
 		requireNonNull(bidiIsolation);
 
 		switch (bidiIsolation) {
 			case NONE:
-				return mutableContext;
+				return false;
 			case RTL_LOCALES:
-				if (!BidiUtils.localeUsesRightToLeftScript(locale))
-					return mutableContext;
-				break;
+				return BidiUtils.localeUsesRightToLeftScript(locale);
 			default:
 				throw new IllegalArgumentException(format("Unsupported %s value %s",
 						BidiIsolation.class.getSimpleName(), bidiIsolation));
 		}
-
-		Map<@NonNull String, @Nullable Object> isolatedContext = new HashMap<>(mutableContext);
-
-		for (String placeholderName : immutableContext.keySet()) {
-			if (fileDefinedPlaceholderNames.contains(placeholderName))
-				continue;
-
-			Object value = unwrapOptional(isolatedContext.get(placeholderName));
-
-			if (value != null)
-				isolatedContext.put(placeholderName, BidiUtils.isolate(value.toString()));
-		}
-
-		return isolatedContext;
 	}
 
 	@NonNull
@@ -939,6 +1039,56 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
+	private static Cardinality cardinalityForValue(@NonNull String key, @NonNull String valueName,
+																							 @NonNull Object value, @NonNull Locale locale,
+																							 @NonNull String description) {
+		requireNonNull(key);
+		requireNonNull(valueName);
+		requireNonNull(value);
+		requireNonNull(locale);
+		requireNonNull(description);
+
+		if (value instanceof Cardinality)
+			return (Cardinality) value;
+
+		if (value instanceof PluralOperands)
+			return Cardinality.forOperands((PluralOperands) value, locale);
+
+		if (value instanceof Number)
+			return Cardinality.forNumber((Number) value, locale);
+
+		throw new IllegalArgumentException(format(
+				"%s '%s' in key '%s' must be a %s, %s, or %s but was %s", description, valueName, key,
+				Number.class.getSimpleName(), PluralOperands.class.getSimpleName(), Cardinality.class.getSimpleName(),
+				value.getClass().getSimpleName()));
+	}
+
+	@NonNull
+	private static Ordinality ordinalityForValue(@NonNull String key, @NonNull String valueName,
+																							 @NonNull Object value, @NonNull Locale locale,
+																							 @NonNull String description) {
+		requireNonNull(key);
+		requireNonNull(valueName);
+		requireNonNull(value);
+		requireNonNull(locale);
+		requireNonNull(description);
+
+		if (value instanceof Ordinality)
+			return (Ordinality) value;
+
+		if (value instanceof PluralOperands)
+			return Ordinality.forOperands((PluralOperands) value, locale);
+
+		if (value instanceof Number)
+			return Ordinality.forNumber((Number) value, locale);
+
+		throw new IllegalArgumentException(format(
+				"%s '%s' in key '%s' must be a %s, %s, or %s but was %s", description, valueName, key,
+				Number.class.getSimpleName(), PluralOperands.class.getSimpleName(), Ordinality.class.getSimpleName(),
+				value.getClass().getSimpleName()));
+	}
+
+	@NonNull
 	private LanguageForm resolveSelectorLanguageFormValue(@NonNull String key, @NonNull String selectorValueName,
 																										 @NonNull LanguageFormType languageFormType,
 																										 @NonNull Object selectorValue,
@@ -951,17 +1101,9 @@ class DefaultStrings implements Strings {
 
 		switch (languageFormType) {
 			case CARDINALITY:
-				if (!(selectorValue instanceof Number))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Number.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return Cardinality.forNumber((Number) selectorValue, locale);
+				return cardinalityForValue(key, selectorValueName, selectorValue, locale, "Selector value");
 			case ORDINALITY:
-				if (!(selectorValue instanceof Number))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Number.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return Ordinality.forNumber((Number) selectorValue, locale);
+				return ordinalityForValue(key, selectorValueName, selectorValue, locale, "Selector value");
 			case GENDER:
 				if (!(selectorValue instanceof Gender))
 					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
@@ -1056,10 +1198,39 @@ class DefaultStrings implements Strings {
 		if (languageRanges.isEmpty())
 			return getFallbackLocale();
 
+		if (languageRanges.size() > MAX_LANGUAGE_RANGES)
+			throw new IllegalArgumentException(format("At most %d language ranges are supported, but received %d",
+					MAX_LANGUAGE_RANGES, languageRanges.size()));
+
 		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(languageRanges);
 		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
 		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
 		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
+
+		// A locale can match more than one language range. Its effective quality is taken from the
+		// most-specific matching range so, for example, "en;q=1,en-US;q=0" excludes en-US without
+		// excluding en-GB. Restricting the candidate set up front also prevents a broad, high-quality
+		// range from selecting a locale whose more-specific range has a lower quality.
+		Map<@NonNull Locale, @NonNull Double> effectiveWeightsByLocale = new LinkedHashMap<>();
+		double highestEffectiveWeight = 0.0;
+
+		for (Locale availableLocale : availableLocales) {
+			double effectiveWeight = effectiveWeightFor(availableLocale, sortedLanguageRanges);
+
+			if (effectiveWeight > 0.0) {
+				effectiveWeightsByLocale.put(availableLocale, effectiveWeight);
+				highestEffectiveWeight = Math.max(highestEffectiveWeight, effectiveWeight);
+			}
+		}
+
+		if (highestEffectiveWeight > 0.0) {
+			double requiredWeight = highestEffectiveWeight;
+			availableLocales.removeIf(locale -> Double.compare(effectiveWeightsByLocale.getOrDefault(locale, 0.0), requiredWeight) != 0);
+		} else {
+			// Preserve the API's configured-fallback contract when no supported locale is acceptable.
+			// A future strict negotiation result can represent this state without manufacturing a match.
+			return getFallbackLocale();
+		}
 
 		// Walk through each LanguageRange in preference order
 		for (LanguageRange languageRange : sortedLanguageRanges) {
@@ -1070,18 +1241,27 @@ class DefaultStrings implements Strings {
 				continue;
 
 			if ("*".equals(range))
-				return getFallbackLocale();
+				return availableLocales.contains(getFallbackLocale()) ? getFallbackLocale() : availableLocales.get(0);
 
 			if (CldrLocaleData.hasUndeterminedLanguage(range))
 				continue;
 
 			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
 
-			// Exact or CLDR-canonical tag match?
+			// An actual exact catalog must win over a different catalog with a canonically equivalent tag.
 			for (Locale locale : availableLocales)
-				if (locale.toLanguageTag().equalsIgnoreCase(range) ||
-						CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag()).equalsIgnoreCase(canonicalRange))
+				if (locale.toLanguageTag().equalsIgnoreCase(range))
 					return locale;
+
+			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
+			// so honor configured tiebreakers rather than returning the first lexicographic alias.
+			List<@NonNull Locale> canonicalMatches = availableLocales.stream()
+					.filter(locale -> CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag()).equalsIgnoreCase(canonicalRange))
+					.collect(Collectors.toList());
+			Optional<@NonNull Locale> canonicalMatch = preferredLocaleForRange(canonicalRange, canonicalMatches);
+
+			if (canonicalMatch.isPresent())
+				return canonicalMatch.get();
 
 			Optional<Locale> lookupMatch = lookupMatchByFallbackCandidates(range, availableLocales);
 
@@ -1144,6 +1324,91 @@ class DefaultStrings implements Strings {
 		return getFallbackLocale();
 	}
 
+	private double effectiveWeightFor(@NonNull Locale locale,
+															@NonNull List<@NonNull LanguageRange> languageRanges) {
+		requireNonNull(locale);
+		requireNonNull(languageRanges);
+
+		int bestSpecificity = -1;
+		double effectiveWeight = -1.0;
+
+		for (LanguageRange languageRange : languageRanges) {
+			int specificity = languageRangeSpecificityFor(locale, languageRange);
+
+			if (specificity < 0)
+				continue;
+
+			// Negative ranges exclude syntactic or canonical matches, not locales that are merely related
+			// through Lokalized's CLDR parent/likely-subtag fallback heuristics. For example, en-US;q=0
+			// must not also exclude en-GB.
+			if (languageRange.getWeight() <= 0.0 && specificity < 8_000)
+				continue;
+
+			if (specificity > bestSpecificity ||
+					(specificity == bestSpecificity && languageRange.getWeight() > effectiveWeight)) {
+				bestSpecificity = specificity;
+				effectiveWeight = languageRange.getWeight();
+			}
+		}
+
+		return effectiveWeight;
+	}
+
+	private int languageRangeSpecificityFor(@NonNull Locale locale, @NonNull LanguageRange languageRange) {
+		requireNonNull(locale);
+		requireNonNull(languageRange);
+
+		String range = languageRange.getRange();
+		String localeTag = locale.toLanguageTag();
+
+		if ("*".equals(range))
+			return 0;
+
+		if (CldrLocaleData.hasUndeterminedLanguage(range))
+			return -1;
+
+		int subtagCount = range.split("-").length;
+
+		if (localeTag.equalsIgnoreCase(range))
+			return 10_000 + subtagCount;
+
+		List<Locale> directlyFiltered = Locale.filter(Collections.singletonList(languageRange),
+				Collections.singletonList(locale), Locale.FilteringMode.EXTENDED_FILTERING);
+
+		if (!directlyFiltered.isEmpty())
+			return 8_000 + subtagCount;
+
+		if (range.contains("*"))
+			return -1;
+
+		String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
+		String canonicalLocaleTag = CldrLocaleData.canonicalLanguageTag(localeTag);
+
+		if (canonicalLocaleTag.equalsIgnoreCase(canonicalRange))
+			return 9_000 + subtagCount;
+
+		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
+
+		for (int index = 0; index < fallbackLocales.size(); ++index)
+			if (CldrLocaleData.equivalent(locale, fallbackLocales.get(index)))
+				return 7_000 + subtagCount - Math.min(index, 999);
+
+		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(range);
+		Optional<String> availableLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(locale);
+
+		if (requestedLanguageScript.isPresent() && availableLanguageScript.isPresent() &&
+				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get()))
+			return 6_000 + subtagCount;
+
+		String requestedPrimary = normalizedLanguageCode(range.split("-")[0]);
+		Optional<String> availablePrimary = LocaleUtils.normalizedLanguage(locale);
+
+		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary))
+			return 5_000 + subtagCount;
+
+		return -1;
+	}
+
 	@NonNull
 	private Locale localeFor(@NonNull TranslationOptions options) {
 		requireNonNull(options);
@@ -1193,9 +1458,14 @@ class DefaultStrings implements Strings {
 		if (localizedStrings != null)
 			return localizedStrings;
 
-		for (Entry<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> entry : getLocalizedStringsByKeyByLocale().entrySet())
-			if (CldrLocaleData.equivalent(entry.getKey(), locale))
-				return entry.getValue();
+		List<@NonNull Locale> equivalentLocales = getLocalizedStringsByKeyByLocale().keySet().stream()
+				.filter(candidate -> CldrLocaleData.equivalent(candidate, locale))
+				.sorted(Comparator.comparing(Locale::toLanguageTag))
+				.collect(Collectors.toList());
+		Optional<@NonNull Locale> preferredLocale = preferredLocaleForRange(locale.toLanguageTag(), equivalentLocales);
+
+		if (preferredLocale.isPresent())
+			return getLocalizedStringsByKeyByLocale().get(preferredLocale.get());
 
 		return null;
 	}
@@ -1209,15 +1479,53 @@ class DefaultStrings implements Strings {
 		if (range.contains("*"))
 			return Optional.empty();
 
-		for (Locale candidateLocale : CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range))) {
+		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
+
+		for (Locale candidateLocale : fallbackLocales) {
 			String candidateTag = candidateLocale.toLanguageTag();
 
 			for (Locale locale : availableLocales)
-				if (locale.toLanguageTag().equalsIgnoreCase(candidateTag) || CldrLocaleData.equivalent(locale, candidateLocale))
+				if (locale.toLanguageTag().equalsIgnoreCase(candidateTag))
 					return Optional.of(locale);
 		}
 
+		for (Locale candidateLocale : fallbackLocales) {
+			List<@NonNull Locale> equivalentMatches = availableLocales.stream()
+					.filter(locale -> CldrLocaleData.equivalent(locale, candidateLocale))
+					.collect(Collectors.toList());
+			Optional<@NonNull Locale> equivalentMatch = preferredLocaleForRange(candidateLocale.toLanguageTag(),
+					equivalentMatches);
+
+			if (equivalentMatch.isPresent())
+				return equivalentMatch;
+		}
+
 		return Optional.empty();
+	}
+
+	@NonNull
+	private Optional<@NonNull Locale> preferredLocaleForRange(@NonNull String range,
+																								 @NonNull List<@NonNull Locale> candidates) {
+		requireNonNull(range);
+		requireNonNull(candidates);
+
+		if (candidates.isEmpty())
+			return Optional.empty();
+
+		if (candidates.size() == 1)
+			return Optional.of(candidates.get(0));
+
+		String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
+		String primary = normalizedLanguageCode(canonicalRange.split("-")[0]);
+		Optional<@NonNull Locale> tiebreakerMatch = lookupMatchByTiebreakers(primary, candidates);
+
+		if (tiebreakerMatch.isPresent())
+			return tiebreakerMatch;
+
+		if (candidates.contains(getFallbackLocale()))
+			return Optional.of(getFallbackLocale());
+
+		return Optional.of(candidates.get(0));
 	}
 
 	private boolean matchesLikelyLanguageScript(@NonNull Locale requestedLocale, @NonNull Locale candidateLocale) {

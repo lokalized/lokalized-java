@@ -47,6 +47,7 @@ public interface LocaleMatcher {
 	 *
 	 * @param languageRanges the ordered list of language ranges for which to find the best match.
 	 * @return the best-matching locale, not null
+	 * @throws IllegalArgumentException if more than 1000 language ranges are supplied
 	 */
 	@NonNull
 	Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges);

@@ -309,12 +309,17 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 
 [`bestMatchFor(Locale)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.Locale)) and [`bestMatchFor(List<LanguageRange>)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) match requested locale preferences against the locales loaded from your strings files. Matching is deterministic and follows these broad rules:
 
-* Exact strings-file locale matches win first, including CLDR-canonical equivalents for deprecated or legacy language tags
+* An exact strings-file locale tag wins before a CLDR-canonical-equivalent tag; deprecated and legacy aliases are then considered
 * CLDR parent locales are considered before looser language-only matches. For example, `en-AU` can prefer a configured `en-001` file before `en`
 * Matching is script-aware when CLDR likely-subtag data can infer a script. For example, `zh-TW` can match `zh-Hant`, and `sr-Latn` is distinct from `sr-Cyrl`
 * The Norwegian macrolanguage tag `no` and Norwegian Bokmål tag `nb` bridge to each other as a compatibility fallback; exact files still win first
 * If multiple supported files share the same language and no exact, parent, or script-aware match resolves the request, `tiebreakerLocalesByLanguageCode` controls which locale wins
+* Language-range quality weights are honored, and a `q=0` range excludes that locale and its matching descendants when another acceptable loaded locale remains
 * `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
+
+`LocaleMatcher` accepts at most 1,000 language ranges per call to bound work on untrusted `Accept-Language`
+input. Its current non-null contract also means that if every loaded locale is excluded with `q=0`, it returns the
+configured fallback; a future strict negotiation API can represent “no acceptable locale” separately.
 
 ## Loading Localized Strings
 
@@ -335,6 +340,23 @@ Strings classpathStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"
 Classpath package names use slash-separated resource paths such as `strings` or `com/example/strings`. [`loadFromClasspath(String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.String)) first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use [`loadFromClasspath(ClassLoader, String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.ClassLoader,java.lang.String)) for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
 
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
+Classpath package names must be nonempty slash-relative paths and may not contain empty, `.` or `..` segments.
+
+Loading is bounded per resource by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
+The default limit is 16 MiB for a `Path` or `InputStream`, 16 MiB characters for a `Reader`, and 128 levels of
+JSON object/array nesting. Overloads accepting loading options can lower the limits; the parser's hard maximum nesting
+depth is 128. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected—use `{}` for an
+intentionally empty catalog.
+
+```java
+LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
+  .maximumInputBytes(4 * 1024 * 1024)
+  .maximumJsonNestingDepth(64)
+  .build();
+
+Map<Locale, Set<LocalizedString>> catalogs =
+  LocalizedStringLoader.loadFromClasspath("strings", limits);
+```
 
 ## Per-Invocation Options
 
@@ -1046,6 +1068,8 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 Lokalized provides a [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) type which encapsulates cardinal functionality.
 
+[`Cardinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#getSupportedLocaleTags()) returns the BCP 47 locale tags backed by the pinned CLDR data.
+
 You may programmatically determine cardinality using [`Cardinality#forNumber(Number number, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.util.Locale)) and [`Cardinality#forNumber(Number number, Integer visibleDecimalPlaces, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.lang.Integer,java.util.Locale)) as shown below.
 
 It is important to note that the number of visible decimal places can be important for some languages when performing cardinality evaluation.  For example, in English, `1` matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) but `1.0` matches [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER).  Even though the numbers' true values are identical, you would say `1 inch` and `1.0 inches` and therefore must take visible decimals into account.
@@ -1085,6 +1109,10 @@ PluralOperands operands = PluralOperands.forNumber(2)
 cardinality = Cardinality.forOperands(operands, Locale.forLanguageTag("fr"));
 assertEquals(Cardinality.MANY, cardinality);
 ```
+
+`visibleDecimalPlaces(...)` may add trailing zeroes, but it never rounds a number implicitly. If reducing the
+scale would discard a nonzero digit, `build()` throws `ArithmeticException`; round the displayed value explicitly
+before constructing its operands so plural selection and presentation cannot silently disagree.
 
 ### Plural Cardinality Ranges
 
@@ -1297,21 +1325,24 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 [`Ordinality#forOperands(PluralOperands operands, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale)) is also available for advanced CLDR operand cases.
 
+[`Ordinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#getSupportedLocaleTags()) returns the BCP 47 locale tags for which ordinality operations are available.
+
 ## CLDR Data
 
-Lokalized's cardinality, ordinality, cardinality-range, locale matching, and locale-tag validation behavior is generated from pinned Unicode CLDR 48.2 XML data.
+Lokalized's cardinality, ordinality, cardinality-range, locale matching, locale-tag validation, and right-to-left script behavior is generated from pinned Unicode CLDR 48.2 source data.
 
-Pinned CLDR resources live under [src/test/resources/cldr/48.2](https://github.com/lokalized/lokalized-java/tree/master/src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, and generated CLDR conformance fixtures are checked in under `src/test/java`.
+Pinned CLDR resources live under [src/test/resources/cldr/48.2](https://github.com/lokalized/lokalized-java/tree/master/src/test/resources/cldr/48.2). That directory records the upstream source URLs, SHA-256 checksums, license note, refresh commands, and generator command. Generated runtime data is checked in under `src/main/java`, exhaustive conformance fixtures are checked in under `src/test/java`, and the website-facing grouped plural data (`formatVersion: 1`) is checked in at `src/build/resources/cldr/cldr-plural-data.json`.
 
 After refreshing CLDR data, regenerate the checked-in sources and run the conformance tests before committing:
 
 ```shell
 javac -d target/cldr-generator src/build/java/com/lokalized/cldr/CldrDataGenerator.java
 java -cp target/cldr-generator com.lokalized.cldr.CldrDataGenerator
+java -cp target/cldr-generator com.lokalized.cldr.CldrDataGenerator --check
 mvn -q test
 ```
 
-The normal Maven build also compiles the generator sources as test sources, so `mvn verify` catches generator compile failures without packaging the generator in the runtime jar.
+The normal Maven build compiles the generator as test code and performs a byte-for-byte drift check across every generated Java and JSON artifact. The generator is not packaged in the runtime JAR.
 
 ## Translation Failure Handling
 
@@ -1355,6 +1386,7 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 ### Structure
 
 * Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW` (an optional `.json` suffix like `en.json` is also accepted; do not provide both for the same locale)
+* A blank or BOM-only file is invalid; use `{}` for an intentionally empty catalog
 * The file must contain a single toplevel JSON object
 * The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
 * The value for a translation key can be a string (simple cases) or an object (complex cases)
@@ -1483,7 +1515,7 @@ Lokalized supports 2 placeholder formats:
 
 In the simple format:
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type.  Lokalized will convert [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according the language's rules, and [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale.
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints, and selectors accept the corresponding cardinality and ordinality forms.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
@@ -1493,6 +1525,12 @@ Supported values for `translations` are [`Cardinality`](https://javadoc.lokalize
 In the simple format, you may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).  Use the selector-driven format when one placeholder depends on more than one agreement dimension.
 
 Simple placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens. Use selector-driven placeholders with a default rule if you need data-level fallback behavior.
+
+Lokalized evaluates only translation-file-defined placeholders that are reachable from the selected translation.
+A selected language-form or selector-rule value may itself reference application-supplied placeholders or other
+translation-file-defined placeholders; those fragments are expanded recursively. Cycles, excessive nesting, and
+interpolated output above 1,048,576 characters fail resolution clearly. Application-supplied values remain opaque and are never reinterpreted as template syntax, even
+when a value contains text such as `{{name}}`.
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 

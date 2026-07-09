@@ -73,16 +73,16 @@ public class CardinalityTests {
   }
 
   @Test
-  public void supportedLanguageCodesExposeUndInsteadOfRoot() {
-    assertTrue(Cardinality.getSupportedLanguageCodes().contains("und"));
-    assertFalse(Cardinality.getSupportedLanguageCodes().contains("root"));
+  public void supportedLocaleTagsExposeUndInsteadOfRoot() {
+    assertTrue(Cardinality.getSupportedLocaleTags().contains("und"));
+    assertFalse(Cardinality.getSupportedLocaleTags().contains("root"));
     assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, Locale.forLanguageTag("und")));
   }
 
   @Test
   public void exampleIntegerValues() {
-    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
-      Locale locale = Locale.forLanguageTag(languageCode);
+    for (String localeTag : Cardinality.getSupportedLocaleTags()) {
+      Locale locale = Locale.forLanguageTag(localeTag);
 
       for (Entry<Cardinality, Range<Integer>> entry : Cardinality.exampleIntegerValuesForLocale(locale).entrySet()) {
         Cardinality cardinality = entry.getKey();
@@ -99,8 +99,8 @@ public class CardinalityTests {
 
   @Test
   public void exampleDecimalValues() {
-    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
-      Locale locale = Locale.forLanguageTag(languageCode);
+    for (String localeTag : Cardinality.getSupportedLocaleTags()) {
+      Locale locale = Locale.forLanguageTag(localeTag);
 
       for (Entry<Cardinality, Range<BigDecimal>> entry : Cardinality.exampleDecimalValuesForLocale(locale).entrySet()) {
         Cardinality cardinality = entry.getKey();
@@ -124,8 +124,8 @@ public class CardinalityTests {
       for (Cardinality end : Cardinality.values())
         allCardinalityRanges.add(CardinalityRange.of(start, end));
 
-    for (String languageCode : Cardinality.getSupportedLanguageCodes()) {
-      Locale locale = Locale.forLanguageTag(languageCode);
+    for (String localeTag : Cardinality.getSupportedLocaleTags()) {
+      Locale locale = Locale.forLanguageTag(localeTag);
       SortedMap<CardinalityRange, Cardinality> cardinalitiesByCardinalityRange = CldrPluralRules.cardinalityRangesForLocale(locale);
 
       for (CardinalityRange cardinalityRange : allCardinalityRanges) {

@@ -21,7 +21,6 @@ import org.jspecify.annotations.NonNull;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 import java.util.Optional;
-import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
@@ -36,48 +35,12 @@ final class BidiUtils {
   private static final char RIGHT_TO_LEFT_ISOLATE;
   private static final char FIRST_STRONG_ISOLATE;
   private static final char POP_DIRECTIONAL_ISOLATE;
-  @NonNull
-  private static final Set<@NonNull String> RIGHT_TO_LEFT_SCRIPT_CODES;
 
   static {
     LEFT_TO_RIGHT_ISOLATE = '\u2066';
     RIGHT_TO_LEFT_ISOLATE = '\u2067';
     FIRST_STRONG_ISOLATE = '\u2068';
     POP_DIRECTIONAL_ISOLATE = '\u2069';
-    RIGHT_TO_LEFT_SCRIPT_CODES = Set.of(
-        "Adlm",
-        "Arab",
-        "Armi",
-        "Avst",
-        "Chrs",
-        "Cprt",
-        "Elym",
-        "Hatr",
-        "Hebr",
-        "Khar",
-        "Lydi",
-        "Mand",
-        "Mani",
-        "Mend",
-        "Merc",
-        "Mero",
-        "Narb",
-        "Nbat",
-        "Nkoo",
-        "Orkh",
-        "Palm",
-        "Phli",
-        "Phlp",
-        "Phnx",
-        "Prti",
-        "Rohg",
-        "Samr",
-        "Sarb",
-        "Sogd",
-        "Syrc",
-        "Thaa",
-        "Yezi"
-    );
   }
 
   private BidiUtils() {
@@ -96,7 +59,7 @@ final class BidiUtils {
         script = Locale.forLanguageTag(likelySubtag.get()).getScript();
     }
 
-    return RIGHT_TO_LEFT_SCRIPT_CODES.contains(script);
+    return CldrLocaleData.isRightToLeftScript(script);
   }
 
   @NonNull

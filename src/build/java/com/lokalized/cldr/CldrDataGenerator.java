@@ -57,6 +57,7 @@ public final class CldrDataGenerator {
   private static final String LIKELY_SUBTAGS_RESOURCE = "common/supplemental/likelySubtags.xml";
   private static final String SUPPLEMENTAL_METADATA_RESOURCE = "common/supplemental/supplementalMetadata.xml";
   private static final String SUPPLEMENTAL_DATA_RESOURCE = "common/supplemental/supplementalData.xml";
+  private static final String SCRIPT_METADATA_RESOURCE = "common/properties/scriptMetadata.txt";
   private static final String VALIDITY_LANGUAGE_RESOURCE = "common/validity/language.xml";
   private static final String VALIDITY_SCRIPT_RESOURCE = "common/validity/script.xml";
   private static final String VALIDITY_REGION_RESOURCE = "common/validity/region.xml";
@@ -67,105 +68,13 @@ public final class CldrDataGenerator {
   private static final String LIKELY_SUBTAGS_SHA_256 = "b0049bc6420715b1e3010f43d95745dca227c5aa60357d1d89a1bdcb06287312";
   private static final String SUPPLEMENTAL_METADATA_SHA_256 = "36e807ce72b15304dd993f132216f408351be1c4376edaa2fe9e9547e2efcac1";
   private static final String SUPPLEMENTAL_DATA_SHA_256 = "cd2af39aef82fdbfba4d591c87548203350538ad2318486d104b3b38b8d62f1a";
+  private static final String SCRIPT_METADATA_SHA_256 = "50a0499acddd7a5ce935e8d77b59ab789f91b16c15b95b00236d90137fe662a4";
   private static final String VALIDITY_LANGUAGE_SHA_256 = "3f2be6cb8f4a1b506a5bc8d79d3a91349f3061ade565f836c534c00c2efd2996";
   private static final String VALIDITY_SCRIPT_SHA_256 = "30f7f5f64be0df200bdfe42f7ce103a045ab661490885a7f060f31d4199be948";
   private static final String VALIDITY_REGION_SHA_256 = "e751e0eedd46b52c38f3cdb72b0fab61ac8b48e052e8b28ba74b6ac26c4c8cb1";
   private static final String VALIDITY_VARIANT_SHA_256 = "49019a8e903802a75197d47ef9854d24655bdac373b8667cf00a33fd9205676e";
   private static final int GENERATED_DATA_CHUNK_SIZE = 24;
   private static final int GENERATED_STRING_DATA_CHUNK_SIZE = 128;
-  private static final SampleRequest[] CARDINALITY_SAMPLE_REQUESTS = new SampleRequest[] {
-      sample("he", "0.5"),
-      sample("he", "100"),
-      sample("is", "0.1"),
-      sample("is", "0.2"),
-      sample("mk", "11"),
-      sample("mk", "21"),
-      sample("mt", "2"),
-      sample("mt", "20"),
-      sample("fr", "1000000"),
-      sample("fr", "1c6"),
-      sample("fr", "1c3"),
-      sample("fr", "1.1c6"),
-      sample("fr", "1.1c3"),
-      sample("es", "1000000"),
-      sample("es", "1c6"),
-      sample("es", "1c3"),
-      sample("pt", "1000000"),
-      sample("ca", "1000000"),
-      sample("it", "1000000"),
-      sample("pt_PT", "0"),
-      sample("pt_PT", "1"),
-      sample("pt_PT", "1000000")
-  };
-  private static final SampleRequest[] ORDINALITY_SAMPLE_REQUESTS = new SampleRequest[] {
-      sample("en", "1"),
-      sample("en", "2"),
-      sample("en", "3"),
-      sample("en", "4"),
-      sample("en", "11"),
-      sample("en", "12"),
-      sample("en", "13"),
-      sample("en", "21"),
-      sample("it", "8"),
-      sample("it", "11"),
-      sample("it", "80"),
-      sample("it", "800"),
-      sample("it", "1"),
-      sample("cy", "0"),
-      sample("cy", "1"),
-      sample("cy", "2"),
-      sample("cy", "3"),
-      sample("cy", "5"),
-      sample("cy", "10"),
-      sample("as", "1"),
-      sample("as", "2"),
-      sample("as", "4"),
-      sample("as", "6"),
-      sample("as", "11"),
-      sample("gu", "1"),
-      sample("gu", "2"),
-      sample("gu", "4"),
-      sample("gu", "6"),
-      sample("gu", "5"),
-      sample("mk", "1"),
-      sample("mk", "2"),
-      sample("mk", "7"),
-      sample("mk", "8"),
-      sample("mk", "11"),
-      sample("mk", "12"),
-      sample("mk", "17"),
-      sample("mk", "18"),
-      sample("mk", "21"),
-      sample("sv", "1"),
-      sample("sv", "2"),
-      sample("sv", "11"),
-      sample("sv", "12"),
-      sample("sv", "21"),
-      sample("sv", "22"),
-      sample("be", "2"),
-      sample("be", "3"),
-      sample("be", "12"),
-      sample("be", "13"),
-      sample("be", "22"),
-      sample("az", "0"),
-      sample("az", "1"),
-      sample("az", "3"),
-      sample("az", "6"),
-      sample("az", "9"),
-      sample("tk", "6"),
-      sample("tk", "10"),
-      sample("gd", "11"),
-      sample("or", "6"),
-      sample("kw", "5")
-  };
-  private static final RangeRequest[] CARDINALITY_RANGE_SAMPLE_REQUESTS = new RangeRequest[] {
-      range("fa", "other", "one"),
-      range("ak", "other", "one"),
-      range("or", "other", "one"),
-      range("as", "one", "one"),
-      range("ps", "one", "one"),
-      range("tk", "other", "one")
-  };
 
   private CldrDataGenerator() {
     // Non-instantiable
@@ -174,23 +83,24 @@ public final class CldrDataGenerator {
   /**
    * Runs the generator.
    *
-   * @param args optional project root path; defaults to the current working directory
+   * @param args optional project root path and {@code --check}; defaults to generating in the current working directory
    */
   public static void main(String[] args) {
     try {
-      Path projectRoot = args.length == 0 ? Paths.get("").toAbsolutePath() : Paths.get(args[0]).toAbsolutePath();
-      new Generator(projectRoot).generate();
+      Path projectRoot = Paths.get("").toAbsolutePath();
+      boolean check = false;
+
+      for (String arg : args) {
+        if ("--check".equals(arg))
+          check = true;
+        else
+          projectRoot = Paths.get(arg).toAbsolutePath();
+      }
+
+      new Generator(projectRoot).generate(check);
     } catch (Exception e) {
       throw new IllegalStateException("Unable to generate CLDR data", e);
     }
-  }
-
-  private static SampleRequest sample(String cldrLocale, String sample) {
-    return new SampleRequest(cldrLocale, sample);
-  }
-
-  private static RangeRequest range(String cldrLocale, String start, String end) {
-    return new RangeRequest(cldrLocale, start, end);
   }
 
   private static final class Generator {
@@ -198,21 +108,24 @@ public final class CldrDataGenerator {
     private final Path runtimeOutputPath;
     private final Path localeOutputPath;
     private final Path conformanceOutputPath;
+    private final Path jsonOutputPath;
 
     private Generator(Path projectRoot) {
       this.cldrRoot = projectRoot.resolve("src/test/resources/cldr").resolve(CLDR_VERSION);
       this.runtimeOutputPath = projectRoot.resolve("src/main/java/com/lokalized/GeneratedCldrPluralData.java");
       this.localeOutputPath = projectRoot.resolve("src/main/java/com/lokalized/GeneratedCldrLocaleData.java");
       this.conformanceOutputPath = projectRoot.resolve("src/test/java/com/lokalized/GeneratedCldrConformanceData.java");
+      this.jsonOutputPath = projectRoot.resolve("src/build/resources/cldr/cldr-plural-data.json");
     }
 
-    private void generate() throws Exception {
+    private void generate(boolean check) throws Exception {
       verifySha256(PLURALS_RESOURCE, PLURALS_SHA_256);
       verifySha256(ORDINALS_RESOURCE, ORDINALS_SHA_256);
       verifySha256(PLURAL_RANGES_RESOURCE, PLURAL_RANGES_SHA_256);
       verifySha256(LIKELY_SUBTAGS_RESOURCE, LIKELY_SUBTAGS_SHA_256);
       verifySha256(SUPPLEMENTAL_METADATA_RESOURCE, SUPPLEMENTAL_METADATA_SHA_256);
       verifySha256(SUPPLEMENTAL_DATA_RESOURCE, SUPPLEMENTAL_DATA_SHA_256);
+      verifySha256(SCRIPT_METADATA_RESOURCE, SCRIPT_METADATA_SHA_256);
       verifySha256(VALIDITY_LANGUAGE_RESOURCE, VALIDITY_LANGUAGE_SHA_256);
       verifySha256(VALIDITY_SCRIPT_RESOURCE, VALIDITY_SCRIPT_SHA_256);
       verifySha256(VALIDITY_REGION_RESOURCE, VALIDITY_REGION_SHA_256);
@@ -221,41 +134,45 @@ public final class CldrDataGenerator {
       List<LocaleRules> cardinalRules = localeRulesFor(PLURALS_RESOURCE);
       List<LocaleRules> ordinalRules = localeRulesFor(ORDINALS_RESOURCE);
       List<LocaleRanges> cardinalRanges = localeRangesFor();
-      List<CardinalitySample> cardinalitySamples = cardinalitySamples();
-      List<OrdinalitySample> ordinalitySamples = ordinalitySamples();
-      List<CardinalityRangeSample> cardinalityRangeSamples = cardinalityRangeSamples();
+      List<LocaleRuleGroup> cardinalRuleGroups = localeRuleGroupsFor(PLURALS_RESOURCE);
+      List<LocaleRuleGroup> ordinalRuleGroups = localeRuleGroupsFor(ORDINALS_RESOURCE);
+      List<LocaleRangeGroup> cardinalRangeGroups = localeRangeGroupsFor();
       LocaleData localeData = localeData();
 
-      Files.createDirectories(runtimeOutputPath.getParent());
-      Files.write(runtimeOutputPath, runtimeSourceFor(cardinalRules, ordinalRules, cardinalRanges).getBytes(StandardCharsets.UTF_8));
-
-      Files.createDirectories(localeOutputPath.getParent());
-      Files.write(localeOutputPath, localeSourceFor(localeData).getBytes(StandardCharsets.UTF_8));
-
-      Files.createDirectories(conformanceOutputPath.getParent());
-      Files.write(conformanceOutputPath, conformanceSourceFor(cardinalitySamples, ordinalitySamples, cardinalityRangeSamples).getBytes(StandardCharsets.UTF_8));
+      writeOrVerify(runtimeOutputPath, runtimeSourceFor(cardinalRules, ordinalRules, cardinalRanges), check);
+      writeOrVerify(localeOutputPath, localeSourceFor(localeData), check);
+      writeOrVerify(conformanceOutputPath, conformanceSourceFor(cardinalRuleGroups, ordinalRuleGroups, cardinalRangeGroups), check);
+      writeOrVerify(jsonOutputPath, pluralDataJsonFor(cardinalRuleGroups, ordinalRuleGroups, cardinalRangeGroups), check);
     }
 
     private List<LocaleRules> localeRulesFor(String resourceName) {
       Map<String, LocaleRules> rulesByLocale = new LinkedHashMap<>();
+
+      for (LocaleRuleGroup ruleGroup : localeRuleGroupsFor(resourceName))
+        for (String locale : ruleGroup.getLocales())
+          rulesByLocale.put(locale, new LocaleRules(locale, ruleGroup.getRules()));
+
+      List<LocaleRules> localeRules = new ArrayList<>(rulesByLocale.values());
+      localeRules.sort(Comparator.comparing(LocaleRules::getLocale));
+      return Collections.unmodifiableList(localeRules);
+    }
+
+    private List<LocaleRuleGroup> localeRuleGroupsFor(String resourceName) {
+      List<LocaleRuleGroup> ruleGroups = new ArrayList<>();
       Document document = documentFor(resourceName);
       NodeList pluralRules = document.getElementsByTagName("pluralRules");
 
       for (int i = 0; i < pluralRules.getLength(); ++i) {
         Element pluralRuleGroup = (Element) pluralRules.item(i);
-        List<Rule> rules = rulesFor(pluralRuleGroup);
+        List<String> locales = canonicalLocalesFor(pluralRuleGroup.getAttribute("locales"));
 
-        for (String rawLocale : pluralRuleGroup.getAttribute("locales").split("\\s+")) {
-          String locale = canonicalLocale(rawLocale);
-
-          if (locale.length() > 0)
-            rulesByLocale.put(locale, new LocaleRules(locale, rules));
-        }
+        if (!locales.isEmpty())
+          ruleGroups.add(new LocaleRuleGroup(locales, rulesFor(pluralRuleGroup)));
       }
 
-      List<LocaleRules> localeRules = new ArrayList<>(rulesByLocale.values());
-      localeRules.sort(Comparator.comparing(LocaleRules::getLocale));
-      return Collections.unmodifiableList(localeRules);
+      ruleGroups.sort(Comparator.comparing(group -> String.join(" ", group.getLocales())));
+      verifyUniqueLocales(ruleGroups, resourceName);
+      return Collections.unmodifiableList(ruleGroups);
     }
 
     private List<Rule> rulesFor(Element pluralRuleGroup) {
@@ -270,7 +187,7 @@ public final class CldrDataGenerator {
         SampleList integerSamples = samplesFor(ruleText, "@integer");
         SampleList decimalSamples = samplesFor(ruleText, "@decimal");
 
-        rules.add(new Rule(count, condition, integerSamples, decimalSamples));
+        rules.add(new Rule(count, condition, integerSamples, decimalSamples, conformanceSamplesFor(ruleText)));
       }
 
       return Collections.unmodifiableList(rules);
@@ -278,24 +195,50 @@ public final class CldrDataGenerator {
 
     private List<LocaleRanges> localeRangesFor() {
       Map<String, LocaleRanges> rangesByLocale = new LinkedHashMap<>();
+
+      for (LocaleRangeGroup rangeGroup : localeRangeGroupsFor())
+        for (String locale : rangeGroup.getLocales())
+          rangesByLocale.put(locale, new LocaleRanges(locale, rangeGroup.getRangeRules()));
+
+      List<LocaleRanges> localeRanges = new ArrayList<>(rangesByLocale.values());
+      localeRanges.sort(Comparator.comparing(LocaleRanges::getLocale));
+      return Collections.unmodifiableList(localeRanges);
+    }
+
+    private List<LocaleRangeGroup> localeRangeGroupsFor() {
+      List<LocaleRangeGroup> rangeGroups = new ArrayList<>();
       Document document = documentFor(PLURAL_RANGES_RESOURCE);
       NodeList pluralRanges = document.getElementsByTagName("pluralRanges");
 
       for (int i = 0; i < pluralRanges.getLength(); ++i) {
         Element pluralRangeGroup = (Element) pluralRanges.item(i);
-        List<RangeRule> rangeRules = rangeRulesFor(pluralRangeGroup);
+        List<String> locales = canonicalLocalesFor(pluralRangeGroup.getAttribute("locales"));
 
-        for (String rawLocale : pluralRangeGroup.getAttribute("locales").split("\\s+")) {
-          String locale = canonicalLocale(rawLocale);
-
-          if (locale.length() > 0)
-            rangesByLocale.put(locale, new LocaleRanges(locale, rangeRules));
-        }
+        if (!locales.isEmpty())
+          rangeGroups.add(new LocaleRangeGroup(locales, rangeRulesFor(pluralRangeGroup)));
       }
 
-      List<LocaleRanges> localeRanges = new ArrayList<>(rangesByLocale.values());
-      localeRanges.sort(Comparator.comparing(LocaleRanges::getLocale));
-      return Collections.unmodifiableList(localeRanges);
+      rangeGroups.sort(Comparator.comparing(group -> String.join(" ", group.getLocales())));
+      verifyUniqueRangeLocales(rangeGroups);
+      return Collections.unmodifiableList(rangeGroups);
+    }
+
+    private void verifyUniqueLocales(List<LocaleRuleGroup> ruleGroups, String resourceName) {
+      Set<String> seenLocales = new LinkedHashSet<>();
+
+      for (LocaleRuleGroup ruleGroup : ruleGroups)
+        for (String locale : ruleGroup.getLocales())
+          if (!seenLocales.add(locale))
+            throw new IllegalStateException(format("Duplicate canonical locale '%s' in %s", locale, resourceName));
+    }
+
+    private void verifyUniqueRangeLocales(List<LocaleRangeGroup> rangeGroups) {
+      Set<String> seenLocales = new LinkedHashSet<>();
+
+      for (LocaleRangeGroup rangeGroup : rangeGroups)
+        for (String locale : rangeGroup.getLocales())
+          if (!seenLocales.add(locale))
+            throw new IllegalStateException(format("Duplicate canonical locale '%s' in %s", locale, PLURAL_RANGES_RESOURCE));
     }
 
     private List<RangeRule> rangeRulesFor(Element pluralRangeGroup) {
@@ -311,69 +254,50 @@ public final class CldrDataGenerator {
       return Collections.unmodifiableList(rangeRules);
     }
 
-    private List<CardinalitySample> cardinalitySamples() {
-      List<CardinalitySample> samples = new ArrayList<>();
-
-      for (SampleRequest request : CARDINALITY_SAMPLE_REQUESTS) {
-        SampleValue sampleValue = SampleValue.forToken(request.getSample());
-        samples.add(new CardinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(), sampleValue.getNumericSample(),
-            sampleValue.getCompactExponent(), countForSample(PLURALS_RESOURCE, request.getCldrLocale(), sampleValue)));
-      }
-
-      return Collections.unmodifiableList(samples);
-    }
-
-    private List<OrdinalitySample> ordinalitySamples() {
-      List<OrdinalitySample> samples = new ArrayList<>();
-
-      for (SampleRequest request : ORDINALITY_SAMPLE_REQUESTS) {
-        SampleValue sampleValue = SampleValue.forToken(request.getSample());
-        samples.add(new OrdinalitySample(canonicalLocale(request.getCldrLocale()), request.getSample(), sampleValue.getNumericSample(),
-            sampleValue.getCompactExponent(), countForSample(ORDINALS_RESOURCE, request.getCldrLocale(), sampleValue)));
-      }
-
-      return Collections.unmodifiableList(samples);
-    }
-
-    private List<CardinalityRangeSample> cardinalityRangeSamples() {
-      List<CardinalityRangeSample> samples = new ArrayList<>();
-
-      for (RangeRequest request : CARDINALITY_RANGE_SAMPLE_REQUESTS)
-        samples.add(new CardinalityRangeSample(canonicalLocale(request.getCldrLocale()), request.getStart(), request.getEnd(),
-            countForRange(request.getCldrLocale(), request.getStart(), request.getEnd())));
-
-      return Collections.unmodifiableList(samples);
-    }
-
     private LocaleData localeData() {
       return new LocaleData(
-          aliasesFor("languageAlias"),
-          aliasesFor("scriptAlias"),
-          aliasesFor("territoryAlias"),
-          aliasesFor("variantAlias"),
+          aliasesFor("languageAlias", false),
+          aliasesFor("scriptAlias", false),
+          aliasesFor("territoryAlias", true),
+          aliasesFor("variantAlias", false),
           likelySubtags(),
           parentLocales(),
+          rightToLeftScripts(),
           validSubtags(VALIDITY_LANGUAGE_RESOURCE, "language"),
           validSubtags(VALIDITY_SCRIPT_RESOURCE, "script"),
           validSubtags(VALIDITY_REGION_RESOURCE, "region"),
           validSubtags(VALIDITY_VARIANT_RESOURCE, "variant"));
     }
 
-    private List<StringPair> aliasesFor(String elementName) {
+    private List<StringPair> aliasesFor(String elementName, boolean preserveAllReplacements) {
       Map<String, String> aliasesByType = new LinkedHashMap<>();
       Document document = documentFor(SUPPLEMENTAL_METADATA_RESOURCE);
       NodeList aliases = document.getElementsByTagName(elementName);
+      String aliasType = aliasTypeFor(elementName);
 
       for (int i = 0; i < aliases.getLength(); ++i) {
         Element alias = (Element) aliases.item(i);
-        String type = canonicalCldrTag(alias.getAttribute("type"));
-        String replacement = firstReplacement(alias.getAttribute("replacement"));
+        String type = canonicalAliasValue(alias.getAttribute("type"), aliasType);
+        String replacement = canonicalReplacements(alias.getAttribute("replacement"), aliasType, preserveAllReplacements);
 
         if (type.length() > 0 && replacement.length() > 0)
-          aliasesByType.put(type, canonicalCldrTag(replacement));
+          aliasesByType.put(type, replacement);
       }
 
       return stringPairsFor(aliasesByType);
+    }
+
+    private String aliasTypeFor(String elementName) {
+      if ("languageAlias".equals(elementName))
+        return "language";
+      if ("scriptAlias".equals(elementName))
+        return "script";
+      if ("territoryAlias".equals(elementName))
+        return "region";
+      if ("variantAlias".equals(elementName))
+        return "variant";
+
+      throw new IllegalArgumentException(format("Unsupported CLDR alias element '%s'", elementName));
     }
 
     private List<StringPair> likelySubtags() {
@@ -416,6 +340,46 @@ public final class CldrDataGenerator {
       }
 
       return stringPairsFor(parentsByLocale);
+    }
+
+    private List<String> rightToLeftScripts() {
+      Set<String> scripts = new LinkedHashSet<>();
+      Path path = cldrRoot.resolve(SCRIPT_METADATA_RESOURCE);
+
+      try {
+        for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
+          String data = line.split("#", 2)[0].trim();
+
+          if (data.length() == 0)
+            continue;
+
+          String[] fields = data.split(";");
+
+          if (fields.length > 6 && "YES".equals(fields[6].trim()))
+            scripts.add(canonicalValiditySubtag(fields[0].trim(), "script"));
+        }
+      } catch (Exception e) {
+        throw new IllegalStateException(format("Unable to parse CLDR resource '%s'", path), e);
+      }
+
+      List<String> sortedScripts = new ArrayList<>(scripts);
+      sortedScripts.sort(String::compareTo);
+      return Collections.unmodifiableList(sortedScripts);
+    }
+
+    private List<String> canonicalLocalesFor(String rawLocales) {
+      Set<String> uniqueLocales = new LinkedHashSet<>();
+
+      for (String rawLocale : rawLocales.split("\\s+")) {
+        String locale = canonicalLocale(rawLocale);
+
+        if (locale.length() > 0)
+          uniqueLocales.add(locale);
+      }
+
+      List<String> locales = new ArrayList<>(uniqueLocales);
+      locales.sort(String::compareTo);
+      return Collections.unmodifiableList(locales);
     }
 
     private List<String> validSubtags(String resourceName, String type) {
@@ -484,10 +448,24 @@ public final class CldrDataGenerator {
       return Collections.unmodifiableList(pairs);
     }
 
-    private String firstReplacement(String replacement) {
-      String trimmedReplacement = replacement.trim();
-      int separatorIndex = trimmedReplacement.indexOf(' ');
-      return separatorIndex < 0 ? trimmedReplacement : trimmedReplacement.substring(0, separatorIndex);
+    private String canonicalReplacements(String replacements, String aliasType, boolean preserveAllReplacements) {
+      List<String> canonicalReplacements = new ArrayList<>();
+
+      for (String replacement : replacements.trim().split("\\s+")) {
+        String canonicalReplacement = canonicalAliasValue(replacement, aliasType);
+
+        if (canonicalReplacement.length() > 0)
+          canonicalReplacements.add(canonicalReplacement);
+
+        if (!preserveAllReplacements)
+          break;
+      }
+
+      return String.join(" ", canonicalReplacements);
+    }
+
+    private String canonicalAliasValue(String value, String aliasType) {
+      return "language".equals(aliasType) ? canonicalCldrTag(value) : canonicalValiditySubtag(value, aliasType);
     }
 
     private String canonicalCldrTag(String tag) {
@@ -588,6 +566,166 @@ public final class CldrDataGenerator {
       return source.toString();
     }
 
+    private String pluralDataJsonFor(List<LocaleRuleGroup> cardinalRuleGroups,
+                                     List<LocaleRuleGroup> ordinalRuleGroups,
+                                     List<LocaleRangeGroup> cardinalRangeGroups) {
+      StringBuilder json = new StringBuilder();
+      json.append("{\n")
+          .append("  \"formatVersion\": 1,\n")
+          .append("  \"cldrVersion\": \"").append(jsonEscape(CLDR_VERSION)).append("\",\n")
+          .append("  \"cardinalRuleGroups\": [\n");
+      appendJsonRuleGroups(json, cardinalRuleGroups);
+      json.append("  ],\n")
+          .append("  \"ordinalRuleGroups\": [\n");
+      appendJsonRuleGroups(json, ordinalRuleGroups);
+      json.append("  ],\n")
+          .append("  \"cardinalRangeGroups\": [\n");
+      appendJsonRangeGroups(json, cardinalRangeGroups);
+      json.append("  ]\n")
+          .append("}\n");
+      return json.toString();
+    }
+
+    private void appendJsonRuleGroups(StringBuilder json, List<LocaleRuleGroup> ruleGroups) {
+      for (int groupIndex = 0; groupIndex < ruleGroups.size(); ++groupIndex) {
+        LocaleRuleGroup ruleGroup = ruleGroups.get(groupIndex);
+        json.append("    {\n")
+            .append("      \"locales\": ");
+        appendJsonLocales(json, ruleGroup.getLocales());
+        json.append(",\n")
+            .append("      \"rules\": [\n");
+
+        for (int ruleIndex = 0; ruleIndex < ruleGroup.getRules().size(); ++ruleIndex) {
+          Rule rule = ruleGroup.getRules().get(ruleIndex);
+          json.append("        {\n")
+              .append("          \"count\": \"").append(jsonEscape(rule.getCount())).append("\",\n")
+              .append("          \"condition\": \"").append(jsonEscape(rule.getCondition())).append("\",\n")
+              .append("          \"integerExample\": ");
+          appendJsonExample(json, rule.getIntegerSamples());
+          json.append(",\n")
+              .append("          \"decimalExample\": ");
+          appendJsonExample(json, rule.getDecimalSamples());
+          json.append("\n")
+              .append("        }");
+
+          if (ruleIndex < ruleGroup.getRules().size() - 1)
+            json.append(",");
+
+          json.append("\n");
+        }
+
+        json.append("      ]\n")
+            .append("    }");
+
+        if (groupIndex < ruleGroups.size() - 1)
+          json.append(",");
+
+        json.append("\n");
+      }
+    }
+
+    private void appendJsonExample(StringBuilder json, SampleList sampleList) {
+      json.append("{\"values\": [");
+
+      for (int i = 0; i < sampleList.getValues().size(); ++i) {
+        if (i > 0)
+          json.append(", ");
+
+        json.append("\"").append(jsonEscape(sampleList.getValues().get(i))).append("\"");
+      }
+
+      json.append("], \"infinite\": ").append(sampleList.isInfinite()).append("}");
+    }
+
+    private void appendJsonRangeGroups(StringBuilder json, List<LocaleRangeGroup> rangeGroups) {
+      for (int groupIndex = 0; groupIndex < rangeGroups.size(); ++groupIndex) {
+        LocaleRangeGroup rangeGroup = rangeGroups.get(groupIndex);
+        json.append("    {\n")
+            .append("      \"locales\": ");
+        appendJsonLocales(json, rangeGroup.getLocales());
+        json.append(",\n")
+            .append("      \"ranges\": [\n");
+
+        for (int rangeIndex = 0; rangeIndex < rangeGroup.getRangeRules().size(); ++rangeIndex) {
+          RangeRule rangeRule = rangeGroup.getRangeRules().get(rangeIndex);
+          json.append("        {\"start\": \"").append(jsonEscape(rangeRule.getStart()))
+              .append("\", \"end\": \"").append(jsonEscape(rangeRule.getEnd()))
+              .append("\", \"result\": \"").append(jsonEscape(rangeRule.getResult())).append("\"}");
+
+          if (rangeIndex < rangeGroup.getRangeRules().size() - 1)
+            json.append(",");
+
+          json.append("\n");
+        }
+
+        json.append("      ]\n")
+            .append("    }");
+
+        if (groupIndex < rangeGroups.size() - 1)
+          json.append(",");
+
+        json.append("\n");
+      }
+    }
+
+    private void appendJsonLocales(StringBuilder json, List<String> locales) {
+      json.append("[");
+
+      for (int i = 0; i < locales.size(); ++i) {
+        if (i > 0)
+          json.append(", ");
+
+        json.append("\"").append(jsonEscape(publicLocale(locales.get(i)))).append("\"");
+      }
+
+      json.append("]");
+    }
+
+    private String jsonEscape(String value) {
+      StringBuilder escaped = new StringBuilder(value.length());
+
+      for (int i = 0; i < value.length(); ++i) {
+        char character = value.charAt(i);
+
+        switch (character) {
+          case '\\':
+            escaped.append("\\\\");
+            break;
+          case '"':
+            escaped.append("\\\"");
+            break;
+          case '\n':
+            escaped.append("\\n");
+            break;
+          case '\r':
+            escaped.append("\\r");
+            break;
+          case '\t':
+            escaped.append("\\t");
+            break;
+          default:
+            if (character < 0x20)
+              escaped.append(format("\\u%04x", (int) character));
+            else
+              escaped.append(character);
+        }
+      }
+
+      return escaped.toString();
+    }
+
+    private void writeOrVerify(Path outputPath, String content, boolean check) throws Exception {
+      if (check) {
+        if (!Files.exists(outputPath) || !content.equals(new String(Files.readAllBytes(outputPath), StandardCharsets.UTF_8)))
+          throw new IllegalStateException(format("Generated CLDR artifact is out of date: %s", outputPath));
+
+        return;
+      }
+
+      Files.createDirectories(outputPath.getParent());
+      Files.write(outputPath, content.getBytes(StandardCharsets.UTF_8));
+    }
+
     private String localeSourceFor(LocaleData localeData) {
       StringBuilder source = new StringBuilder();
       appendCopyrightAndPackage(source);
@@ -605,6 +743,8 @@ public final class CldrDataGenerator {
           .append("  @NonNull\n")
           .append("  static final String SUPPLEMENTAL_DATA_RESOURCE = \"").append(SUPPLEMENTAL_DATA_RESOURCE).append("\";\n")
           .append("  @NonNull\n")
+          .append("  static final String SCRIPT_METADATA_RESOURCE = \"").append(SCRIPT_METADATA_RESOURCE).append("\";\n")
+          .append("  @NonNull\n")
           .append("  static final String VALIDITY_LANGUAGE_RESOURCE = \"").append(VALIDITY_LANGUAGE_RESOURCE).append("\";\n")
           .append("  @NonNull\n")
           .append("  static final String VALIDITY_SCRIPT_RESOURCE = \"").append(VALIDITY_SCRIPT_RESOURCE).append("\";\n")
@@ -619,6 +759,8 @@ public final class CldrDataGenerator {
           .append("  @NonNull\n")
           .append("  static final String SUPPLEMENTAL_DATA_SHA_256 = \"").append(SUPPLEMENTAL_DATA_SHA_256).append("\";\n")
           .append("  @NonNull\n")
+          .append("  static final String SCRIPT_METADATA_SHA_256 = \"").append(SCRIPT_METADATA_SHA_256).append("\";\n")
+          .append("  @NonNull\n")
           .append("  static final String VALIDITY_LANGUAGE_SHA_256 = \"").append(VALIDITY_LANGUAGE_SHA_256).append("\";\n")
           .append("  @NonNull\n")
           .append("  static final String VALIDITY_SCRIPT_SHA_256 = \"").append(VALIDITY_SCRIPT_SHA_256).append("\";\n")
@@ -632,6 +774,7 @@ public final class CldrDataGenerator {
       appendStringPairsField(source, "VARIANT_ALIASES", "variantAliases", localeData.getVariantAliases());
       appendStringPairsField(source, "LIKELY_SUBTAGS", "likelySubtags", localeData.getLikelySubtags());
       appendStringPairsField(source, "PARENT_LOCALES", "parentLocales", localeData.getParentLocales());
+      appendStringArrayField(source, "RTL_SCRIPTS", "rightToLeftScripts", localeData.getRightToLeftScripts());
       appendStringArrayField(source, "VALID_LANGUAGES", "validLanguages", localeData.getValidLanguages());
       appendStringArrayField(source, "VALID_SCRIPTS", "validScripts", localeData.getValidScripts());
       appendStringArrayField(source, "VALID_REGIONS", "validRegions", localeData.getValidRegions());
@@ -648,6 +791,7 @@ public final class CldrDataGenerator {
       appendStringPairsMethods(source, "variantAliases", localeData.getVariantAliases());
       appendStringPairsMethods(source, "likelySubtags", localeData.getLikelySubtags());
       appendStringPairsMethods(source, "parentLocales", localeData.getParentLocales());
+      appendStringArrayMethods(source, "rightToLeftScripts", localeData.getRightToLeftScripts());
       appendStringArrayMethods(source, "validLanguages", localeData.getValidLanguages());
       appendStringArrayMethods(source, "validScripts", localeData.getValidScripts());
       appendStringArrayMethods(source, "validRegions", localeData.getValidRegions());
@@ -657,9 +801,9 @@ public final class CldrDataGenerator {
       return source.toString();
     }
 
-    private String conformanceSourceFor(List<CardinalitySample> cardinalitySamples,
-                                        List<OrdinalitySample> ordinalitySamples,
-                                        List<CardinalityRangeSample> cardinalityRangeSamples) {
+    private String conformanceSourceFor(List<LocaleRuleGroup> cardinalRuleGroups,
+                                        List<LocaleRuleGroup> ordinalRuleGroups,
+                                        List<LocaleRangeGroup> cardinalRangeGroups) {
       StringBuilder source = new StringBuilder();
       appendCopyrightAndPackage(source);
       source.append("import java.util.Arrays;\n")
@@ -688,17 +832,17 @@ public final class CldrDataGenerator {
           .append("  @NonNull\n")
           .append("  static final String PLURAL_RANGES_SHA_256 = \"").append(PLURAL_RANGES_SHA_256).append("\";\n")
           .append("  @NonNull\n")
-          .append("  private static final List<@NonNull CardinalitySample> CARDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(\n");
+          .append("  private static final List<@NonNull PluralRule<@NonNull Cardinality>> CARDINALITY_RULES = Collections.unmodifiableList(Arrays.asList(\n");
 
-      appendCardinalitySamples(source, cardinalitySamples);
+      appendCardinalityConformanceRules(source, cardinalRuleGroups);
       source.append("  ));\n")
           .append("  @NonNull\n")
-          .append("  private static final List<@NonNull OrdinalitySample> ORDINALITY_SAMPLES = Collections.unmodifiableList(Arrays.asList(\n");
-      appendOrdinalitySamples(source, ordinalitySamples);
+          .append("  private static final List<@NonNull PluralRule<@NonNull Ordinality>> ORDINALITY_RULES = Collections.unmodifiableList(Arrays.asList(\n");
+      appendOrdinalityConformanceRules(source, ordinalRuleGroups);
       source.append("  ));\n")
           .append("  @NonNull\n")
-          .append("  private static final List<@NonNull CardinalityRangeSample> CARDINALITY_RANGE_SAMPLES = Collections.unmodifiableList(Arrays.asList(\n");
-      appendCardinalityRangeSamples(source, cardinalityRangeSamples);
+          .append("  private static final List<@NonNull CardinalityRangeRule> CARDINALITY_RANGE_RULES = Collections.unmodifiableList(Arrays.asList(\n");
+      appendCardinalityRangeConformanceRules(source, cardinalRangeGroups);
       source.append("  ));\n")
           .append("\n")
           .append("  private GeneratedCldrConformanceData() {\n")
@@ -706,20 +850,20 @@ public final class CldrDataGenerator {
           .append("  }\n")
           .append("\n")
           .append("  @NonNull\n")
-          .append("  static List<@NonNull CardinalitySample> cardinalitySamples() {\n")
-          .append("    return CARDINALITY_SAMPLES;\n")
+          .append("  static List<@NonNull PluralRule<@NonNull Cardinality>> cardinalityRules() {\n")
+          .append("    return CARDINALITY_RULES;\n")
           .append("  }\n")
           .append("\n")
           .append("  @NonNull\n")
-          .append("  static List<@NonNull OrdinalitySample> ordinalitySamples() {\n")
-          .append("    return ORDINALITY_SAMPLES;\n")
+          .append("  static List<@NonNull PluralRule<@NonNull Ordinality>> ordinalityRules() {\n")
+          .append("    return ORDINALITY_RULES;\n")
           .append("  }\n")
           .append("\n")
           .append("  @NonNull\n")
-          .append("  static List<@NonNull CardinalityRangeSample> cardinalityRangeSamples() {\n")
-          .append("    return CARDINALITY_RANGE_SAMPLES;\n")
+          .append("  static List<@NonNull CardinalityRangeRule> cardinalityRangeRules() {\n")
+          .append("    return CARDINALITY_RANGE_RULES;\n")
           .append("  }\n");
-      appendSampleClasses(source);
+      appendConformanceClasses(source);
       source.append("}\n");
 
       return source.toString();
@@ -1061,161 +1205,119 @@ public final class CldrDataGenerator {
       source.append(")");
     }
 
-    private void appendCardinalitySamples(StringBuilder source, List<CardinalitySample> samples) {
-      for (int i = 0; i < samples.size(); ++i) {
-        CardinalitySample sample = samples.get(i);
-        source.append("      new CardinalitySample(\"").append(sample.getCldrLocale()).append("\", \"")
-            .append(sample.getSample()).append("\", \"").append(sample.getNumericSample()).append("\", ")
-            .append(sample.getCompactExponent()).append(", Cardinality.").append(javaEnumName(sample.getExpected())).append(")");
+    private void appendCardinalityConformanceRules(StringBuilder source, List<LocaleRuleGroup> ruleGroups) {
+      appendPluralConformanceRules(source, ruleGroups, "Cardinality");
+    }
 
-        if (i < samples.size() - 1)
-          source.append(",");
+    private void appendOrdinalityConformanceRules(StringBuilder source, List<LocaleRuleGroup> ruleGroups) {
+      appendPluralConformanceRules(source, ruleGroups, "Ordinality");
+    }
 
-        source.append("\n");
+    private void appendPluralConformanceRules(StringBuilder source, List<LocaleRuleGroup> ruleGroups, String enumName) {
+      int ruleIndex = 0;
+      int numberOfRules = numberOfRules(ruleGroups);
+
+      for (LocaleRuleGroup ruleGroup : ruleGroups) {
+        String locales = publicLocalesString(ruleGroup.getLocales());
+
+        for (Rule rule : ruleGroup.getRules()) {
+          source.append("      new PluralRule<>(\"").append(escape(locales)).append("\", ")
+              .append(enumName).append(".").append(javaEnumName(rule.getCount())).append(", \"")
+              .append(escape(String.join(" ", rule.getConformanceSamples()))).append("\")");
+
+          if (++ruleIndex < numberOfRules)
+            source.append(",");
+
+          source.append("\n");
+        }
       }
     }
 
-    private void appendOrdinalitySamples(StringBuilder source, List<OrdinalitySample> samples) {
-      for (int i = 0; i < samples.size(); ++i) {
-        OrdinalitySample sample = samples.get(i);
-        source.append("      new OrdinalitySample(\"").append(sample.getCldrLocale()).append("\", \"")
-            .append(sample.getSample()).append("\", \"").append(sample.getNumericSample()).append("\", ")
-            .append(sample.getCompactExponent()).append(", Ordinality.").append(javaEnumName(sample.getExpected())).append(")");
+    private void appendCardinalityRangeConformanceRules(StringBuilder source, List<LocaleRangeGroup> rangeGroups) {
+      int rangeIndex = 0;
+      int numberOfRanges = numberOfRanges(rangeGroups);
 
-        if (i < samples.size() - 1)
-          source.append(",");
+      for (LocaleRangeGroup rangeGroup : rangeGroups) {
+        String locales = publicLocalesString(rangeGroup.getLocales());
 
-        source.append("\n");
+        for (RangeRule rangeRule : rangeGroup.getRangeRules()) {
+          source.append("      new CardinalityRangeRule(\"").append(escape(locales)).append("\", Cardinality.")
+              .append(javaEnumName(rangeRule.getStart())).append(", Cardinality.").append(javaEnumName(rangeRule.getEnd()))
+              .append(", Cardinality.").append(javaEnumName(rangeRule.getResult())).append(")");
+
+          if (++rangeIndex < numberOfRanges)
+            source.append(",");
+
+          source.append("\n");
+        }
       }
     }
 
-    private void appendCardinalityRangeSamples(StringBuilder source, List<CardinalityRangeSample> samples) {
-      for (int i = 0; i < samples.size(); ++i) {
-        CardinalityRangeSample sample = samples.get(i);
-        source.append("      new CardinalityRangeSample(\"").append(sample.getCldrLocale()).append("\", Cardinality.")
-            .append(javaEnumName(sample.getStart())).append(", Cardinality.").append(javaEnumName(sample.getEnd()))
-            .append(", Cardinality.").append(javaEnumName(sample.getExpected())).append(")");
+    private int numberOfRules(List<LocaleRuleGroup> ruleGroups) {
+      int numberOfRules = 0;
 
-        if (i < samples.size() - 1)
-          source.append(",");
+      for (LocaleRuleGroup ruleGroup : ruleGroups)
+        numberOfRules += ruleGroup.getRules().size();
 
-        source.append("\n");
-      }
+      return numberOfRules;
     }
 
-    private void appendSampleClasses(StringBuilder source) {
+    private int numberOfRanges(List<LocaleRangeGroup> rangeGroups) {
+      int numberOfRanges = 0;
+
+      for (LocaleRangeGroup rangeGroup : rangeGroups)
+        numberOfRanges += rangeGroup.getRangeRules().size();
+
+      return numberOfRanges;
+    }
+
+    private String publicLocalesString(List<String> locales) {
+      List<String> publicLocales = new ArrayList<>(locales.size());
+
+      for (String locale : locales)
+        publicLocales.add(publicLocale(locale));
+
+      return String.join(" ", publicLocales);
+    }
+
+    private void appendConformanceClasses(StringBuilder source) {
       source.append("\n")
-          .append("  static final class CardinalitySample {\n")
+          .append("  static final class PluralRule<T> {\n")
           .append("    @NonNull\n")
-          .append("    private final String cldrLocale;\n")
+          .append("    private final String locales;\n")
           .append("    @NonNull\n")
-          .append("    private final String sample;\n")
+          .append("    private final T expected;\n")
           .append("    @NonNull\n")
-          .append("    private final String numericSample;\n")
-          .append("    private final int compactExponent;\n")
-          .append("    @NonNull\n")
-          .append("    private final Cardinality expected;\n")
+          .append("    private final String samples;\n")
           .append("\n")
-          .append("    private CardinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,\n")
-          .append("                              int compactExponent, @NonNull Cardinality expected) {\n")
-          .append("      requireNonNull(cldrLocale);\n")
-          .append("      requireNonNull(sample);\n")
-          .append("      requireNonNull(numericSample);\n")
+          .append("    private PluralRule(@NonNull String locales, @NonNull T expected, @NonNull String samples) {\n")
+          .append("      requireNonNull(locales);\n")
           .append("      requireNonNull(expected);\n")
-          .append("\n")
-          .append("      this.cldrLocale = cldrLocale;\n")
-          .append("      this.sample = sample;\n")
-          .append("      this.numericSample = numericSample;\n")
-          .append("      this.compactExponent = compactExponent;\n")
+          .append("      requireNonNull(samples);\n")
+          .append("      this.locales = locales;\n")
           .append("      this.expected = expected;\n")
+          .append("      this.samples = samples;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
-          .append("    String getCldrLocale() {\n")
-          .append("      return cldrLocale;\n")
+          .append("    String getLocales() {\n")
+          .append("      return locales;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
-          .append("    String getSample() {\n")
-          .append("      return sample;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    String getNumericSample() {\n")
-          .append("      return numericSample;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    boolean hasCompactExponent() {\n")
-          .append("      return compactExponent >= 0;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    int getCompactExponent() {\n")
-          .append("      return compactExponent;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    Cardinality getExpected() {\n")
+          .append("    T getExpected() {\n")
           .append("      return expected;\n")
+          .append("    }\n")
+          .append("\n")
+          .append("    @NonNull\n")
+          .append("    String getSamples() {\n")
+          .append("      return samples;\n")
           .append("    }\n")
           .append("  }\n")
           .append("\n")
-          .append("  static final class OrdinalitySample {\n")
+          .append("  static final class CardinalityRangeRule {\n")
           .append("    @NonNull\n")
-          .append("    private final String cldrLocale;\n")
-          .append("    @NonNull\n")
-          .append("    private final String sample;\n")
-          .append("    @NonNull\n")
-          .append("    private final String numericSample;\n")
-          .append("    private final int compactExponent;\n")
-          .append("    @NonNull\n")
-          .append("    private final Ordinality expected;\n")
-          .append("\n")
-          .append("    private OrdinalitySample(@NonNull String cldrLocale, @NonNull String sample, @NonNull String numericSample,\n")
-          .append("                             int compactExponent, @NonNull Ordinality expected) {\n")
-          .append("      requireNonNull(cldrLocale);\n")
-          .append("      requireNonNull(sample);\n")
-          .append("      requireNonNull(numericSample);\n")
-          .append("      requireNonNull(expected);\n")
-          .append("\n")
-          .append("      this.cldrLocale = cldrLocale;\n")
-          .append("      this.sample = sample;\n")
-          .append("      this.numericSample = numericSample;\n")
-          .append("      this.compactExponent = compactExponent;\n")
-          .append("      this.expected = expected;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    String getCldrLocale() {\n")
-          .append("      return cldrLocale;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    String getSample() {\n")
-          .append("      return sample;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    String getNumericSample() {\n")
-          .append("      return numericSample;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    boolean hasCompactExponent() {\n")
-          .append("      return compactExponent >= 0;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    int getCompactExponent() {\n")
-          .append("      return compactExponent;\n")
-          .append("    }\n")
-          .append("\n")
-          .append("    @NonNull\n")
-          .append("    Ordinality getExpected() {\n")
-          .append("      return expected;\n")
-          .append("    }\n")
-          .append("  }\n")
-          .append("\n")
-          .append("  static final class CardinalityRangeSample {\n")
-          .append("    @NonNull\n")
-          .append("    private final String cldrLocale;\n")
+          .append("    private final String locales;\n")
           .append("    @NonNull\n")
           .append("    private final Cardinality start;\n")
           .append("    @NonNull\n")
@@ -1223,22 +1325,21 @@ public final class CldrDataGenerator {
           .append("    @NonNull\n")
           .append("    private final Cardinality expected;\n")
           .append("\n")
-          .append("    private CardinalityRangeSample(@NonNull String cldrLocale, @NonNull Cardinality start, @NonNull Cardinality end,\n")
-          .append("                                   @NonNull Cardinality expected) {\n")
-          .append("      requireNonNull(cldrLocale);\n")
+          .append("    private CardinalityRangeRule(@NonNull String locales, @NonNull Cardinality start, @NonNull Cardinality end,\n")
+          .append("                                 @NonNull Cardinality expected) {\n")
+          .append("      requireNonNull(locales);\n")
           .append("      requireNonNull(start);\n")
           .append("      requireNonNull(end);\n")
           .append("      requireNonNull(expected);\n")
-          .append("\n")
-          .append("      this.cldrLocale = cldrLocale;\n")
+          .append("      this.locales = locales;\n")
           .append("      this.start = start;\n")
           .append("      this.end = end;\n")
           .append("      this.expected = expected;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
-          .append("    String getCldrLocale() {\n")
-          .append("      return cldrLocale;\n")
+          .append("    String getLocales() {\n")
+          .append("      return locales;\n")
           .append("    }\n")
           .append("\n")
           .append("    @NonNull\n")
@@ -1256,56 +1357,6 @@ public final class CldrDataGenerator {
           .append("      return expected;\n")
           .append("    }\n")
           .append("  }\n");
-    }
-
-    private String countForSample(String resourceName, String cldrLocale, SampleValue sample) {
-      Document document = documentFor(resourceName);
-      NodeList pluralRules = document.getElementsByTagName("pluralRules");
-
-      for (int i = 0; i < pluralRules.getLength(); ++i) {
-        Element pluralRuleGroup = (Element) pluralRules.item(i);
-
-        if (!containsLocale(pluralRuleGroup.getAttribute("locales"), cldrLocale))
-          continue;
-
-        NodeList pluralRuleElements = pluralRuleGroup.getElementsByTagName("pluralRule");
-
-        for (int j = 0; j < pluralRuleElements.getLength(); ++j) {
-          Element pluralRule = (Element) pluralRuleElements.item(j);
-
-          if (samplesContain(pluralRule.getTextContent(), sample))
-            return pluralRule.getAttribute("count");
-        }
-
-        throw new IllegalArgumentException(format("No pinned CLDR sample '%s' for locale '%s' in %s", sample.getCldrToken(), cldrLocale, resourceName));
-      }
-
-      throw new IllegalArgumentException(format("No pinned CLDR pluralRules data for locale '%s' in %s", cldrLocale, resourceName));
-    }
-
-    private String countForRange(String cldrLocale, String start, String end) {
-      Document document = documentFor(PLURAL_RANGES_RESOURCE);
-      NodeList pluralRanges = document.getElementsByTagName("pluralRanges");
-
-      for (int i = 0; i < pluralRanges.getLength(); ++i) {
-        Element pluralRangeGroup = (Element) pluralRanges.item(i);
-
-        if (!containsLocale(pluralRangeGroup.getAttribute("locales"), cldrLocale))
-          continue;
-
-        NodeList pluralRangeElements = pluralRangeGroup.getElementsByTagName("pluralRange");
-
-        for (int j = 0; j < pluralRangeElements.getLength(); ++j) {
-          Element pluralRange = (Element) pluralRangeElements.item(j);
-
-          if (pluralRange.getAttribute("start").equals(start) && pluralRange.getAttribute("end").equals(end))
-            return pluralRange.getAttribute("result");
-        }
-
-        return end;
-      }
-
-      throw new IllegalArgumentException(format("No pinned CLDR pluralRanges data for locale '%s'", cldrLocale));
     }
 
     private String conditionFor(String ruleText) {
@@ -1356,53 +1407,74 @@ public final class CldrDataGenerator {
       return new SampleList(infinite, values);
     }
 
-    private void addSampleValue(List<String> values, String rawValue) {
-      String value = rawValue.trim();
-
-      if (value.length() > 0 && !values.contains(value))
-        values.add(value);
+    private List<String> conformanceSamplesFor(String ruleText) {
+      LinkedHashSet<String> samples = new LinkedHashSet<>();
+      addConformanceSamplesFor(ruleText, "@integer", samples);
+      addConformanceSamplesFor(ruleText, "@decimal", samples);
+      return Collections.unmodifiableList(new ArrayList<>(samples));
     }
 
-    private boolean samplesContain(String ruleText, SampleValue sample) {
-      String marker = sample.isDecimal() ? "@decimal" : "@integer";
+    private void addConformanceSamplesFor(String ruleText, String marker, Set<String> samples) {
       int startIndex = ruleText.indexOf(marker);
 
       if (startIndex < 0)
-        return false;
+        return;
 
       startIndex += marker.length();
       int endIndex = ruleText.indexOf("@", startIndex);
       String sampleList = endIndex < 0 ? ruleText.substring(startIndex) : ruleText.substring(startIndex, endIndex);
 
       for (String rawToken : sampleList.split(",")) {
-        String token = rawToken.trim();
+        String token = rawToken.replace("\u2026", "").trim();
 
-        if (token.length() == 0 || token.indexOf('\u2026') >= 0)
+        if (token.length() == 0)
           continue;
 
-        if (token.indexOf('~') >= 0) {
-          String[] endpoints = token.split("~");
-
-          if (endpoints.length == 2 && inRange(sample, endpoints[0], endpoints[1]))
-            return true;
-        } else if (sample.equals(SampleValue.forToken(token))) {
-          return true;
+        if (token.indexOf('~') < 0) {
+          samples.add(token);
+          continue;
         }
-      }
 
-      return false;
+        String[] endpoints = token.split("~");
+
+        if (endpoints.length != 2)
+          throw new IllegalArgumentException(format("Unsupported CLDR sample range '%s'", token));
+
+        addExpandedConformanceRange(samples, endpoints[0], endpoints[1]);
+      }
     }
 
-    private boolean inRange(SampleValue sample, String minimum, String maximum) {
-      SampleValue minimumSample = SampleValue.forToken(minimum);
-      SampleValue maximumSample = SampleValue.forToken(maximum);
+    private void addExpandedConformanceRange(Set<String> samples, String rawMinimum, String rawMaximum) {
+      SampleValue minimum = SampleValue.forToken(rawMinimum);
+      SampleValue maximum = SampleValue.forToken(rawMaximum);
 
-      if (sample.getCompactExponent() != minimumSample.getCompactExponent() ||
-          sample.getCompactExponent() != maximumSample.getCompactExponent())
-        return false;
+      if (minimum.getCompactExponent() != maximum.getCompactExponent()) {
+        samples.add(minimum.getCldrToken());
+        samples.add(maximum.getCldrToken());
+        return;
+      }
 
-      return sample.getNumber().compareTo(minimumSample.getNumber()) >= 0 &&
-          sample.getNumber().compareTo(maximumSample.getNumber()) <= 0;
+      int scale = Math.max(minimum.getNumber().scale(), maximum.getNumber().scale());
+      BigDecimal increment = BigDecimal.ONE.scaleByPowerOfTen(-scale);
+      BigDecimal value = minimum.getNumber().setScale(scale);
+      BigDecimal maximumValue = maximum.getNumber().setScale(scale);
+      String compactSuffix = minimum.getCompactExponent() < 0 ? "" : "c" + minimum.getCompactExponent();
+      int expandedValues = 0;
+
+      while (value.compareTo(maximumValue) <= 0) {
+        samples.add(value.toPlainString() + compactSuffix);
+        value = value.add(increment);
+
+        if (++expandedValues > 10_000)
+          throw new IllegalArgumentException(format("Unreasonably large CLDR sample range '%s~%s'", rawMinimum, rawMaximum));
+      }
+    }
+
+    private void addSampleValue(List<String> values, String rawValue) {
+      String value = rawValue.trim();
+
+      if (value.length() > 0 && !values.contains(value))
+        values.add(value);
     }
 
     private Document documentFor(String resourceName) {
@@ -1419,14 +1491,6 @@ public final class CldrDataGenerator {
       }
     }
 
-    private boolean containsLocale(String locales, String cldrLocale) {
-      for (String locale : locales.split("\\s+"))
-        if (locale.equals(cldrLocale))
-          return true;
-
-      return false;
-    }
-
     private String canonicalLocale(String locale) {
       String canonicalLocale = locale.replace('_', '-');
 
@@ -1438,6 +1502,10 @@ public final class CldrDataGenerator {
         return "yi";
 
       return canonicalLocale;
+    }
+
+    private String publicLocale(String locale) {
+      return "root".equals(locale) ? "und" : locale;
     }
 
     private void verifySha256(String resourceName, String expected) throws Exception {
@@ -1477,6 +1545,7 @@ public final class CldrDataGenerator {
     private final List<StringPair> variantAliases;
     private final List<StringPair> likelySubtags;
     private final List<StringPair> parentLocales;
+    private final List<String> rightToLeftScripts;
     private final List<String> validLanguages;
     private final List<String> validScripts;
     private final List<String> validRegions;
@@ -1488,6 +1557,7 @@ public final class CldrDataGenerator {
                        List<StringPair> variantAliases,
                        List<StringPair> likelySubtags,
                        List<StringPair> parentLocales,
+                       List<String> rightToLeftScripts,
                        List<String> validLanguages,
                        List<String> validScripts,
                        List<String> validRegions,
@@ -1498,6 +1568,7 @@ public final class CldrDataGenerator {
       this.variantAliases = variantAliases;
       this.likelySubtags = likelySubtags;
       this.parentLocales = parentLocales;
+      this.rightToLeftScripts = rightToLeftScripts;
       this.validLanguages = validLanguages;
       this.validScripts = validScripts;
       this.validRegions = validRegions;
@@ -1526,6 +1597,10 @@ public final class CldrDataGenerator {
 
     private List<StringPair> getParentLocales() {
       return parentLocales;
+    }
+
+    private List<String> getRightToLeftScripts() {
+      return rightToLeftScripts;
     }
 
     private List<String> getValidLanguages() {
@@ -1581,17 +1656,38 @@ public final class CldrDataGenerator {
     }
   }
 
+  private static final class LocaleRuleGroup {
+    private final List<String> locales;
+    private final List<Rule> rules;
+
+    private LocaleRuleGroup(List<String> locales, List<Rule> rules) {
+      this.locales = Collections.unmodifiableList(new ArrayList<>(locales));
+      this.rules = rules;
+    }
+
+    private List<String> getLocales() {
+      return locales;
+    }
+
+    private List<Rule> getRules() {
+      return rules;
+    }
+  }
+
   private static final class Rule {
     private final String count;
     private final String condition;
     private final SampleList integerSamples;
     private final SampleList decimalSamples;
+    private final List<String> conformanceSamples;
 
-    private Rule(String count, String condition, SampleList integerSamples, SampleList decimalSamples) {
+    private Rule(String count, String condition, SampleList integerSamples, SampleList decimalSamples,
+                 List<String> conformanceSamples) {
       this.count = count;
       this.condition = condition;
       this.integerSamples = integerSamples;
       this.decimalSamples = decimalSamples;
+      this.conformanceSamples = conformanceSamples;
     }
 
     private String getCount() {
@@ -1608,6 +1704,10 @@ public final class CldrDataGenerator {
 
     private SampleList getDecimalSamples() {
       return decimalSamples;
+    }
+
+    private List<String> getConformanceSamples() {
+      return conformanceSamples;
     }
   }
 
@@ -1665,33 +1765,8 @@ public final class CldrDataGenerator {
       return number;
     }
 
-    private String getNumericSample() {
-      return number.toPlainString();
-    }
-
     private int getCompactExponent() {
       return compactExponent;
-    }
-
-    private boolean isDecimal() {
-      return number.scale() > 0;
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      if (this == other)
-        return true;
-
-      if (other == null || !getClass().equals(other.getClass()))
-        return false;
-
-      SampleValue that = (SampleValue) other;
-      return compactExponent == that.compactExponent && number.compareTo(that.number) == 0;
-    }
-
-    @Override
-    public int hashCode() {
-      return number.stripTrailingZeros().hashCode() * 31 + compactExponent;
     }
   }
 
@@ -1706,6 +1781,24 @@ public final class CldrDataGenerator {
 
     private String getLocale() {
       return locale;
+    }
+
+    private List<RangeRule> getRangeRules() {
+      return rangeRules;
+    }
+  }
+
+  private static final class LocaleRangeGroup {
+    private final List<String> locales;
+    private final List<RangeRule> rangeRules;
+
+    private LocaleRangeGroup(List<String> locales, List<RangeRule> rangeRules) {
+      this.locales = Collections.unmodifiableList(new ArrayList<>(locales));
+      this.rangeRules = rangeRules;
+    }
+
+    private List<String> getLocales() {
+      return locales;
     }
 
     private List<RangeRule> getRangeRules() {
@@ -1737,147 +1830,4 @@ public final class CldrDataGenerator {
     }
   }
 
-  private static final class SampleRequest {
-    private final String cldrLocale;
-    private final String sample;
-
-    private SampleRequest(String cldrLocale, String sample) {
-      this.cldrLocale = cldrLocale;
-      this.sample = sample;
-    }
-
-    private String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    private String getSample() {
-      return sample;
-    }
-  }
-
-  private static final class RangeRequest {
-    private final String cldrLocale;
-    private final String start;
-    private final String end;
-
-    private RangeRequest(String cldrLocale, String start, String end) {
-      this.cldrLocale = cldrLocale;
-      this.start = start;
-      this.end = end;
-    }
-
-    private String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    private String getStart() {
-      return start;
-    }
-
-    private String getEnd() {
-      return end;
-    }
-  }
-
-  private static final class CardinalitySample {
-    private final String cldrLocale;
-    private final String sample;
-    private final String numericSample;
-    private final int compactExponent;
-    private final String expected;
-
-    private CardinalitySample(String cldrLocale, String sample, String numericSample, int compactExponent, String expected) {
-      this.cldrLocale = cldrLocale;
-      this.sample = sample;
-      this.numericSample = numericSample;
-      this.compactExponent = compactExponent;
-      this.expected = expected;
-    }
-
-    private String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    private String getSample() {
-      return sample;
-    }
-
-    private String getNumericSample() {
-      return numericSample;
-    }
-
-    private int getCompactExponent() {
-      return compactExponent;
-    }
-
-    private String getExpected() {
-      return expected;
-    }
-  }
-
-  private static final class OrdinalitySample {
-    private final String cldrLocale;
-    private final String sample;
-    private final String numericSample;
-    private final int compactExponent;
-    private final String expected;
-
-    private OrdinalitySample(String cldrLocale, String sample, String numericSample, int compactExponent, String expected) {
-      this.cldrLocale = cldrLocale;
-      this.sample = sample;
-      this.numericSample = numericSample;
-      this.compactExponent = compactExponent;
-      this.expected = expected;
-    }
-
-    private String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    private String getSample() {
-      return sample;
-    }
-
-    private String getNumericSample() {
-      return numericSample;
-    }
-
-    private int getCompactExponent() {
-      return compactExponent;
-    }
-
-    private String getExpected() {
-      return expected;
-    }
-  }
-
-  private static final class CardinalityRangeSample {
-    private final String cldrLocale;
-    private final String start;
-    private final String end;
-    private final String expected;
-
-    private CardinalityRangeSample(String cldrLocale, String start, String end, String expected) {
-      this.cldrLocale = cldrLocale;
-      this.start = start;
-      this.end = end;
-      this.expected = expected;
-    }
-
-    private String getCldrLocale() {
-      return cldrLocale;
-    }
-
-    private String getStart() {
-      return start;
-    }
-
-    private String getEnd() {
-      return end;
-    }
-
-    private String getExpected() {
-      return expected;
-    }
-  }
 }

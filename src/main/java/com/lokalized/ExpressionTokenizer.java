@@ -142,9 +142,9 @@ class ExpressionTokenizer {
 
     tokenPatterns.append(format("(?<%s>%s)", WHITESPACE_GROUP_NAME, WHITESPACE_GROUP_PATTERN));
 
-    for (TokenType tokenType : PATTERNS_BY_TOKEN_TYPE.keySet())
-      tokenPatterns.append(format("|(?<%s>%s)", GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType),
-          PATTERNS_BY_TOKEN_TYPE.get(tokenType)));
+    for (Map.Entry<TokenType, String> entry : PATTERNS_BY_TOKEN_TYPE.entrySet())
+      tokenPatterns.append(format("|(?<%s>%s)", GROUP_NAMES_BY_TOKEN_TYPE.get(entry.getKey()),
+          entry.getValue()));
 
     tokenPatterns.append(format("|(?<%s>%s)", ERROR_GROUP_NAME, ERROR_GROUP_PATTERN));
 

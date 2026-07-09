@@ -138,6 +138,11 @@ public class StringInterpolatorTests {
   }
 
   @Test
+  public void lenientPlaceholderNameExtractionIgnoresMalformedSyntax() {
+    assertEquals(Set.of("real"), StringInterpolator.placeholderNamesInLeniently("bad}} {{invalid name}} {{real}}"));
+  }
+
+  @Test
   public void strictInterpolationRejectsMalformedPlaceholders() {
     StringInterpolator interpolator = new StringInterpolator();
 

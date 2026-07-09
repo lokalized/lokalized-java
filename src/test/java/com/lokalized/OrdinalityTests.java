@@ -69,16 +69,16 @@ public class OrdinalityTests {
   }
 
   @Test
-  public void supportedLanguageCodesExposeUndInsteadOfRoot() {
-    assertTrue(Ordinality.getSupportedLanguageCodes().contains("und"));
-    assertFalse(Ordinality.getSupportedLanguageCodes().contains("root"));
+  public void supportedLocaleTagsExposeUndInsteadOfRoot() {
+    assertTrue(Ordinality.getSupportedLocaleTags().contains("und"));
+    assertFalse(Ordinality.getSupportedLocaleTags().contains("root"));
     assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, Locale.forLanguageTag("und")));
   }
 
   @Test
   public void exampleIntegerValues() {
-    for (String languageCode : Ordinality.getSupportedLanguageCodes()) {
-      Locale locale = Locale.forLanguageTag(languageCode);
+    for (String localeTag : Ordinality.getSupportedLocaleTags()) {
+      Locale locale = Locale.forLanguageTag(localeTag);
 
       for (Map.Entry<Ordinality, Range<Integer>> entry : Ordinality.exampleIntegerValuesForLocale(locale).entrySet()) {
         Ordinality ordinality = entry.getKey();

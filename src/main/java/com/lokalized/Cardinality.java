@@ -135,6 +135,7 @@ public enum Cardinality implements LanguageForm {
    * If {@code visibleDecimalPlaces} is null, then the decimal places of {@code number} will be computed and used.
    * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
+   * Reducing the number's scale does not round implicitly; callers must supply an already-rounded value.
    * <p>
    * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
@@ -144,6 +145,7 @@ public enum Cardinality implements LanguageForm {
    * @param locale               the locale that drives pluralization, not null
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @throws ArithmeticException if the requested visible decimal places would require rounding
    */
   @NonNull
   public static Cardinality forNumber(@NonNull Number number, @Nullable Integer visibleDecimalPlaces, @NonNull Locale locale) {
@@ -258,7 +260,7 @@ public enum Cardinality implements LanguageForm {
    * @return the BCP 47 locale tags for which cardinality operations are supported, not null
    */
   @NonNull
-  public static SortedSet<@NonNull String> getSupportedLanguageCodes() {
+  public static SortedSet<@NonNull String> getSupportedLocaleTags() {
     return CldrPluralRules.cardinalitySupportedLocales();
   }
 

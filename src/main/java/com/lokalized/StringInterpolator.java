@@ -55,7 +55,7 @@ class StringInterpolator {
     requireNonNull(string);
     requireNonNull(context);
 
-    return interpolate(string, context, false).getValue();
+    return interpolate(string, context, false, 0).getValue();
   }
 
   @NonNull
@@ -63,24 +63,40 @@ class StringInterpolator {
     requireNonNull(string);
     requireNonNull(context);
 
-    return interpolate(string, context, true);
+    return interpolate(string, context, true, 0);
+  }
+
+  @NonNull
+  InterpolationResult interpolateStrictly(@NonNull String string,
+                                          @NonNull Map<@NonNull String, @Nullable Object> context,
+                                          int maximumOutputCharacters) {
+    requireNonNull(string);
+    requireNonNull(context);
+
+    if (maximumOutputCharacters <= 0)
+      throw new IllegalArgumentException("maximumOutputCharacters must be positive");
+
+    return interpolate(string, context, true, maximumOutputCharacters);
   }
 
   @NonNull
   private static InterpolationResult interpolate(@NonNull String string,
                                                  @NonNull Map<@NonNull String, @Nullable Object> context,
-                                                 boolean strict) {
+                                                 boolean strict,
+                                                 int maximumOutputCharacters) {
     requireNonNull(string);
     requireNonNull(context);
 
-    StringBuilder stringBuilder = new StringBuilder(string.length());
+    StringBuilder stringBuilder = new StringBuilder(maximumOutputCharacters == 0
+        ? string.length()
+        : Math.min(string.length(), maximumOutputCharacters));
     Set<@NonNull String> unresolvedPlaceholderNames = new LinkedHashSet<>();
     int index = 0;
 
     while (index < string.length()) {
       if (string.charAt(index) == ESCAPE_CHARACTER) {
         if (startsWith(string, String.valueOf(ESCAPE_CHARACTER), index + 1)) {
-          stringBuilder.append(ESCAPE_CHARACTER);
+          appendChecked(stringBuilder, ESCAPE_CHARACTER, maximumOutputCharacters);
           index += 2;
           continue;
         }
@@ -90,22 +106,23 @@ class StringInterpolator {
           int escapedPlaceholderEnd = string.indexOf(PLACEHOLDER_END, escapedPlaceholderStart + PLACEHOLDER_START.length());
 
           if (escapedPlaceholderEnd < 0) {
-            stringBuilder.append(string, escapedPlaceholderStart, string.length());
+            appendChecked(stringBuilder, string, escapedPlaceholderStart, string.length(), maximumOutputCharacters);
             break;
           }
 
-          stringBuilder.append(string, escapedPlaceholderStart, escapedPlaceholderEnd + PLACEHOLDER_END.length());
+          appendChecked(stringBuilder, string, escapedPlaceholderStart,
+              escapedPlaceholderEnd + PLACEHOLDER_END.length(), maximumOutputCharacters);
           index = escapedPlaceholderEnd + PLACEHOLDER_END.length();
           continue;
         }
 
         if (startsWith(string, PLACEHOLDER_END, index + 1)) {
-          stringBuilder.append(PLACEHOLDER_END);
+          appendChecked(stringBuilder, PLACEHOLDER_END, maximumOutputCharacters);
           index += 1 + PLACEHOLDER_END.length();
           continue;
         }
 
-        stringBuilder.append(ESCAPE_CHARACTER);
+        appendChecked(stringBuilder, ESCAPE_CHARACTER, maximumOutputCharacters);
         ++index;
         continue;
       }
@@ -115,13 +132,13 @@ class StringInterpolator {
           throw new IllegalArgumentException(format("Unexpected placeholder closing delimiter '%s' at index %d",
               PLACEHOLDER_END, index));
 
-        stringBuilder.append(PLACEHOLDER_END);
+        appendChecked(stringBuilder, PLACEHOLDER_END, maximumOutputCharacters);
         index += PLACEHOLDER_END.length();
         continue;
       }
 
       if (!startsWith(string, PLACEHOLDER_START, index)) {
-        stringBuilder.append(string.charAt(index));
+        appendChecked(stringBuilder, string.charAt(index), maximumOutputCharacters);
         ++index;
         continue;
       }
@@ -133,7 +150,7 @@ class StringInterpolator {
         if (strict)
           throw new IllegalArgumentException(format("Unclosed placeholder starting at index %d", placeholderStart));
 
-        stringBuilder.append(string, placeholderStart, string.length());
+        appendChecked(stringBuilder, string, placeholderStart, string.length(), maximumOutputCharacters);
         break;
       }
 
@@ -145,7 +162,8 @@ class StringInterpolator {
               "and contain only Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens",
               PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
 
-        stringBuilder.append(string, placeholderStart, placeholderEnd + PLACEHOLDER_END.length());
+        appendChecked(stringBuilder, string, placeholderStart,
+            placeholderEnd + PLACEHOLDER_END.length(), maximumOutputCharacters);
         index = placeholderEnd + PLACEHOLDER_END.length();
         continue;
       }
@@ -157,9 +175,11 @@ class StringInterpolator {
 
       if (value == null) {
         unresolvedPlaceholderNames.add(placeholderName);
-        stringBuilder.append(PLACEHOLDER_START).append(placeholderName).append(PLACEHOLDER_END);
+        appendChecked(stringBuilder, PLACEHOLDER_START, maximumOutputCharacters);
+        appendChecked(stringBuilder, placeholderName, maximumOutputCharacters);
+        appendChecked(stringBuilder, PLACEHOLDER_END, maximumOutputCharacters);
       } else {
-        stringBuilder.append(value);
+        appendChecked(stringBuilder, String.valueOf(value), maximumOutputCharacters);
       }
 
       index = placeholderEnd + PLACEHOLDER_END.length();
@@ -171,7 +191,48 @@ class StringInterpolator {
   @NonNull
   static Set<@NonNull String> placeholderNamesIn(@NonNull String string) {
     requireNonNull(string);
-    return interpolate(string, Collections.emptyMap(), true).getUnresolvedPlaceholderNames();
+    return interpolate(string, Collections.emptyMap(), true, 0).getUnresolvedPlaceholderNames();
+  }
+
+  @NonNull
+  static Set<@NonNull String> placeholderNamesInLeniently(@NonNull String string) {
+    requireNonNull(string);
+    return interpolate(string, Collections.emptyMap(), false, 0).getUnresolvedPlaceholderNames();
+  }
+
+  private static void appendChecked(@NonNull StringBuilder target, char value, int maximumOutputCharacters) {
+    requireNonNull(target);
+
+    if (maximumOutputCharacters > 0 && target.length() >= maximumOutputCharacters)
+      throw outputLimitExceeded(maximumOutputCharacters);
+
+    target.append(value);
+  }
+
+  private static void appendChecked(@NonNull StringBuilder target, @NonNull CharSequence value,
+                                    int maximumOutputCharacters) {
+    requireNonNull(target);
+    requireNonNull(value);
+    appendChecked(target, value, 0, value.length(), maximumOutputCharacters);
+  }
+
+  private static void appendChecked(@NonNull StringBuilder target, @NonNull CharSequence value,
+                                    int start, int end, int maximumOutputCharacters) {
+    requireNonNull(target);
+    requireNonNull(value);
+
+    int charactersToAppend = end - start;
+
+    if (maximumOutputCharacters > 0 && charactersToAppend > maximumOutputCharacters - target.length())
+      throw outputLimitExceeded(maximumOutputCharacters);
+
+    target.append(value, start, end);
+  }
+
+  @NonNull
+  private static IllegalStateException outputLimitExceeded(int maximumOutputCharacters) {
+    return new IllegalStateException(format(
+        "Interpolated output exceeds the maximum of %d characters", maximumOutputCharacters));
   }
 
   private static boolean startsWith(@NonNull String string, @NonNull String prefix, int index) {
