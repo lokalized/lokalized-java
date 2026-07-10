@@ -22,17 +22,42 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * Contract for matching an input {@link Locale} or {@link List}{@code <}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
  * <p>
  * Lokalized's implementation prefers exact and CLDR-canonical matches, then CLDR parent-locale fallback,
  * then script-aware likely-subtag matches. If multiple supported strings files still share the same language,
  * configured tiebreakers determine which locale wins. Unmatched, root, and undetermined requests resolve to the
- * configured fallback locale.
+ * configured fallback locale when using {@code bestMatchFor(...)}. The strict {@code matchFor(...)} methods represent
+ * the same state as an unmatched {@link LocaleMatchResult} instead of manufacturing a match.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public interface LocaleMatcher {
+	/**
+	 * Strictly negotiates a locale without manufacturing a configured-fallback match.
+	 *
+	 * @param locale requested locale, not null
+	 * @return diagnostic match result, not null
+	 */
+	@NonNull
+	default LocaleMatchResult matchFor(@NonNull Locale locale) {
+		requireNonNull(locale);
+		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
+	}
+
+	/**
+	 * Strictly negotiates language ranges without manufacturing a configured-fallback match.
+	 *
+	 * @param languageRanges requested language ranges, not null
+	 * @return diagnostic match result, not null
+	 * @throws IllegalArgumentException if more than 1000 language ranges are supplied
+	 */
+	@NonNull
+	LocaleMatchResult matchFor(@NonNull List<@NonNull LanguageRange> languageRanges);
+
 	/**
 	 * Given a locale, determine the best-matching localized strings file's locale.
 	 *

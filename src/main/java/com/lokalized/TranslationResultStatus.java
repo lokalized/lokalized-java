@@ -17,15 +17,16 @@
 package com.lokalized;
 
 /**
- * Closed marker interface which signifies a Lokalized-defined language construct (genders, grammatical cases,
- * definiteness, classifiers, animacy, clusivity, formality, cardinalities, ordinalities, phonetics).
- * <p>
- * Only the enum types shipped by Lokalized are supported. Application code must not implement this interface;
- * external implementations cannot be mapped to a {@link LanguageFormType} and are rejected. The interface remains
- * syntactically implementable because Lokalized targets Java 9, which predates sealed interfaces.
+ * Describes how a {@link TranslationResult} produced its returned string.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
-public interface LanguageForm {
-  // Marker interface
+public enum TranslationResultStatus {
+	/** A catalog translation resolved successfully. */
+	TRANSLATED,
+	/** The failure handler requested the interpolated lookup key. */
+	RETURNED_KEY,
+	/** The failure handler supplied a replacement string. */
+	RETURNED_STRING
 }

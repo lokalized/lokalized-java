@@ -46,7 +46,7 @@ public final class TranslationOptions {
 	private static final TranslationOptions NONE;
 
 	static {
-		NONE = new TranslationOptions(null, null, null, null);
+		NONE = new TranslationOptions(null, null, null, null, null);
 	}
 
 	@Nullable
@@ -57,11 +57,14 @@ public final class TranslationOptions {
 	private final BidiIsolation bidiIsolation;
 	@Nullable
 	private final TranslationFailureHandler translationFailureHandler;
+	@Nullable
+	private final TranslationFallbackPolicy translationFallbackPolicy;
 
 	private TranslationOptions(@Nullable Locale locale,
 														 @Nullable List<@NonNull LanguageRange> languageRanges,
 														 @Nullable BidiIsolation bidiIsolation,
-														 @Nullable TranslationFailureHandler translationFailureHandler) {
+														 @Nullable TranslationFailureHandler translationFailureHandler,
+														 @Nullable TranslationFallbackPolicy translationFallbackPolicy) {
 		if (locale != null && languageRanges != null)
 			throw new IllegalArgumentException("Specify either locale or languageRanges, not both");
 
@@ -69,6 +72,7 @@ public final class TranslationOptions {
 		this.languageRanges = languageRanges == null ? null : immutableLanguageRanges(languageRanges);
 		this.bidiIsolation = bidiIsolation;
 		this.translationFailureHandler = translationFailureHandler;
+		this.translationFallbackPolicy = translationFallbackPolicy;
 	}
 
 	/**
@@ -157,6 +161,16 @@ public final class TranslationOptions {
 	}
 
 	/**
+	 * Gets the locale-fallback policy override, if configured.
+	 *
+	 * @return configured fallback policy, or empty, not null
+	 */
+	@NonNull
+	public Optional<@NonNull TranslationFallbackPolicy> getTranslationFallbackPolicy() {
+		return Optional.ofNullable(translationFallbackPolicy);
+	}
+
+	/**
 	 * Creates a builder initialized with this instance's values.
 	 *
 	 * @return the builder, not null
@@ -167,7 +181,8 @@ public final class TranslationOptions {
 				.locale(locale)
 				.languageRanges(languageRanges)
 				.bidiIsolation(bidiIsolation)
-				.translationFailureHandler(translationFailureHandler);
+				.translationFailureHandler(translationFailureHandler)
+				.translationFallbackPolicy(translationFallbackPolicy);
 	}
 
 	/**
@@ -192,6 +207,9 @@ public final class TranslationOptions {
 		if (translationFailureHandler != null)
 			components.add("translationFailureHandler=" + translationFailureHandler);
 
+		if (translationFallbackPolicy != null)
+			components.add("translationFallbackPolicy=" + translationFallbackPolicy);
+
 		return String.format("%s{%s}", getClass().getSimpleName(), String.join(", ", components));
 	}
 
@@ -213,7 +231,8 @@ public final class TranslationOptions {
 		return Objects.equals(locale, translationOptions.locale)
 				&& Objects.equals(languageRanges, translationOptions.languageRanges)
 				&& Objects.equals(bidiIsolation, translationOptions.bidiIsolation)
-				&& Objects.equals(translationFailureHandler, translationOptions.translationFailureHandler);
+				&& Objects.equals(translationFailureHandler, translationOptions.translationFailureHandler)
+				&& Objects.equals(translationFallbackPolicy, translationOptions.translationFallbackPolicy);
 	}
 
 	/**
@@ -223,7 +242,7 @@ public final class TranslationOptions {
 	 */
 	@Override
 	public int hashCode() {
-		return Objects.hash(locale, languageRanges, bidiIsolation, translationFailureHandler);
+		return Objects.hash(locale, languageRanges, bidiIsolation, translationFailureHandler, translationFallbackPolicy);
 	}
 
 	@NonNull
@@ -260,6 +279,8 @@ public final class TranslationOptions {
 		private BidiIsolation bidiIsolation;
 		@Nullable
 		private TranslationFailureHandler translationFailureHandler;
+		@Nullable
+		private TranslationFallbackPolicy translationFallbackPolicy;
 
 		private Builder() {
 			// Use TranslationOptions.builder()
@@ -326,6 +347,13 @@ public final class TranslationOptions {
 			return this;
 		}
 
+		/** Applies a locale-fallback policy override for this lookup. */
+		@NonNull
+		public Builder translationFallbackPolicy(@Nullable TranslationFallbackPolicy translationFallbackPolicy) {
+			this.translationFallbackPolicy = translationFallbackPolicy;
+			return this;
+		}
+
 		/**
 		 * Constructs a {@link TranslationOptions} instance.
 		 *
@@ -333,10 +361,12 @@ public final class TranslationOptions {
 		 */
 		@NonNull
 		public TranslationOptions build() {
-			if (locale == null && languageRanges == null && bidiIsolation == null && translationFailureHandler == null)
+			if (locale == null && languageRanges == null && bidiIsolation == null && translationFailureHandler == null &&
+					translationFallbackPolicy == null)
 				return TranslationOptions.none();
 
-			return new TranslationOptions(locale, languageRanges, bidiIsolation, translationFailureHandler);
+			return new TranslationOptions(locale, languageRanges, bidiIsolation, translationFailureHandler,
+					translationFallbackPolicy);
 		}
 	}
 }

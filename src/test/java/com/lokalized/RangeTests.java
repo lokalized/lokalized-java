@@ -19,11 +19,13 @@ package com.lokalized;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -42,9 +44,9 @@ public class RangeTests {
   public void finiteRangesExposeOrderedImmutableValues() {
     Range<String> range = Range.ofFiniteValues("a", "b", "c");
 
-    assertEquals(3, range.size());
-    assertFalse(range.isEmpty());
-    assertFalse(range.getInfinite());
+    assertEquals(3, range.getValues().size());
+    assertFalse(range.getValues().isEmpty());
+    assertFalse(range.isInfinite());
     assertEquals(List.of("a", "b", "c"), range.getValues());
     assertThrows(UnsupportedOperationException.class,
         () -> range.getValues().add("d"),
@@ -55,25 +57,21 @@ public class RangeTests {
   public void infiniteRangesExposeOrderedImmutableValues() {
     Range<Integer> range = Range.ofInfiniteValues(1, 10, 100, 1_000);
 
-    assertEquals(4, range.size());
-    assertFalse(range.isEmpty());
-    assertTrue(range.getInfinite());
+    assertEquals(4, range.getValues().size());
+    assertFalse(range.getValues().isEmpty());
+    assertTrue(range.isInfinite());
     assertEquals(List.of(1, 10, 100, 1_000), range.getValues());
   }
 
   @Test
   public void emptyFactoriesReturnSharedFiniteAndInfiniteInstances() {
-    String[] nullValues = null;
-
     assertSame(Range.emptyFiniteRange(), Range.ofFiniteValues());
-    assertSame(Range.emptyFiniteRange(), Range.ofFiniteValues(nullValues));
     assertSame(Range.emptyFiniteRange(), Range.ofFiniteValues(List.of()));
-    assertFalse(Range.emptyFiniteRange().getInfinite());
+    assertFalse(Range.emptyFiniteRange().isInfinite());
 
     assertSame(Range.emptyInfiniteRange(), Range.ofInfiniteValues());
-    assertSame(Range.emptyInfiniteRange(), Range.ofInfiniteValues(nullValues));
     assertSame(Range.emptyInfiniteRange(), Range.ofInfiniteValues(List.of()));
-    assertTrue(Range.emptyInfiniteRange().getInfinite());
+    assertTrue(Range.emptyInfiniteRange().isInfinite());
 
     assertNotEquals(Range.emptyFiniteRange(), Range.emptyInfiniteRange());
   }
@@ -89,60 +87,45 @@ public class RangeTests {
   }
 
   @Test
-  public void collectionFactoriesRejectNullCollections() {
+  public void factoriesRejectNullInputsAndElements() {
     assertThrows(NullPointerException.class,
         () -> Range.ofFiniteValues((List<String>) null));
     assertThrows(NullPointerException.class,
         () -> Range.ofInfiniteValues((List<String>) null));
-  }
-
-  @Test
-  public void collectionOperationsDelegateToValues() {
-    Range<String> range = Range.ofFiniteValues("a", "b", "c");
-
-    assertTrue(range.contains("a"));
-    assertFalse(range.contains("z"));
-    assertTrue(range.containsAll(List.of("a", "c")));
-    assertFalse(range.containsAll(List.of("a", "z")));
     assertThrows(NullPointerException.class,
-        () -> range.containsAll(null));
+        () -> Range.ofFiniteValues((String[]) null));
+    assertThrows(NullPointerException.class,
+        () -> Range.ofInfiniteValues((String[]) null));
+    assertThrows(NullPointerException.class,
+        () -> Range.ofFiniteValues(Arrays.asList("a", null)));
+    assertThrows(NullPointerException.class,
+        () -> Range.ofInfiniteValues("a", null));
   }
 
   @Test
-  public void arrayConversionsFollowCollectionContract() {
+  public void rangesAreImmutableIterablesRatherThanCollections() {
     Range<String> range = Range.ofFiniteValues("a", "b");
+    List<String> iteratedValues = new ArrayList<>();
 
-    assertArrayEquals(new Object[] {"a", "b"}, range.toArray());
+    for (String value : range)
+      iteratedValues.add(value);
 
-    String[] exact = range.toArray(new String[2]);
-    assertArrayEquals(new String[] {"a", "b"}, exact);
-
-    String[] oversized = range.toArray(new String[] {"x", "y", "z"});
-    assertArrayEquals(new String[] {"a", "b", null}, oversized);
-  }
-
-  @Test
-  @SuppressWarnings("deprecation")
-  public void mutationMethodsThrow() {
-    Range<String> range = Range.ofFiniteValues("a", "b");
-
-    assertThrows(UnsupportedOperationException.class,
-        () -> range.add("c"));
-    assertThrows(UnsupportedOperationException.class,
-        () -> range.remove("a"));
-    assertThrows(UnsupportedOperationException.class,
-        () -> range.addAll(List.of("c")));
-    assertThrows(UnsupportedOperationException.class,
-        () -> range.removeAll(List.of("a")));
-    assertThrows(UnsupportedOperationException.class,
-        () -> range.retainAll(List.of("a")));
-    assertThrows(UnsupportedOperationException.class, range::clear);
+    assertEquals(List.of("a", "b"), iteratedValues);
+    assertFalse(Collection.class.isAssignableFrom(Range.class));
+    assertTrue(Modifier.isFinal(Range.class.getModifiers()));
+    assertEquals(Boolean.class, assertDoesNotThrowIsInfiniteReturnType());
 
     Iterator<String> iterator = range.iterator();
     iterator.next();
     assertThrows(UnsupportedOperationException.class, iterator::remove);
+  }
 
-    assertEquals(List.of("a", "b"), range.getValues());
+  private static Class<?> assertDoesNotThrowIsInfiniteReturnType() {
+    try {
+      return Range.class.getMethod("isInfinite").getReturnType();
+    } catch (NoSuchMethodException e) {
+      throw new AssertionError(e);
+    }
   }
 
   @Test

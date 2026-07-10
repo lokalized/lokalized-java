@@ -88,6 +88,58 @@ public interface Strings extends LocaleMatcher {
 						 @NonNull TranslationOptions options);
 
 	/**
+	 * Resolves a localized string and returns diagnostic information about the lookup.
+	 *
+	 * @param key localization key, not null
+	 * @return translation result, not null
+	 */
+	@NonNull
+	default TranslationResult getResult(@NonNull String key) {
+		return getResult(key, null, TranslationOptions.none());
+	}
+
+	/**
+	 * Resolves a localized string with per-invocation options and returns diagnostic information.
+	 *
+	 * @param key     localization key, not null
+	 * @param options per-invocation options, not null
+	 * @return translation result, not null
+	 */
+	@NonNull
+	default TranslationResult getResult(@NonNull String key, @NonNull TranslationOptions options) {
+		return getResult(key, null, options);
+	}
+
+	/**
+	 * Resolves a localized string with placeholders and returns diagnostic information.
+	 *
+	 * @param key          localization key, not null
+	 * @param placeholders caller-supplied placeholders, may be null
+	 * @return translation result, not null
+	 */
+	@NonNull
+	default TranslationResult getResult(@NonNull String key,
+															 @Nullable Map<@NonNull String, @Nullable Object> placeholders) {
+		return getResult(key, placeholders, TranslationOptions.none());
+	}
+
+	/**
+	 * Resolves a localized string with placeholders and options and returns diagnostic information.
+	 * <p>
+	 * A handler response that throws still throws; successful translations and return-key/return-string responses are
+	 * represented by the returned result.
+	 *
+	 * @param key          localization key, not null
+	 * @param placeholders caller-supplied placeholders, may be null
+	 * @param options      per-invocation options, not null
+	 * @return translation result, not null
+	 */
+	@NonNull
+	TranslationResult getResult(@NonNull String key,
+												@Nullable Map<@NonNull String, @Nullable Object> placeholders,
+												@NonNull TranslationOptions options);
+
+	/**
 	 * Gets the locales for which localized strings were supplied.
 	 *
 	 * @return the supported locales, not null
@@ -150,9 +202,15 @@ public interface Strings extends LocaleMatcher {
 		@Nullable
 		private Function<LocaleMatcher, Locale> localeSupplier;
 		@Nullable
+		private Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier;
+		@Nullable
 		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
 		private TranslationFailureHandler translationFailureHandler;
+		@Nullable
+		private TranslationFallbackPolicy translationFallbackPolicy;
+		@Nullable
+		private TranslationRuntimeLimits runtimeLimits;
 		@Nullable
 		private PhoneticResolver phoneticResolver;
 		@Nullable
@@ -182,6 +240,8 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies a locale supplier to this builder.
+		 * <p>
+		 * The supplier may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
 		 *
 		 * @param localeSupplier locale supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
@@ -189,6 +249,31 @@ public interface Strings extends LocaleMatcher {
 		@NonNull
 		public Builder localeSupplier(@Nullable Function<LocaleMatcher, Locale> localeSupplier) {
 			this.localeSupplier = localeSupplier;
+
+			if (localeSupplier != null)
+				this.localeMatchSupplier = null;
+
+			return this;
+		}
+
+		/**
+		 * Applies a locale-negotiation-result supplier to this builder.
+		 * <p>
+		 * Prefer this over {@link #localeSupplier(Function)} when callers of {@link #getResult(String)} should receive the
+		 * original negotiation diagnostics. The supplier may be invoked concurrently and must be thread-safe. Supplying a
+		 * non-null value replaces any locale supplier.
+		 *
+		 * @param localeMatchSupplier locale-match supplier, may be null
+		 * @return this builder, not null
+		 * @since 3.0.0
+		 */
+		@NonNull
+		public Builder localeMatchSupplier(@Nullable Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier) {
+			this.localeMatchSupplier = localeMatchSupplier;
+
+			if (localeMatchSupplier != null)
+				this.localeSupplier = null;
+
 			return this;
 		}
 
@@ -206,6 +291,8 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies a phonetic resolver to this builder.
+		 * <p>
+		 * The resolver may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
 		 *
 		 * @param phoneticResolver phonetic resolver, may be null (defaults to fail-fast resolver)
 		 * @return this builder instance, useful for chaining. not null
@@ -218,6 +305,8 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies a translation failure handler to this builder.
+		 * <p>
+		 * The handler may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
 		 *
 		 * @param translationFailureHandler handler for failed lookups, may be null (defaults to returning the key)
 		 * @return this builder instance, useful for chaining. not null
@@ -225,6 +314,33 @@ public interface Strings extends LocaleMatcher {
 		@NonNull
 		public Builder translationFailureHandler(@Nullable TranslationFailureHandler translationFailureHandler) {
 			this.translationFailureHandler = translationFailureHandler;
+			return this;
+		}
+
+		/**
+		 * Applies the policy that decides whether failed locale attempts continue to fallback candidates.
+		 * <p>
+		 * The policy may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
+		 *
+		 * @param translationFallbackPolicy locale fallback policy, may be null to use the safe default
+		 * @return this builder, not null
+		 */
+		@NonNull
+		public Builder translationFallbackPolicy(@Nullable TranslationFallbackPolicy translationFallbackPolicy) {
+			this.translationFallbackPolicy = translationFallbackPolicy;
+			return this;
+		}
+
+		/**
+		 * Applies safety limits to catalog construction and translation evaluation.
+		 *
+		 * @param runtimeLimits runtime limits, may be null to use the library defaults
+		 * @return this builder, not null
+		 * @since 3.0.0
+		 */
+		@NonNull
+		public Builder runtimeLimits(@Nullable TranslationRuntimeLimits runtimeLimits) {
+			this.runtimeLimits = runtimeLimits;
 			return this;
 		}
 
@@ -247,8 +363,9 @@ public interface Strings extends LocaleMatcher {
 		 */
 		@NonNull
 		public Strings build() {
-			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
-					translationFailureHandler, phoneticResolver, bidiIsolation);
+			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, localeMatchSupplier,
+					tiebreakerLocalesByLanguageCode,
+					translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits);
 		}
 	}
 }

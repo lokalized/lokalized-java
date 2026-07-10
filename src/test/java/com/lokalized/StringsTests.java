@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
@@ -1309,6 +1310,28 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bidiIsolationWrapsCallerValuesInsideGeneratedFragments() {
+		Locale arabic = Locale.forLanguageTag("ar");
+		LocalizedString localizedString = new LocalizedString.Builder("LeadTime")
+				.translation("{{leadTime}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"leadTime", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ZERO, "{{formattedCount}} يوم",
+								Cardinality.ONE, "{{formattedCount}} يوم",
+								Cardinality.TWO, "{{formattedCount}} يومان",
+								Cardinality.FEW, "{{formattedCount}} أيام",
+								Cardinality.MANY, "{{formattedCount}} يومًا",
+								Cardinality.OTHER, "{{formattedCount}} يوم"))))
+				.build();
+		Strings strings = Strings.withFallbackLocale(arabic)
+				.localizedStringSupplier(() -> Map.of(arabic, Set.of(localizedString)))
+				.localeSupplier(matcher -> arabic)
+				.build();
+
+		assertEquals("\u20680\u2069 يوم", strings.get("LeadTime", Map.of("count", 0, "formattedCount", "0")));
+	}
+
+	@Test
 	public void bidiIsolationDoesNotWrapExternalPlaceholdersForLtrLocales() {
 		LocalizedString localizedString = new LocalizedString.Builder("Shipment")
 				.translation("Order {{code}} is ready")
@@ -1333,8 +1356,8 @@ public class StringsTests {
 							() -> translationFailure.getPlaceholders().put("other", "value"),
 							"Expected translation failure placeholders to be immutable");
 					assertThrows(UnsupportedOperationException.class,
-							() -> translationFailure.getCandidateLocales().add(Locale.forLanguageTag("fr")),
-							"Expected translation failure candidate locales to be immutable");
+							() -> translationFailure.getAttemptedLocales().add(Locale.forLanguageTag("fr")),
+							"Expected translation failure attempted locales to be immutable");
 					return TranslationFailureResponse.returnString("handled");
 				})
 				.build();
@@ -1345,9 +1368,9 @@ public class StringsTests {
 		assertEquals("handled", translation);
 		assertTrue(translationFailure != null);
 		assertEquals("Missing {{name}}", translationFailure.getKey());
-		assertEquals(Locale.forLanguageTag("en-US"), translationFailure.getRequestedLocale());
+		assertEquals(Locale.forLanguageTag("en-US"), translationFailure.getLookupLocale());
 		assertEquals(List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en")),
-				translationFailure.getCandidateLocales());
+				translationFailure.getAttemptedLocales());
 		assertEquals(Map.of("name", "Ada"), translationFailure.getPlaceholders());
 		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, translationFailure.getReason());
 		assertTrue(!translationFailure.getCause().isPresent());
@@ -1464,6 +1487,7 @@ public class StringsTests {
 						Locale.forLanguageTag("ru"), Set.of(requestedLocalizedString)
 				))
 				.localeSupplier((matcher) -> Locale.forLanguageTag("ru"))
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
 				.translationFailureHandler(TranslationFailureHandler.throwException())
 				.build();
 
@@ -1492,7 +1516,11 @@ public class StringsTests {
 
 		assertEquals("Missing {{name}}", exception.getKey());
 		assertEquals(Map.of("name", "Ada"), exception.getPlaceholders());
-		assertEquals(Locale.forLanguageTag("en-US"), exception.getLocale());
+		assertEquals(Locale.forLanguageTag("en-US"), exception.getLookupLocale());
+		assertTrue(exception.getLocaleMatchResult().isPresent());
+		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, exception.getReason());
+		assertEquals(List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en")),
+				exception.getAttemptedLocales());
 	}
 
 	@Test
@@ -1682,6 +1710,7 @@ public class StringsTests {
 						french, Set.of(frenchString)
 				))
 				.localeSupplier((matcher) -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
 				.phoneticResolver((term, locale) -> {
 					context.put("name", "banana");
 					throw new UnsupportedOperationException("primary locale failed");
@@ -1789,6 +1818,24 @@ public class StringsTests {
 	}
 
 	@Test
+	public void noMatchingAlternativeReasonIsPreservedByThrowingHandler() {
+		Locale english = Locale.ENGLISH;
+		LocalizedString localizedString = new LocalizedString.Builder("Choice")
+				.alternatives(List.of(new LocalizedString.Builder("count == 1").translation("one").build()))
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(localizedString)))
+				.localeSupplier(matcher -> english)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		MissingTranslationException exception = assertThrows(MissingTranslationException.class,
+				() -> strings.get("Choice", Map.of("count", 2)));
+		assertEquals(TranslationFailureReason.NO_MATCHING_ALTERNATIVE, exception.getReason());
+		assertEquals(List.of(english), exception.getAttemptedLocales());
+	}
+
+	@Test
 	public void alternativeOnlyNoMatchContinuesToFallbackLocale() {
 		Locale english = Locale.forLanguageTag("en");
 		Locale french = Locale.forLanguageTag("fr");
@@ -1811,6 +1858,237 @@ public class StringsTests {
 	}
 
 	@Test
+	public void matchingNestedAlternativeDoesNotFallThroughToLaterSibling() {
+		LocalizedString unmatchedNested = new LocalizedString.Builder("y == 1")
+				.translation("nested")
+				.build();
+		LocalizedString first = new LocalizedString.Builder("x == 1")
+				.alternatives(List.of(unmatchedNested))
+				.build();
+		LocalizedString second = new LocalizedString.Builder("x > 0")
+				.translation("second")
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Choice")
+				.alternatives(List.of(first, second))
+				.build();
+		AtomicReference<TranslationFailure> failureHolder = new AtomicReference<>();
+		Locale english = Locale.ENGLISH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(root)))
+				.localeSupplier(matcher -> english)
+				.translationFailureHandler(failure -> {
+					failureHolder.set(failure);
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		assertEquals("handled", strings.get("Choice", Map.of("x", 1, "y", 2)));
+		assertEquals(TranslationFailureReason.NO_MATCHING_ALTERNATIVE, failureHolder.get().getReason());
+	}
+
+	@Test
+	public void resolutionFailuresDoNotSilentlyFallbackByDefault() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		LocalizedString brokenFrench = new LocalizedString.Builder("Greeting")
+				.translation("Bonjour {{name}}")
+				.build();
+		LocalizedString validEnglish = new LocalizedString.Builder("Greeting")
+				.translation("Hello")
+				.build();
+		Strings safeStrings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(validEnglish), french, Set.of(brokenFrench)))
+				.localeSupplier(matcher -> french)
+				.translationFailureHandler(failure -> TranslationFailureResponse.returnString(failure.getReason().name()))
+				.build();
+		Strings legacyStrings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(validEnglish), french, Set.of(brokenFrench)))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
+				.build();
+
+		assertEquals("RESOLUTION_FAILURE", safeStrings.get("Greeting"));
+		assertEquals("Hello", legacyStrings.get("Greeting"));
+	}
+
+	@Test
+	public void neverFallbackStopsAfterTheFirstMissingTranslation() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(new LocalizedString.Builder("Hello").translation("Hello").build()),
+						french, Collections.emptySet()))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.neverFallback())
+				.translationFailureHandler(failure -> TranslationFailureResponse.returnString("handled"))
+				.build();
+
+		TranslationResult result = strings.getResult("Hello");
+		assertEquals("handled", result.getTranslation());
+		assertEquals(List.of(french), result.getAttemptedLocales());
+	}
+
+	@Test
+	public void perInvocationFallbackPolicyOverridesTheConfiguredPolicy() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(new LocalizedString.Builder("Hello").translation("Hello").build()),
+						french, Collections.emptySet()))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.neverFallback())
+				.build();
+
+		TranslationOptions options = TranslationOptions.builder()
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnMissingTranslationOrNoMatchingAlternative())
+				.build();
+		assertEquals("Hello", strings.get("Hello", options));
+	}
+
+	@Test
+	public void fallbackPolicyReceivesTheAttemptOutcome() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		AtomicReference<TranslationFailureReason> reasonHolder = new AtomicReference<>();
+		AtomicReference<Locale> localeHolder = new AtomicReference<>();
+		AtomicReference<Throwable> causeHolder = new AtomicReference<>();
+		LocalizedString brokenFrench = new LocalizedString.Builder("Greeting")
+				.translation("Bonjour {{name}}")
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(new LocalizedString.Builder("Greeting").translation("Hello").build()),
+						french, Set.of(brokenFrench)))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy((reason, attemptedLocale, cause) -> {
+					reasonHolder.set(reason);
+					localeHolder.set(attemptedLocale);
+					causeHolder.set(cause);
+					return false;
+				})
+				.translationFailureHandler(failure -> TranslationFailureResponse.returnString("handled"))
+				.build();
+
+		assertEquals("handled", strings.get("Greeting"));
+		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, reasonHolder.get());
+		assertEquals(french, localeHolder.get());
+		assertTrue(causeHolder.get() instanceof IllegalArgumentException);
+	}
+
+	@Test
+	public void nullFallbackPolicyResponseIsRejected() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(new LocalizedString.Builder("Hello").translation("Hello").build()),
+						french, Collections.emptySet()))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy((reason, attemptedLocale, cause) -> null)
+				.build();
+
+		NullPointerException exception = assertThrows(NullPointerException.class, () -> strings.get("Hello"));
+		assertTrue(exception.getMessage().contains("translationFallbackPolicy returned null"));
+	}
+
+	@Test
+	public void translationResultReportsResolvedFallbackAndFailureOutcomes() {
+		Locale english = Locale.ENGLISH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Hello").translation("Hello").build())))
+				.localeSupplier(matcher -> americanEnglish)
+				.translationFailureHandler(failure -> TranslationFailureResponse.returnString("handled"))
+				.build();
+
+		TranslationResult translated = strings.getResult("Hello");
+		assertEquals("Hello", translated.getTranslation());
+		assertEquals(TranslationResultStatus.TRANSLATED, translated.getStatus());
+		assertEquals(english, translated.getResolvedLocale().orElseThrow(AssertionError::new));
+		assertTrue(translated.isFallback());
+		assertEquals(List.of(americanEnglish, english), translated.getAttemptedLocales());
+		assertThrows(UnsupportedOperationException.class,
+				() -> translated.getAttemptedLocales().add(Locale.FRENCH));
+
+		TranslationResult failed = strings.getResult("Missing");
+		assertEquals("handled", failed.getTranslation());
+		assertEquals(TranslationResultStatus.RETURNED_STRING, failed.getStatus());
+		assertEquals(TranslationFailureReason.MISSING_TRANSLATION,
+				failed.getFailureReason().orElseThrow(AssertionError::new));
+		assertTrue(!failed.getResolvedLocale().isPresent());
+	}
+
+	@Test
+	public void translationResultPreservesUnmatchedLanguageRangeNegotiation() {
+		Locale english = Locale.ENGLISH;
+		List<LanguageRange> requestedRanges = LanguageRange.parse("fr-CA,fr;q=0.8");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Hello").translation("Hello").build())))
+				.localeSupplier(matcher -> english)
+				.build();
+
+		TranslationResult result = strings.getResult("Hello", TranslationOptions.forLanguageRanges(requestedRanges));
+		LocaleMatchResult matchResult = result.getLocaleMatchResult().orElseThrow(AssertionError::new);
+
+		assertEquals(english, result.getLookupLocale());
+		assertEquals(requestedRanges, matchResult.getRequestedLanguageRanges());
+		assertTrue(!matchResult.isMatch());
+		assertTrue(result.isFallback());
+	}
+
+	@Test
+	public void localeMatchSupplierPreservesDefaultNegotiationDiagnostics() {
+		Locale english = Locale.ENGLISH;
+		List<LanguageRange> requestedRanges = LanguageRange.parse("fr-CA,fr;q=0.8");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Hello").translation("Hello").build())))
+				.localeMatchSupplier(matcher -> matcher.matchFor(requestedRanges))
+				.build();
+
+		TranslationResult result = strings.getResult("Hello");
+
+		assertEquals(requestedRanges, result.getLocaleMatchResult().orElseThrow(AssertionError::new)
+				.getRequestedLanguageRanges());
+		assertTrue(result.isFallback());
+	}
+
+	@Test
+	public void translationResultReportsTheActualCanonicalAliasCatalog() {
+		Locale romanian = Locale.forLanguageTag("ro");
+		Locale moldovan = Locale.forLanguageTag("mo");
+		Strings strings = Strings.withFallbackLocale(moldovan)
+				.localizedStringSupplier(() -> Map.of(moldovan, Set.of(
+						new LocalizedString.Builder("Hello").translation("Salut").build())))
+				.localeSupplier(matcher -> romanian)
+				.build();
+
+		TranslationResult result = strings.getResult("Hello");
+
+		assertEquals(romanian, result.getLookupLocale());
+		assertEquals(moldovan, result.getResolvedLocale().orElseThrow(AssertionError::new));
+		assertEquals(List.of(moldovan), result.getAttemptedLocales());
+		assertTrue(strings.getSupportedLocales().contains(result.getResolvedLocale().orElseThrow(AssertionError::new)));
+		assertThrows(IllegalArgumentException.class, () -> strings.getKeysForLocale(romanian));
+		assertThrows(IllegalArgumentException.class, () -> strings.getMissingKeys(moldovan, romanian));
+	}
+
+	@Test
+	public void translationResultConstructorEnforcesCorrelatedState() {
+		Locale english = Locale.ENGLISH;
+
+		assertThrows(IllegalArgumentException.class, () -> new TranslationResult("key", "value", english,
+				null, List.of(english), TranslationResultStatus.RETURNED_STRING,
+				TranslationFailureReason.MISSING_TRANSLATION, new RuntimeException("wrong cause")));
+		assertThrows(IllegalArgumentException.class, () -> new TranslationResult("key", "value", english,
+				english, Collections.emptyList(), TranslationResultStatus.TRANSLATED, null, null));
+	}
+
+	@Test
 	public void failureKeyInterpolationReturnsRawKeyWhenOutputWouldExceedLimit() {
 		String key = "Missing {{value}}";
 		char[] oversizedCharacters = new char[1024 * 1024 + 1];
@@ -1825,6 +2103,41 @@ public class StringsTests {
 				.build();
 
 		assertEquals(key, strings.get(key, Map.of("value", oversizedValue)));
+	}
+
+	@Test
+	public void generatedPlaceholderExpansionHasACumulativeBudget() {
+		Map<String, LocalizedString.LanguageFormTranslation> generated = new LinkedHashMap<>();
+		StringBuilder translation = new StringBuilder();
+
+		for (int index = 0; index < 20; ++index) {
+			String placeholderName = "A" + index;
+			translation.append("{{").append(placeholderName).append("}}");
+			generated.put(placeholderName, new LocalizedString.LanguageFormTranslation("count", Map.of(
+					Cardinality.ONE, "{{B}}",
+					Cardinality.OTHER, "{{B}}")));
+		}
+
+		char[] largeCharacters = new char[600_000];
+		Arrays.fill(largeCharacters, 'x');
+		String largeValue = new String(largeCharacters);
+		generated.put("B", new LocalizedString.LanguageFormTranslation("count", Map.of(
+				Cardinality.ONE, largeValue,
+				Cardinality.OTHER, largeValue)));
+		LocalizedString localizedString = new LocalizedString.Builder("Large")
+				.translation(translation.toString())
+				.languageFormTranslationsByPlaceholder(generated)
+				.build();
+		Locale english = Locale.ENGLISH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(localizedString)))
+				.localeSupplier(matcher -> english)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		IllegalStateException exception = assertThrows(IllegalStateException.class,
+				() -> strings.get("Large", Map.of("count", 1)));
+		assertTrue(exception.getMessage().contains("cumulative limit"));
 	}
 
 	@Test

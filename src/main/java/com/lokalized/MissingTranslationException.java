@@ -20,10 +20,14 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import static java.util.Objects.requireNonNull;
 
@@ -39,28 +43,98 @@ public class MissingTranslationException extends RuntimeException {
 	@NonNull
 	private final String key;
 	@NonNull
-	private final Locale locale;
+	private final Locale lookupLocale;
+	@NonNull
+	private final Optional<@NonNull LocaleMatchResult> localeMatchResult;
 	@NonNull
 	private final Map<@NonNull String, @Nullable Object> placeholders;
+	@NonNull
+	private final TranslationFailureReason reason;
+	@NonNull
+	private final List<@NonNull Locale> attemptedLocales;
 
 	/**
 	 * Constructs a new exception with the unsupported locale.
 	 *
-	 * @param locale the unsupported locale which triggered this exception, not null
+	 * @param message failure message, not null
+	 * @param key translation key, not null
+	 * @param placeholders caller placeholders, not null
+	 * @param lookupLocale the locale used to begin catalog fallback, not null
 	 */
 	public MissingTranslationException(@NonNull String message,
 																		 @NonNull String key,
 																		 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
-																		 @NonNull Locale locale) {
+																		 @NonNull Locale lookupLocale) {
+		this(message, key, placeholders, lookupLocale, null, TranslationFailureReason.MISSING_TRANSLATION,
+				Collections.singletonList(lookupLocale));
+	}
+
+	/**
+	 * Constructs an exception with the complete failed-lookup outcome.
+	 *
+	 * @param message          failure message, not null
+	 * @param key              translation key, not null
+	 * @param placeholders     caller placeholders, not null
+	 * @param lookupLocale     locale used to begin catalog fallback, not null
+	 * @param reason           final failure reason, not null
+	 * @param attemptedLocales ordered locales attempted, not null
+	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
+	 *                                  duplicates
+	 */
+	public MissingTranslationException(@NonNull String message,
+																 @NonNull String key,
+																	 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
+																	 @NonNull Locale lookupLocale,
+																	 @NonNull TranslationFailureReason reason,
+																	 @NonNull List<@NonNull Locale> attemptedLocales) {
+		this(message, key, placeholders, lookupLocale, null, reason, attemptedLocales);
+	}
+
+	/**
+	 * Constructs an exception with complete failed-lookup and locale-negotiation diagnostics.
+	 *
+	 * @param message          failure message, not null
+	 * @param key              translation key, not null
+	 * @param placeholders     caller placeholders, not null
+	 * @param lookupLocale     locale used to begin catalog fallback, not null
+	 * @param localeMatchResult strict locale-negotiation diagnostics, or null when unavailable
+	 * @param reason           final failure reason, not null
+	 * @param attemptedLocales ordered locales attempted, not null
+	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
+	 *                                  duplicates
+	 */
+	public MissingTranslationException(@NonNull String message,
+																	 @NonNull String key,
+																	 @NonNull Map<@NonNull String, @Nullable Object> placeholders,
+																	 @NonNull Locale lookupLocale,
+																	 @Nullable LocaleMatchResult localeMatchResult,
+																	 @NonNull TranslationFailureReason reason,
+																	 @NonNull List<@NonNull Locale> attemptedLocales) {
 		super(requireNonNull(message));
 
 		requireNonNull(key);
 		requireNonNull(placeholders);
-		requireNonNull(locale);
+		requireNonNull(lookupLocale);
+		requireNonNull(reason);
+		requireNonNull(attemptedLocales);
+
+		if (reason == TranslationFailureReason.RESOLUTION_FAILURE)
+			throw new IllegalArgumentException("MissingTranslationException cannot represent a resolution failure cause");
 
 		this.key = key;
 		this.placeholders = Collections.unmodifiableMap(new HashMap<>(placeholders));
-		this.locale = locale;
+		this.lookupLocale = lookupLocale;
+		this.localeMatchResult = Optional.ofNullable(localeMatchResult);
+		this.reason = reason;
+		List<@NonNull Locale> attemptedLocaleCopy = new ArrayList<>(attemptedLocales.size());
+
+		for (Locale attemptedLocale : attemptedLocales)
+			attemptedLocaleCopy.add(requireNonNull(attemptedLocale));
+
+		if (new LinkedHashSet<>(attemptedLocaleCopy).size() != attemptedLocaleCopy.size())
+			throw new IllegalArgumentException("Attempted locales must not contain duplicates");
+
+		this.attemptedLocales = Collections.unmodifiableList(attemptedLocaleCopy);
 	}
 
 	/**
@@ -84,12 +158,30 @@ public class MissingTranslationException extends RuntimeException {
 	}
 
 	/**
-	 * The locale that triggered this exception.
+	 * The locale used to begin per-key catalog fallback.
 	 *
 	 * @return the locale, not null
 	 */
 	@NonNull
-	public Locale getLocale() {
-		return this.locale;
+	public Locale getLookupLocale() {
+		return this.lookupLocale;
+	}
+
+	/** @return strict locale-negotiation diagnostics when available, otherwise empty, not null */
+	@NonNull
+	public Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
+		return localeMatchResult;
+	}
+
+	/** @return final failure reason, not null */
+	@NonNull
+	public TranslationFailureReason getReason() {
+		return reason;
+	}
+
+	/** @return ordered locales attempted before failure, not null */
+	@NonNull
+	public List<@NonNull Locale> getAttemptedLocales() {
+		return attemptedLocales;
 	}
 }

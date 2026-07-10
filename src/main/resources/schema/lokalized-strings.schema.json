@@ -403,6 +403,7 @@
         "selectors": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 10,
           "items": {
             "$ref": "#/$defs/selector"
           }
@@ -410,6 +411,7 @@
         "translations": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 128,
           "items": {
             "$ref": "#/$defs/selectorTranslationRule"
           }
@@ -462,6 +464,7 @@
       "items": {
         "type": "object",
         "minProperties": 1,
+        "maxProperties": 1,
         "$comment": "Alternative object member names are Lokalized expressions. Expression syntax is validated by Lokalized itself.",
         "additionalProperties": {
           "$ref": "#/$defs/localizedString"

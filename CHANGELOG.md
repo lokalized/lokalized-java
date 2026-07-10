@@ -26,6 +26,23 @@ All notable changes to Lokalized will be documented in this file.
   `ArithmeticException` unless the supplied number is already rounded to that scale.
 - Programmatic `LocalizedString` catalogs now receive the same semantic validation as file-backed catalogs when
   `Strings` is built, so invalid expressions, form maps, selectors, metadata, and generated fragments fail earlier.
+- `Range<T>` is now a final immutable `Iterable<T>` instead of a `Collection<T>`. Its mutation methods, collection
+  facade, and `getInfinite()` were removed; use `getValues()` and boxed `isInfinite()`. Factories now reject null arrays
+  and null elements instead of treating a null array as empty or retaining null values.
+- `LocalizedString` and its immutable nested value types are final, and `LocalizedString` construction is builder-only;
+  runtime catalog immutability can no longer be invalidated by subclasses with mutable overridden getters.
+- `LanguageForm` is explicitly closed to the Lokalized-provided enum types. External implementations were never
+  resolvable by `LanguageFormType` and are now documented as unsupported.
+- Every object in an `alternatives` array must contain exactly one expression. Nested alternatives now halt at the first
+  matching branch even when its nested subtree does not produce a translation.
+- The default locale-fallback policy no longer hides runtime resolution failures by trying later locales. It continues
+  for missing translations and unmatched alternatives; use `TranslationFallbackPolicy.fallbackOnAnyFailure()` to
+  preserve the legacy behavior.
+- `MissingTranslationException.getLocale()` was replaced by `getLookupLocale()` and optional
+  `getLocaleMatchResult()` diagnostics.
+- Added diagnostic methods to `Strings` and `LocaleMatcher`; custom implementations must implement the full
+  `getResult(String, Map, TranslationOptions)` method and strict `matchFor(List<LanguageRange>)` method. Convenience
+  overloads are default methods.
 
 ### Features
 
@@ -51,6 +68,18 @@ All notable changes to Lokalized will be documented in this file.
   from pinned CLDR script metadata instead of maintained by hand.
 - Added escaped literal mustache support with `\{{...}}`.
 - Added a packaged JSON Schema at `schema/lokalized-strings.schema.json`.
+- Added `TranslationFallbackPolicy` so candidate-locale fallback is configured independently from final
+  `TranslationFailureHandler` behavior. Global and per-invocation policies are supported.
+- Added opt-in `TranslationResult` diagnostics with lookup/resolved locales, locales actually attempted, fallback
+  status, final outcome, failure reason, runtime cause, and optional locale-negotiation result.
+- Added strict `LocaleMatchResult` diagnostics with all requested ranges, selected locale, winning preference range,
+  effective quality, match kind, considered locales, and an explicit unmatched state.
+- Added `Strings.Builder.localeMatchSupplier(...)` so request-scoped negotiation can retain original language ranges
+  and strict match diagnostics; `localeSupplier(...)` remains available when only a selected locale is needed.
+- Added immutable `TranslationRuntimeLimits` for lowering the hard numeric, expression, selector, generated-placeholder,
+  and interpolation safety ceilings globally, with direct support in `PluralOperands`.
+- Added aggregate catalog limits and explicit locale-to-classpath-resource loading for containers and custom
+  classloaders that can open resources but cannot enumerate standard `file:` or `jar:` package URLs.
 
 ### Behavior Changes
 
@@ -71,7 +100,17 @@ All notable changes to Lokalized will be documented in this file.
 - `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched locale
   preferences resolve to the configured fallback locale.
 - Language-range matching accepts at most 1,000 preferences per call. If every supported locale is excluded by
-  `q=0`, the current non-null matching contract still returns the configured fallback.
+  `q=0`, `bestMatchFor(...)` returns the configured fallback while strict `matchFor(...)` reports no acceptable locale.
+- Language-range matching no longer crosses known likely-script boundaries and applies `q=0` exclusions to canonical
+  alias descendants, such as `sh;q=0` excluding `sr-Latn-RS`.
+- Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
+  limits, preventing many individually legal cached fragments from exhausting the heap.
+- Numeric literals and plural operands are validated before materialization and selector rule counts are bounded, so
+  compact exponents, decimal scales, and quadratic ambiguity checks cannot create unbounded work.
+- Canonical-alias lookup records and evaluates against the actual loaded catalog locale, deduplicates equivalent
+  catalog attempts, and keeps inspection APIs strict to exact members of `getSupportedLocales()`.
+- Classpath loading honors runtime-selected multi-release JAR entries, expands filesystem manifest `Class-Path` roots
+  during opt-in exhaustive discovery, rejects Windows drive-relative package escapes, and accepts `und` catalogs.
 
 ### Packaging
 
@@ -94,6 +133,18 @@ All notable changes to Lokalized will be documented in this file.
 - Update custom `Strings` implementations with the three new inspection methods.
 - Replace `Cardinality.getSupportedLanguageCodes()` and `Ordinality.getSupportedLanguageCodes()` with
   the corresponding `getSupportedLocaleTags()` calls.
+- Replace `Range` collection operations with `range.getValues()` and replace `getInfinite()` with boxed
+  `isInfinite()`.
+- If an application intentionally relied on fallback after a corrupt translation failed to resolve, configure
+  `TranslationFallbackPolicy.fallbackOnAnyFailure()` explicitly. Missing translations and unmatched alternatives still
+  fall back by default.
+- Custom `Strings` and `LocaleMatcher` implementations must implement the new full diagnostic-result and strict
+  language-range-match methods; convenience overloads delegate to those core methods.
+- Replace `MissingTranslationException.getLocale()` with `getLookupLocale()`. Inspect `getLocaleMatchResult()` when the
+  original negotiation outcome matters.
+- Use `localeMatchSupplier(matcher -> matcher.matchFor(ranges))` instead of collapsing a request through
+  `localeSupplier(matcher -> matcher.bestMatchFor(ranges))` when `TranslationResult` and failure diagnostics must retain
+  the original language ranges.
 - Round values explicitly before reducing `PluralOperands.visibleDecimalPlaces(...)`; implicit flooring has been removed.
 - Expect invalid programmatic catalogs to fail during `Strings.build()` under the shared semantic validator.
 - Review strings files under the stricter loader validation before release. Duplicate nested JSON members,

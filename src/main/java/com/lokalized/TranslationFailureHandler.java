@@ -25,7 +25,10 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Decides how Lokalized should respond when a localized string lookup fails.
+ * Decides how Lokalized should respond when a localized string lookup fails after the configured
+ * {@link TranslationFallbackPolicy} stops fallback or all locale candidates are exhausted.
+ * <p>
+ * Handlers shared by a {@link Strings} instance may be invoked concurrently and must be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -90,11 +93,11 @@ public interface TranslationFailureHandler {
 
 		return (translationFailure) -> {
 			requireNonNull(translationFailure);
-			logger.warning(format("Unable to resolve translation key '%s' for locale '%s'. Reason: %s. Candidate locales: [%s]",
+			logger.warning(format("Unable to resolve translation key '%s' for locale '%s'. Reason: %s. Attempted locales: [%s]",
 					translationFailure.getKey(),
-					translationFailure.getRequestedLocale().toLanguageTag(),
+					translationFailure.getLookupLocale().toLanguageTag(),
 					translationFailure.getReason(),
-					translationFailure.getCandidateLocales().stream()
+					translationFailure.getAttemptedLocales().stream()
 							.map(locale -> locale.toLanguageTag())
 							.collect(Collectors.joining(", "))));
 			return TranslationFailureResponse.returnKey();

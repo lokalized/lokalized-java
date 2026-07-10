@@ -104,14 +104,12 @@ class ExpressionEvaluator {
   private static final Token TRUE_RESULT_TOKEN;
   @NonNull
   private static final Token FALSE_RESULT_TOKEN;
-  private static final int MAX_EXPRESSION_LENGTH = 4096;
-  private static final int MAX_EXPRESSION_TOKENS = 512;
-  private static final int MAX_EXPRESSION_GROUP_DEPTH = 64;
-
   @NonNull
   private final ExpressionTokenizer expressionTokenizer;
   @Nullable
   private final PhoneticResolver phoneticResolver;
+  @NonNull
+  private final TranslationRuntimeLimits runtimeLimits;
 
   static {
     CARDINALITY_TOKEN_TYPES = Collections.unmodifiableSet(new HashSet<TokenType>() {
@@ -273,7 +271,7 @@ class ExpressionEvaluator {
    * Constructs an expression evaluation with a default tokenizer.
    */
   public ExpressionEvaluator() {
-    this(null, null);
+    this(null, null, null);
   }
 
   /**
@@ -284,7 +282,7 @@ class ExpressionEvaluator {
    * @param expressionTokenizer the expression tokenizer to use, may be null
    */
   public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer) {
-    this(expressionTokenizer, null);
+    this(expressionTokenizer, null, null);
   }
 
   /**
@@ -297,8 +295,25 @@ class ExpressionEvaluator {
    */
   public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer,
                              @Nullable PhoneticResolver phoneticResolver) {
+    this(expressionTokenizer, phoneticResolver, null);
+  }
+
+  /**
+   * Constructs an expression evaluator with the provided collaborators and safety limits.
+   * <p>
+   * Null arguments select their library defaults.
+   *
+   * @param expressionTokenizer tokenizer to use, may be null
+   * @param phoneticResolver phonetic resolver to use, may be null
+   * @param runtimeLimits runtime safety limits, may be null
+   * @since 3.0.0
+   */
+  public ExpressionEvaluator(@Nullable ExpressionTokenizer expressionTokenizer,
+                             @Nullable PhoneticResolver phoneticResolver,
+                             @Nullable TranslationRuntimeLimits runtimeLimits) {
     this.expressionTokenizer = expressionTokenizer == null ? new ExpressionTokenizer() : expressionTokenizer;
     this.phoneticResolver = phoneticResolver;
+    this.runtimeLimits = runtimeLimits == null ? TranslationRuntimeLimits.defaults() : runtimeLimits;
   }
 
   /**
@@ -347,6 +362,7 @@ class ExpressionEvaluator {
 
     validateExpressionSourceLength(expression);
     List<@NonNull Token> tokens = getExpressionTokenizer().extractTokens(expression);
+    validateNumericLiteralTokens(tokens);
     tokens = convertTokensToReversePolishNotation(tokens);
 
     try {
@@ -1117,7 +1133,7 @@ class ExpressionEvaluator {
     requireNonNull(context);
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return new BigDecimal(operand.getSymbol());
+      return numericLiteralValue(operand);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1126,12 +1142,34 @@ class ExpressionEvaluator {
         value = ((Optional<?>) value).orElse(null);
 
       if (value instanceof PluralOperands)
-        return ((PluralOperands) value).getNumber();
+        return validatePluralOperands((PluralOperands) value, operand.getSymbol()).getNumber();
       if (value instanceof Number)
-        return NumberUtils.toBigDecimal((Number) value);
+        return PluralOperands.validateNumericValue(NumberUtils.toBigDecimal((Number) value),
+            format("Numeric value '%s'", operand.getSymbol()), runtimeLimits);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract numeric value from '%s'", operand.getSymbol()));
+  }
+
+  private void validateNumericLiteralTokens(@NonNull List<@NonNull Token> tokens) {
+    requireNonNull(tokens);
+
+    for (Token token : tokens)
+      if (token.getTokenType() == TokenType.NUMBER)
+        numericLiteralValue(token);
+  }
+
+  @NonNull
+  private BigDecimal numericLiteralValue(@NonNull Token token) {
+    requireNonNull(token);
+
+    try {
+      BigDecimal value = new BigDecimal(token.getSymbol());
+      return PluralOperands.validateNumericValue(value, format("Numeric literal '%s'", token.getSymbol()), runtimeLimits);
+    } catch (IllegalArgumentException e) {
+      throw new ExpressionEvaluationException(format("Invalid numeric literal '%s': %s",
+          token.getSymbol(), e.getMessage()), e);
+    }
   }
 
   /**
@@ -1414,7 +1452,7 @@ class ExpressionEvaluator {
       return Cardinality.getCardinalitiesByName().get(LocalizedStringUtils.cardinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Cardinality.forNumber(bigDecimalFromOperand(operand, context), locale);
+      return Cardinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context)), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1425,9 +1463,9 @@ class ExpressionEvaluator {
       if (value instanceof Cardinality)
         return (Cardinality) value;
       if (value instanceof PluralOperands)
-        return Cardinality.forOperands((PluralOperands) value, locale);
+        return Cardinality.forOperands(validatePluralOperands((PluralOperands) value, operand.getSymbol()), locale);
       if (value instanceof Number)
-        return Cardinality.forNumber((Number) value, locale);
+        return Cardinality.forOperands(pluralOperandsFor((Number) value), locale);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
@@ -1455,7 +1493,7 @@ class ExpressionEvaluator {
       return Ordinality.getOrdinalitiesByName().get(LocalizedStringUtils.ordinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Ordinality.forNumber(bigDecimalFromOperand(operand, context), locale);
+      return Ordinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context)), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1466,13 +1504,39 @@ class ExpressionEvaluator {
       if (value instanceof Ordinality)
         return (Ordinality) value;
       if (value instanceof PluralOperands)
-        return Ordinality.forOperands((PluralOperands) value, locale);
+        return Ordinality.forOperands(validatePluralOperands((PluralOperands) value, operand.getSymbol()), locale);
       if (value instanceof Number)
-        return Ordinality.forNumber((Number) value, locale);
+        return Ordinality.forOperands(pluralOperandsFor((Number) value), locale);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
         Ordinality.class.getSimpleName(), operand.getSymbol()));
+  }
+
+  @NonNull
+  private PluralOperands pluralOperandsFor(@NonNull Number number) {
+    requireNonNull(number);
+    return PluralOperands.forNumber(number).runtimeLimits(runtimeLimits).build();
+  }
+
+  @NonNull
+  private PluralOperands validatePluralOperands(@NonNull PluralOperands operands, @NonNull String description) {
+    requireNonNull(operands);
+    requireNonNull(description);
+
+    PluralOperands.validateNumericValue(operands.sourceNumber(),
+        format("Plural operands value '%s'", description), runtimeLimits);
+
+    if (operands.getCompactExponent() > runtimeLimits.getMaximumCompactExponent())
+      throw new IllegalArgumentException(format("Plural operands compact exponent %d exceeds the maximum of %d",
+          operands.getCompactExponent(), runtimeLimits.getMaximumCompactExponent()));
+
+    if (operands.explicitVisibleDecimalPlaces().isPresent() &&
+        operands.explicitVisibleDecimalPlaces().get() > runtimeLimits.getMaximumVisibleDecimalPlaces())
+      throw new IllegalArgumentException(format("Plural operands visible decimal places %s exceeds the maximum of %d",
+          operands.explicitVisibleDecimalPlaces().get(), runtimeLimits.getMaximumVisibleDecimalPlaces()));
+
+    return operands;
   }
 
   /**
@@ -1559,20 +1623,31 @@ class ExpressionEvaluator {
     return expressionTokenizer;
   }
 
+  /**
+   * Gets the safety limits used by this evaluator.
+   *
+   * @return runtime limits, not null
+   * @since 3.0.0
+   */
+  @NonNull
+  protected TranslationRuntimeLimits getRuntimeLimits() {
+    return runtimeLimits;
+  }
+
   protected void validateExpressionSourceLength(@NonNull String expression) {
     requireNonNull(expression);
 
-    if (expression.length() > MAX_EXPRESSION_LENGTH)
+    if (expression.length() > runtimeLimits.getMaximumExpressionCharacters())
       throw new ExpressionEvaluationException(format("Expression length %d exceeds maximum supported length %d",
-          expression.length(), MAX_EXPRESSION_LENGTH));
+          expression.length(), runtimeLimits.getMaximumExpressionCharacters()));
   }
 
   protected void validateInfixTokens(@NonNull List<@NonNull Token> tokens) {
     requireNonNull(tokens);
 
-    if (tokens.size() > MAX_EXPRESSION_TOKENS)
+    if (tokens.size() > runtimeLimits.getMaximumExpressionTokens())
       throw new ExpressionEvaluationException(format("Expression contains %d tokens, which exceeds maximum supported token count %d",
-          tokens.size(), MAX_EXPRESSION_TOKENS));
+          tokens.size(), runtimeLimits.getMaximumExpressionTokens()));
 
     int groupDepth = 0;
 
@@ -1580,9 +1655,9 @@ class ExpressionEvaluator {
       if (token.getTokenType() == TokenType.GROUP_START) {
         ++groupDepth;
 
-        if (groupDepth > MAX_EXPRESSION_GROUP_DEPTH)
+        if (groupDepth > runtimeLimits.getMaximumExpressionNestingDepth())
           throw new ExpressionEvaluationException(format("Expression grouping depth exceeds maximum supported depth %d",
-              MAX_EXPRESSION_GROUP_DEPTH));
+              runtimeLimits.getMaximumExpressionNestingDepth()));
       } else if (token.getTokenType() == TokenType.GROUP_END && groupDepth > 0) {
         --groupDepth;
       }

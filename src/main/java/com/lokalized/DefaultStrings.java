@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -60,8 +61,6 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 class DefaultStrings implements Strings {
-	private static final int MAX_GENERATED_PLACEHOLDER_DEPTH = 64;
-	private static final int MAX_INTERPOLATED_OUTPUT_CHARACTERS = 1024 * 1024;
 	@NonNull
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
 	@NonNull
@@ -77,12 +76,18 @@ class DefaultStrings implements Strings {
 
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale;
-	@NonNull
+	@Nullable
 	private final Function<LocaleMatcher, Locale> localeSupplier;
+	@Nullable
+	private final Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier;
 	@NonNull
 	private final Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 	@NonNull
 	private final TranslationFailureHandler translationFailureHandler;
+	@NonNull
+	private final TranslationFallbackPolicy translationFallbackPolicy;
+	@NonNull
+	private final TranslationRuntimeLimits runtimeLimits;
 	@NonNull
 	private final Locale fallbackLocale;
 	@NonNull
@@ -103,6 +108,8 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale;
+	@NonNull
+	private final Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledExpressionTokensByAlternative;
 
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
@@ -138,7 +145,7 @@ class DefaultStrings implements Strings {
 													 @Nullable TranslationFailureHandler translationFailureHandler,
 													 @Nullable PhoneticResolver phoneticResolver) {
 		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, translationFailureHandler,
-				phoneticResolver, null);
+				phoneticResolver, null, null);
 	}
 
 	/**
@@ -156,12 +163,63 @@ class DefaultStrings implements Strings {
 													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
 													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
-													 @Nullable TranslationFailureHandler translationFailureHandler,
-													 @Nullable PhoneticResolver phoneticResolver,
-													 @Nullable BidiIsolation bidiIsolation) {
+															 @Nullable TranslationFailureHandler translationFailureHandler,
+															 @Nullable PhoneticResolver phoneticResolver,
+															 @Nullable BidiIsolation bidiIsolation) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
+				translationFailureHandler, phoneticResolver, bidiIsolation, null, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with builder-supplied data and locale-fallback policy.
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+															 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+															 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+															 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+															 @Nullable TranslationFailureHandler translationFailureHandler,
+															 @Nullable PhoneticResolver phoneticResolver,
+																 @Nullable BidiIsolation bidiIsolation,
+																 @Nullable TranslationFallbackPolicy translationFallbackPolicy) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode,
+				translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with builder-supplied data, fallback policy, and safety limits.
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+																 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+																 @Nullable Function<LocaleMatcher, Locale> localeSupplier,
+																 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+																 @Nullable TranslationFailureHandler translationFailureHandler,
+																 @Nullable PhoneticResolver phoneticResolver,
+																 @Nullable BidiIsolation bidiIsolation,
+																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
+																 @Nullable TranslationRuntimeLimits runtimeLimits) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, null, tiebreakerLocalesByLanguageCode,
+				translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits);
+	}
+
+	/**
+	 * Constructs a localized string provider with either a locale or locale-match supplier.
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+																 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+																 @Nullable Function<LocaleMatcher, Locale> localeSupplier,
+																 @Nullable Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier,
+																 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+																 @Nullable TranslationFailureHandler translationFailureHandler,
+																 @Nullable PhoneticResolver phoneticResolver,
+																 @Nullable BidiIsolation bidiIsolation,
+																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
+																 @Nullable TranslationRuntimeLimits runtimeLimits) {
 		requireNonNull(fallbackLocale);
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
-		requireNonNull(localeSupplier, format("You must specify a 'localeSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
+
+		if ((localeSupplier == null) == (localeMatchSupplier == null))
+			throw new IllegalArgumentException(format("You must specify exactly one of 'localeSupplier' or 'localeMatchSupplier' when creating a %s instance",
+					DefaultStrings.class.getSimpleName()));
 
 		this.logger = Logger.getLogger(LoggerType.STRINGS.getLoggerName());
 
@@ -308,13 +366,19 @@ class DefaultStrings implements Strings {
 		this.fallbackLocale = resolvedFallbackLocale;
 
 		this.translationFailureHandler = translationFailureHandler == null ? TranslationFailureHandler.returnKey() : translationFailureHandler;
+		this.translationFallbackPolicy = translationFallbackPolicy == null
+				? TranslationFallbackPolicy.fallbackOnMissingTranslationOrNoMatchingAlternative()
+				: translationFallbackPolicy;
+		this.runtimeLimits = runtimeLimits == null ? TranslationRuntimeLimits.defaults() : runtimeLimits;
 		this.bidiIsolation = bidiIsolation == null ? DEFAULT_BIDI_ISOLATION : bidiIsolation;
 		this.stringInterpolator = new StringInterpolator();
 		this.phoneticResolver = phoneticResolver == null ? DEFAULT_PHONETIC_RESOLVER : phoneticResolver;
-		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver);
+		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver, this.runtimeLimits);
 
 		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
 				new HashMap<>(localizedStringsByLocale.size());
+		Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledExpressionTokensByAlternative =
+				new IdentityHashMap<>();
 
 		for (Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
 			Locale locale = entry.getKey();
@@ -325,6 +389,8 @@ class DefaultStrings implements Strings {
 					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
 
 				validateLocalizedString(locale, localizedString);
+				validateRuntimeLimits(localizedString);
+				compileAlternativeExpressions(localizedString, compiledExpressionTokensByAlternative);
 
 				String key = localizedString.getKey();
 				LocalizedString existing = localizedStringsByKey.putIfAbsent(key, localizedString);
@@ -337,8 +403,27 @@ class DefaultStrings implements Strings {
 		}
 
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByKeyByLocale);
+		this.compiledExpressionTokensByAlternative = Collections.unmodifiableMap(compiledExpressionTokensByAlternative);
 
 		this.localeSupplier = localeSupplier;
+		this.localeMatchSupplier = localeMatchSupplier;
+	}
+
+	private void compileAlternativeExpressions(@NonNull LocalizedString localizedString,
+																			 @NonNull Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledTokens) {
+		requireNonNull(localizedString);
+		requireNonNull(compiledTokens);
+
+		for (LocalizedString alternative : localizedString.getAlternatives()) {
+			if (compiledTokens.containsKey(alternative))
+				continue;
+
+			List<@NonNull Token> expressionTokens =
+					getExpressionEvaluator().parseAndValidateExpressionTokens(alternative.getKey());
+
+			compiledTokens.put(alternative, Collections.unmodifiableList(new ArrayList<>(expressionTokens)));
+			compileAlternativeExpressions(alternative, compiledTokens);
+		}
 	}
 
 	private static void validateLocalizedString(@NonNull Locale locale, @NonNull LocalizedString localizedString) {
@@ -347,81 +432,153 @@ class DefaultStrings implements Strings {
 		LocalizedStringValidator.validate(locale, localizedString);
 	}
 
+	private void validateRuntimeLimits(@NonNull LocalizedString localizedString) {
+		requireNonNull(localizedString);
+
+		for (Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
+				localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+			int ruleCount = entry.getValue().getTranslationRules().size();
+			int maximumRuleCount = getRuntimeLimits().getMaximumSelectorRules();
+
+			if (ruleCount > maximumRuleCount)
+				throw new IllegalArgumentException(format(
+						"Selector-based translation for placeholder '%s' in key '%s' contains %d rules, which exceeds the configured maximum of %d",
+						entry.getKey(), localizedString.getKey(), ruleCount, maximumRuleCount));
+		}
+
+		for (LocalizedString alternative : localizedString.getAlternatives())
+			validateRuntimeLimits(alternative);
+	}
+
 	@NonNull
 	@Override
 	public String get(@NonNull String key) {
 		requireNonNull(key);
-		return get(key, null, TranslationOptions.none());
+		return getResult(key).getTranslation();
 	}
 
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
-										@NonNull TranslationOptions options) {
+										 @NonNull TranslationOptions options) {
 		requireNonNull(key);
 		requireNonNull(options);
-		return get(key, null, options);
+		return getResult(key, options).getTranslation();
 	}
 
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
-										@Nullable Map<@NonNull String, @Nullable Object> placeholders) {
+										 @Nullable Map<@NonNull String, @Nullable Object> placeholders) {
 		requireNonNull(key);
-		return get(key, placeholders, TranslationOptions.none());
+		return getResult(key, placeholders).getTranslation();
 	}
 
 	@NonNull
 	@Override
 	public String get(@NonNull String key,
-										@Nullable Map<@NonNull String, @Nullable Object> placeholders,
-										@NonNull TranslationOptions options) {
+										 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
+										 @NonNull TranslationOptions options) {
+		return getResult(key, placeholders, options).getTranslation();
+	}
+
+	@NonNull
+	@Override
+	public TranslationResult getResult(@NonNull String key) {
+		requireNonNull(key);
+		return getResult(key, null, TranslationOptions.none());
+	}
+
+	@NonNull
+	@Override
+	public TranslationResult getResult(@NonNull String key, @NonNull TranslationOptions options) {
+		requireNonNull(key);
+		requireNonNull(options);
+		return getResult(key, null, options);
+	}
+
+	@NonNull
+	@Override
+	public TranslationResult getResult(@NonNull String key,
+															 @Nullable Map<@NonNull String, @Nullable Object> placeholders) {
+		requireNonNull(key);
+		return getResult(key, placeholders, TranslationOptions.none());
+	}
+
+	@NonNull
+	@Override
+	public TranslationResult getResult(@NonNull String key,
+															 @Nullable Map<@NonNull String, @Nullable Object> placeholders,
+															 @NonNull TranslationOptions options) {
 		requireNonNull(key);
 		requireNonNull(options);
 
 		if (placeholders == null)
 			placeholders = Collections.emptyMap();
 
-		Locale locale = localeFor(options);
+		LocaleLookup localeLookup = localeLookupFor(options);
+		Locale locale = localeLookup.getLocale();
+		LocaleMatchResult localeMatchResult = localeLookup.getLocaleMatchResult();
 		BidiIsolation bidiIsolation = options.getBidiIsolation().orElse(getBidiIsolation());
 		TranslationFailureHandler translationFailureHandler = options.getTranslationFailureHandler().orElse(getTranslationFailureHandler());
+		TranslationFallbackPolicy translationFallbackPolicy = options.getTranslationFallbackPolicy()
+				.orElse(getTranslationFallbackPolicy());
 		// All locale candidates, failure reporting, and interpolation must observe one coherent caller-input snapshot.
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException firstFallbackFailure = null;
 		boolean noMatchingAlternativeEncountered = false;
-		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
+		List<@NonNull CatalogCandidate> catalogCandidates = fallbackCatalogCandidates(locale);
+		List<@NonNull Locale> attemptedLocales = new ArrayList<>(catalogCandidates.size());
 
-		for (Locale candidateLocale : candidateLocales) {
+		for (int candidateIndex = 0; candidateIndex < catalogCandidates.size(); ++candidateIndex) {
+			CatalogCandidate catalogCandidate = catalogCandidates.get(candidateIndex);
+			Locale candidateLocale = catalogCandidate.getLocale();
+			attemptedLocales.add(candidateLocale);
 			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(immutableContext);
-			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(candidateLocale);
+			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = catalogCandidate.getLocalizedStrings();
+			TranslationFailureReason attemptFailureReason = TranslationFailureReason.MISSING_TRANSLATION;
+			@Nullable Throwable attemptCause = null;
 
-			if (localizedStrings == null)
-				continue;
+			if (localizedStrings != null) {
+				LocalizedString localizedString = localizedStrings.get(key);
 
-			LocalizedString localizedString = localizedStrings.get(key);
+				if (localizedString != null) {
+					try {
+						Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext,
+								candidateLocale, bidiIsolation);
 
-			if (localizedString == null)
-				continue;
+						if (translation.isPresent())
+							return new TranslationResult(key, translation.get(), locale, localeMatchResult, candidateLocale, attemptedLocales,
+									TranslationResultStatus.TRANSLATED, null, null);
 
-			try {
-				Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext, candidateLocale, bidiIsolation);
+						attemptFailureReason = TranslationFailureReason.NO_MATCHING_ALTERNATIVE;
+						noMatchingAlternativeEncountered = true;
+						logger.finer(format(
+								"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'",
+								key, candidateLocale.toLanguageTag()));
+					} catch (RuntimeException e) {
+						attemptFailureReason = TranslationFailureReason.RESOLUTION_FAILURE;
+						attemptCause = e;
 
-				if (translation.isPresent())
-					return translation.get();
+						if (firstFallbackFailure == null)
+							firstFallbackFailure = e;
+						else if (firstFallbackFailure != e)
+							firstFallbackFailure.addSuppressed(e);
 
-				noMatchingAlternativeEncountered = true;
-				logger.finer(format(
-						"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'; trying fallback candidates",
-						key, candidateLocale.toLanguageTag()));
-			} catch (RuntimeException e) {
-				if (firstFallbackFailure == null)
-					firstFallbackFailure = e;
-				else if (firstFallbackFailure != e)
-					firstFallbackFailure.addSuppressed(e);
-
-				logger.finer(format("Unable to resolve key '%s' for locale '%s'; trying fallback candidates. Cause: %s",
-						key, candidateLocale.toLanguageTag(), e.getMessage()));
+						logger.finer(format("Unable to resolve key '%s' for locale '%s'. Cause: %s",
+								key, candidateLocale.toLanguageTag(), e.getMessage()));
+					}
+				}
 			}
+
+			if (candidateIndex + 1 >= catalogCandidates.size())
+				break;
+
+			Boolean shouldTryNextLocale = requireNonNull(translationFallbackPolicy.shouldTryNextLocale(
+					attemptFailureReason, candidateLocale, attemptCause), "translationFallbackPolicy returned null");
+
+			if (!shouldTryNextLocale)
+				break;
 		}
 
 		String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
@@ -435,16 +592,20 @@ class DefaultStrings implements Strings {
 				: noMatchingAlternativeEncountered
 				? TranslationFailureReason.NO_MATCHING_ALTERNATIVE
 				: TranslationFailureReason.MISSING_TRANSLATION;
-		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, immutableContext,
+		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, localeMatchResult, attemptedLocales, immutableContext,
 				failureReason, firstFallbackFailure);
 		TranslationFailureResponse translationFailureResponse = requireNonNull(translationFailureHandler.handle(translationFailure),
 				format("%s returned null", TranslationFailureHandler.class.getSimpleName()));
 
 		switch (translationFailureResponse.getAction()) {
-			case RETURN_KEY:
-				return interpolateFailureKey(key, immutableContext, locale, bidiIsolation);
+			case RETURN_KEY: {
+				String translation = interpolateFailureKey(key, immutableContext, locale, bidiIsolation);
+				return new TranslationResult(key, translation, locale, localeMatchResult, null, attemptedLocales,
+						TranslationResultStatus.RETURNED_KEY, failureReason, firstFallbackFailure);
+			}
 			case RETURN_STRING:
-				return translationFailureResponse.getTranslation();
+				return new TranslationResult(key, translationFailureResponse.getTranslation(), locale, localeMatchResult, null, attemptedLocales,
+						TranslationResultStatus.RETURNED_STRING, failureReason, firstFallbackFailure);
 			case THROW_EXCEPTION:
 				throwExceptionFor(translationFailure, message);
 				throw new IllegalStateException("Unreachable code");
@@ -484,10 +645,9 @@ class DefaultStrings implements Strings {
 				logger.finer(format("An alternative match for '%s' was found for key '%s'", alternative.getKey(), key));
 
 				// If we have a matching alternative, recurse into it
-				Optional<String> translation = getInternal(key, alternative, mutableContext, immutableContext, locale, bidiIsolation);
-
-				if (translation.isPresent())
-					return translation;
+				// Alternatives are ordered first-match rules. Once a condition matches, only that branch may resolve;
+				// an unmatched nested subtree must not fall through to a later sibling.
+				return getInternal(key, alternative, mutableContext, immutableContext, locale, bidiIsolation);
 			}
 		}
 
@@ -838,7 +998,8 @@ class DefaultStrings implements Strings {
 		}
 
 		return Optional.of(interpolateTemplate(key, translation, mutableContext, immutableContext,
-				languageFormTranslationsByPlaceholder.keySet(), locale, bidiIsolation, new HashMap<>(), new ArrayList<>(), 0));
+				languageFormTranslationsByPlaceholder.keySet(), locale, bidiIsolation, new HashMap<>(), new ArrayList<>(),
+				new GeneratedExpansionBudget(getRuntimeLimits().getMaximumGeneratedExpansionCharacters()), 0));
 	}
 
 	private static void enqueueGeneratedPlaceholderDependencies(@NonNull String template,
@@ -862,8 +1023,9 @@ class DefaultStrings implements Strings {
 														 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
 														 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
 														 @NonNull Locale locale, @NonNull BidiIsolation bidiIsolation,
-														 @NonNull Map<@NonNull String, @NonNull String> expandedGeneratedValues,
-														 @NonNull List<@NonNull String> generatedPlaceholderPath, int depth) {
+																 @NonNull Map<@NonNull String, @NonNull String> expandedGeneratedValues,
+																 @NonNull List<@NonNull String> generatedPlaceholderPath,
+																 @NonNull GeneratedExpansionBudget generatedExpansionBudget, int depth) {
 		requireNonNull(key);
 		requireNonNull(template);
 		requireNonNull(generatedContext);
@@ -873,11 +1035,12 @@ class DefaultStrings implements Strings {
 		requireNonNull(bidiIsolation);
 		requireNonNull(expandedGeneratedValues);
 		requireNonNull(generatedPlaceholderPath);
+		requireNonNull(generatedExpansionBudget);
 
-		if (depth > MAX_GENERATED_PLACEHOLDER_DEPTH)
+		if (depth > getRuntimeLimits().getMaximumGeneratedPlaceholderDepth())
 			throw new IllegalStateException(format(
 					"Generated placeholder nesting for key '%s' exceeds the maximum depth of %d: %s",
-					key, MAX_GENERATED_PLACEHOLDER_DEPTH, generatedPlaceholderPath));
+					key, getRuntimeLimits().getMaximumGeneratedPlaceholderDepth(), generatedPlaceholderPath));
 
 		Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>();
 
@@ -905,7 +1068,7 @@ class DefaultStrings implements Strings {
 					try {
 						String expandedValue = interpolateTemplate(key, (String) generatedValue,
 								generatedContext, immutableContext, fileDefinedPlaceholderNames, locale, bidiIsolation,
-								expandedGeneratedValues, generatedPlaceholderPath, depth + 1);
+								expandedGeneratedValues, generatedPlaceholderPath, generatedExpansionBudget, depth + 1);
 						expandedGeneratedValues.put(placeholderName, expandedValue);
 						interpolationContext.put(placeholderName, expandedValue);
 					} finally {
@@ -923,13 +1086,18 @@ class DefaultStrings implements Strings {
 		}
 
 		StringInterpolator.InterpolationResult interpolationResult = getStringInterpolator().interpolateStrictly(template,
-				interpolationContext, MAX_INTERPOLATED_OUTPUT_CHARACTERS);
+				interpolationContext, getRuntimeLimits().getMaximumInterpolatedOutputCharacters());
 
 		if (!interpolationResult.getUnresolvedPlaceholderNames().isEmpty())
 			throw new IllegalArgumentException(format("Missing value for placeholder(s) [%s] in key '%s'",
 					interpolationResult.getUnresolvedPlaceholderNames().stream().collect(Collectors.joining(", ")), key));
 
-		return interpolationResult.getValue();
+		String interpolatedValue = interpolationResult.getValue();
+
+		if (depth > 0)
+			generatedExpansionBudget.consume(interpolatedValue.length(), key);
+
+		return interpolatedValue;
 	}
 
 	@NonNull
@@ -954,7 +1122,8 @@ class DefaultStrings implements Strings {
 				interpolationContext.put(placeholderName, value);
 			}
 
-			return getStringInterpolator().interpolate(key, interpolationContext, MAX_INTERPOLATED_OUTPUT_CHARACTERS);
+			return getStringInterpolator().interpolate(key, interpolationContext,
+					getRuntimeLimits().getMaximumInterpolatedOutputCharacters());
 		} catch (RuntimeException e) {
 			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
 			return key;
@@ -1044,7 +1213,7 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
-	private static Cardinality cardinalityForValue(@NonNull String key, @NonNull String valueName,
+	private Cardinality cardinalityForValue(@NonNull String key, @NonNull String valueName,
 																							 @NonNull Object value, @NonNull Locale locale,
 																							 @NonNull String description) {
 		requireNonNull(key);
@@ -1056,11 +1225,14 @@ class DefaultStrings implements Strings {
 		if (value instanceof Cardinality)
 			return (Cardinality) value;
 
-		if (value instanceof PluralOperands)
-			return Cardinality.forOperands((PluralOperands) value, locale);
+		if (value instanceof PluralOperands) {
+			PluralOperands operands = validatePluralOperands((PluralOperands) value, description);
+			return Cardinality.forOperands(operands, locale);
+		}
 
 		if (value instanceof Number)
-			return Cardinality.forNumber((Number) value, locale);
+			return Cardinality.forOperands(PluralOperands.forNumber((Number) value)
+					.runtimeLimits(getRuntimeLimits()).build(), locale);
 
 		throw new IllegalArgumentException(format(
 				"%s '%s' in key '%s' must be a %s, %s, or %s but was %s", description, valueName, key,
@@ -1069,7 +1241,7 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
-	private static Ordinality ordinalityForValue(@NonNull String key, @NonNull String valueName,
+	private Ordinality ordinalityForValue(@NonNull String key, @NonNull String valueName,
 																							 @NonNull Object value, @NonNull Locale locale,
 																							 @NonNull String description) {
 		requireNonNull(key);
@@ -1081,16 +1253,39 @@ class DefaultStrings implements Strings {
 		if (value instanceof Ordinality)
 			return (Ordinality) value;
 
-		if (value instanceof PluralOperands)
-			return Ordinality.forOperands((PluralOperands) value, locale);
+		if (value instanceof PluralOperands) {
+			PluralOperands operands = validatePluralOperands((PluralOperands) value, description);
+			return Ordinality.forOperands(operands, locale);
+		}
 
 		if (value instanceof Number)
-			return Ordinality.forNumber((Number) value, locale);
+			return Ordinality.forOperands(PluralOperands.forNumber((Number) value)
+					.runtimeLimits(getRuntimeLimits()).build(), locale);
 
 		throw new IllegalArgumentException(format(
 				"%s '%s' in key '%s' must be a %s, %s, or %s but was %s", description, valueName, key,
 				Number.class.getSimpleName(), PluralOperands.class.getSimpleName(), Ordinality.class.getSimpleName(),
 				value.getClass().getSimpleName()));
+	}
+
+	@NonNull
+	private PluralOperands validatePluralOperands(@NonNull PluralOperands operands, @NonNull String description) {
+		requireNonNull(operands);
+		requireNonNull(description);
+
+		PluralOperands.validateNumericValue(operands.sourceNumber(), description, getRuntimeLimits());
+
+		if (operands.getCompactExponent() > getRuntimeLimits().getMaximumCompactExponent())
+			throw new IllegalArgumentException(format("%s compact exponent %d exceeds the configured maximum of %d",
+					description, operands.getCompactExponent(), getRuntimeLimits().getMaximumCompactExponent()));
+
+		if (operands.explicitVisibleDecimalPlaces().isPresent() &&
+				operands.explicitVisibleDecimalPlaces().get() > getRuntimeLimits().getMaximumVisibleDecimalPlaces())
+			throw new IllegalArgumentException(format("%s visible decimal places %s exceeds the configured maximum of %d",
+					description, operands.explicitVisibleDecimalPlaces().get(),
+					getRuntimeLimits().getMaximumVisibleDecimalPlaces()));
+
+		return operands;
 	}
 
 	@NonNull
@@ -1180,37 +1375,58 @@ class DefaultStrings implements Strings {
 		requireNonNull(context);
 		requireNonNull(locale);
 
-		List<@NonNull Token> expressionTokens = alternative.getExpressionTokens();
+		List<@NonNull Token> expressionTokens = compiledExpressionTokensByAlternative.get(alternative);
 
-		if (expressionTokens != null)
-			return getExpressionEvaluator().evaluateReversePolishNotationTokens(expressionTokens, context, locale);
+		if (expressionTokens == null)
+			throw new IllegalStateException(format("No compiled expression was found for alternative '%s'", alternative.getKey()));
 
-		return getExpressionEvaluator().evaluate(alternative.getKey(), context, locale);
+		return getExpressionEvaluator().evaluateReversePolishNotationTokens(expressionTokens, context, locale);
+	}
+
+	@NonNull
+	@Override
+	public LocaleMatchResult matchFor(@NonNull Locale locale) {
+		requireNonNull(locale);
+		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
 	}
 
 	@NonNull
 	@Override
 	public Locale bestMatchFor(@NonNull Locale locale) {
 		requireNonNull(locale);
-		return bestMatchFor(List.of(new LanguageRange(locale.toLanguageTag())));
+		return matchFor(locale).getLocale().orElse(getFallbackLocale());
 	}
 
 	@NonNull
 	@Override
 	public Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
+		return matchFor(languageRanges).getLocale().orElse(getFallbackLocale());
+	}
 
-		if (languageRanges.isEmpty())
-			return getFallbackLocale();
+	@NonNull
+	@Override
+	public LocaleMatchResult matchFor(@NonNull List<@NonNull LanguageRange> languageRanges) {
+		requireNonNull(languageRanges);
 
 		if (languageRanges.size() > TranslationOptions.MAXIMUM_LANGUAGE_RANGES)
 			throw new IllegalArgumentException(format("At most %d language ranges are supported, but received %d",
 					TranslationOptions.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
 
-		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(languageRanges);
+		List<@NonNull LanguageRange> requestedLanguageRanges = new ArrayList<>(languageRanges.size());
+
+		for (LanguageRange languageRange : languageRanges)
+			requestedLanguageRanges.add(requireNonNull(languageRange));
+
+		requestedLanguageRanges = Collections.unmodifiableList(requestedLanguageRanges);
+		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(requestedLanguageRanges);
 		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
 		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
 		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
+		List<@NonNull Locale> consideredLocales = Collections.unmodifiableList(new ArrayList<>(availableLocales));
+
+		if (languageRanges.isEmpty())
+			return noLocaleMatch(requestedLanguageRanges, consideredLocales);
 
 		// A locale can match more than one language range. Its effective quality is taken from the
 		// most-specific matching range so, for example, "en;q=1,en-US;q=0" excludes en-US without
@@ -1232,9 +1448,7 @@ class DefaultStrings implements Strings {
 			double requiredWeight = highestEffectiveWeight;
 			availableLocales.removeIf(locale -> Double.compare(effectiveWeightsByLocale.getOrDefault(locale, 0.0), requiredWeight) != 0);
 		} else {
-			// Preserve the API's configured-fallback contract when no supported locale is acceptable.
-			// A future strict negotiation result can represent this state without manufacturing a match.
-			return getFallbackLocale();
+			return noLocaleMatch(requestedLanguageRanges, consideredLocales);
 		}
 
 		// Walk through each LanguageRange in preference order
@@ -1246,7 +1460,8 @@ class DefaultStrings implements Strings {
 				continue;
 
 			if ("*".equals(range))
-				return preferredLocaleForWildcard(availableLocales);
+				return localeMatch(preferredLocaleForWildcard(availableLocales), languageRange,
+						highestEffectiveWeight, LocaleMatchType.WILDCARD, requestedLanguageRanges, consideredLocales);
 
 			if (CldrLocaleData.hasUndeterminedLanguage(range))
 				continue;
@@ -1256,7 +1471,8 @@ class DefaultStrings implements Strings {
 			// An actual exact catalog must win over a different catalog with a canonically equivalent tag.
 			for (Locale locale : availableLocales)
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
-					return locale;
+					return localeMatch(locale, languageRange, highestEffectiveWeight, LocaleMatchType.EXACT,
+							requestedLanguageRanges, consideredLocales);
 
 			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
 			// so honor configured tiebreakers rather than returning the first lexicographic alias.
@@ -1266,17 +1482,20 @@ class DefaultStrings implements Strings {
 			Optional<@NonNull Locale> canonicalMatch = preferredLocaleForRange(canonicalRange, canonicalMatches);
 
 			if (canonicalMatch.isPresent())
-				return canonicalMatch.get();
+				return localeMatch(canonicalMatch.get(), languageRange, highestEffectiveWeight,
+						LocaleMatchType.CANONICAL, requestedLanguageRanges, consideredLocales);
 
 			Optional<Locale> lookupMatch = lookupMatchByFallbackCandidates(range, availableLocales);
 
 			if (lookupMatch.isPresent())
-				return lookupMatch.get();
+				return localeMatch(lookupMatch.get(), languageRange, highestEffectiveWeight,
+						LocaleMatchType.CLDR_FALLBACK, requestedLanguageRanges, consideredLocales);
 
 			Optional<Locale> likelySubtagMatch = lookupMatchByLikelySubtag(range, availableLocales);
 
 			if (likelySubtagMatch.isPresent())
-				return likelySubtagMatch.get();
+				return localeMatch(likelySubtagMatch.get(), languageRange, highestEffectiveWeight,
+						LocaleMatchType.LIKELY_SUBTAG, requestedLanguageRanges, consideredLocales);
 
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
 			String primary = normalizedLanguageCode(range.split("-")[0]); // e.g. "pt"
@@ -1286,7 +1505,8 @@ class DefaultStrings implements Strings {
 						Locale.FilteringMode.EXTENDED_FILTERING);
 
 				if (!filteredCandidates.isEmpty())
-					return filteredCandidates.get(0);
+					return localeMatch(filteredCandidates.get(0), languageRange, highestEffectiveWeight,
+							LocaleMatchType.EXTENDED_RANGE, requestedLanguageRanges, consideredLocales);
 
 				continue;
 			}
@@ -1295,6 +1515,7 @@ class DefaultStrings implements Strings {
 					.filter(locale -> LocaleUtils.normalizedLanguage(locale)
 							.map(language -> language.equalsIgnoreCase(primary))
 							.orElse(false))
+					.filter(locale -> hasCompatibleLikelyScript(range, locale))
 					.collect(Collectors.toList());
 
 			if (candidates.isEmpty())
@@ -1303,7 +1524,9 @@ class DefaultStrings implements Strings {
 			List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), candidates,
 					Locale.FilteringMode.EXTENDED_FILTERING);
 
-			if (!filteredCandidates.isEmpty()) {
+			boolean extendedRangeMatched = !filteredCandidates.isEmpty();
+
+			if (extendedRangeMatched) {
 				boolean hasSpecificMatch = filteredCandidates.stream()
 						.anyMatch(locale -> !locale.toLanguageTag().equalsIgnoreCase(locale.getLanguage()));
 
@@ -1312,7 +1535,9 @@ class DefaultStrings implements Strings {
 			}
 
 			if (candidates.size() == 1)
-				return candidates.get(0);
+				return localeMatch(candidates.get(0), languageRange, highestEffectiveWeight,
+						extendedRangeMatched ? LocaleMatchType.EXTENDED_RANGE : LocaleMatchType.PRIMARY_LANGUAGE,
+						requestedLanguageRanges, consideredLocales);
 
 			// Tie‐breaker list for this primary tag?
 			@Nullable List<@NonNull Locale> tiebreakers = getTiebreakerLocalesByLanguageCode().get(primary);
@@ -1320,13 +1545,30 @@ class DefaultStrings implements Strings {
 			if (tiebreakers != null)
 				for (Locale tiebreaker : tiebreakers)
 					if (candidates.contains(tiebreaker))
-						return tiebreaker;
+						return localeMatch(tiebreaker, languageRange, highestEffectiveWeight,
+								LocaleMatchType.PRIMARY_LANGUAGE, requestedLanguageRanges, consideredLocales);
 
-			return candidates.get(0);
+			return localeMatch(candidates.get(0), languageRange, highestEffectiveWeight,
+					LocaleMatchType.PRIMARY_LANGUAGE, requestedLanguageRanges, consideredLocales);
 		}
 
-		// 4) Nothing matched at all
-		return getFallbackLocale();
+		return noLocaleMatch(requestedLanguageRanges, consideredLocales);
+	}
+
+	@NonNull
+	private LocaleMatchResult localeMatch(@NonNull Locale locale, @NonNull LanguageRange languageRange,
+																					 double effectiveWeight, @NonNull LocaleMatchType matchType,
+																					 @NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
+																					 @NonNull List<@NonNull Locale> consideredLocales) {
+		return new LocaleMatchResult(requestedLanguageRanges, locale, languageRange, effectiveWeight, matchType,
+				getFallbackLocale(), consideredLocales);
+	}
+
+	@NonNull
+	private LocaleMatchResult noLocaleMatch(@NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
+																			 @NonNull List<@NonNull Locale> consideredLocales) {
+		return new LocaleMatchResult(requestedLanguageRanges, null, null, null, LocaleMatchType.NONE,
+				getFallbackLocale(), consideredLocales);
 	}
 
 	@NonNull
@@ -1415,6 +1657,14 @@ class DefaultStrings implements Strings {
 		if (canonicalLocaleTag.equalsIgnoreCase(canonicalRange))
 			return 9_000 + subtagCount;
 
+		LanguageRange canonicalStructuralRange = new LanguageRange(canonicalRange, LanguageRange.MAX_WEIGHT);
+		Locale canonicalLocale = Locale.forLanguageTag(canonicalLocaleTag);
+		List<Locale> canonicallyFiltered = Locale.filter(Collections.singletonList(canonicalStructuralRange),
+				Collections.singletonList(canonicalLocale), Locale.FilteringMode.EXTENDED_FILTERING);
+
+		if (!canonicallyFiltered.isEmpty())
+			return 9_000 + subtagCount;
+
 		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
 
 		for (int index = 0; index < fallbackLocales.size(); ++index)
@@ -1431,31 +1681,67 @@ class DefaultStrings implements Strings {
 		String requestedPrimary = normalizedLanguageCode(range.split("-")[0]);
 		Optional<String> availablePrimary = LocaleUtils.normalizedLanguage(locale);
 
-		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary))
+		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary) &&
+				hasCompatibleLikelyScript(range, locale))
 			return 5_000 + subtagCount;
 
 		return -1;
 	}
 
+	private boolean hasCompatibleLikelyScript(@NonNull String requestedLanguageTag, @NonNull Locale availableLocale) {
+		requireNonNull(requestedLanguageTag);
+		requireNonNull(availableLocale);
+
+		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(requestedLanguageTag);
+		Optional<String> availableLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(availableLocale);
+		return !requestedLanguageScript.isPresent() || !availableLanguageScript.isPresent() ||
+				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get());
+	}
+
 	@NonNull
-	private Locale localeFor(@NonNull TranslationOptions options) {
+	private LocaleLookup localeLookupFor(@NonNull TranslationOptions options) {
 		requireNonNull(options);
 
 		Optional<@NonNull Locale> locale = options.getLocale();
 
-		if (locale.isPresent())
-			return locale.get();
+		if (locale.isPresent()) {
+			Locale requestedLocale = locale.get();
+			return new LocaleLookup(requestedLocale, matchFor(requestedLocale));
+		}
 
 		Optional<@NonNull List<@NonNull LanguageRange>> languageRanges = options.getLanguageRanges();
 
-		if (languageRanges.isPresent())
-			return bestMatchFor(languageRanges.get());
+		if (languageRanges.isPresent()) {
+			LocaleMatchResult matchResult = matchFor(languageRanges.get());
+			return new LocaleLookup(matchResult.getLocale().orElse(getFallbackLocale()), matchResult);
+		}
 
-		return requireNonNull(getLocaleSupplier().apply(this), "localeSupplier returned null");
+		if (localeMatchSupplier != null) {
+			LocaleMatchResult suppliedMatch = requireNonNull(localeMatchSupplier.apply(this),
+					"localeMatchSupplier returned null");
+			validateSuppliedLocaleMatchResult(suppliedMatch);
+			return new LocaleLookup(suppliedMatch.getLocale().orElse(suppliedMatch.getFallbackLocale()), suppliedMatch);
+		}
+
+		Locale suppliedLocale = requireNonNull(requireNonNull(localeSupplier).apply(this), "localeSupplier returned null");
+		return new LocaleLookup(suppliedLocale, matchFor(suppliedLocale));
+	}
+
+	private void validateSuppliedLocaleMatchResult(@NonNull LocaleMatchResult matchResult) {
+		requireNonNull(matchResult);
+
+		if (!getFallbackLocale().equals(matchResult.getFallbackLocale()))
+			throw new IllegalArgumentException("localeMatchSupplier returned a result for a different fallback locale");
+
+		Set<@NonNull Locale> supportedLocales = getSupportedLocales();
+		Set<@NonNull Locale> consideredLocales = new LinkedHashSet<>(matchResult.getConsideredLocales());
+
+		if (!supportedLocales.equals(consideredLocales))
+			throw new IllegalArgumentException("localeMatchSupplier returned a result for different supported locales");
 	}
 
 	@NonNull
-	private List<@NonNull Locale> fallbackCandidateLocales(@NonNull Locale locale) {
+	private List<@NonNull CatalogCandidate> fallbackCatalogCandidates(@NonNull Locale locale) {
 		requireNonNull(locale);
 
 		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
@@ -1474,17 +1760,28 @@ class DefaultStrings implements Strings {
 				});
 		candidates.add(getFallbackLocale());
 
-		return new ArrayList<>(candidates);
+		Map<@NonNull Locale, @NonNull CatalogCandidate> candidatesByAttemptedLocale = new LinkedHashMap<>();
+
+		for (Locale candidate : candidates) {
+			@Nullable LocaleCatalog localeCatalog = localizedStringsFor(candidate);
+			Locale attemptedLocale = localeCatalog == null ? candidate : localeCatalog.getLocale();
+			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings =
+					localeCatalog == null ? null : localeCatalog.getLocalizedStrings();
+			candidatesByAttemptedLocale.putIfAbsent(attemptedLocale,
+					new CatalogCandidate(attemptedLocale, localizedStrings));
+		}
+
+		return new ArrayList<>(candidatesByAttemptedLocale.values());
 	}
 
 	@Nullable
-	private Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKeyFor(@NonNull Locale locale) {
+	private LocaleCatalog localizedStringsFor(@NonNull Locale locale) {
 		requireNonNull(locale);
 
 		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
 
 		if (localizedStrings != null)
-			return localizedStrings;
+			return new LocaleCatalog(locale, localizedStrings);
 
 		List<@NonNull Locale> equivalentLocales = getLocalizedStringsByKeyByLocale().keySet().stream()
 				.filter(candidate -> CldrLocaleData.equivalent(candidate, locale))
@@ -1493,7 +1790,8 @@ class DefaultStrings implements Strings {
 		Optional<@NonNull Locale> preferredLocale = preferredLocaleForRange(locale.toLanguageTag(), equivalentLocales);
 
 		if (preferredLocale.isPresent())
-			return getLocalizedStringsByKeyByLocale().get(preferredLocale.get());
+			return new LocaleCatalog(preferredLocale.get(),
+					requireNonNull(getLocalizedStringsByKeyByLocale().get(preferredLocale.get())));
 
 		return null;
 	}
@@ -1675,7 +1973,8 @@ class DefaultStrings implements Strings {
 	public Set<@NonNull String> getKeysForLocale(@NonNull Locale locale) {
 		requireNonNull(locale);
 
-		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = localizedStringsByKeyFor(locale);
+		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings =
+				getLocalizedStringsByKeyByLocale().get(locale);
 
 		if (localizedStrings == null)
 			throw new IllegalArgumentException(format("Locale '%s' is not supported", locale.toLanguageTag()));
@@ -1697,10 +1996,10 @@ class DefaultStrings implements Strings {
 		requireNonNull(sourceLocale);
 		requireNonNull(targetLocale);
 
-		if (localizedStringsByKeyFor(sourceLocale) == null)
+		if (!getLocalizedStringsByKeyByLocale().containsKey(sourceLocale))
 			throw new IllegalArgumentException(format("Source locale '%s' is not supported", sourceLocale.toLanguageTag()));
 
-		if (localizedStringsByKeyFor(targetLocale) == null)
+		if (!getLocalizedStringsByKeyByLocale().containsKey(targetLocale))
 			throw new IllegalArgumentException(format("Target locale '%s' is not supported", targetLocale.toLanguageTag()));
 
 		Set<@NonNull String> missingKeys = new TreeSet<>(getKeysForLocale(sourceLocale));
@@ -1711,11 +2010,17 @@ class DefaultStrings implements Strings {
 	/**
 	 * Gets the locale supplier.
 	 *
-	 * @return the locale supplier, not null
+	 * @return the locale supplier, or null when a locale-match supplier is configured
 	 */
-	@NonNull
+	@Nullable
 	public Function<LocaleMatcher, Locale> getLocaleSupplier() {
 		return this.localeSupplier;
+	}
+
+	/** @return locale-match supplier, or null when a locale supplier is configured */
+	@Nullable
+	public Function<LocaleMatcher, LocaleMatchResult> getLocaleMatchSupplier() {
+		return localeMatchSupplier;
 	}
 
 	/**
@@ -1779,6 +2084,26 @@ class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the policy used to decide whether failed locale attempts continue to fallback candidates.
+	 *
+	 * @return locale-fallback policy, not null
+	 */
+	@NonNull
+	public TranslationFallbackPolicy getTranslationFallbackPolicy() {
+		return translationFallbackPolicy;
+	}
+
+	/**
+	 * Gets the safety limits used for catalog construction and translation evaluation.
+	 *
+	 * @return runtime limits, not null
+	 */
+	@NonNull
+	public TranslationRuntimeLimits getRuntimeLimits() {
+		return runtimeLimits;
+	}
+
+	/**
 	 * Gets the bidirectional isolation behavior used for caller-supplied placeholder values.
 	 *
 	 * @return the bidi isolation behavior, not null
@@ -1798,6 +2123,72 @@ class DefaultStrings implements Strings {
 		return localizedStringsByKeyByLocale;
 	}
 
+	private static final class GeneratedExpansionBudget {
+		private final long maximumCharacters;
+		private long consumedCharacters;
+
+		private GeneratedExpansionBudget(long maximumCharacters) {
+			this.maximumCharacters = maximumCharacters;
+		}
+
+		private void consume(long characters, @NonNull String key) {
+			consumedCharacters = Math.addExact(consumedCharacters, characters);
+
+			if (consumedCharacters > maximumCharacters)
+				throw new IllegalStateException(format(
+						"Generated placeholder expansion for key '%s' exceeds the cumulative limit of %d characters",
+						key, maximumCharacters));
+		}
+	}
+
+	private static final class LocaleLookup {
+		@NonNull private final Locale locale;
+		@NonNull private final LocaleMatchResult localeMatchResult;
+
+		private LocaleLookup(@NonNull Locale locale, @NonNull LocaleMatchResult localeMatchResult) {
+			this.locale = requireNonNull(locale);
+			this.localeMatchResult = requireNonNull(localeMatchResult);
+		}
+
+		@NonNull
+		private Locale getLocale() {
+			return locale;
+		}
+
+		@NonNull
+		private LocaleMatchResult getLocaleMatchResult() {
+			return localeMatchResult;
+		}
+	}
+
+	private static final class LocaleCatalog {
+		@NonNull private final Locale locale;
+		@NonNull private final Map<@NonNull String, @NonNull LocalizedString> localizedStrings;
+
+		private LocaleCatalog(@NonNull Locale locale,
+											@NonNull Map<@NonNull String, @NonNull LocalizedString> localizedStrings) {
+			this.locale = requireNonNull(locale);
+			this.localizedStrings = requireNonNull(localizedStrings);
+		}
+
+		@NonNull private Locale getLocale() { return locale; }
+		@NonNull private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
+	}
+
+	private static final class CatalogCandidate {
+		@NonNull private final Locale locale;
+		@Nullable private final Map<@NonNull String, @NonNull LocalizedString> localizedStrings;
+
+		private CatalogCandidate(@NonNull Locale locale,
+												 @Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings) {
+			this.locale = requireNonNull(locale);
+			this.localizedStrings = localizedStrings;
+		}
+
+		@NonNull private Locale getLocale() { return locale; }
+		@Nullable private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
+	}
+
 	private void throwExceptionFor(@NonNull TranslationFailure translationFailure, @NonNull String message) {
 		requireNonNull(translationFailure);
 		requireNonNull(message);
@@ -1813,6 +2204,7 @@ class DefaultStrings implements Strings {
 		}
 
 		throw new MissingTranslationException(message, translationFailure.getKey(), translationFailure.getPlaceholders(),
-				translationFailure.getRequestedLocale());
+				translationFailure.getLookupLocale(), translationFailure.getLocaleMatchResult().orElse(null),
+				translationFailure.getReason(), translationFailure.getAttemptedLocales());
 	}
 }

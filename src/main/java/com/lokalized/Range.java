@@ -33,13 +33,16 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Represents a concrete range of values.
+ * Represents an immutable, ordered range of values.
  * <p>
  * This class is not designed to hold large or "infinite" ranges; it is not stream-based.
  * Instead, you might supply a small representative range of values and specify the range is "infinite"
  * if it is understood that the value pattern repeats indefinitely.
  * <p>
  * For example, you might generate an infinite powers-of-ten range with the 4 values {@code 1, 10, 100, 1_000}.
+ * <p>
+ * A range is {@link Iterable}, but deliberately does not implement {@link Collection}: mutation is not part of its
+ * contract. Use {@link #getValues()} when list operations are needed.
  * <p>
  * Ranges are constructed via static methods.
  * <p>
@@ -54,70 +57,69 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
-public class Range<T> implements Collection<@NonNull T> {
+public final class Range<T> implements Iterable<@NonNull T> {
   @NonNull
-  private static final Range<?> EMPTY_FINITE_RANGE;
+  private static final Range<?> EMPTY_FINITE_RANGE = new Range<>(Collections.emptyList(), false);
   @NonNull
-  private static final Range<?> EMPTY_INFINITE_RANGE;
+  private static final Range<?> EMPTY_INFINITE_RANGE = new Range<>(Collections.emptyList(), true);
 
   @NonNull
   private final List<@NonNull T> values;
   @NonNull
   private final Boolean infinite;
 
-  static {
-    EMPTY_FINITE_RANGE = new Range<>(Collections.emptySet(), false);
-    EMPTY_INFINITE_RANGE = new Range<>(Collections.emptySet(), true);
-  }
-
   /**
    * Provides an infinite range for the given values.
    *
-   * @param values the values of the range, not null
+   * @param values the values of the range, not null and containing no null elements
    * @param <T>    the type of values contained in the range
    * @return an infinite range, not null
    */
   @NonNull
   public static <T> Range<T> ofInfiniteValues(@NonNull Collection<@NonNull T> values) {
     requireNonNull(values);
-    return values.size() == 0 ? emptyInfiniteRange() : new Range(values, true);
+    return values.isEmpty() ? emptyInfiniteRange() : new Range<>(values, true);
   }
 
   /**
    * Provides an infinite range for the given values.
    *
-   * @param values the values of the range, may be null
+   * @param values the values of the range, not null and containing no null elements
    * @param <T>    the type of values contained in the range
    * @return an infinite range, not null
    */
+  @SafeVarargs
   @NonNull
-  public static <T> Range<T> ofInfiniteValues(@NonNull T @Nullable ... values) {
-    return values == null || values.length == 0 ? emptyInfiniteRange() : new Range(values, true);
+  public static <T> Range<T> ofInfiniteValues(@NonNull T @NonNull ... values) {
+    requireNonNull(values);
+    return values.length == 0 ? emptyInfiniteRange() : new Range<>(Arrays.asList(values), true);
   }
 
   /**
    * Provides a finite range for the given values.
    *
-   * @param values the values of the range, not null
+   * @param values the values of the range, not null and containing no null elements
    * @param <T>    the type of values contained in the range
    * @return a finite range, not null
    */
   @NonNull
   public static <T> Range<T> ofFiniteValues(@NonNull Collection<@NonNull T> values) {
     requireNonNull(values);
-    return values.size() == 0 ? emptyFiniteRange() : new Range(values, false);
+    return values.isEmpty() ? emptyFiniteRange() : new Range<>(values, false);
   }
 
   /**
    * Provides a finite range for the given values.
    *
-   * @param values the values of the range, may be null
+   * @param values the values of the range, not null and containing no null elements
    * @param <T>    the type of values contained in the range
    * @return a finite range, not null
    */
+  @SafeVarargs
   @NonNull
-  public static <T> Range<T> ofFiniteValues(@NonNull T @Nullable ... values) {
-    return values == null || values.length == 0 ? emptyFiniteRange() : new Range(values, false);
+  public static <T> Range<T> ofFiniteValues(@NonNull T @NonNull ... values) {
+    requireNonNull(values);
+    return values.length == 0 ? emptyFiniteRange() : new Range<>(Arrays.asList(values), false);
   }
 
   /**
@@ -126,6 +128,8 @@ public class Range<T> implements Collection<@NonNull T> {
    * @param <T> the type of values contained in the range
    * @return the empty finite range, not null
    */
+  @SuppressWarnings("unchecked")
+  @NonNull
   public static <T> Range<T> emptyFiniteRange() {
     return (Range<T>) EMPTY_FINITE_RANGE;
   }
@@ -136,206 +140,33 @@ public class Range<T> implements Collection<@NonNull T> {
    * @param <T> the type of values contained in the range
    * @return the empty infinite range, not null
    */
+  @SuppressWarnings("unchecked")
+  @NonNull
   public static <T> Range<T> emptyInfiniteRange() {
     return (Range<T>) EMPTY_INFINITE_RANGE;
   }
 
-  /**
-   * Creates a range with the given values and "infinite" flag.
-   *
-   * @param values   the values that comprise this range, not null
-   * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
-   */
   private Range(@NonNull Collection<@NonNull T> values, @NonNull Boolean infinite) {
     requireNonNull(values);
     requireNonNull(infinite);
 
-    this.values = values.size() == 0 ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(values));
+    List<@NonNull T> copiedValues = new ArrayList<>(values.size());
+    for (T value : values)
+      copiedValues.add(requireNonNull(value, "Range values may not contain null"));
+
+    this.values = copiedValues.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(copiedValues);
     this.infinite = infinite;
-  }
-
-  /**
-   * Creates a range with the given values and "infinite" flag.
-   *
-   * @param values   the values that comprise this range, may be null
-   * @param infinite whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
-   */
-  private Range(@NonNull T @NonNull [] values, @NonNull Boolean infinite) {
-    requireNonNull(values);
-    requireNonNull(infinite);
-
-    this.values = Collections.unmodifiableList(new ArrayList<>(Arrays.asList(values)));
-    this.infinite = infinite;
-  }
-
-  /**
-   * Returns the number of elements in this range.
-   *
-   * @return the number of elements in this range
-   */
-  @Override
-  public int size() {
-    return getValues().size();
-  }
-
-  /**
-   * Returns true if this range contains no elements.
-   *
-   * @return true if this range contains no elements
-   */
-  @Override
-  public boolean isEmpty() {
-    return getValues().isEmpty();
-  }
-
-  /**
-   * Returns true if this range contains the specified value.
-   * <p>
-   * More formally, returns true if and only if this range contains at least one value v such that {@code (o==null ? v==null : o.equals(v))}.
-   *
-   * @param value value whose presence in this range is to be tested
-   * @return true if this range contains the specified value
-   */
-  @Override
-  public boolean contains(@Nullable Object value) {
-    return getValues().contains(value);
   }
 
   /**
    * Returns an iterator over the values in this range in proper sequence.
-   * <p>
-   * The returned iterator is <a href="https://docs.oracle.com/javase/8/docs/api/java/util/ArrayList.html#fail-fast" target="_blank">fail-fast</a>.
    *
-   * @return an iterator over the values in this range in proper sequence, not null
+   * @return an immutable iterator over the values in this range, not null
    */
   @NonNull
   @Override
   public Iterator<@NonNull T> iterator() {
     return getValues().iterator();
-  }
-
-  /**
-   * Returns an array containing all of the values in this range in proper sequence (from first to last value).
-   * <p>
-   * The returned array will be "safe" in that no references to it are maintained by this range. (In other words, this method must allocate a new array). The caller is thus free to modify the returned array.
-   * <p>
-   * This method acts as bridge between array-based and collection-based APIs.
-   *
-   * @return an array containing all of the values in this range in proper sequence, not null
-   */
-  @NonNull
-  @Override
-  public Object[] toArray() {
-    return getValues().toArray();
-  }
-
-  /**
-   * Returns an array containing all of the values in this range in proper sequence (from first to last element); the runtime type of the returned array is that of the specified array. If the range fits in the specified array, it is returned therein. Otherwise, a new array is allocated with the runtime type of the specified array and the size of this range.
-   * <p>
-   * If the range fits in the specified array with room to spare (i.e., the array has more elements than the range), the element in the array immediately following the end of the collection is set to null. (This is useful in determining the length of the range only if the caller knows that the range does not contain any null elements.)
-   *
-   * @param a    the array into which the values of the range are to be stored, if it is big enough; otherwise, a new array of the same runtime type is allocated for this purpose. not null
-   * @param <T1> the runtime type of the array to contain the collection
-   * @return an array containing the values of the range, not null
-   */
-  @NonNull
-  @Override
-  public <T1> T1[] toArray(@NonNull T1[] a) {
-    return getValues().toArray(a);
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @param t the value to add, ignored
-   * @return no return value; this method always throws UnsupportedOperationException
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public boolean add(@Nullable T t) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @param o the value to remove, ignored
-   * @return no return value; this method always throws UnsupportedOperationException
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public boolean remove(@Nullable Object o) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Returns true if this range contains all of the elements of the specified collection.
-   *
-   * @param c collection to be checked for containment in this range, not null
-   * @return true if this range contains all of the elements of the specified collection
-   */
-  @Override
-  public boolean containsAll(@NonNull Collection<@Nullable ?> c) {
-    requireNonNull(c);
-    return getValues().containsAll(c);
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @param c collection containing elements to be added to this range, ignored
-   * @return no return value; this method always throws UnsupportedOperationException
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public boolean addAll(@Nullable Collection<? extends @NonNull T> c) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @param c collection containing elements to be removed from this range, ignored
-   * @return no return value; this method always throws UnsupportedOperationException
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public boolean removeAll(@Nullable Collection<@Nullable ?> c) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @param c collection containing elements to be retained in this range, ignored
-   * @return no return value; this method always throws UnsupportedOperationException
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public boolean retainAll(@Nullable Collection<@Nullable ?> c) {
-    throw new UnsupportedOperationException();
-  }
-
-  /**
-   * Guaranteed to throw an exception and leave the range unmodified.
-   *
-   * @throws UnsupportedOperationException always
-   * @deprecated Unsupported operation; this type is immutable.
-   */
-  @Override
-  @Deprecated
-  public void clear() {
-    throw new UnsupportedOperationException();
   }
 
   /**
@@ -347,8 +178,8 @@ public class Range<T> implements Collection<@NonNull T> {
   @NonNull
   public String toString() {
     return format("%s{values=%s, infinite=%s}", getClass().getSimpleName(), getValues().stream()
-        .map(value -> value.toString())
-        .collect(Collectors.joining(", ")), getInfinite());
+        .map(Object::toString)
+        .collect(Collectors.joining(", ")), isInfinite());
   }
 
   /**
@@ -365,10 +196,10 @@ public class Range<T> implements Collection<@NonNull T> {
     if (other == null || !getClass().equals(other.getClass()))
       return false;
 
-    Range valueRange = (Range) other;
+    Range<?> valueRange = (Range<?>) other;
 
     return Objects.equals(getValues(), valueRange.getValues())
-        && Objects.equals(getInfinite(), valueRange.getInfinite());
+        && Objects.equals(isInfinite(), valueRange.isInfinite());
   }
 
   /**
@@ -378,13 +209,13 @@ public class Range<T> implements Collection<@NonNull T> {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getValues(), getInfinite());
+    return Objects.hash(getValues(), isInfinite());
   }
 
   /**
-   * Gets the values that comprise this range.
+   * Gets the ordered values that comprise this range.
    *
-   * @return the values that comprise this range, not null
+   * @return an immutable list of the values that comprise this range, not null
    */
   @NonNull
   public List<@NonNull T> getValues() {
@@ -394,10 +225,10 @@ public class Range<T> implements Collection<@NonNull T> {
   /**
    * Gets whether this range is infinite.
    *
-   * @return whether this range is infinite - that is, whether the range's pattern repeats indefinitely, not null
+   * @return whether this range's pattern repeats indefinitely, not null
    */
   @NonNull
-  public Boolean getInfinite() {
+  public Boolean isInfinite() {
     return infinite;
   }
 }

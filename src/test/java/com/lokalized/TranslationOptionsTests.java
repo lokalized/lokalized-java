@@ -40,15 +40,18 @@ public class TranslationOptionsTests {
 	@Test
 	public void valueSemantics() {
 		TranslationFailureHandler translationFailureHandler = TranslationFailureHandler.throwException();
+		TranslationFallbackPolicy translationFallbackPolicy = TranslationFallbackPolicy.neverFallback();
 		TranslationOptions options = TranslationOptions.builder()
 				.locale(Locale.forLanguageTag("en-US"))
 				.bidiIsolation(BidiIsolation.NONE)
 				.translationFailureHandler(translationFailureHandler)
+				.translationFallbackPolicy(translationFallbackPolicy)
 				.build();
 		TranslationOptions sameOptions = TranslationOptions.builder()
 				.locale(Locale.forLanguageTag("en-US"))
 				.bidiIsolation(BidiIsolation.NONE)
 				.translationFailureHandler(translationFailureHandler)
+				.translationFallbackPolicy(translationFallbackPolicy)
 				.build();
 		TranslationOptions differentOptions = TranslationOptions.forLocale(Locale.forLanguageTag("en-GB"));
 
@@ -58,6 +61,9 @@ public class TranslationOptionsTests {
 		assertFalse(options.equals(null));
 		assertTrue(options.toString().contains("locale=en-US"));
 		assertTrue(options.toString().contains("bidiIsolation=NONE"));
+		assertEquals(translationFallbackPolicy,
+				options.getTranslationFallbackPolicy().orElseThrow(AssertionError::new));
+		assertTrue(options.toString().contains("translationFallbackPolicy="));
 		assertTrue(TranslationOptions.none().toString().contains("TranslationOptions"));
 	}
 

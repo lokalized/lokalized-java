@@ -276,6 +276,10 @@ final class LocalizedStringValidator {
     List<@NonNull LanguageFormTranslationRule> rules = languageFormTranslation.getTranslationRules();
     if (selectors.isEmpty() || rules.isEmpty())
       throw invalid(locale, rootKey, format("Selector-driven placeholder '%s' requires selectors and rules", placeholderName));
+    if (rules.size() > LanguageFormTranslation.MAXIMUM_SELECTOR_RULES)
+      throw invalid(locale, rootKey, format(
+          "Selector-driven placeholder '%s' defines %d rules, exceeding the maximum of %d",
+          placeholderName, rules.size(), LanguageFormTranslation.MAXIMUM_SELECTOR_RULES));
 
     Set<@NonNull LanguageFormType> selectorTypes = new LinkedHashSet<>();
     Map<@NonNull String, @NonNull Set<@NonNull LanguageFormType>> selectorTypesByValue = new HashMap<>();

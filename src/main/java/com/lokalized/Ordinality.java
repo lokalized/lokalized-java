@@ -110,6 +110,7 @@ public enum Ordinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @throws IllegalArgumentException if the number exceeds the safety limits documented by {@link PluralOperands}
    */
   @NonNull
   public static Ordinality forNumber(@NonNull Number number, @NonNull Locale locale) {

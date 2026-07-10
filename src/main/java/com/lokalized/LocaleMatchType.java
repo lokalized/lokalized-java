@@ -13,19 +13,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package com.lokalized;
 
 /**
- * Closed marker interface which signifies a Lokalized-defined language construct (genders, grammatical cases,
- * definiteness, classifiers, animacy, clusivity, formality, cardinalities, ordinalities, phonetics).
- * <p>
- * Only the enum types shipped by Lokalized are supported. Application code must not implement this interface;
- * external implementations cannot be mapped to a {@link LanguageFormType} and are rejected. The interface remains
- * syntactically implementable because Lokalized targets Java 9, which predates sealed interfaces.
+ * Describes the relationship used to select a locale.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
-public interface LanguageForm {
-  // Marker interface
+public enum LocaleMatchType {
+	NONE,
+	EXACT,
+	CANONICAL,
+	CLDR_FALLBACK,
+	LIKELY_SUBTAG,
+	EXTENDED_RANGE,
+	PRIMARY_LANGUAGE,
+	WILDCARD
 }

@@ -43,7 +43,7 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
-public class LocalizedString {
+public final class LocalizedString {
   @NonNull
   private final String key;
   @Nullable
@@ -69,11 +69,11 @@ public class LocalizedString {
    * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
    * @param alternatives                          alternative expression-driven translations for this string, may be null
    */
-  protected LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
-                            @Nullable Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder,
-                            @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
-                            @Nullable List<@NonNull LocalizedString> alternatives,
-                            @Nullable List<@NonNull Token> expressionTokens) {
+  private LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
+                          @Nullable Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder,
+                          @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
+                          @Nullable List<@NonNull LocalizedString> alternatives,
+                          @Nullable List<@NonNull Token> expressionTokens) {
     requireNonNull(key);
 
     this.key = key;
@@ -365,7 +365,7 @@ public class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static class PlaceholderMetadata {
+  public static final class PlaceholderMetadata {
     @Nullable
     private final String type;
     @Nullable
@@ -504,7 +504,18 @@ public class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static class LanguageFormTranslation {
+  public static final class LanguageFormTranslation {
+    /**
+     * Maximum number of ordered rules accepted for one selector-driven translation.
+     * <p>
+     * Ambiguity validation compares rules at equal specificity, so bounding the rule count also bounds catalog
+     * validation work while still permitting large practical agreement tables.
+     *
+     * @since 3.0.0
+     */
+    @NonNull
+    public static final Integer MAXIMUM_SELECTOR_RULES = TranslationRuntimeLimits.MAXIMUM_SELECTOR_RULES;
+
     @Nullable
     private final String value;
     @Nullable
@@ -564,10 +575,16 @@ public class LocalizedString {
       if (selectors.isEmpty())
         throw new IllegalArgumentException(format("Selector-based %s instances require at least one selector",
             getClass().getSimpleName()));
+      if (selectors.size() > LanguageFormType.values().length)
+        throw new IllegalArgumentException(format("Selector-based %s instances may contain at most %d selectors",
+            getClass().getSimpleName(), LanguageFormType.values().length));
 
       if (translationRules.isEmpty())
         throw new IllegalArgumentException(format("Selector-based %s instances require at least one translation rule",
             getClass().getSimpleName()));
+      if (translationRules.size() > MAXIMUM_SELECTOR_RULES)
+        throw new IllegalArgumentException(format("Selector-based %s instances may contain at most %d translation rules",
+            getClass().getSimpleName(), MAXIMUM_SELECTOR_RULES));
 
       this.value = null;
       this.range = null;
@@ -651,7 +668,8 @@ public class LocalizedString {
      *
      * @return true if this translation is selector-driven, false otherwise
      */
-    public boolean isSelectorDriven() {
+    @NonNull
+    public Boolean isSelectorDriven() {
       return getSelectors().size() > 0;
     }
 
@@ -694,7 +712,7 @@ public class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static class LanguageFormSelector {
+  public static final class LanguageFormSelector {
     @NonNull
     private final String value;
     @NonNull
@@ -784,7 +802,7 @@ public class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static class LanguageFormTranslationRule {
+  public static final class LanguageFormTranslationRule {
     @NonNull
     private final Map<@NonNull LanguageFormType, @NonNull LanguageForm> whenByLanguageFormType;
     @NonNull
@@ -882,7 +900,7 @@ public class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static class LanguageFormTranslationRange {
+  public static final class LanguageFormTranslationRange {
     @NonNull
     private final String start;
     @NonNull

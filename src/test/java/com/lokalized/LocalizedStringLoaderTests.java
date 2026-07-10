@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -36,13 +37,16 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -54,6 +58,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @ThreadSafe
 public class LocalizedStringLoaderTests {
+	@Test
+	public void loadingOptionsHaveValueSemanticsAndCopyBuilder() {
+		LocalizedStringLoadingOptions defaults = LocalizedStringLoadingOptions.defaults();
+		LocalizedStringLoadingOptions copy = defaults.toBuilder().build();
+		LocalizedStringLoadingOptions lower = defaults.toBuilder().maximumCatalogs(10).build();
+
+		assertEquals(defaults, copy);
+		assertEquals(defaults.hashCode(), copy.hashCode());
+		assertNotEquals(defaults, lower);
+		assertTrue(lower.toString().contains("maximumCatalogs=10"));
+	}
   @Test
   public void testClasspathLoading() {
     verifyLocalizedStringsByLocale(LocalizedStringLoader.loadFromClasspath("strings"));
@@ -374,6 +389,87 @@ public class LocalizedStringLoaderTests {
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoadingOptions.builder().maximumJsonNestingDepth(
             LocalizedStringLoadingOptions.MAXIMUM_JSON_NESTING_DEPTH + 1));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumTotalInputBytes(0L));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumCatalogs(0));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumTranslations(-1));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumWarnings(-1));
+  }
+
+  @Test
+  public void testFilesystemLoadingEnforcesAggregateLimitsWithoutChangingSingleResourceParse() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-aggregate-limits");
+    tempDirectory.toFile().deleteOnExit();
+    String englishCatalog = "{\"hello\":\"world\"}";
+    String frenchCatalog = "{\"goodbye\":\"world\"}";
+    Files.write(tempDirectory.resolve("en.json"), englishCatalog.getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("fr.json"), frenchCatalog.getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingOptions catalogLimited = LocalizedStringLoadingOptions.builder()
+        .maximumCatalogs(1)
+        .build();
+    LocalizedStringLoadingOptions byteLimited = LocalizedStringLoadingOptions.builder()
+        .maximumTotalInputBytes((long) englishCatalog.getBytes(StandardCharsets.UTF_8).length +
+            frenchCatalog.getBytes(StandardCharsets.UTF_8).length - 1L)
+        .build();
+    LocalizedStringLoadingOptions translationLimited = LocalizedStringLoadingOptions.builder()
+        .maximumTranslations(1)
+        .build();
+
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, catalogLimited)).getMessage()
+        .contains("aggregate maximum of 1 catalogs"));
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, byteLimited)).getMessage()
+        .contains("aggregate maximum"));
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, translationLimited)).getMessage()
+        .contains("aggregate maximum of 1 translations"));
+
+    LocalizedStringLoadingOptions aggregateLimitsIgnoredBySingleResourceParse =
+        LocalizedStringLoadingOptions.builder()
+            .maximumTotalInputBytes(1L)
+            .maximumTranslations(0)
+            .maximumWarnings(0)
+            .build();
+    assertEquals(1, LocalizedStringLoader.parse(
+        new ByteArrayInputStream(englishCatalog.getBytes(StandardCharsets.UTF_8)), Locale.ENGLISH, "single-resource",
+        LocalizedStringWarningHandler.ignore(), aggregateLimitsIgnoredBySingleResourceParse).size());
+  }
+
+	@Test
+	public void testTranslationLimitIsReservedBeforeCatalogEntryValidation() throws IOException {
+		Path tempDirectory = Files.createTempDirectory("lokalized-translation-limit");
+		tempDirectory.toFile().deleteOnExit();
+		Files.write(tempDirectory.resolve("en.json"),
+				"{\"first\":\"ok\",\"second\":{\"translation\":null}}".getBytes(StandardCharsets.UTF_8));
+		LocalizedStringLoadingOptions oneTranslation = LocalizedStringLoadingOptions.builder()
+				.maximumTranslations(1)
+				.build();
+
+		LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+				() -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, oneTranslation));
+		assertTrue(exception.getMessage().contains("aggregate maximum of 1 translations"));
+	}
+
+  @Test
+  public void testFilesystemLoadingEnforcesAggregateWarningLimit() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-warning-limit");
+    tempDirectory.toFile().deleteOnExit();
+    String incompleteRussian = "{\"books\":{\"translation\":\"{{books}}\",\"placeholders\":{\"books\":{" +
+        "\"value\":\"count\",\"translations\":{\"CARDINALITY_ONE\":\"книга\"," +
+        "\"CARDINALITY_OTHER\":\"книг\"}}}}}";
+    Files.write(tempDirectory.resolve("ru.json"), incompleteRussian.getBytes(StandardCharsets.UTF_8));
+    LocalizedStringLoadingOptions noWarnings = LocalizedStringLoadingOptions.builder()
+        .maximumWarnings(0)
+        .build();
+
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, LocalizedStringWarningHandler.ignore(),
+            noWarnings)).getMessage().contains("aggregate maximum of 0 warnings"));
   }
 
   @Test
@@ -405,13 +501,41 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testLoaderRejectsMultipleExpressionsInOneAlternativeObject() {
+    String catalog = "{\"key\":{\"alternatives\":[{" +
+        "\"count == 1\":{\"translation\":\"one\"}," +
+        "\"count > 0\":{\"translation\":\"positive\"}}]}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "ordered-alternatives"));
+
+    assertTrue(exception.getMessage().contains("exactly one expression"));
+    assertTrue(exception.getMessage().contains("first-match precedence"));
+  }
+
+  @Test
   public void testClasspathLoadingRejectsEscapingPackagePaths() {
     ClassLoader classLoader = getClass().getClassLoader();
 
     for (String invalidPackage : List.of("", "/", "/strings", "../strings", "strings/../other",
-        "strings//other", "strings/./other", "strings\\other"))
+        "strings//other", "strings/./other", "strings\\other", "D:strings", "z:catalogs/strings"))
       assertThrows(IllegalArgumentException.class,
           () -> LocalizedStringLoader.loadFromClasspath(classLoader, invalidPackage), invalidPackage);
+  }
+
+  @Test
+  public void testFilesystemLoadingAcceptsUndeterminedLanguageTags() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-undetermined-language");
+    tempDirectory.toFile().deleteOnExit();
+    Files.write(tempDirectory.resolve("und.json"), "{\"root\":\"value\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("und-Latn.json"), "{\"latin\":\"value\"}".getBytes(StandardCharsets.UTF_8));
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+
+    assertEquals(Set.of(Locale.ROOT, Locale.forLanguageTag("und-Latn")), localizedStringsByLocale.keySet());
+    assertEquals("und", Locale.ROOT.toLanguageTag());
+    assertEquals("und-Latn", Locale.forLanguageTag("und-Latn").toLanguageTag());
   }
 
   @Test
@@ -1045,6 +1169,29 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testFilesystemLoadingRejectsExcessiveSelectorRulesBeforeAmbiguityValidation() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
+    tempDirectory.toFile().deleteOnExit();
+    StringBuilder rules = new StringBuilder();
+
+    for (int index = 0; index < LocalizedString.LanguageFormTranslation.MAXIMUM_SELECTOR_RULES + 1; ++index) {
+      if (index > 0)
+        rules.append(',');
+      rules.append("{\"value\":\"item\"}");
+    }
+
+    Files.write(tempDirectory.resolve("en"),
+        ("{\"Items\":{\"translation\":\"{{noun}}\",\"placeholders\":{\"noun\":{\"selectors\":[" +
+            "{\"value\":\"count\",\"form\":\"CARDINALITY\"}],\"translations\":[" + rules + "]}}}}")
+            .getBytes(StandardCharsets.UTF_8));
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
+    assertTrue(exception.getMessage().contains("at most " +
+        LocalizedString.LanguageFormTranslation.MAXIMUM_SELECTOR_RULES + " rules"));
+  }
+
+  @Test
   public void testClasspathLoadingFromJar() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings", ".jar");
     tempJar.toFile().deleteOnExit();
@@ -1084,6 +1231,124 @@ public class LocalizedStringLoaderTests {
       Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
       assertTrue(localizedStringsByLocale.containsKey(Locale.forLanguageTag("en-US")));
     }
+  }
+
+  @Test
+  public void testClasspathLoadingUsesRuntimeEntryFromMultiReleaseJar() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-multi-release", ".jar");
+    tempJar.toFile().deleteOnExit();
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest.getMainAttributes().putValue("Multi-Release", "true");
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar), manifest)) {
+      writeJarEntry(jarOutputStream, "strings/", null);
+      writeJarEntry(jarOutputStream, "strings/en.json", "{\"message\":\"base\"}");
+      writeJarEntry(jarOutputStream, "META-INF/versions/9/strings/en.json", "{\"message\":\"versioned\"}");
+    }
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+      LocalizedString localizedString = localizedStringsByLocale.get(Locale.ENGLISH).iterator().next();
+
+      assertEquals("versioned", localizedString.getTranslation().orElse(null));
+    }
+  }
+
+	@Test
+	public void testMultiReleaseJarDoesNotOverlayLogicalMetaInfResources() throws IOException {
+		Path tempJar = Files.createTempFile("lokalized-strings-meta-inf-multi-release", ".jar");
+		tempJar.toFile().deleteOnExit();
+		Manifest manifest = new Manifest();
+		manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+		manifest.getMainAttributes().putValue("Multi-Release", "true");
+
+		try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar), manifest)) {
+			writeJarEntry(jarOutputStream, "META-INF/lokalized/", null);
+			writeJarEntry(jarOutputStream, "META-INF/lokalized/en.json", "{\"message\":\"base\"}");
+			writeJarEntry(jarOutputStream, "META-INF/versions/9/META-INF/lokalized/en.json",
+					"{\"message\":\"versioned\"}");
+		}
+
+		try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+			Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+					LocalizedStringLoader.loadFromClasspath(classLoader, "META-INF/lokalized");
+			LocalizedString localizedString = localizedStringsByLocale.get(Locale.ENGLISH).iterator().next();
+
+			assertEquals("base", localizedString.getTranslation().orElse(null));
+		}
+	}
+
+  @Test
+  public void testExhaustiveClasspathLoadingFollowsManifestClasspath() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-manifest-classpath");
+    tempDirectory.toFile().deleteOnExit();
+    Path catalogsJar = tempDirectory.resolve("catalogs.jar");
+    Path applicationJar = tempDirectory.resolve("application.jar");
+    writeJarEntryWithoutDirectory(catalogsJar, "strings/en.json", "{\"hello\":\"world\"}");
+
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, catalogsJar.getFileName().toString());
+
+    try (JarOutputStream ignored = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
+      // Manifest-only application JAR.
+    }
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{applicationJar.toUri().toURL()}, null)) {
+      assertNotNull(classLoader.getResource("strings/en.json"),
+          "The manifest Class-Path resource should be visible through ordinary resource lookup");
+      LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+          .exhaustiveClasspathSearch(true)
+          .build();
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions);
+
+      assertEquals(Set.of(Locale.ENGLISH), localizedStringsByLocale.keySet());
+      assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+    }
+  }
+
+  @Test
+  public void testExplicitClasspathResourceMappingSupportsNonEnumerableClassloader() {
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        if ("catalogs/en.json".equals(resourcePath))
+          return new ByteArrayInputStream("{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+        if ("catalogs/root.json".equals(resourcePath))
+          return new ByteArrayInputStream("{\"fallback\":\"value\"}".getBytes(StandardCharsets.UTF_8));
+
+        return null;
+      }
+    };
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromClasspathResources(classLoader,
+            Map.of(Locale.ENGLISH, "catalogs/en.json", Locale.ROOT, "catalogs/root.json"));
+
+    assertEquals(Set.of(Locale.ENGLISH, Locale.ROOT), localizedStringsByLocale.keySet());
+    assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+    assertEquals(1, localizedStringsByLocale.get(Locale.ROOT).size());
+
+    ClassLoader originalContextClassLoader = Thread.currentThread().getContextClassLoader();
+
+    try {
+      Thread.currentThread().setContextClassLoader(classLoader);
+      assertEquals(localizedStringsByLocale, LocalizedStringLoader.loadFromClasspathResources(
+          Map.of(Locale.ENGLISH, "catalogs/en.json", Locale.ROOT, "catalogs/root.json")));
+    } finally {
+      Thread.currentThread().setContextClassLoader(originalContextClassLoader);
+    }
+
+    assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspathResources(classLoader,
+            Map.of(Locale.FRENCH, "catalogs/missing.json")));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.loadFromClasspathResources(classLoader,
+            Map.of(Locale.FRENCH, "C:catalogs/fr.json")));
   }
 
   @Test
@@ -1227,6 +1492,28 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testClasspathLoadingSharesAggregateLimitsAcrossDiscoveredLocations() throws IOException {
+    Path tempJar1 = Files.createTempFile("lokalized-aggregate-one", ".jar");
+    Path tempJar2 = Files.createTempFile("lokalized-aggregate-two", ".jar");
+    tempJar1.toFile().deleteOnExit();
+    tempJar2.toFile().deleteOnExit();
+    writeJarEntry(tempJar1, "strings/en.json", "{\"hello\":\"world\"}");
+    writeJarEntry(tempJar2, "strings/fr.json", "{\"bonjour\":\"monde\"}");
+    LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+        .maximumCatalogs(1)
+        .build();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{
+        tempJar1.toUri().toURL(),
+        tempJar2.toUri().toURL()
+    }, null)) {
+      assertTrue(assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions)).getMessage()
+          .contains("aggregate maximum of 1 catalogs"));
+    }
+  }
+
+  @Test
   public void testClasspathLoadingReportsOriginsForConflictingDuplicateKeys() throws IOException {
     Path tempJar1 = Files.createTempFile("lokalized-strings-conflict-one", ".jar");
     Path tempJar2 = Files.createTempFile("lokalized-strings-conflict-two", ".jar");
@@ -1294,6 +1581,16 @@ public class LocalizedStringLoaderTests {
       jarOutputStream.write(json.getBytes(StandardCharsets.UTF_8));
       jarOutputStream.closeEntry();
     }
+  }
+
+  private void writeJarEntry(JarOutputStream jarOutputStream, String entryName, String contents) throws IOException {
+    JarEntry entry = new JarEntry(entryName);
+    jarOutputStream.putNextEntry(entry);
+
+    if (contents != null)
+      jarOutputStream.write(contents.getBytes(StandardCharsets.UTF_8));
+
+    jarOutputStream.closeEntry();
   }
 
   protected void verifyLocalizedStringsByLocale(@NonNull Map<Locale, Set<LocalizedString>> localizedStringsByLocale) {

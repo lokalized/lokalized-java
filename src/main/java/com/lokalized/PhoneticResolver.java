@@ -25,6 +25,7 @@ import java.util.Locale;
  * <p>
  * This allows callers to supply language-specific phonetic logic without
  * Lokalized needing a built-in phonetic dictionary.
+ * Implementations shared by a {@link Strings} instance may be invoked concurrently and must be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 1.2.0

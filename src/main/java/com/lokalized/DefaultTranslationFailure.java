@@ -40,9 +40,11 @@ final class DefaultTranslationFailure implements TranslationFailure {
 	@NonNull
 	private final String key;
 	@NonNull
-	private final Locale requestedLocale;
+	private final Locale lookupLocale;
 	@NonNull
-	private final List<@NonNull Locale> candidateLocales;
+	private final Optional<@NonNull LocaleMatchResult> localeMatchResult;
+	@NonNull
+	private final List<@NonNull Locale> attemptedLocales;
 	@NonNull
 	private final Map<@NonNull String, @Nullable Object> placeholders;
 	@NonNull
@@ -51,20 +53,22 @@ final class DefaultTranslationFailure implements TranslationFailure {
 	private final Optional<@NonNull Throwable> cause;
 
 	DefaultTranslationFailure(@NonNull String key,
-														@NonNull Locale requestedLocale,
-														@NonNull List<@NonNull Locale> candidateLocales,
+														@NonNull Locale lookupLocale,
+														@Nullable LocaleMatchResult localeMatchResult,
+														@NonNull List<@NonNull Locale> attemptedLocales,
 														@NonNull Map<@NonNull String, @Nullable Object> placeholders,
 														@NonNull TranslationFailureReason reason,
 														@Nullable Throwable cause) {
 		requireNonNull(key);
-		requireNonNull(requestedLocale);
-		requireNonNull(candidateLocales);
+		requireNonNull(lookupLocale);
+		requireNonNull(attemptedLocales);
 		requireNonNull(placeholders);
 		requireNonNull(reason);
 
 		this.key = key;
-		this.requestedLocale = requestedLocale;
-		this.candidateLocales = Collections.unmodifiableList(new ArrayList<>(candidateLocales));
+		this.lookupLocale = lookupLocale;
+		this.localeMatchResult = Optional.ofNullable(localeMatchResult);
+		this.attemptedLocales = Collections.unmodifiableList(new ArrayList<>(attemptedLocales));
 		this.placeholders = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		this.reason = reason;
 		this.cause = Optional.ofNullable(cause);
@@ -78,14 +82,20 @@ final class DefaultTranslationFailure implements TranslationFailure {
 
 	@NonNull
 	@Override
-	public Locale getRequestedLocale() {
-		return requestedLocale;
+	public Locale getLookupLocale() {
+		return lookupLocale;
 	}
 
 	@NonNull
 	@Override
-	public List<@NonNull Locale> getCandidateLocales() {
-		return candidateLocales;
+	public Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
+		return localeMatchResult;
+	}
+
+	@NonNull
+	@Override
+	public List<@NonNull Locale> getAttemptedLocales() {
+		return attemptedLocales;
 	}
 
 	@NonNull

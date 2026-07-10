@@ -42,20 +42,30 @@ public interface TranslationFailure {
 	String getKey();
 
 	/**
-	 * Gets the locale originally requested by the caller.
+	 * Gets the locale used to begin per-key catalog fallback after any language-range negotiation.
 	 *
-	 * @return the requested locale, not null
+	 * @return the lookup locale, not null
 	 */
 	@NonNull
-	Locale getRequestedLocale();
+	Locale getLookupLocale();
 
 	/**
-	 * Gets the ordered candidate locales attempted for this lookup.
+	 * Gets strict locale-negotiation diagnostics when the implementation can provide them.
 	 *
-	 * @return the candidate locales, not null
+	 * @return locale-negotiation result, or empty when unavailable, not null
 	 */
 	@NonNull
-	List<@NonNull Locale> getCandidateLocales();
+	default Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
+		return Optional.empty();
+	}
+
+	/**
+	 * Gets the ordered locales actually attempted for this lookup.
+	 *
+	 * @return the attempted locales, not null
+	 */
+	@NonNull
+	List<@NonNull Locale> getAttemptedLocales();
 
 	/**
 	 * Gets the placeholders supplied by the caller.

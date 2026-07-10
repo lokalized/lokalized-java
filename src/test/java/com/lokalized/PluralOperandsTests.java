@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -108,5 +109,53 @@ public class PluralOperandsTests {
   @Test
   public void invalidCompactExponentIsRejected() {
     assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(1).compactExponent(-1).build());
+  }
+
+  @Test
+  public void excessiveVisibleDecimalPlacesAreRejectedBeforeScaleExpansion() {
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(1)
+        .visibleDecimalPlaces(PluralOperands.MAXIMUM_VISIBLE_DECIMAL_PLACES + 1)
+        .build());
+  }
+
+  @Test
+  public void excessiveCompactExponentIsRejectedBeforeDecimalShifting() {
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(1)
+        .compactExponent(PluralOperands.MAXIMUM_COMPACT_EXPONENT + 1)
+        .build());
+  }
+
+  @Test
+  public void excessiveNumberScaleIsRejectedBeforeOperandMaterialization() {
+    BigDecimal excessivePositiveScale = new BigDecimal(BigInteger.ONE,
+        PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1);
+    BigDecimal excessiveNegativeScale = new BigDecimal(BigInteger.ONE,
+        -PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE - 1);
+    BigDecimal minimumIntegerScale = new BigDecimal(BigInteger.ONE, Integer.MIN_VALUE);
+
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePositiveScale).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessiveNegativeScale).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(minimumIntegerScale).build());
+  }
+
+  @Test
+  public void excessiveNumberPrecisionIsRejected() {
+    BigDecimal excessivePrecision = new BigDecimal(BigInteger.TEN.pow(PluralOperands.MAXIMUM_NUMBER_PRECISION));
+
+    assertEquals(PluralOperands.MAXIMUM_NUMBER_PRECISION + 1, excessivePrecision.precision());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePrecision).build());
+  }
+
+  @Test
+  public void safetyLimitsAcceptBoundaryValues() {
+    BigDecimal maximumPrecision = new BigDecimal(
+        BigInteger.TEN.pow(PluralOperands.MAXIMUM_NUMBER_PRECISION).subtract(BigInteger.ONE));
+    PluralOperands operands = PluralOperands.forNumber(maximumPrecision)
+        .compactExponent(PluralOperands.MAXIMUM_COMPACT_EXPONENT)
+        .build();
+
+    assertEquals(PluralOperands.MAXIMUM_NUMBER_PRECISION + PluralOperands.MAXIMUM_COMPACT_EXPONENT,
+        operands.getNumber().precision());
+    assertEquals(PluralOperands.MAXIMUM_COMPACT_EXPONENT, operands.getCompactExponent());
   }
 }

@@ -23,6 +23,7 @@ import com.lokalized.LocalizedString.LanguageFormTranslationRule;
 import com.lokalized.LocalizedString.PlaceholderMetadata;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -59,6 +60,21 @@ public class LocalizedStringValidatorTests {
   @Test
   public void invalidProgrammaticAlternativeExpressionIsRejected() {
     LocalizedString alternative = new LocalizedString.Builder("count ==")
+        .translation("invalid")
+        .build();
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("default")
+        .alternatives(List.of(alternative))
+        .build();
+
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+  }
+
+  @Test
+  public void unsafeNumericLiteralIsRejectedDuringCatalogValidation() {
+    LocalizedString alternative = new LocalizedString.Builder(
+        "count == 1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1))
         .translation("invalid")
         .build();
     LocalizedString localizedString = new LocalizedString.Builder("key")
@@ -159,6 +175,24 @@ public class LocalizedStringValidatorTests {
 
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+  }
+
+  @Test
+  public void excessiveSelectorRuleCountIsRejectedBeforeCopyAndQuadraticValidation() {
+    List<LanguageFormTranslationRule> rules = new ArrayList<>();
+    for (int index = 0; index < LanguageFormTranslation.MAXIMUM_SELECTOR_RULES; ++index)
+      rules.add(new LanguageFormTranslationRule(
+          Map.of(LanguageFormType.GENDER, Gender.MASCULINE), "value" + index));
+
+    assertDoesNotThrow(() -> new LanguageFormTranslation(
+        List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)), rules));
+
+    rules.add(new LanguageFormTranslationRule(
+        Map.of(LanguageFormType.GENDER, Gender.MASCULINE), "excessive"));
+
+    assertThrows(IllegalArgumentException.class,
+        () -> new LanguageFormTranslation(
+            List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)), rules));
   }
 
   @Test

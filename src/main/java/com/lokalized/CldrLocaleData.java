@@ -220,11 +220,14 @@ final class CldrLocaleData {
       return true;
 
     String language = tagParts.getLanguage();
+    boolean explicitlyUndetermined = "und".equalsIgnoreCase(languageTag) ||
+        languageTag.toLowerCase(Locale.ROOT).startsWith("und-");
 
-    if (language.length() == 0)
+    if (language.length() == 0 && !explicitlyUndetermined)
       return false;
 
-    if (!isKnownLanguage(language) && !LANGUAGE_ALIASES_BY_TAG.containsKey(keyFor(language)) &&
+    if (language.length() > 0 && !explicitlyUndetermined && !isKnownLanguage(language) &&
+        !LANGUAGE_ALIASES_BY_TAG.containsKey(keyFor(language)) &&
         !LANGUAGE_ALIASES_BY_TAG.containsKey(keyFor(tagParts.toLanguageTag())))
       return false;
 

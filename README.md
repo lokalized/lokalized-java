@@ -317,10 +317,11 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 * Language-range quality weights are honored, and a `q=0` range excludes that locale and its matching descendants when another acceptable loaded locale remains
 * `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
 
-`LocaleMatcher` accepts at most 1,000 language ranges per call to bound work on untrusted `Accept-Language`
-input. `TranslationOptions` enforces the same limit when the options are constructed, before a lookup begins. Its
-current non-null contract also means that if every loaded locale is excluded with `q=0`, it returns the configured
-fallback; a future strict negotiation API can represent “no acceptable locale” separately.
+[`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) accepts at most 1,000 language ranges
+per call to bound work on untrusted `Accept-Language` input.
+[`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) enforces the same limit when
+the options are constructed, before a lookup begins. `bestMatchFor(...)` always returns a locale and uses the configured
+fallback when nothing is acceptable.
 
 ## Loading Localized Strings
 
@@ -345,23 +346,33 @@ publish resources into the same package. [`loadFromClasspath(String)`](https://j
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
 Classpath package names must be nonempty slash-relative paths and may not contain empty interior, `.` or `..` segments.
 One or more trailing slashes are ignored; leading slashes and traversal remain invalid.
+The valid BCP 47 tag `und` represents Java's `Locale.ROOT`, so a root catalog is named `und.json`; tags such as
+`und-Latn.json` are also supported.
 
-Loading is bounded per resource by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
+Loading is bounded per resource and per multi-resource operation by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
 The default limit is 16 MiB for a `Path` or `InputStream`, 16 MiB characters for a `Reader`, and 128 levels of
-JSON object/array nesting. Overloads accepting loading options can lower the limits; the parser's hard maximum nesting
-depth is 128. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected—use `{}` for an
-intentionally empty catalog.
+JSON object/array nesting. A filesystem directory, discovered classpath package, or explicit classpath-resource mapping
+is additionally limited to 64 MiB total input, 1,000 catalogs, 100,000 translations, and 10,000 warnings. Overloads
+accepting loading options can lower the limits; the parser's hard maximum nesting depth is 128. Single-resource
+`parse(...)` methods apply only the per-resource limits. Input streams are decoded as strict UTF-8, and blank or BOM-only
+catalogs are rejected—use `{}` for an intentionally empty catalog.
 
 Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
 Some JAR creation tools omit directory entries, which makes their packages invisible to ordinary discovery. Enable
-`exhaustiveClasspathSearch(true)` only when you need to support such a JAR; this inspects every filesystem and JAR root
-visible to the classloader. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
+[`exhaustiveClasspathSearch(true)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.Builder.html#exhaustiveClasspathSearch(java.lang.Boolean))
+only when you need to support such a JAR; this inspects every filesystem and JAR root
+visible to the classloader, including filesystem JARs referenced through manifest `Class-Path` entries. Multi-release
+JAR catalogs use the entry selected for the running Java version. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
 with a warning so an unrelated dependency cannot abort application startup. Filesystem loading remains strict and rejects
 the same filename, which catches mistakes in a catalog directory owned by the application.
 
 ```java
 LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
   .maximumInputBytes(4 * 1024 * 1024)
+  .maximumTotalInputBytes(16L * 1024L * 1024L)
+  .maximumCatalogs(100)
+  .maximumTranslations(25_000)
+  .maximumWarnings(1_000)
   .maximumJsonNestingDepth(64)
   .exhaustiveClasspathSearch(true) // Only for JARs that omit package directory entries
   .build();
@@ -370,9 +381,31 @@ Map<Locale, Set<LocalizedString>> catalogs =
   LocalizedStringLoader.loadFromClasspath("strings", limits);
 ```
 
+Some container and plugin classloaders can open known resources but cannot enumerate a package or expose a standard
+`file:`/`jar:` package URL. Use
+[`loadFromClasspathResources(...)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspathResources(java.lang.ClassLoader,java.util.Map,com.lokalized.LocalizedStringWarningHandler,com.lokalized.LocalizedStringLoadingOptions))
+to map locales to exact resource paths in those environments; this path uses
+`ClassLoader.getResourceAsStream(...)` and performs no package discovery:
+
+```java
+Map<Locale, Set<LocalizedString>> catalogs = LocalizedStringLoader.loadFromClasspathResources(
+  pluginClassLoader,
+  Map.of(
+    Locale.ROOT, "myapp/strings/und.json",
+    Locale.ENGLISH, "myapp/strings/en.json",
+    Locale.FRENCH, "myapp/strings/fr.json"
+  ),
+  limits
+);
+```
+
 ## Per-Invocation Options
 
-The `localeSupplier` configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web requests and other request-scoped contexts. For async jobs, batch work, tests, administrative tooling, or alternate output sinks, use [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) to override lookup behavior for a single invocation:
+The [`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
+configured on [`Strings.Builder`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html) is convenient for web
+requests and other request-scoped contexts. For async jobs, batch work, tests, administrative tooling, or alternate
+output sinks, use [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) to override
+lookup behavior for a single invocation:
 
 ```java
 String message = strings.get(
@@ -382,7 +415,49 @@ String message = strings.get(
 );
 ```
 
-Per-invocation options can supply a locale, language ranges, bidi isolation behavior, or a translation failure handler. Locale and language-range options bypass the configured `localeSupplier` for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior using the locale preference you supplied.
+Per-invocation options can supply a locale, language ranges, bidi isolation behavior,
+[`TranslationFallbackPolicy`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html), or
+[`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html). Locale and
+language-range options bypass the configured
+[`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
+or [`localeMatchSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeMatchSupplier(java.util.function.Function))
+for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior
+using the preference you supplied.
+
+## Runtime Safety Limits
+
+Catalog construction and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
+The defaults cap numbers and numeric literals at 4,096 digits of precision and absolute scale, visible decimal places
+and compact exponents at 4,096, expressions at 4,096 characters / 512 tokens / 64 nested groups, selector-driven
+translations at 128 rules, generated placeholders at 64 levels, one interpolated result at 1 MiB, and cumulative
+generated-fragment expansion at 8 MiB per lookup. These are hard ceilings; applications may lower them but cannot
+raise them. Configure them with
+[`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
+and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.Builder.html).
+
+```java
+TranslationRuntimeLimits runtimeLimits = TranslationRuntimeLimits.builder()
+  .maximumExpressionCharacters(2_048)
+  .maximumExpressionTokens(256)
+  .maximumSelectorRules(64)
+  .maximumInterpolatedOutputCharacters(256 * 1_024)
+  .maximumGeneratedExpansionCharacters(1024 * 1024)
+  .build();
+
+Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("com/example/myapp/strings"))
+  .localeSupplier(matcher -> Locale.ENGLISH)
+  .runtimeLimits(runtimeLimits)
+  .build();
+```
+
+Apply the limits to a provider with
+[`Strings.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
+It can also be supplied directly through
+[`PluralOperands.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
+Limit violations in a catalog fail during
+loading or `Strings` construction where possible; violations
+caused by lookup values or generated expansion are resolution failures.
 
 ## A More Complex Example
 
@@ -1126,6 +1201,10 @@ assertEquals(Cardinality.MANY, cardinality);
 scale would discard a nonzero digit, `build()` throws `ArithmeticException`; round the displayed value explicitly
 before constructing its operands so plural selection and presentation cannot silently disagree.
 
+To keep plural-operand construction predictably bounded, Lokalized accepts at most 4,096 significant digits, an
+absolute decimal scale of 4,096, 4,096 explicitly visible decimal places, and a compact exponent of 4,096. The
+corresponding limits are exposed as boxed constants on [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html).
+
 ### Plural Cardinality Ranges
 
 For example: `0-1 hours, 1-2 hours, ...`
@@ -1358,7 +1437,14 @@ The normal Maven build compiles the generator as test code and performs a byte-f
 
 ## Translation Failure Handling
 
-When a lookup cannot be resolved, Lokalized asks the configured [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to do. The default handler is [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()), which returns the lookup key with any caller-supplied placeholders interpolated into it.
+Locale fallback and final failure handling are separate decisions. After each unsuccessful catalog attempt,
+[`TranslationFallbackPolicy`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html) decides whether
+to try the next candidate. Only after fallback stops or candidates are exhausted does Lokalized ask the configured
+[`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to return
+or throw. The default policy falls back for missing translations and unmatched alternatives, but stops on runtime
+resolution failures so a corrupt translation cannot be silently hidden by a different locale. The default handler is
+[`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()),
+which returns the lookup key with caller-supplied placeholders interpolated into it.
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -1371,10 +1457,21 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 Built-in handler factories are:
 
 * [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - returns the key with supplied placeholders interpolated
-* [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
+* [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws [`MissingTranslationException`](https://javadoc.lokalized.com/com/lokalized/MissingTranslationException.html) for missing translations and rethrows runtime resolution failures
 * [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
 
-Failure reasons distinguish a key that is absent from every candidate locale
+Built-in fallback policies are:
+
+* [`fallbackOnMissingTranslationOrNoMatchingAlternative()`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html#fallbackOnMissingTranslationOrNoMatchingAlternative()) - the safe default
+* [`fallbackOnAnyFailure()`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html#fallbackOnAnyFailure()) - preserves Lokalized 2.x behavior, including fallback after resolution failures
+* [`neverFallback()`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html#neverFallback()) - stops after the first failed locale attempt
+
+Global policies are configured with
+[`Strings.Builder.translationFallbackPolicy(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#translationFallbackPolicy(com.lokalized.TranslationFallbackPolicy));
+[`TranslationOptions.Builder.translationFallbackPolicy(...)`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.Builder.html#translationFallbackPolicy(com.lokalized.TranslationFallbackPolicy))
+overrides it for one lookup. Custom policies and handlers may be called concurrently and must be thread-safe.
+
+Failure reasons distinguish a key that is absent from every attempted candidate locale
 ([`MISSING_TRANSLATION`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#MISSING_TRANSLATION)),
 a present alternatives-only key for which no condition matched
 ([`NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)),
@@ -1399,7 +1496,73 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
   .build();
 ```
 
-[`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) exposes the key, requested locale, candidate locales, caller-supplied placeholders, failure reason, and optional runtime cause. Placeholder values can contain user data, so avoid logging [`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders()) unless your application has explicitly approved that.
+[`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) exposes
+[`getKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getKey()),
+[`getLookupLocale()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getLookupLocale()), optional
+[`getLocaleMatchResult()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getLocaleMatchResult()),
+[`getAttemptedLocales()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getAttemptedLocales()),
+caller-supplied placeholders,
+[`getReason()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getReason()), and optional
+[`getCause()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getCause()). Placeholder values can
+contain user data, so avoid logging
+[`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders())
+unless your application has explicitly approved that.
+
+## Translation Diagnostics
+
+Most callers can use [`get(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#get(java.lang.String,java.util.Map,com.lokalized.TranslationOptions))
+and configure locale selection with
+[`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
+and [`bestMatchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)). Call
+[`getResult(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#getResult(java.lang.String,java.util.Map,com.lokalized.TranslationOptions))
+only when the caller also needs diagnostics:
+
+```java
+TranslationResult result = strings.getResult(
+  "I read {{bookCount}} books.",
+  Map.of("bookCount", 3),
+  TranslationOptions.forLanguageRanges(LanguageRange.parse("pt-PT,pt;q=0.8"))
+);
+
+String message = result.getTranslation();
+Locale lookupLocale = result.getLookupLocale();
+Optional<Locale> resolvedCatalog = result.getResolvedLocale();
+List<Locale> attemptedCatalogs = result.getAttemptedLocales();
+Boolean usedFallback = result.isFallback();
+Optional<LocaleMatchResult> localeMatch = result.getLocaleMatchResult();
+```
+
+[`TranslationResult`](https://javadoc.lokalized.com/com/lokalized/TranslationResult.html) uses
+[`TranslationResultStatus`](https://javadoc.lokalized.com/com/lokalized/TranslationResultStatus.html) to distinguish
+translated, returned-key, and handler-returned-string outcomes, and exposes the final failure reason and resolution cause
+when applicable. Per-call language ranges, such as those supplied through
+[`TranslationOptions.forLanguageRanges(...)`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html#forLanguageRanges(java.util.List)),
+are preserved in its optional [`LocaleMatchResult`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchResult.html).
+
+If request-scoped `Accept-Language` negotiation is configured globally and those original diagnostics must be retained,
+use the diagnostic supplier explicitly:
+
+```java
+Strings stringsWithNegotiationDiagnostics = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeMatchSupplier((matcher) -> {
+    HttpServletRequest request = MyWebContext.getHttpServletRequest();
+    String acceptLanguage = request.getHeader("Accept-Language");
+    List<LanguageRange> languageRanges = LanguageRange.parse(acceptLanguage);
+    return matcher.matchFor(languageRanges);
+  })
+  .build();
+```
+
+[`localeMatchSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeMatchSupplier(java.util.function.Function))
+passes through the result of strict
+[`matchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#matchFor(java.util.List)). Its immutable
+[`LocaleMatchResult`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchResult.html) preserves the requested ranges,
+locales considered, winning range and quality, match kind
+([`LocaleMatchType`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchType.html)), and an explicit unmatched state. If
+every loaded locale is excluded with `q=0`, translation lookup can still use the configured fallback while the result
+accurately reports that negotiation found no acceptable match. The simpler `localeSupplier(...bestMatchFor(...))` path
+remains appropriate when an application only needs the selected locale.
 
 ## Localized Strings File Format
 
@@ -1633,6 +1796,7 @@ In the selector-driven format:
 * Lokalized selects the most specific matching rule.  In the above example, `CASE + GENDER` beats `GENDER` alone.
 * A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.
 * Ambiguous overlapping rules with the same specificity are rejected while loading translations.
+* One selector-driven translation may contain at most 128 rules, exposed as `LanguageFormTranslation.MAXIMUM_SELECTOR_RULES`, so ambiguity validation has a fixed upper bound.
 
 Here is the selector-driven placeholder exercised with a few simple assertions:
 
@@ -1677,13 +1841,22 @@ Selector-driven placeholders are for local agreement only.  Use `alternatives` w
 
 ### Alternatives
 
-You may specify parenthesized expressions of arbitrary complexity in `alternatives` to fine-tune your translations.  `alternatives` complement selector-driven placeholders: use placeholder selectors for local agreement on one slot, and use `alternatives` for broader conditional rewrites.  It's perfectly legal to have an alternative like this:
+You may specify bounded, parenthesized expressions in `alternatives` to fine-tune your translations. `alternatives`
+complement selector-driven placeholders: use placeholder selectors for local agreement on one slot, and use
+`alternatives` for broader conditional rewrites. Each object in an `alternatives` array contains exactly one expression.
+It's perfectly legal to have an alternative like this:
  
 ```text
 gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
 ```
 
 Standard boolean operator precedence applies: `&&` binds tighter than `||`.
+
+Numeric literals are parsed and safety-checked when translations are loaded. They use the same precision and absolute
+scale limits as [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), so an exponent
+cannot defer an unbounded decimal materialization until lookup time. Expressions are limited to 4,096 source
+characters, 512 tokens, and 64 nested groups by default; `Strings` applications may lower these ceilings with
+[`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
 
 Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` also expose their numeric value for ordinary numeric comparisons. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
  
@@ -1703,9 +1876,11 @@ Alternative expression recursion is supported. That is, each value for `alternat
   
 Alternative evaluation follows these rules:
 
-* Deepest level of recursion is evaluated first
-* Expressions are evaluated according to their order in the list, halting at first matched expression 
-* If no expression matches and no default `translation` is present in any candidate locale, failure handlers receive
+* At each level, expressions are evaluated according to their order in the list, halting at the first match
+* Within a matched branch, nested alternatives are evaluated before that branch's default `translation`
+* Once an expression matches, evaluation stays within that branch; an unmatched nested subtree does not fall through
+  to a later sibling
+* If no expression matches and no default `translation` is present in any attempted candidate locale, failure handlers receive
   [`TranslationFailureReason.NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)
 
 A somewhat contrived example of multiple levels of recursion follows.  The first level of recursion uses a full object, the second uses the string shorthand.
@@ -1779,7 +1954,7 @@ Built-in language-form constants are reserved in alternative expressions. A toke
 
 #### What Expressions Currently Support
 
-* Evaluation of "normal" infix expressions of arbitrary complexity (can be nested/parenthesized)
+* Evaluation of bounded "normal" infix expressions (can be nested/parenthesized)
 * Comparison of supported language forms, phonetic forms, plural and ordinal forms, and literal numeric values against each other or user-supplied variables
 
 #### What Expressions Do Not Currently Support

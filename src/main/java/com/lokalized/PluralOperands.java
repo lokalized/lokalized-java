@@ -23,6 +23,7 @@ import javax.annotation.concurrent.Immutable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
+import java.util.Optional;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -38,6 +39,39 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 public final class PluralOperands {
+  /**
+   * Maximum precision accepted for a number used in plural operands or an alternative-expression numeric literal.
+   *
+   * @since 3.0.0
+   */
+  @NonNull
+  public static final Integer MAXIMUM_NUMBER_PRECISION = TranslationRuntimeLimits.MAXIMUM_NUMBER_PRECISION;
+  /**
+   * Maximum absolute {@link BigDecimal#scale()} accepted for a number used in plural operands or an
+   * alternative-expression numeric literal.
+   *
+   * @since 3.0.0
+   */
+  @NonNull
+  public static final Integer MAXIMUM_ABSOLUTE_NUMBER_SCALE = TranslationRuntimeLimits.MAXIMUM_ABSOLUTE_NUMBER_SCALE;
+  /**
+   * Maximum number of explicitly visible decimal places accepted by {@link Builder#visibleDecimalPlaces(Integer)}.
+   *
+   * @since 3.0.0
+   */
+  @NonNull
+  public static final Integer MAXIMUM_VISIBLE_DECIMAL_PLACES = TranslationRuntimeLimits.MAXIMUM_VISIBLE_DECIMAL_PLACES;
+  /**
+   * Maximum compact-decimal exponent accepted by {@link Builder#compactExponent(Integer)}.
+   *
+   * @since 3.0.0
+   */
+  @NonNull
+  public static final Integer MAXIMUM_COMPACT_EXPONENT = TranslationRuntimeLimits.MAXIMUM_COMPACT_EXPONENT;
+
+  // Input scale, visible scale, and compact shifting can each add zeroes to the materialized unscaled value.
+  private static final int MAXIMUM_MATERIALIZED_PRECISION = 12_288;
+
   @NonNull
   private final BigDecimal n;
   @NonNull
@@ -54,8 +88,14 @@ public final class PluralOperands {
   private final BigDecimal c;
   @NonNull
   private final BigDecimal e;
+	@NonNull
+	private final BigDecimal sourceNumber;
+	@Nullable
+	private final Integer explicitVisibleDecimalPlaces;
 
-  private PluralOperands(@NonNull BigDecimal number, int compactExponent) {
+  private PluralOperands(@NonNull BigDecimal sourceNumber, @NonNull BigDecimal number, int compactExponent,
+								 @Nullable Integer explicitVisibleDecimalPlaces) {
+    requireNonNull(sourceNumber);
     requireNonNull(number);
 
     @NonNull BigDecimal operandNumber = number.movePointRight(compactExponent);
@@ -70,6 +110,44 @@ public final class PluralOperands {
     this.t = new BigDecimal(NumberUtils.fractionalComponent(strippedNumber));
     this.c = exponent;
     this.e = exponent;
+		this.sourceNumber = sourceNumber;
+		this.explicitVisibleDecimalPlaces = explicitVisibleDecimalPlaces;
+  }
+
+  /**
+   * Validates the non-materializing characteristics of a decimal before code derives integer and fractional operands.
+   */
+  @NonNull
+  static BigDecimal validateNumericValue(@NonNull BigDecimal number, @NonNull String description) {
+    return validateNumericValue(number, description, TranslationRuntimeLimits.defaults());
+  }
+
+  /**
+   * Validates a decimal against the supplied runtime limits without materializing its integer or fraction digits.
+   */
+  @NonNull
+  static BigDecimal validateNumericValue(@NonNull BigDecimal number, @NonNull String description,
+                                         @NonNull TranslationRuntimeLimits runtimeLimits) {
+    requireNonNull(number);
+    requireNonNull(description);
+    requireNonNull(runtimeLimits);
+
+    long absoluteScale = Math.abs((long) number.scale());
+    if (absoluteScale > runtimeLimits.getMaximumAbsoluteNumberScale())
+      throw new IllegalArgumentException(format("%s scale %d exceeds the maximum absolute scale of %d",
+          description, number.scale(), runtimeLimits.getMaximumAbsoluteNumberScale()));
+
+    if (number.precision() > runtimeLimits.getMaximumNumberPrecision())
+      throw new IllegalArgumentException(format("%s precision %d exceeds the maximum of %d",
+          description, number.precision(), runtimeLimits.getMaximumNumberPrecision()));
+
+    return number;
+  }
+
+  private static void validateMaterializedPrecision(long materializedPrecision) {
+    if (materializedPrecision > MAXIMUM_MATERIALIZED_PRECISION)
+      throw new IllegalArgumentException(format("Plural operand materialized precision %d exceeds the maximum of %d",
+          materializedPrecision, MAXIMUM_MATERIALIZED_PRECISION));
   }
 
   /**
@@ -141,6 +219,16 @@ public final class PluralOperands {
     return c;
   }
 
+	@NonNull
+	BigDecimal sourceNumber() {
+		return sourceNumber;
+	}
+
+	@NonNull
+	Optional<@NonNull Integer> explicitVisibleDecimalPlaces() {
+		return Optional.ofNullable(explicitVisibleDecimalPlaces);
+	}
+
   @NonNull
   BigDecimal e() {
     return e;
@@ -197,10 +285,13 @@ public final class PluralOperands {
     private Integer visibleDecimalPlaces;
     @Nullable
     private Integer compactExponent;
+    @NonNull
+    private TranslationRuntimeLimits runtimeLimits;
 
     private Builder(@NonNull Number number) {
       requireNonNull(number);
       this.number = number;
+      this.runtimeLimits = TranslationRuntimeLimits.defaults();
     }
 
     /**
@@ -210,7 +301,8 @@ public final class PluralOperands {
      * Reducing the scale does not round implicitly: callers must supply an already-rounded number, otherwise
      * {@link #build()} throws {@link ArithmeticException}.
      *
-     * @param visibleDecimalPlaces the visible decimal places, may be null to use the number's natural scale
+     * @param visibleDecimalPlaces the visible decimal places, from zero through
+     *                             {@link #MAXIMUM_VISIBLE_DECIMAL_PLACES}, or null to use the number's natural scale
      * @return this builder, not null
      */
     @NonNull
@@ -224,7 +316,8 @@ public final class PluralOperands {
      * <p>
      * For example, a compact display such as {@code 1M} may be evaluated with a compact exponent of {@code 6}.
      *
-     * @param compactExponent the compact-decimal exponent, may be null to use zero
+     * @param compactExponent the compact-decimal exponent, from zero through {@link #MAXIMUM_COMPACT_EXPONENT},
+     *                        or null to use zero
      * @return this builder, not null
      */
     @NonNull
@@ -234,33 +327,70 @@ public final class PluralOperands {
     }
 
     /**
+     * Applies safety limits to operand construction.
+     *
+     * @param runtimeLimits runtime limits, or null to use the library defaults
+     * @return this builder, not null
+     * @since 3.0.0
+     */
+    @NonNull
+    public Builder runtimeLimits(@Nullable TranslationRuntimeLimits runtimeLimits) {
+      this.runtimeLimits = runtimeLimits == null ? TranslationRuntimeLimits.defaults() : runtimeLimits;
+      return this;
+    }
+
+    /**
      * Builds immutable plural operands.
      *
      * @return immutable plural operands, not null
      * @throws ArithmeticException if the requested visible decimal places would require rounding
+     * @throws IllegalArgumentException if the number, visible decimal places, or compact exponent exceeds a supported
+     *                                  safety limit
      */
     @NonNull
     public PluralOperands build() {
-      boolean numberIsBigDecimal = number instanceof BigDecimal;
-      BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
-      numberAsBigDecimal = numberAsBigDecimal.abs();
-
-      if (visibleDecimalPlaces == null) {
-        if (!numberIsBigDecimal)
-          numberAsBigDecimal = numberAsBigDecimal.setScale(NumberUtils.numberOfDecimalPlaces(number), RoundingMode.UNNECESSARY);
-      } else {
-        if (visibleDecimalPlaces < 0)
-          throw new IllegalArgumentException(format("Visible decimal places must be non-negative, but was %d", visibleDecimalPlaces));
-
-        numberAsBigDecimal = numberAsBigDecimal.setScale(visibleDecimalPlaces, RoundingMode.UNNECESSARY);
-      }
-
       int effectiveCompactExponent = compactExponent == null ? 0 : compactExponent;
 
       if (effectiveCompactExponent < 0)
         throw new IllegalArgumentException(format("Compact exponent must be non-negative, but was %d", effectiveCompactExponent));
+      if (effectiveCompactExponent > runtimeLimits.getMaximumCompactExponent())
+        throw new IllegalArgumentException(format("Compact exponent %d exceeds the maximum of %d",
+            effectiveCompactExponent, runtimeLimits.getMaximumCompactExponent()));
 
-      return new PluralOperands(numberAsBigDecimal, effectiveCompactExponent);
+      if (visibleDecimalPlaces != null) {
+        if (visibleDecimalPlaces < 0)
+          throw new IllegalArgumentException(format("Visible decimal places must be non-negative, but was %d", visibleDecimalPlaces));
+        if (visibleDecimalPlaces > runtimeLimits.getMaximumVisibleDecimalPlaces())
+          throw new IllegalArgumentException(format("Visible decimal places %d exceeds the maximum of %d",
+              visibleDecimalPlaces, runtimeLimits.getMaximumVisibleDecimalPlaces()));
+      }
+
+      boolean numberIsBigDecimal = number instanceof BigDecimal;
+      BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
+      validateNumericValue(numberAsBigDecimal, "Number", runtimeLimits);
+      numberAsBigDecimal = numberAsBigDecimal.abs();
+      BigDecimal sourceNumber = numberAsBigDecimal;
+
+      int effectiveScale = numberAsBigDecimal.scale();
+      long materializedPrecision = numberAsBigDecimal.precision();
+
+      if (visibleDecimalPlaces == null) {
+        if (!numberIsBigDecimal) {
+          effectiveScale = Math.max(0, numberAsBigDecimal.stripTrailingZeros().scale());
+          materializedPrecision += Math.max(0L, (long) effectiveScale - numberAsBigDecimal.scale());
+        }
+      } else {
+        effectiveScale = visibleDecimalPlaces;
+        materializedPrecision += Math.max(0L, (long) effectiveScale - numberAsBigDecimal.scale());
+      }
+
+      materializedPrecision += Math.max(0L, (long) effectiveCompactExponent - effectiveScale);
+      validateMaterializedPrecision(materializedPrecision);
+
+      if (!numberIsBigDecimal || visibleDecimalPlaces != null)
+        numberAsBigDecimal = numberAsBigDecimal.setScale(effectiveScale, RoundingMode.UNNECESSARY);
+
+      return new PluralOperands(sourceNumber, numberAsBigDecimal, effectiveCompactExponent, visibleDecimalPlaces);
     }
   }
 }

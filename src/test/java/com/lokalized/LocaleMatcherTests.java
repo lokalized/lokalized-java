@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -256,7 +257,45 @@ public class LocaleMatcherTests {
         .build();
 
     assertEquals(english, strings.bestMatchFor(LanguageRange.parse("en;q=0")));
+		LocaleMatchResult strictResult = strings.matchFor(LanguageRange.parse("en;q=0"));
+		assertFalse(strictResult.isMatch());
+		assertEquals(LocaleMatchType.NONE, strictResult.getMatchType());
+		assertEquals(english, strictResult.getFallbackLocale());
   }
+
+	@Test
+	public void languageRangesDoNotCrossKnownScriptBoundaries() {
+		Locale english = Locale.ENGLISH;
+		Locale genericChinese = Locale.forLanguageTag("zh");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(new LocalizedString.Builder("hello").translation("English").build()),
+						genericChinese, Set.of(new LocalizedString.Builder("hello").translation("Simplified Chinese").build())))
+				.localeSupplier(matcher -> english)
+				.build();
+
+		Locale traditionalChinese = Locale.forLanguageTag("zh-TW");
+		assertFalse(strings.matchFor(traditionalChinese).isMatch());
+		assertEquals(english, strings.bestMatchFor(traditionalChinese));
+		assertEquals("English", strings.get("hello", TranslationOptions.forLanguageRanges(
+				LanguageRange.parse("zh-TW"))));
+	}
+
+	@Test
+	public void zeroWeightCanonicalAliasesExcludeDescendants() {
+		Locale german = Locale.GERMAN;
+		Locale serbianLatin = Locale.forLanguageTag("sr-Latn-RS");
+		Strings strings = Strings.withFallbackLocale(german)
+				.localizedStringSupplier(() -> Map.of(
+						german, Set.of(new LocalizedString.Builder("hello").translation("German").build()),
+						serbianLatin, Set.of(new LocalizedString.Builder("hello").translation("Serbian Latin").build())))
+				.localeSupplier(matcher -> german)
+				.build();
+
+		LocaleMatchResult matchResult = strings.matchFor(LanguageRange.parse("*;q=1,de;q=0,sh;q=0"));
+		assertFalse(matchResult.isMatch());
+		assertEquals(german, strings.bestMatchFor(LanguageRange.parse("*;q=1,de;q=0,sh;q=0")));
+	}
 
   @Test
   public void excessiveLanguageRangeListsAreRejected() {

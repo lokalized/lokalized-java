@@ -100,6 +100,36 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void numericLiteralScaleIsValidatedBeforeEvaluation() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		String excessiveScaleExpression = "1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1) + " == 1";
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate(excessiveScaleExpression, LOCALE));
+
+		assertTrue(exception.getMessage().contains("Invalid numeric literal"));
+		assertTrue(exception.getMessage().contains("maximum absolute scale"));
+	}
+
+	@Test
+	public void overflowingNumericLiteralExponentIsRejectedDuringParsing() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("1e999999999999999999999 == 1", LOCALE));
+
+		assertTrue(exception.getMessage().contains("Invalid numeric literal"));
+	}
+
+	@Test
+	public void numericLiteralSafetyBoundaryIsAccepted() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		String boundaryLiteral = "1e" + PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE;
+
+		assertTrue(expressionEvaluator.evaluate(boundaryLiteral + " == " + boundaryLiteral, LOCALE));
+	}
+
+	@Test
 	public void largeIntegerComparisonsPreservePrecision() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

@@ -20,6 +20,7 @@ import com.lokalized.LocalizedString.LanguageFormTranslation;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @NotThreadSafe
 public class LocalizedStringTests {
+  @Test
+  public void immutableRuntimeModelTypesAreFinal() {
+    assertTrue(Modifier.isFinal(LocalizedString.class.getModifiers()));
+    assertTrue(Modifier.isFinal(LocalizedString.PlaceholderMetadata.class.getModifiers()));
+    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslation.class.getModifiers()));
+    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormSelector.class.getModifiers()));
+    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslationRule.class.getModifiers()));
+    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslationRange.class.getModifiers()));
+  }
+
+  @Test
+  public void selectorDrivenFlagUsesBoxedPublicApiConvention() throws NoSuchMethodException {
+    assertTrue(LocalizedString.LanguageFormTranslation.class.getMethod("isSelectorDriven").getReturnType()
+        .equals(Boolean.class));
+  }
+
   @Test
   public void languageFormTranslationsAreDefensivelyCopied() {
     Map<LanguageForm, String> translationsByLanguageForm = new HashMap<>();

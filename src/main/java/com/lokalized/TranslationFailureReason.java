@@ -23,11 +23,11 @@ package com.lokalized;
  */
 public enum TranslationFailureReason {
 	/**
-	 * No candidate locale contained the requested key.
+	 * No attempted candidate locale contained the requested key.
 	 */
 	MISSING_TRANSLATION,
 	/**
-	 * A candidate locale contained the requested key, but none of its alternatives matched and no default translation
+	 * An attempted candidate locale contained the requested key, but none of its alternatives matched and no default translation
 	 * was provided.
 	 */
 	NO_MATCHING_ALTERNATIVE,
