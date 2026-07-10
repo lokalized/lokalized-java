@@ -77,8 +77,8 @@ public final class TranslationFailureResponse {
 	/**
 	 * Throws an exception for the failed lookup.
 	 * <p>
-	 * Resolution failures rethrow their original runtime cause. Missing translations throw
-	 * {@link MissingTranslationException}.
+	 * Resolution failures rethrow their original runtime cause. Missing translations and lookups for which no
+	 * alternative matched throw {@link MissingTranslationException}.
 	 *
 	 * @return the response, not null
 	 */

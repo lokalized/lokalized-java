@@ -62,7 +62,6 @@ import static java.util.Objects.requireNonNull;
 class DefaultStrings implements Strings {
 	private static final int MAX_GENERATED_PLACEHOLDER_DEPTH = 64;
 	private static final int MAX_INTERPOLATED_OUTPUT_CHARACTERS = 1024 * 1024;
-	private static final int MAX_LANGUAGE_RANGES = 1000;
 	@NonNull
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
 	@NonNull
@@ -389,6 +388,7 @@ class DefaultStrings implements Strings {
 		// All locale candidates, failure reporting, and interpolation must observe one coherent caller-input snapshot.
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException firstFallbackFailure = null;
+		boolean noMatchingAlternativeEncountered = false;
 		List<@NonNull Locale> candidateLocales = fallbackCandidateLocales(locale);
 
 		for (Locale candidateLocale : candidateLocales) {
@@ -409,8 +409,9 @@ class DefaultStrings implements Strings {
 				if (translation.isPresent())
 					return translation.get();
 
-				throw new ExpressionEvaluationException(format(
-						"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'",
+				noMatchingAlternativeEncountered = true;
+				logger.finer(format(
+						"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'; trying fallback candidates",
 						key, candidateLocale.toLanguageTag()));
 			} catch (RuntimeException e) {
 				if (firstFallbackFailure == null)
@@ -429,9 +430,13 @@ class DefaultStrings implements Strings {
 		if (firstFallbackFailure != null)
 			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, firstFallbackFailure.getMessage()));
 
+		TranslationFailureReason failureReason = firstFallbackFailure != null
+				? TranslationFailureReason.RESOLUTION_FAILURE
+				: noMatchingAlternativeEncountered
+				? TranslationFailureReason.NO_MATCHING_ALTERNATIVE
+				: TranslationFailureReason.MISSING_TRANSLATION;
 		TranslationFailure translationFailure = new DefaultTranslationFailure(key, locale, candidateLocales, immutableContext,
-				firstFallbackFailure == null ? TranslationFailureReason.MISSING_TRANSLATION : TranslationFailureReason.RESOLUTION_FAILURE,
-				firstFallbackFailure);
+				failureReason, firstFallbackFailure);
 		TranslationFailureResponse translationFailureResponse = requireNonNull(translationFailureHandler.handle(translationFailure),
 				format("%s returned null", TranslationFailureHandler.class.getSimpleName()));
 
@@ -949,7 +954,7 @@ class DefaultStrings implements Strings {
 				interpolationContext.put(placeholderName, value);
 			}
 
-			return getStringInterpolator().interpolate(key, interpolationContext);
+			return getStringInterpolator().interpolate(key, interpolationContext, MAX_INTERPOLATED_OUTPUT_CHARACTERS);
 		} catch (RuntimeException e) {
 			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
 			return key;
@@ -1198,9 +1203,9 @@ class DefaultStrings implements Strings {
 		if (languageRanges.isEmpty())
 			return getFallbackLocale();
 
-		if (languageRanges.size() > MAX_LANGUAGE_RANGES)
+		if (languageRanges.size() > TranslationOptions.MAXIMUM_LANGUAGE_RANGES)
 			throw new IllegalArgumentException(format("At most %d language ranges are supported, but received %d",
-					MAX_LANGUAGE_RANGES, languageRanges.size()));
+					TranslationOptions.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
 
 		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(languageRanges);
 		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
@@ -1241,7 +1246,7 @@ class DefaultStrings implements Strings {
 				continue;
 
 			if ("*".equals(range))
-				return availableLocales.contains(getFallbackLocale()) ? getFallbackLocale() : availableLocales.get(0);
+				return preferredLocaleForWildcard(availableLocales);
 
 			if (CldrLocaleData.hasUndeterminedLanguage(range))
 				continue;
@@ -1324,6 +1329,25 @@ class DefaultStrings implements Strings {
 		return getFallbackLocale();
 	}
 
+	@NonNull
+	private Locale preferredLocaleForWildcard(@NonNull List<@NonNull Locale> availableLocales) {
+		requireNonNull(availableLocales);
+
+		if (availableLocales.isEmpty())
+			throw new IllegalArgumentException("At least one available locale is required");
+
+		if (availableLocales.contains(getFallbackLocale()))
+			return getFallbackLocale();
+
+		// When the exact fallback locale was explicitly excluded, preserve its language preference before
+		// considering unrelated languages. The candidate list is already restricted to locales at the winning
+		// quality, so only acceptable configured tiebreakers can be selected here.
+		Optional<@NonNull Locale> fallbackLanguageTiebreaker = LocaleUtils.normalizedLanguage(getFallbackLocale())
+				.flatMap(language -> lookupMatchByTiebreakers(language, availableLocales));
+
+		return fallbackLanguageTiebreaker.orElse(availableLocales.get(0));
+	}
+
 	private double effectiveWeightFor(@NonNull Locale locale,
 															@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(locale);
@@ -1372,7 +1396,11 @@ class DefaultStrings implements Strings {
 		if (localeTag.equalsIgnoreCase(range))
 			return 10_000 + subtagCount;
 
-		List<Locale> directlyFiltered = Locale.filter(Collections.singletonList(languageRange),
+		// Locale.filter applies q=0 exclusions and therefore returns no matches when handed a singleton
+		// zero-weight range. Specificity needs a structural match probe independent of quality so that a
+		// negative range such as en-US;q=0 also excludes en-US-posix and en-US-u-nu-latn.
+		LanguageRange structuralLanguageRange = new LanguageRange(range, LanguageRange.MAX_WEIGHT);
+		List<Locale> directlyFiltered = Locale.filter(Collections.singletonList(structuralLanguageRange),
 				Collections.singletonList(locale), Locale.FilteringMode.EXTENDED_FILTERING);
 
 		if (!directlyFiltered.isEmpty())

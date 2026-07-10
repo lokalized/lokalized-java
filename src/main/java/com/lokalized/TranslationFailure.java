@@ -77,7 +77,8 @@ public interface TranslationFailure {
 	TranslationFailureReason getReason();
 
 	/**
-	 * Gets the runtime cause if an attempted translation existed but could not be resolved.
+	 * Gets the runtime cause if an attempted translation existed but could not be resolved. Missing translations and
+	 * unmatched alternatives do not have causes.
 	 *
 	 * @return the cause, not null
 	 */

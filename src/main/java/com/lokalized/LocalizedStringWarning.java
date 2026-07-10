@@ -17,12 +17,14 @@
 package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
@@ -42,11 +44,11 @@ public final class LocalizedStringWarning {
 	private final Type type;
 	@NonNull
 	private final String source;
-	@NonNull
+	@Nullable
 	private final Locale locale;
-	@NonNull
+	@Nullable
 	private final String key;
-	@NonNull
+	@Nullable
 	private final String placeholder;
 	@NonNull
 	private final Set<@NonNull String> missingLanguageForms;
@@ -64,7 +66,11 @@ public final class LocalizedStringWarning {
 		/**
 		 * An ordinality-driven placeholder omits one or more ordinal forms that its locale requires per CLDR.
 		 */
-		INCOMPLETE_ORDINALITY_TRANSLATIONS
+		INCOMPLETE_ORDINALITY_TRANSLATIONS,
+		/**
+		 * A JSON resource in a classpath catalog package is not named with a valid IETF BCP 47 locale tag.
+		 */
+		INVALID_CLASSPATH_LOCALE_FILENAME
 	}
 
 	/**
@@ -102,6 +108,22 @@ public final class LocalizedStringWarning {
 		this.message = message;
 	}
 
+	LocalizedStringWarning(@NonNull Type type,
+											@NonNull String source,
+											@NonNull String message) {
+		requireNonNull(type);
+		requireNonNull(source);
+		requireNonNull(message);
+
+		this.type = type;
+		this.source = source;
+		this.locale = null;
+		this.key = null;
+		this.placeholder = null;
+		this.missingLanguageForms = Collections.emptySet();
+		this.message = message;
+	}
+
 	/**
 	 * Gets the kind of problem this warning represents.
 	 *
@@ -123,33 +145,33 @@ public final class LocalizedStringWarning {
 	}
 
 	/**
-	 * Gets the locale the file was being loaded for.
+	 * Gets the locale the file was being loaded for, when the warning applies to a parsed locale catalog.
 	 *
-	 * @return the locale, not null
+	 * @return the locale, if applicable, not null
 	 */
 	@NonNull
-	public Locale getLocale() {
-		return this.locale;
+	public Optional<@NonNull Locale> getLocale() {
+		return Optional.ofNullable(this.locale);
 	}
 
 	/**
-	 * Gets the translation key that triggered the warning.
+	 * Gets the translation key that triggered the warning, when applicable.
 	 *
-	 * @return the translation key, not null
+	 * @return the translation key, if applicable, not null
 	 */
 	@NonNull
-	public String getKey() {
-		return this.key;
+	public Optional<@NonNull String> getKey() {
+		return Optional.ofNullable(this.key);
 	}
 
 	/**
-	 * Gets the placeholder within the key that triggered the warning.
+	 * Gets the placeholder within the key that triggered the warning, when applicable.
 	 *
-	 * @return the placeholder, not null
+	 * @return the placeholder, if applicable, not null
 	 */
 	@NonNull
-	public String getPlaceholder() {
-		return this.placeholder;
+	public Optional<@NonNull String> getPlaceholder() {
+		return Optional.ofNullable(this.placeholder);
 	}
 
 	/**

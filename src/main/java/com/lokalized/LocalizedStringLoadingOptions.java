@@ -22,10 +22,13 @@ import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 
 /**
- * Resource limits applied while loading a localized strings file.
+ * Options applied while discovering and loading localized strings files.
  * <p>
  * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The character limit
  * applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized.
+ * Exhaustive classpath searching is disabled by default because it inspects every filesystem and JAR root visible to
+ * a classloader. Enable it only when localized strings are packaged in a JAR that omits directory entries and ordinary
+ * {@link ClassLoader#getResources(String)} discovery therefore cannot find the requested package.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
@@ -38,6 +41,8 @@ public final class LocalizedStringLoadingOptions {
 	public static final int DEFAULT_MAXIMUM_READER_CHARACTERS = 16 * 1024 * 1024;
 	/** Default maximum JSON object/array nesting depth. */
 	public static final int DEFAULT_MAXIMUM_JSON_NESTING_DEPTH = 128;
+	/** Whether exhaustive classpath-root searching is enabled by default. */
+	public static final boolean DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH = false;
 	/** Highest configurable JSON nesting depth supported by the recursive parser. */
 	public static final int MAXIMUM_JSON_NESTING_DEPTH = 128;
 
@@ -47,13 +52,16 @@ public final class LocalizedStringLoadingOptions {
 	private final int maximumInputBytes;
 	private final int maximumReaderCharacters;
 	private final int maximumJsonNestingDepth;
+	private final boolean exhaustiveClasspathSearch;
 
 	private LocalizedStringLoadingOptions(int maximumInputBytes,
-															 int maximumReaderCharacters,
-															 int maximumJsonNestingDepth) {
+														 int maximumReaderCharacters,
+														 int maximumJsonNestingDepth,
+														 boolean exhaustiveClasspathSearch) {
 		this.maximumInputBytes = maximumInputBytes;
 		this.maximumReaderCharacters = maximumReaderCharacters;
 		this.maximumJsonNestingDepth = maximumJsonNestingDepth;
+		this.exhaustiveClasspathSearch = exhaustiveClasspathSearch;
 	}
 
 	/**
@@ -91,12 +99,23 @@ public final class LocalizedStringLoadingOptions {
 		return maximumJsonNestingDepth;
 	}
 
+	/**
+	 * Reports whether classpath loading should inspect every filesystem and JAR root visible to the classloader after
+	 * ordinary package-resource discovery.
+	 *
+	 * @return true when exhaustive classpath-root searching is enabled
+	 */
+	public boolean isExhaustiveClasspathSearchEnabled() {
+		return exhaustiveClasspathSearch;
+	}
+
 	/** Builder for {@link LocalizedStringLoadingOptions}. */
 	@NotThreadSafe
 	public static final class Builder {
 		private int maximumInputBytes = DEFAULT_MAXIMUM_INPUT_BYTES;
 		private int maximumReaderCharacters = DEFAULT_MAXIMUM_READER_CHARACTERS;
 		private int maximumJsonNestingDepth = DEFAULT_MAXIMUM_JSON_NESTING_DEPTH;
+		private boolean exhaustiveClasspathSearch = DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH;
 
 		private Builder() {
 		}
@@ -147,11 +166,25 @@ public final class LocalizedStringLoadingOptions {
 			return this;
 		}
 
+		/**
+		 * Controls whether classpath loading should inspect every filesystem and JAR root visible to the classloader when
+		 * ordinary package-resource discovery is insufficient. This is disabled by default to avoid sweeping unrelated
+		 * dependencies. It is primarily useful for JARs that omit directory entries.
+		 *
+		 * @param exhaustiveClasspathSearch true to enable exhaustive classpath-root searching
+		 * @return this builder, not null
+		 */
+		@NonNull
+		public Builder exhaustiveClasspathSearch(boolean exhaustiveClasspathSearch) {
+			this.exhaustiveClasspathSearch = exhaustiveClasspathSearch;
+			return this;
+		}
+
 		/** @return immutable loading options, not null */
 		@NonNull
 		public LocalizedStringLoadingOptions build() {
 			return new LocalizedStringLoadingOptions(maximumInputBytes, maximumReaderCharacters,
-					maximumJsonNestingDepth);
+					maximumJsonNestingDepth, exhaustiveClasspathSearch);
 		}
 	}
 }

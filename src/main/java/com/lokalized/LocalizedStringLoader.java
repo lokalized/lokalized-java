@@ -212,10 +212,16 @@ public final class LocalizedStringLoader {
    * Example package names:
    * <ul>
    * <li>{@code strings}
-   * <li>{@code com/lokalized/strings}
+   * <li>{@code com/example/myapp/strings} (recommended to avoid collisions with dependencies)
    * </ul>
    * <p>
    * Note: this implementation only scans the specified package, it does not descend into child packages.
+   * A trailing slash is optional and is normalized before lookup.
+   * <p>
+   * By default, discovery uses {@link ClassLoader#getResources(String)} and does not inspect unrelated classpath roots.
+   * Use a {@link LocalizedStringLoadingOptions} overload with exhaustive classpath search enabled only for JARs that
+   * omit package directory entries. A classpath {@code .json} resource whose filename is not a locale tag is ignored
+   * with a warning; explicitly loaded filesystem catalog directories retain strict filename validation.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
@@ -227,10 +233,10 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a classpath package using the specified resource limits.
+   * Loads localized string files from a classpath package using the specified loading and discovery options.
    *
    * @param classpathPackage location of a package on the classpath, not null
-   * @param loadingOptions   resource limits to apply, not null
+   * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
    */
   @NonNull
@@ -254,11 +260,11 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a classpath package with validation-warning and resource-limit policies.
+   * Loads localized string files from a classpath package with validation-warning, loading, and discovery policies.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
-   * @param loadingOptions   resource limits to apply, not null
+   * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
    */
   @NonNull
@@ -296,11 +302,11 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files using the specified classloader and resource limits.
+   * Loads localized string files using the specified classloader and loading/discovery options.
    *
    * @param classLoader      classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
-   * @param loadingOptions   resource limits to apply, not null
+   * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
    */
   @NonNull
@@ -328,12 +334,13 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files using the specified classloader, validation-warning policy, and resource limits.
+   * Loads localized string files using the specified classloader, validation-warning policy, and loading/discovery
+   * options.
    *
    * @param classLoader      classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
-   * @param loadingOptions   resource limits to apply, not null
+   * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
    */
   @NonNull
@@ -345,6 +352,7 @@ public final class LocalizedStringLoader {
     requireNonNull(classLoader);
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
+    classpathPackage = normalizeClasspathPackage(classpathPackage);
     validateClasspathPackage(classpathPackage);
 
     Enumeration<URL> urls;
@@ -369,47 +377,49 @@ public final class LocalizedStringLoader {
       mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
     }
 
-    for (Path classpathRoot : classpathRootsFor(classLoader)) {
-      if (Files.isDirectory(classpathRoot)) {
-        Path packageDirectory = classpathRoot.resolve(classpathPackage);
+    if (loadingOptions.isExhaustiveClasspathSearchEnabled()) {
+      for (Path classpathRoot : classpathRootsFor(classLoader)) {
+        if (Files.isDirectory(classpathRoot)) {
+          Path packageDirectory = classpathRoot.resolve(classpathPackage);
 
-        if (!Files.isDirectory(packageDirectory))
+          if (!Files.isDirectory(packageDirectory))
+            continue;
+
+          String locationIdentity = canonicalPathForPath(packageDirectory);
+
+          if (!processedLocations.add(locationIdentity))
+            continue;
+
+          mergeLocalizedStrings(mergedByLocale,
+              loadFromDirectoryWithOrigins(packageDirectory, warningHandler, loadingOptions));
+          continue;
+        }
+
+        if (!Files.isRegularFile(classpathRoot))
           continue;
 
-        String locationIdentity = canonicalPathForPath(packageDirectory);
+        String packagePath = normalizedJarPackagePath(classpathPackage);
+        String locationIdentity = canonicalPathForPath(classpathRoot) + "!/" + packagePath;
 
         if (!processedLocations.add(locationIdentity))
           continue;
 
-        mergeLocalizedStrings(mergedByLocale,
-            loadFromDirectoryWithOrigins(packageDirectory, warningHandler, loadingOptions));
-        continue;
-      }
+        try (JarFile jarFile = new JarFile(classpathRoot.toFile())) {
+          Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale =
+              loadFromJarFile(jarFile, packagePath, warningHandler, loadingOptions);
 
-      if (!Files.isRegularFile(classpathRoot))
-        continue;
+          if (localizedStringsByLocale.isEmpty()) {
+            processedLocations.remove(locationIdentity);
+            continue;
+          }
 
-      String packagePath = normalizedJarPackagePath(classpathPackage);
-      String locationIdentity = canonicalPathForPath(classpathRoot) + "!/" + packagePath;
-
-      if (!processedLocations.add(locationIdentity))
-        continue;
-
-      try (JarFile jarFile = new JarFile(classpathRoot.toFile())) {
-        Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale =
-            loadFromJarFile(jarFile, packagePath, warningHandler, loadingOptions);
-
-        if (localizedStringsByLocale.isEmpty()) {
+          mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
+        } catch (ZipException e) {
           processedLocations.remove(locationIdentity);
-          continue;
+        } catch (IOException e) {
+          throw new LocalizedStringLoadingException(format(
+              "Unable to load localized strings from classpath root '%s'", classpathRoot), e);
         }
-
-        mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
-      } catch (ZipException e) {
-        processedLocations.remove(locationIdentity);
-      } catch (IOException e) {
-        throw new LocalizedStringLoadingException(format(
-            "Unable to load localized strings from classpath root '%s'", classpathRoot), e);
       }
     }
 
@@ -509,10 +519,20 @@ public final class LocalizedStringLoader {
     return packagePath;
   }
 
+  @NonNull
+  private static String normalizeClasspathPackage(@NonNull String classpathPackage) {
+    requireNonNull(classpathPackage);
+
+    while (classpathPackage.length() > 1 && classpathPackage.endsWith("/"))
+      classpathPackage = classpathPackage.substring(0, classpathPackage.length() - 1);
+
+    return classpathPackage;
+  }
+
   private static void validateClasspathPackage(@NonNull String classpathPackage) {
     requireNonNull(classpathPackage);
 
-    if (classpathPackage.isEmpty() || classpathPackage.startsWith("/") || classpathPackage.endsWith("/") ||
+    if (classpathPackage.isEmpty() || classpathPackage.startsWith("/") ||
         classpathPackage.indexOf('\\') >= 0)
       throw new IllegalArgumentException(format(
           "Classpath package '%s' must be a nonempty slash-relative resource path", classpathPackage));
@@ -820,12 +840,12 @@ public final class LocalizedStringLoader {
           continue;
         }
 
-        String languageTag = languageTagForFileName(fileName);
+        String canonicalPath = canonicalPathForPath(file);
+        String languageTag = languageTagForClasspathFileName(fileName, canonicalPath, warningHandler);
 
         if (languageTag != null) {
           LOGGER.fine(format("Loading localized strings file '%s'...", fileName));
           Locale locale = Locale.forLanguageTag(languageTag);
-          String canonicalPath = canonicalPathForPath(file);
           String existingOrigin = originByLocale.get(locale);
 
           if (existingOrigin != null)
@@ -937,7 +957,8 @@ public final class LocalizedStringLoader {
         continue;
       }
 
-      String languageTag = languageTagForFileName(relativeName);
+      String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
+      String languageTag = languageTagForClasspathFileName(relativeName, canonicalPath, warningHandler);
 
       if (languageTag == null) {
         LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", relativeName));
@@ -946,7 +967,6 @@ public final class LocalizedStringLoader {
 
       LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
       Locale locale = Locale.forLanguageTag(languageTag);
-      String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
       String existingOrigin = originByLocale.get(locale);
 
       if (existingOrigin != null)
@@ -1104,6 +1124,25 @@ public final class LocalizedStringLoader {
           "Use names like 'en', 'en.json', or 'en-US.json'", fileName, JSON_EXTENSION));
 
     return null;
+  }
+
+  @Nullable
+  private static String languageTagForClasspathFileName(@NonNull String fileName,
+                                                        @NonNull String source,
+                                                        @NonNull LocalizedStringWarningHandler warningHandler) {
+    requireNonNull(fileName);
+    requireNonNull(source);
+    requireNonNull(warningHandler);
+
+    try {
+      return languageTagForFileName(fileName);
+    } catch (LocalizedStringLoadingException e) {
+      warningHandler.handle(new LocalizedStringWarning(
+          LocalizedStringWarning.Type.INVALID_CLASSPATH_LOCALE_FILENAME,
+          source,
+          format("Ignoring classpath resource '%s': %s", source, e.getMessage())));
+      return null;
+    }
   }
 
   /**

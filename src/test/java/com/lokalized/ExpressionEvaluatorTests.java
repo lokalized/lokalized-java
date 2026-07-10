@@ -171,6 +171,21 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void pluralOperandsSupportNumericCardinalityAndOrdinalityExpressions() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		PluralOperands operands = PluralOperands.forNumber(1).build();
+		String cardinalityName = "CARDINALITY_" + Cardinality.forOperands(operands, LOCALE).name();
+		String ordinalityName = "ORDINALITY_" + Ordinality.forOperands(operands, LOCALE).name();
+
+		assertTrue(expressionEvaluator.evaluate("value == 1", Map.of("value", operands), LOCALE),
+				"Plural operands should expose their numeric value for numeric comparisons");
+		assertTrue(expressionEvaluator.evaluate("value == " + cardinalityName, Map.of("value", operands), LOCALE),
+				"Plural operands should drive cardinality comparisons");
+		assertTrue(expressionEvaluator.evaluate("value == " + ordinalityName, Map.of("value", operands), LOCALE),
+				"Plural operands should drive ordinality comparisons");
+	}
+
+	@Test
 	public void missingPlaceholderValuesThrow() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 

@@ -59,6 +59,18 @@ class StringInterpolator {
   }
 
   @NonNull
+  String interpolate(@NonNull String string, @NonNull Map<@NonNull String, @Nullable Object> context,
+                     int maximumOutputCharacters) {
+    requireNonNull(string);
+    requireNonNull(context);
+
+    if (maximumOutputCharacters <= 0)
+      throw new IllegalArgumentException("maximumOutputCharacters must be positive");
+
+    return interpolate(string, context, false, maximumOutputCharacters).getValue();
+  }
+
+  @NonNull
   public InterpolationResult interpolateStrictly(@NonNull String string, @NonNull Map<@NonNull String, @Nullable Object> context) {
     requireNonNull(string);
     requireNonNull(context);

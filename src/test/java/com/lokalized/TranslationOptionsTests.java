@@ -20,6 +20,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
@@ -91,5 +92,18 @@ public class TranslationOptionsTests {
 
 		assertEquals(locale, localeOptions.getLocale().orElseThrow(AssertionError::new));
 		assertFalse(localeOptions.getLanguageRanges().isPresent());
+	}
+
+	@Test
+	public void excessiveLanguageRangeListsAreRejectedDuringConstruction() {
+		List<LanguageRange> maximumLanguageRanges = Collections.nCopies(1000, new LanguageRange("*"));
+		List<LanguageRange> excessiveLanguageRanges = Collections.nCopies(1001, new LanguageRange("*"));
+
+		assertEquals(1000, TranslationOptions.forLanguageRanges(maximumLanguageRanges)
+				.getLanguageRanges().orElseThrow(AssertionError::new).size());
+		assertThrows(IllegalArgumentException.class,
+				() -> TranslationOptions.forLanguageRanges(excessiveLanguageRanges));
+		assertThrows(IllegalArgumentException.class,
+				() -> TranslationOptions.builder().languageRanges(excessiveLanguageRanges));
 	}
 }

@@ -118,7 +118,7 @@ public class LocalizedStringLoaderTests {
 
     LocalizedStringWarning warning = warnings.get(0);
     assertEquals(LocalizedStringWarning.Type.INCOMPLETE_CARDINALITY_TRANSLATIONS, warning.getType());
-    assertEquals(Locale.forLanguageTag("ru"), warning.getLocale());
+    assertEquals(Locale.forLanguageTag("ru"), warning.getLocale().orElseThrow(AssertionError::new));
     assertTrue(warning.getMissingLanguageForms().contains("CARDINALITY_MANY"),
         format("Warning should identify the missing form: %s", warning.getMissingLanguageForms()));
     assertTrue(warning.getMessage().contains("CARDINALITY_MANY"),
@@ -171,7 +171,7 @@ public class LocalizedStringLoaderTests {
 
     LocalizedStringWarning warning = warnings.get(0);
     assertEquals(LocalizedStringWarning.Type.INCOMPLETE_ORDINALITY_TRANSLATIONS, warning.getType());
-    assertEquals(Locale.forLanguageTag("en"), warning.getLocale());
+    assertEquals(Locale.forLanguageTag("en"), warning.getLocale().orElseThrow(AssertionError::new));
     assertTrue(warning.getMissingLanguageForms().contains("ORDINALITY_TWO"),
         format("Warning should identify the missing TWO form: %s", warning.getMissingLanguageForms()));
     assertTrue(warning.getMissingLanguageForms().contains("ORDINALITY_FEW"),
@@ -194,7 +194,7 @@ public class LocalizedStringLoaderTests {
         "alternative-warning-test", warnings::add, LocalizedStringLoadingOptions.defaults());
 
     assertEquals(1, warnings.size());
-    assertEquals("root.key", warnings.get(0).getKey());
+    assertEquals("root.key", warnings.get(0).getKey().orElseThrow(AssertionError::new));
     assertTrue(warnings.get(0).getMessage().contains("key 'root.key'"));
     assertFalse(warnings.get(0).getMessage().contains("key 'count == 1'"));
   }
@@ -360,6 +360,9 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testLoadingOptionsRejectInvalidLimits() {
+    assertFalse(LocalizedStringLoadingOptions.defaults().isExhaustiveClasspathSearchEnabled());
+    assertTrue(LocalizedStringLoadingOptions.builder().exhaustiveClasspathSearch(true).build()
+        .isExhaustiveClasspathSearchEnabled());
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoadingOptions.builder().maximumInputBytes(0));
     assertThrows(IllegalArgumentException.class,
@@ -405,9 +408,18 @@ public class LocalizedStringLoaderTests {
   public void testClasspathLoadingRejectsEscapingPackagePaths() {
     ClassLoader classLoader = getClass().getClassLoader();
 
-    for (String invalidPackage : List.of("", "/strings", "strings/", "../strings", "strings/../other", "strings\\other"))
+    for (String invalidPackage : List.of("", "/", "/strings", "../strings", "strings/../other",
+        "strings//other", "strings/./other", "strings\\other"))
       assertThrows(IllegalArgumentException.class,
           () -> LocalizedStringLoader.loadFromClasspath(classLoader, invalidPackage), invalidPackage);
+  }
+
+  @Test
+  public void testClasspathLoadingNormalizesTrailingSlashes() {
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromClasspath(getClass().getClassLoader(), "strings///");
+
+    verifyLocalizedStringsByLocale(localizedStringsByLocale);
   }
 
   @Test
@@ -1075,17 +1087,88 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testClasspathLoadingFromJarWithoutDirectoryEntry() throws IOException {
+  public void testClasspathLoadingFromJarWithoutDirectoryEntryRequiresExhaustiveSearch() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings-no-directory-entry", ".jar");
     tempJar.toFile().deleteOnExit();
     writeJarEntryWithoutDirectory(tempJar, "strings/en.json", "{\"hello\":\"world\"}");
 
     try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+      LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+          .exhaustiveClasspathSearch(true)
+          .build();
       Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
-          LocalizedStringLoader.loadFromClasspath(classLoader, "strings");
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions);
 
       assertTrue(localizedStringsByLocale.containsKey(Locale.ENGLISH));
       assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingIgnoresForeignJsonDuringExhaustiveSearch() throws IOException {
+    Path applicationJar = Files.createTempFile("lokalized-application-strings", ".jar");
+    Path foreignJar = Files.createTempFile("lokalized-foreign-strings", ".jar");
+    applicationJar.toFile().deleteOnExit();
+    foreignJar.toFile().deleteOnExit();
+
+    writeJarEntry(applicationJar, "strings/en.json", "{\"hello\":\"world\"}");
+    writeJarEntryWithoutDirectory(foreignJar, "strings/template.json", "{\"foreign\":true}");
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{
+        applicationJar.toUri().toURL(),
+        foreignJar.toUri().toURL()
+    }, null)) {
+      LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+          .exhaustiveClasspathSearch(true)
+          .build();
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions);
+
+      assertEquals(Set.of(Locale.ENGLISH), localizedStringsByLocale.keySet());
+      assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingIgnoresInvalidJsonNameFromOrdinaryDiscovery() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-invalid-name", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar))) {
+      jarOutputStream.putNextEntry(new JarEntry("strings/"));
+      jarOutputStream.closeEntry();
+
+      jarOutputStream.putNextEntry(new JarEntry("strings/en.json"));
+      jarOutputStream.write("{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+      jarOutputStream.closeEntry();
+
+      jarOutputStream.putNextEntry(new JarEntry("strings/template.json"));
+      jarOutputStream.write("{\"foreign\":true}".getBytes(StandardCharsets.UTF_8));
+      jarOutputStream.closeEntry();
+    }
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      List<LocalizedStringWarning> warnings = new ArrayList<>();
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", warnings::add,
+              LocalizedStringLoadingOptions.defaults());
+
+      assertEquals(Set.of(Locale.ENGLISH), localizedStringsByLocale.keySet());
+      assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+      assertEquals(1, warnings.size());
+      assertEquals(LocalizedStringWarning.Type.INVALID_CLASSPATH_LOCALE_FILENAME, warnings.get(0).getType());
+      assertTrue(warnings.get(0).getSource().contains("template.json"));
+      assertFalse(warnings.get(0).getLocale().isPresent());
+      assertFalse(warnings.get(0).getKey().isPresent());
+      assertFalse(warnings.get(0).getPlaceholder().isPresent());
+      assertTrue(warnings.get(0).getMissingLanguageForms().isEmpty());
+
+      assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings",
+              LocalizedStringWarningHandler.throwException(), LocalizedStringLoadingOptions.defaults()));
     }
   }
 

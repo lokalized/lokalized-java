@@ -1072,6 +1072,8 @@ class ExpressionEvaluator {
 
       if (value == null)
         throw new ExpressionEvaluationException(format("Placeholder '%s' resolved to null", operand.getSymbol()));
+      if (value instanceof PluralOperands)
+        return OperandType.NUMBER;
       if (value instanceof Number)
         return OperandType.NUMBER;
       if (value instanceof Cardinality)
@@ -1123,6 +1125,8 @@ class ExpressionEvaluator {
       if (value instanceof Optional)
         value = ((Optional<?>) value).orElse(null);
 
+      if (value instanceof PluralOperands)
+        return ((PluralOperands) value).getNumber();
       if (value instanceof Number)
         return NumberUtils.toBigDecimal((Number) value);
     }
@@ -1420,6 +1424,8 @@ class ExpressionEvaluator {
 
       if (value instanceof Cardinality)
         return (Cardinality) value;
+      if (value instanceof PluralOperands)
+        return Cardinality.forOperands((PluralOperands) value, locale);
       if (value instanceof Number)
         return Cardinality.forNumber((Number) value, locale);
     }
@@ -1459,6 +1465,8 @@ class ExpressionEvaluator {
 
       if (value instanceof Ordinality)
         return (Ordinality) value;
+      if (value instanceof PluralOperands)
+        return Ordinality.forOperands((PluralOperands) value, locale);
       if (value instanceof Number)
         return Ordinality.forNumber((Number) value, locale);
     }

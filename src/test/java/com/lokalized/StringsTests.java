@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -1768,7 +1769,7 @@ public class StringsTests {
 	}
 
 	@Test
-	public void alternativeOnlyNoMatchIsAResolutionFailure() {
+	public void alternativeOnlyNoMatchHasDedicatedFailureReason() {
 		AtomicReference<TranslationFailure> failureHolder = new AtomicReference<>();
 		LocalizedString localizedString = new LocalizedString.Builder("Choice")
 				.alternatives(List.of(new LocalizedString.Builder("count == 1").translation("one").build()))
@@ -1783,9 +1784,47 @@ public class StringsTests {
 				.build();
 
 		assertEquals("handled", strings.get("Choice", Map.of("count", 2)));
-		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, failureHolder.get().getReason());
-		assertTrue(failureHolder.get().getCause().get() instanceof ExpressionEvaluationException);
-		assertTrue(failureHolder.get().getCause().get().getMessage().contains("No alternative produced a translation"));
+		assertEquals(TranslationFailureReason.NO_MATCHING_ALTERNATIVE, failureHolder.get().getReason());
+		assertTrue(!failureHolder.get().getCause().isPresent());
+	}
+
+	@Test
+	public void alternativeOnlyNoMatchContinuesToFallbackLocale() {
+		Locale english = Locale.forLanguageTag("en");
+		Locale french = Locale.forLanguageTag("fr");
+		LocalizedString frenchLocalizedString = new LocalizedString.Builder("Choice")
+				.alternatives(List.of(new LocalizedString.Builder("count == 1").translation("un").build()))
+				.build();
+		LocalizedString englishLocalizedString = new LocalizedString.Builder("Choice")
+				.translation("fallback")
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(englishLocalizedString),
+						french, Set.of(frenchLocalizedString)
+				))
+				.localeSupplier((matcher) -> french)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		assertEquals("fallback", strings.get("Choice", Map.of("count", 2)));
+	}
+
+	@Test
+	public void failureKeyInterpolationReturnsRawKeyWhenOutputWouldExceedLimit() {
+		String key = "Missing {{value}}";
+		char[] oversizedCharacters = new char[1024 * 1024 + 1];
+		Arrays.fill(oversizedCharacters, 'x');
+		String oversizedValue = new String(oversizedCharacters);
+		Locale english = Locale.forLanguageTag("en");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Known").translation("Known").build()
+				)))
+				.localeSupplier((matcher) -> english)
+				.build();
+
+		assertEquals(key, strings.get(key, Map.of("value", oversizedValue)));
 	}
 
 	@Test

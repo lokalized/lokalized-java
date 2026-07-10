@@ -318,8 +318,9 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 * `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
 
 `LocaleMatcher` accepts at most 1,000 language ranges per call to bound work on untrusted `Accept-Language`
-input. Its current non-null contract also means that if every loaded locale is excluded with `q=0`, it returns the
-configured fallback; a future strict negotiation API can represent “no acceptable locale” separately.
+input. `TranslationOptions` enforces the same limit when the options are constructed, before a lookup begins. Its
+current non-null contract also means that if every loaded locale is excluded with `q=0`, it returns the configured
+fallback; a future strict negotiation API can represent “no acceptable locale” separately.
 
 ## Loading Localized Strings
 
@@ -337,10 +338,13 @@ Strings classpathStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"
   .build();
 ```
 
-Classpath package names use slash-separated resource paths such as `strings` or `com/example/strings`. [`loadFromClasspath(String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.String)) first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use [`loadFromClasspath(ClassLoader, String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.ClassLoader,java.lang.String)) for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
+Classpath package names use slash-separated resource paths such as `com/example/myapp/strings`. Prefer an
+application-specific, namespaced path over a generic top-level package like `strings` so unrelated dependencies cannot
+publish resources into the same package. [`loadFromClasspath(String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.String)) first uses the current thread context classloader when one is available, then falls back to Lokalized's own classloader. Use [`loadFromClasspath(ClassLoader, String)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspath(java.lang.ClassLoader,java.lang.String)) for containers, plugin systems, test harnesses, and other environments where the desired resources are visible through a specific classloader.
 
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
-Classpath package names must be nonempty slash-relative paths and may not contain empty, `.` or `..` segments.
+Classpath package names must be nonempty slash-relative paths and may not contain empty interior, `.` or `..` segments.
+One or more trailing slashes are ignored; leading slashes and traversal remain invalid.
 
 Loading is bounded per resource by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
 The default limit is 16 MiB for a `Path` or `InputStream`, 16 MiB characters for a `Reader`, and 128 levels of
@@ -348,10 +352,18 @@ JSON object/array nesting. Overloads accepting loading options can lower the lim
 depth is 128. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected—use `{}` for an
 intentionally empty catalog.
 
+Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
+Some JAR creation tools omit directory entries, which makes their packages invisible to ordinary discovery. Enable
+`exhaustiveClasspathSearch(true)` only when you need to support such a JAR; this inspects every filesystem and JAR root
+visible to the classloader. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
+with a warning so an unrelated dependency cannot abort application startup. Filesystem loading remains strict and rejects
+the same filename, which catches mistakes in a catalog directory owned by the application.
+
 ```java
 LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
   .maximumInputBytes(4 * 1024 * 1024)
   .maximumJsonNestingDepth(64)
+  .exhaustiveClasspathSearch(true) // Only for JARs that omit package directory entries
   .build();
 
 Map<Locale, Set<LocalizedString>> catalogs =
@@ -1362,6 +1374,14 @@ Built-in handler factories are:
 * [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws for missing translations and rethrows runtime resolution failures
 * [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
 
+Failure reasons distinguish a key that is absent from every candidate locale
+([`MISSING_TRANSLATION`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#MISSING_TRANSLATION)),
+a present alternatives-only key for which no condition matched
+([`NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)),
+and a translation that could not be evaluated or interpolated
+([`RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE)).
+Only resolution failures carry a runtime cause.
+
 The fail-soft handlers, [`returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) and [`logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)), also handle runtime resolution failures by returning the interpolated key. Use [`throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) or a custom handler that throws on [`TranslationFailureReason.RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE) in development and test environments if you want broken placeholder rules, expressions, or custom resolvers to surface immediately.
 
 Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html). For example, you might fail softly for missing translations but throw for resolution failures, which usually indicate a broken placeholder, expression, or language-form rule:
@@ -1436,7 +1456,7 @@ LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler
 LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.ignore());
 ```
 
-Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, `getLocale()`, `getKey()`, `getPlaceholder()`, `getMissingLanguageForms()`) alongside a human-readable `getMessage()`.
+Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, optional `getLocale()`, optional `getKey()`, optional `getPlaceholder()`, and `getMissingLanguageForms()`) alongside a human-readable `getMessage()`. Resource-level warnings such as an invalid classpath locale filename omit locale, key, and placeholder context.
 
 ### Commentary
 
@@ -1665,7 +1685,7 @@ gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
 
 Standard boolean operator precedence applies: `&&` binds tighter than `||`.
 
-Lokalized will automatically evaluate cardinality and ordinality for numbers if required by the expression.  For example, in English, if I were to supply `bookCount` of `50`, this expression would evalute to `true`:
+Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` also expose their numeric value for ordinary numeric comparisons. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
  
 ```text
 bookCount == CARDINALITY_OTHER
@@ -1685,6 +1705,8 @@ Alternative evaluation follows these rules:
 
 * Deepest level of recursion is evaluated first
 * Expressions are evaluated according to their order in the list, halting at first matched expression 
+* If no expression matches and no default `translation` is present in any candidate locale, failure handlers receive
+  [`TranslationFailureReason.NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)
 
 A somewhat contrived example of multiple levels of recursion follows.  The first level of recursion uses a full object, the second uses the string shorthand.
 

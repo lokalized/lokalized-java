@@ -8,16 +8,20 @@ All notable changes to Lokalized will be documented in this file.
 
 - Replaced the legacy failure handling API with `TranslationFailureHandler`, `TranslationFailure`,
   `TranslationFailureReason`, and `TranslationFailureResponse`.
+- Added `TranslationFailureReason.NO_MATCHING_ALTERNATIVE`; exhaustive switches over this public enum must handle the
+  new constant.
 - Made `DefaultStrings` package-private; applications should construct instances through `Strings.Builder`.
 - Added abstract inspection methods to `Strings`; custom `Strings` implementations must now implement
   `getSupportedLocales()`, `getKeysForLocale(Locale)`, and `getMissingKeys(Locale, Locale)`.
 - Renamed `Cardinality.getSupportedLanguageCodes()` and `Ordinality.getSupportedLanguageCodes()` to
   `getSupportedLocaleTags()` because the returned values are BCP 47 locale tags, not only language codes.
 - Loader validation is stricter and now rejects duplicate nested JSON members, malformed placeholders,
-  reserved language-form placeholder names, invalid locale filenames, invalid alternative expressions, explicit null
-  placeholder modes, blank/BOM-only catalogs, and malformed UTF-8 at load time.
+  reserved language-form placeholder names, invalid locale filenames in explicitly loaded filesystem catalog
+  directories, invalid alternative expressions, explicit null placeholder modes, blank/BOM-only catalogs, and
+  malformed UTF-8 at load time. Invalid locale filenames discovered on the classpath are warnings instead.
 - Existing loader overloads now apply per-resource defaults of 16 MiB input, 16 MiB reader characters, and 128 JSON
-  nesting levels. Classpath package paths must be nonempty, slash-relative, and free of traversal segments.
+  nesting levels. Classpath package paths must be nonempty, slash-relative, and free of traversal segments; trailing
+  slashes are normalized.
 - `PluralOperands.visibleDecimalPlaces(...)` no longer floors discarded digits. Reducing scale now throws
   `ArithmeticException` unless the supplied number is already rounded to that scale.
 - Programmatic `LocalizedString` catalogs now receive the same semantic validation as file-backed catalogs when
@@ -32,13 +36,16 @@ All notable changes to Lokalized will be documented in this file.
 - Added a public `LocalizedStringLoader.loadFromClasspath(ClassLoader, String)` overload and made the
   one-argument classpath loader prefer the thread context classloader when available.
 - Added `LocalizedStringWarning`, `LocalizedStringWarningHandler`, and warning-aware loader overloads for
-  incomplete CLDR cardinality/ordinality maps. Warnings log at `WARNING` by default; callers can ignore,
-  collect, or promote them to `LocalizedStringLoadingException`.
-- Added `LocalizedStringLoadingOptions` for bounded input size and JSON nesting depth.
+  incomplete CLDR cardinality/ordinality maps and invalid classpath locale filenames. Warning locale, key, and
+  placeholder context is optional when a problem applies to a resource as a whole. Warnings log at `WARNING` by
+  default; callers can ignore, collect, or promote them to `LocalizedStringLoadingException`.
+- Added `LocalizedStringLoadingOptions` for bounded input size, JSON nesting depth, and opt-in exhaustive classpath-root
+  searching for JARs that omit directory entries. Ordinary classloader resource discovery remains the safe default.
 - Added CLDR 48.2-backed cardinality, ordinality, cardinality-range, locale-alias, likely-subtag,
   parent-locale, and locale-validity behavior generated from pinned Unicode CLDR source data.
 - Added `PluralOperands` plus `Cardinality.forOperands(...)` and `Ordinality.forOperands(...)` for
-  visible-decimal-place and compact-decimal plural evaluation.
+  visible-decimal-place and compact-decimal plural evaluation. `PluralOperands` values are accepted by cardinality,
+  ordinality, and numeric alternative expressions as well as generated-placeholder rules and selectors.
 - Added bidirectional isolation for caller-supplied placeholder values in resolved right-to-left locales,
   with `BidiIsolation.NONE` available as a global or per-invocation opt-out. The RTL script set is generated
   from pinned CLDR script metadata instead of maintained by hand.
@@ -57,6 +64,10 @@ All notable changes to Lokalized will be documented in this file.
 - Placeholder and expression identifiers now share the same Unicode letter/digit naming policy.
 - Selected generated-placeholder fragments may reference caller values and other generated placeholders recursively;
   cycles, excessive depth, and output above 1,048,576 characters are resolution failures.
+- Alternatives-only keys for which no condition matches are reported as
+  `TranslationFailureReason.NO_MATCHING_ALTERNATIVE` without a synthetic expression-evaluation cause.
+- Failure-key interpolation is capped at 1,048,576 characters; if interpolation would exceed the cap, the raw key is
+  returned.
 - `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched locale
   preferences resolve to the configured fallback locale.
 - Language-range matching accepts at most 1,000 preferences per call. If every supported locale is excluded by
@@ -87,10 +98,15 @@ All notable changes to Lokalized will be documented in this file.
 - Expect invalid programmatic catalogs to fail during `Strings.build()` under the shared semantic validator.
 - Review strings files under the stricter loader validation before release. Duplicate nested JSON members,
   malformed placeholders, whitespace-padded mustaches, reserved language-form placeholder names, invalid
-  locale filenames, invalid alternative expressions, explicit null placeholder modes, blank/BOM-only catalogs,
-  and malformed UTF-8 are rejected while loading. Use `{}` for an empty catalog.
+  locale filenames in explicitly loaded filesystem catalog directories, invalid alternative expressions, explicit
+  null placeholder modes, blank/BOM-only catalogs, and malformed UTF-8 are rejected while loading. Use `{}` for an
+  empty catalog.
 - Review catalog sizes and nesting against the new per-resource defaults (16 MiB bytes/characters and depth 128).
   Pass `LocalizedStringLoadingOptions` to lower limits where appropriate; nesting cannot be raised above 128.
+- Prefer a namespaced classpath package such as `com/example/myapp/strings`. Enable
+  `LocalizedStringLoadingOptions.Builder.exhaustiveClasspathSearch(true)` only when a JAR omits package directory
+  entries. Classpath `.json` resources whose filenames are not valid locale tags are warning-and-skip, but remain fatal
+  in explicitly loaded filesystem catalog directories.
 - Placeholder and alternative-expression identifiers now follow the same rule: start with a Unicode letter
   or underscore, then use Unicode letters, Unicode digits, underscores, or hyphens.
 - Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in

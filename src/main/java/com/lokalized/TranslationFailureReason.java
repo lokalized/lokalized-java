@@ -23,9 +23,14 @@ package com.lokalized;
  */
 public enum TranslationFailureReason {
 	/**
-	 * No candidate locale produced a translation for the requested key.
+	 * No candidate locale contained the requested key.
 	 */
 	MISSING_TRANSLATION,
+	/**
+	 * A candidate locale contained the requested key, but none of its alternatives matched and no default translation
+	 * was provided.
+	 */
+	NO_MATCHING_ALTERNATIVE,
 	/**
 	 * A candidate translation existed, but placeholder, expression, or language-form resolution failed.
 	 */

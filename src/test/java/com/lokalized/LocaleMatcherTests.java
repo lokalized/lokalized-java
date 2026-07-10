@@ -135,6 +135,48 @@ public class LocaleMatcherTests {
   }
 
   @Test
+  public void zeroWeightRangeExcludesMatchingDescendantsAndExtensions() {
+    Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+    Locale numberedEnglish = Locale.forLanguageTag("en-US-u-nu-latn");
+    Locale britishEnglish = Locale.forLanguageTag("en-GB");
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+    localizedStringsByLocale.put(posixEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("posix").build()));
+    localizedStringsByLocale.put(numberedEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("numbered").build()));
+    localizedStringsByLocale.put(britishEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("british").build()));
+
+    Strings strings = Strings.withFallbackLocale(britishEnglish)
+        .localizedStringSupplier(() -> localizedStringsByLocale)
+        .localeSupplier(matcher -> britishEnglish)
+        .tiebreakerLocalesByLanguageCode(Map.of("en", List.of(posixEnglish, numberedEnglish, britishEnglish)))
+        .build();
+
+    assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("en;q=1,en-US;q=0")));
+  }
+
+  @Test
+  public void zeroWeightExtendedRangeExcludesStructuralMatches() {
+    Locale americanLatinEnglish = Locale.forLanguageTag("en-Latn-US");
+    Locale britishEnglish = Locale.forLanguageTag("en-GB");
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+    localizedStringsByLocale.put(americanLatinEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("american").build()));
+    localizedStringsByLocale.put(britishEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("british").build()));
+
+    Strings strings = Strings.withFallbackLocale(britishEnglish)
+        .localizedStringSupplier(() -> localizedStringsByLocale)
+        .localeSupplier(matcher -> britishEnglish)
+        .tiebreakerLocalesByLanguageCode(Map.of("en", List.of(americanLatinEnglish, britishEnglish)))
+        .build();
+
+    assertEquals(britishEnglish,
+        strings.bestMatchFor(LanguageRange.parse("en;q=1,en-*-US;q=0")));
+  }
+
+  @Test
   public void moreSpecificLowerWeightOverridesBroaderWeightForThatLocale() {
     Locale americanEnglish = Locale.forLanguageTag("en-US");
     Locale britishEnglish = Locale.forLanguageTag("en-GB");
@@ -157,6 +199,32 @@ public class LocaleMatcherTests {
         .localizedStringSupplier(() -> localizedStringsByLocale)
         .localeSupplier(matcher -> americanEnglish)
         .tiebreakerLocalesByLanguageCode(Map.of("en", List.of(americanEnglish, britishEnglish)))
+        .build();
+
+    assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("*;q=1,en-US;q=0")));
+  }
+
+  @Test
+  public void wildcardUsesFallbackLanguageTiebreakerAfterFallbackExclusion() {
+    Locale americanEnglish = Locale.forLanguageTag("en-US");
+    Locale australianEnglish = Locale.forLanguageTag("en-AU");
+    Locale britishEnglish = Locale.forLanguageTag("en-GB");
+    Locale french = Locale.forLanguageTag("fr");
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+    localizedStringsByLocale.put(americanEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("american").build()));
+    localizedStringsByLocale.put(australianEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("australian").build()));
+    localizedStringsByLocale.put(britishEnglish,
+        Set.of(new LocalizedString.Builder("hello").translation("british").build()));
+    localizedStringsByLocale.put(french,
+        Set.of(new LocalizedString.Builder("hello").translation("french").build()));
+
+    Strings strings = Strings.withFallbackLocale(americanEnglish)
+        .localizedStringSupplier(() -> localizedStringsByLocale)
+        .localeSupplier(matcher -> americanEnglish)
+        .tiebreakerLocalesByLanguageCode(Map.of(
+            "en", List.of(americanEnglish, britishEnglish, australianEnglish)))
         .build();
 
     assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("*;q=1,en-US;q=0")));

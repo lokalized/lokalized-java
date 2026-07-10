@@ -65,6 +65,15 @@ public class StringInterpolatorTests {
   }
 
   @Test
+  public void lenientInterpolationCanBoundOutput() {
+    StringInterpolator interpolator = new StringInterpolator();
+
+    assertEquals("Hi Ada", interpolator.interpolate("Hi {{name}}", Map.of("name", "Ada"), 6));
+    assertThrows(IllegalStateException.class,
+        () -> interpolator.interpolate("Hi {{name}}", Map.of("name", "Ada"), 5));
+  }
+
+  @Test
   public void escapedPlaceholdersAreRenderedLiterally() {
     StringInterpolator interpolator = new StringInterpolator();
     String result = interpolator.interpolate("Hi \\{{name}} and {{name}}", Map.of(
