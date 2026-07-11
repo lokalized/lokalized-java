@@ -21,7 +21,7 @@ package com.lokalized;
  * definiteness, classifiers, animacy, clusivity, formality, cardinalities, ordinalities, phonetics).
  * <p>
  * Only the enum types shipped by Lokalized are supported. Application code must not implement this interface;
- * external implementations cannot be mapped to a {@link LanguageFormType} and are rejected. The interface remains
+ * external implementations cannot be resolved by the translation runtime and are rejected. The interface remains
  * syntactically implementable because Lokalized targets Java 9, which predates sealed interfaces.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>

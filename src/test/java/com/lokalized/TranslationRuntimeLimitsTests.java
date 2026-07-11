@@ -20,7 +20,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -124,24 +123,6 @@ public class TranslationRuntimeLimitsTests {
 				.build();
 
 		assertEquals("Hello", strings.get("Greeting"));
-	}
-
-	@Test
-	public void stringsHonorsSelectorRuleLimitAtBuildTime() {
-		LocalizedString.LanguageFormTranslation selectorTranslation =
-				new LocalizedString.LanguageFormTranslation(
-						List.of(new LocalizedString.LanguageFormSelector("count", LanguageFormType.CARDINALITY)),
-						List.of(new LocalizedString.LanguageFormTranslationRule("items")));
-		LocalizedString localizedString = new LocalizedString.Builder("Items")
-				.translation("{{noun}}")
-				.languageFormTranslationsByPlaceholder(Map.of("noun", selectorTranslation))
-				.build();
-
-		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(Locale.ENGLISH)
-				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, Set.of(localizedString)))
-				.localeSupplier(matcher -> Locale.ENGLISH)
-				.runtimeLimits(TranslationRuntimeLimits.builder().maximumSelectorRules(0).build())
-				.build());
 	}
 
 	@Test

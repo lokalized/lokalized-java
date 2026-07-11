@@ -16,9 +16,7 @@
 
 package com.lokalized;
 
-import com.lokalized.LocalizedString.LanguageFormSelector;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
-import com.lokalized.LocalizedString.LanguageFormTranslationRule;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -389,7 +387,6 @@ class DefaultStrings implements Strings {
 					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
 
 				validateLocalizedString(locale, localizedString);
-				validateRuntimeLimits(localizedString);
 				compileAlternativeExpressions(localizedString, compiledExpressionTokensByAlternative);
 
 				String key = localizedString.getKey();
@@ -430,24 +427,6 @@ class DefaultStrings implements Strings {
 		requireNonNull(locale);
 		requireNonNull(localizedString);
 		LocalizedStringValidator.validate(locale, localizedString);
-	}
-
-	private void validateRuntimeLimits(@NonNull LocalizedString localizedString) {
-		requireNonNull(localizedString);
-
-		for (Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
-				localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
-			int ruleCount = entry.getValue().getTranslationRules().size();
-			int maximumRuleCount = getRuntimeLimits().getMaximumSelectorRules();
-
-			if (ruleCount > maximumRuleCount)
-				throw new IllegalArgumentException(format(
-						"Selector-based translation for placeholder '%s' in key '%s' contains %d rules, which exceeds the configured maximum of %d",
-						entry.getKey(), localizedString.getKey(), ruleCount, maximumRuleCount));
-		}
-
-		for (LocalizedString alternative : localizedString.getAlternatives())
-			validateRuntimeLimits(alternative);
 	}
 
 	@NonNull
@@ -672,15 +651,6 @@ class DefaultStrings implements Strings {
 			// File-defined generated placeholders take precedence over same-named caller values.
 			mutableContext.remove(placeholderName);
 			LanguageFormTranslation languageFormTranslation = languageFormTranslationsByPlaceholder.get(placeholderName);
-
-			if (languageFormTranslation.isSelectorDriven()) {
-				String generatedTranslation = resolveSelectorDrivenLanguageFormTranslation(key, placeholderName,
-						languageFormTranslation, localizedString, immutableContext, locale);
-				mutableContext.put(placeholderName, generatedTranslation);
-				enqueueGeneratedPlaceholderDependencies(generatedTranslation, languageFormTranslationsByPlaceholder,
-						pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
-				continue;
-			}
 
 			Object value = null;
 			Object rangeStart = null;
@@ -1146,73 +1116,6 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
-	private String resolveSelectorDrivenLanguageFormTranslation(@NonNull String key, @NonNull String placeholderName,
-																													 @NonNull LanguageFormTranslation languageFormTranslation,
-																													 @NonNull LocalizedString localizedString,
-																													 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																													 @NonNull Locale locale) {
-		requireNonNull(key);
-		requireNonNull(placeholderName);
-		requireNonNull(languageFormTranslation);
-		requireNonNull(localizedString);
-		requireNonNull(immutableContext);
-		requireNonNull(locale);
-
-		Map<@NonNull LanguageFormType, @NonNull LanguageForm> resolvedLanguageFormsByType = new LinkedHashMap<>();
-
-		for (LanguageFormSelector selector : languageFormTranslation.getSelectors()) {
-			Object selectorValue = unwrapOptional(immutableContext.get(selector.getValue()));
-
-			if (selectorValue == null)
-				throw new IllegalArgumentException(format("Missing value for selector '%s' in placeholder '%s' for key '%s'",
-						selector.getValue(), placeholderName, key));
-
-			resolvedLanguageFormsByType.put(selector.getForm(),
-					resolveSelectorLanguageFormValue(key, selector.getValue(), selector.getForm(), selectorValue, locale));
-		}
-
-		@Nullable LanguageFormTranslationRule matchedRule = null;
-		int matchedSpecificity = -1;
-
-		for (LanguageFormTranslationRule translationRule : languageFormTranslation.getTranslationRules()) {
-			if (!selectorTranslationRuleMatches(translationRule, resolvedLanguageFormsByType))
-				continue;
-
-			int specificity = translationRule.getWhenByLanguageFormType().size();
-
-			if (matchedRule != null && specificity == matchedSpecificity)
-				throw new IllegalStateException(format("Ambiguous selector-based translations for placeholder '%s' with selector values %s. " +
-						"Localized string was %s", placeholderName, resolvedLanguageFormsByType, localizedString));
-
-			if (matchedRule == null || specificity > matchedSpecificity) {
-				matchedRule = translationRule;
-				matchedSpecificity = specificity;
-			}
-		}
-
-		if (matchedRule == null)
-			throw new IllegalStateException(format("Missing selector-based translation for placeholder '%s' with selector values %s. " +
-					"Localized string was %s", placeholderName, resolvedLanguageFormsByType, localizedString));
-
-		return matchedRule.getValue();
-	}
-
-	private boolean selectorTranslationRuleMatches(@NonNull LanguageFormTranslationRule translationRule,
-																								 @NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> resolvedLanguageFormsByType) {
-		requireNonNull(translationRule);
-		requireNonNull(resolvedLanguageFormsByType);
-
-		for (Entry<@NonNull LanguageFormType, @NonNull LanguageForm> ruleEntry : translationRule.getWhenByLanguageFormType().entrySet()) {
-			LanguageForm resolvedLanguageForm = resolvedLanguageFormsByType.get(ruleEntry.getKey());
-
-			if (!ruleEntry.getValue().equals(resolvedLanguageForm))
-				return false;
-		}
-
-		return true;
-	}
-
-	@NonNull
 	private Cardinality cardinalityForValue(@NonNull String key, @NonNull String valueName,
 																							 @NonNull Object value, @NonNull Locale locale,
 																							 @NonNull String description) {
@@ -1286,86 +1189,6 @@ class DefaultStrings implements Strings {
 					getRuntimeLimits().getMaximumVisibleDecimalPlaces()));
 
 		return operands;
-	}
-
-	@NonNull
-	private LanguageForm resolveSelectorLanguageFormValue(@NonNull String key, @NonNull String selectorValueName,
-																										 @NonNull LanguageFormType languageFormType,
-																										 @NonNull Object selectorValue,
-																										 @NonNull Locale locale) {
-		requireNonNull(key);
-		requireNonNull(selectorValueName);
-		requireNonNull(languageFormType);
-		requireNonNull(selectorValue);
-		requireNonNull(locale);
-
-		switch (languageFormType) {
-			case CARDINALITY:
-				return cardinalityForValue(key, selectorValueName, selectorValue, locale, "Selector value");
-			case ORDINALITY:
-				return ordinalityForValue(key, selectorValueName, selectorValue, locale, "Selector value");
-			case GENDER:
-				if (!(selectorValue instanceof Gender))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Gender.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Gender) selectorValue;
-			case CASE:
-				if (!(selectorValue instanceof GrammaticalCase))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, GrammaticalCase.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (GrammaticalCase) selectorValue;
-			case DEFINITENESS:
-				if (!(selectorValue instanceof Definiteness))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Definiteness.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Definiteness) selectorValue;
-			case CLASSIFIER:
-				if (!(selectorValue instanceof Classifier))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Classifier.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Classifier) selectorValue;
-			case FORMALITY:
-				if (!(selectorValue instanceof Formality))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Formality.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Formality) selectorValue;
-			case CLUSIVITY:
-				if (!(selectorValue instanceof Clusivity))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Clusivity.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Clusivity) selectorValue;
-			case ANIMACY:
-				if (!(selectorValue instanceof Animacy))
-					throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s but was %s",
-							selectorValueName, key, Animacy.class.getSimpleName(), selectorValue.getClass().getSimpleName()));
-
-				return (Animacy) selectorValue;
-			case PHONETIC:
-				if (selectorValue instanceof Phonetic)
-					return (Phonetic) selectorValue;
-
-				if (selectorValue instanceof CharSequence) {
-					Phonetic phonetic = getPhoneticResolver().resolve(selectorValue.toString(), locale);
-
-					if (phonetic == null)
-						throw new IllegalArgumentException(format("%s returned null for selector value '%s' in key '%s'",
-								PhoneticResolver.class.getSimpleName(), selectorValueName, key));
-
-					return phonetic;
-				}
-
-				throw new IllegalArgumentException(format("Selector value '%s' in key '%s' must be a %s or %s but was %s",
-						selectorValueName, key, Phonetic.class.getSimpleName(), CharSequence.class.getSimpleName(),
-						selectorValue.getClass().getSimpleName()));
-			default:
-				throw new IllegalArgumentException(format("Encountered unrecognized selector language form type %s", languageFormType));
-		}
 	}
 
 	private boolean alternativeMatches(@NonNull LocalizedString alternative,

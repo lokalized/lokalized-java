@@ -16,19 +16,14 @@
 
 package com.lokalized;
 
-import com.lokalized.LocalizedString.LanguageFormSelector;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
-import com.lokalized.LocalizedString.LanguageFormTranslationRule;
-import com.lokalized.LocalizedString.PlaceholderMetadata;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -102,118 +97,12 @@ public class LocalizedStringValidatorTests {
   }
 
   @Test
-  public void duplicateSelectorTypesAreRejected() {
-    LanguageFormTranslation translation = new LanguageFormTranslation(
-        List.of(
-            new LanguageFormSelector("first", LanguageFormType.GENDER),
-            new LanguageFormSelector("second", LanguageFormType.GENDER)),
-        List.of(new LanguageFormTranslationRule("value")));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{value}}")
-        .languageFormTranslationsByPlaceholder(Map.of("value", translation))
-        .build();
-
-    assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void selectorConditionMustMatchConfiguredType() {
-    LanguageFormTranslation translation = new LanguageFormTranslation(
-        List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)),
-        List.of(new LanguageFormTranslationRule(
-            Map.of(LanguageFormType.GENDER, Cardinality.ONE), "value")));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{value}}")
-        .languageFormTranslationsByPlaceholder(Map.of("value", translation))
-        .build();
-
-    assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void oneInputCannotDriveIncompatibleSelectorTypes() {
-    LanguageFormTranslation translation = new LanguageFormTranslation(
-        List.of(
-            new LanguageFormSelector("value", LanguageFormType.GENDER),
-            new LanguageFormSelector("value", LanguageFormType.CASE)),
-        List.of(new LanguageFormTranslationRule("value")));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{result}}")
-        .languageFormTranslationsByPlaceholder(Map.of("result", translation))
-        .build();
-
-    assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void oneNumericInputCanDriveCardinalityAndOrdinalitySelectors() {
-    LanguageFormTranslation translation = new LanguageFormTranslation(
-        List.of(
-            new LanguageFormSelector("value", LanguageFormType.CARDINALITY),
-            new LanguageFormSelector("value", LanguageFormType.ORDINALITY)),
-        List.of(new LanguageFormTranslationRule("value")));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{result}}")
-        .languageFormTranslationsByPlaceholder(Map.of("result", translation))
-        .build();
-
-    assertDoesNotThrow(() -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void duplicateDefaultSelectorRulesAreRejected() {
-    LanguageFormTranslation translation = new LanguageFormTranslation(
-        List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)),
-        List.of(new LanguageFormTranslationRule("first"), new LanguageFormTranslationRule("second")));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{result}}")
-        .languageFormTranslationsByPlaceholder(Map.of("result", translation))
-        .build();
-
-    assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void excessiveSelectorRuleCountIsRejectedBeforeCopyAndQuadraticValidation() {
-    List<LanguageFormTranslationRule> rules = new ArrayList<>();
-    for (int index = 0; index < LanguageFormTranslation.MAXIMUM_SELECTOR_RULES; ++index)
-      rules.add(new LanguageFormTranslationRule(
-          Map.of(LanguageFormType.GENDER, Gender.MASCULINE), "value" + index));
-
-    assertDoesNotThrow(() -> new LanguageFormTranslation(
-        List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)), rules));
-
-    rules.add(new LanguageFormTranslationRule(
-        Map.of(LanguageFormType.GENDER, Gender.MASCULINE), "excessive"));
-
-    assertThrows(IllegalArgumentException.class,
-        () -> new LanguageFormTranslation(
-            List.of(new LanguageFormSelector("gender", LanguageFormType.GENDER)), rules));
-  }
-
-  @Test
   public void rangesOnlySupportCardinality() {
     LanguageFormTranslation translation = new LanguageFormTranslation(
         new LanguageFormTranslationRange("start", "end"), Map.of(Gender.MASCULINE, "value"));
     LocalizedString localizedString = new LocalizedString.Builder("key")
         .translation("{{result}}")
         .languageFormTranslationsByPlaceholder(Map.of("result", translation))
-        .build();
-
-    assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-  }
-
-  @Test
-  public void builtInMetadataAllowedValuesMustMatchType() {
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{gender}}")
-        .placeholderMetadataByPlaceholder(Map.of(
-            "gender", new PlaceholderMetadata("GENDER", null, null, Set.of("CARDINALITY_ONE"))))
         .build();
 
     assertThrows(IllegalArgumentException.class,

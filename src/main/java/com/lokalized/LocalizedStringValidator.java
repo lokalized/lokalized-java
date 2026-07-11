@@ -16,10 +16,7 @@
 
 package com.lokalized;
 
-import com.lokalized.LocalizedString.LanguageFormSelector;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
-import com.lokalized.LocalizedString.LanguageFormTranslationRule;
-import com.lokalized.LocalizedString.PlaceholderMetadata;
 import org.jspecify.annotations.NonNull;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -28,7 +25,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -50,8 +46,6 @@ final class LocalizedStringValidator {
   private static final ExpressionEvaluator EXPRESSION_EVALUATOR = new ExpressionEvaluator();
   @NonNull
   private static final Set<@NonNull String> RESERVED_LANGUAGE_FORM_NAMES;
-  @NonNull
-  private static final Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> LANGUAGE_FORM_NAMES_BY_TYPE;
 
   static {
     List<@NonNull LanguageForm> languageForms = new ArrayList<>();
@@ -71,16 +65,6 @@ final class LocalizedStringValidator {
       languageFormsByName.put(localizedStringNameFor(enumName, languageForm), languageForm);
     }
     RESERVED_LANGUAGE_FORM_NAMES = Collections.unmodifiableSet(new HashSet<>(languageFormsByName.keySet()));
-
-    Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> languageFormNamesByType = new HashMap<>();
-    for (Map.Entry<@NonNull String, @NonNull LanguageForm> entry : languageFormsByName.entrySet())
-      languageFormNamesByType.computeIfAbsent(LanguageFormType.forLanguageForm(entry.getValue()), ignored -> new HashSet<>())
-          .add(entry.getKey());
-
-    Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> immutableLanguageFormNamesByType = new HashMap<>();
-    for (Map.Entry<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> entry : languageFormNamesByType.entrySet())
-      immutableLanguageFormNamesByType.put(entry.getKey(), Collections.unmodifiableSet(new HashSet<>(entry.getValue())));
-    LANGUAGE_FORM_NAMES_BY_TYPE = Collections.unmodifiableMap(immutableLanguageFormNamesByType);
   }
 
   private LocalizedStringValidator() {
@@ -172,8 +156,6 @@ final class LocalizedStringValidator {
     localizedString.getTranslation().ifPresent(translation ->
         validateTemplate(locale, rootKey, "translation", translation));
 
-    validateMetadata(locale, rootKey, localizedString.getPlaceholderMetadataByPlaceholder());
-
     for (Map.Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
         localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
       String placeholderName = entry.getKey();
@@ -193,43 +175,9 @@ final class LocalizedStringValidator {
     }
   }
 
-  private static void validateMetadata(@NonNull Locale locale, @NonNull String rootKey,
-                                       @NonNull Map<@NonNull String, @NonNull PlaceholderMetadata> metadataByPlaceholder) {
-    for (Map.Entry<@NonNull String, @NonNull PlaceholderMetadata> entry : metadataByPlaceholder.entrySet()) {
-      String placeholderName = entry.getKey();
-      PlaceholderMetadata metadata = entry.getValue();
-      validateIdentifier(locale, rootKey, placeholderName, "placeholder metadata name");
-
-      if (metadata == null)
-        throw invalid(locale, rootKey, format("Placeholder metadata for '%s' is null", placeholderName));
-
-      for (String allowedValue : metadata.getAllowedValues())
-        if (allowedValue == null)
-          throw invalid(locale, rootKey, format("Placeholder metadata for '%s' contains a null allowed value", placeholderName));
-
-      metadata.getType().ifPresent(typeName -> {
-        LanguageFormType languageFormType = LanguageFormType.getLanguageFormTypesByName().get(typeName);
-        if (languageFormType == null)
-          return;
-
-        Set<@NonNull String> allowedNames = LANGUAGE_FORM_NAMES_BY_TYPE.get(languageFormType);
-        for (String allowedValue : metadata.getAllowedValues())
-          if (!allowedNames.contains(allowedValue))
-            throw invalid(locale, rootKey, format(
-                "Placeholder metadata allowed value '%s' is invalid for type '%s' and placeholder '%s'",
-                allowedValue, typeName, placeholderName));
-      });
-    }
-  }
-
   private static void validateLanguageFormTranslation(@NonNull Locale locale, @NonNull String rootKey,
                                                       @NonNull String placeholderName,
                                                       @NonNull LanguageFormTranslation languageFormTranslation) {
-    if (languageFormTranslation.isSelectorDriven()) {
-      validateSelectorTranslation(locale, rootKey, placeholderName, languageFormTranslation);
-      return;
-    }
-
     if (languageFormTranslation.getValue().isPresent())
       validateIdentifier(locale, rootKey, languageFormTranslation.getValue().get(),
           format("input for generated placeholder '%s'", placeholderName));
@@ -240,20 +188,20 @@ final class LocalizedStringValidator {
           format("range end for generated placeholder '%s'", placeholderName));
     } else {
       throw invalid(locale, rootKey, format(
-          "Generated placeholder '%s' must define a value, range, or selectors", placeholderName));
+          "Generated placeholder '%s' must define a value or range", placeholderName));
     }
 
     Map<@NonNull LanguageForm, @NonNull String> translations = languageFormTranslation.getTranslationsByLanguageForm();
     if (translations.isEmpty())
       throw invalid(locale, rootKey, format("Generated placeholder '%s' must define translations", placeholderName));
 
-    Set<@NonNull LanguageFormType> languageFormTypes = new HashSet<>();
+    Set<@NonNull Class<?>> languageFormTypes = new HashSet<>();
     for (Map.Entry<@NonNull LanguageForm, @NonNull String> entry : translations.entrySet()) {
       if (entry.getKey() == null || entry.getValue() == null)
         throw invalid(locale, rootKey, format("Generated placeholder '%s' contains a null language form or value", placeholderName));
 
       try {
-        languageFormTypes.add(LanguageFormType.forLanguageForm(entry.getKey()));
+        languageFormTypes.add(languageFormClassFor(entry.getKey()));
       } catch (IllegalArgumentException e) {
         throw invalid(locale, rootKey, format("Generated placeholder '%s' uses an unsupported language form %s",
             placeholderName, entry.getKey()), e);
@@ -265,85 +213,36 @@ final class LocalizedStringValidator {
     if (languageFormTypes.size() != 1)
       throw invalid(locale, rootKey, format("Generated placeholder '%s' may not mix language-form types", placeholderName));
 
-    if (languageFormTranslation.getRange().isPresent() && !languageFormTypes.contains(LanguageFormType.CARDINALITY))
+    if (languageFormTranslation.getRange().isPresent() && !languageFormTypes.contains(Cardinality.class))
       throw invalid(locale, rootKey, format("Range-driven placeholder '%s' only supports cardinality", placeholderName));
   }
 
-  private static void validateSelectorTranslation(@NonNull Locale locale, @NonNull String rootKey,
-                                                  @NonNull String placeholderName,
-                                                  @NonNull LanguageFormTranslation languageFormTranslation) {
-    List<@NonNull LanguageFormSelector> selectors = languageFormTranslation.getSelectors();
-    List<@NonNull LanguageFormTranslationRule> rules = languageFormTranslation.getTranslationRules();
-    if (selectors.isEmpty() || rules.isEmpty())
-      throw invalid(locale, rootKey, format("Selector-driven placeholder '%s' requires selectors and rules", placeholderName));
-    if (rules.size() > LanguageFormTranslation.MAXIMUM_SELECTOR_RULES)
-      throw invalid(locale, rootKey, format(
-          "Selector-driven placeholder '%s' defines %d rules, exceeding the maximum of %d",
-          placeholderName, rules.size(), LanguageFormTranslation.MAXIMUM_SELECTOR_RULES));
+  @NonNull
+  private static Class<? extends LanguageForm> languageFormClassFor(@NonNull LanguageForm languageForm) {
+    requireNonNull(languageForm);
 
-    Set<@NonNull LanguageFormType> selectorTypes = new LinkedHashSet<>();
-    Map<@NonNull String, @NonNull Set<@NonNull LanguageFormType>> selectorTypesByValue = new HashMap<>();
-    for (LanguageFormSelector selector : selectors) {
-      if (selector == null)
-        throw invalid(locale, rootKey, format("Selector-driven placeholder '%s' contains a null selector", placeholderName));
-      validateIdentifier(locale, rootKey, selector.getValue(), format("selector value for placeholder '%s'", placeholderName));
-      if (!selectorTypes.add(selector.getForm()))
-        throw invalid(locale, rootKey, format("Selector-driven placeholder '%s' contains duplicate selector type %s",
-            placeholderName, selector.getForm()));
+    if (languageForm instanceof Cardinality)
+      return Cardinality.class;
+    if (languageForm instanceof Ordinality)
+      return Ordinality.class;
+    if (languageForm instanceof Gender)
+      return Gender.class;
+    if (languageForm instanceof GrammaticalCase)
+      return GrammaticalCase.class;
+    if (languageForm instanceof Definiteness)
+      return Definiteness.class;
+    if (languageForm instanceof Classifier)
+      return Classifier.class;
+    if (languageForm instanceof Formality)
+      return Formality.class;
+    if (languageForm instanceof Clusivity)
+      return Clusivity.class;
+    if (languageForm instanceof Animacy)
+      return Animacy.class;
+    if (languageForm instanceof Phonetic)
+      return Phonetic.class;
 
-      Set<@NonNull LanguageFormType> typesForValue = selectorTypesByValue.computeIfAbsent(selector.getValue(),
-          ignored -> new LinkedHashSet<>());
-      typesForValue.add(selector.getForm());
-
-      if (typesForValue.size() > 1 &&
-          !Set.of(LanguageFormType.CARDINALITY, LanguageFormType.ORDINALITY).containsAll(typesForValue))
-        throw invalid(locale, rootKey, format(
-            "Selector-driven placeholder '%s' reuses input '%s' for incompatible selector types %s",
-            placeholderName, selector.getValue(), typesForValue));
-    }
-
-    for (LanguageFormTranslationRule rule : rules) {
-      if (rule == null)
-        throw invalid(locale, rootKey, format("Selector-driven placeholder '%s' contains a null rule", placeholderName));
-      validateTemplate(locale, rootKey, format("selector rule for placeholder '%s'", placeholderName), rule.getValue());
-
-      for (Map.Entry<@NonNull LanguageFormType, @NonNull LanguageForm> condition :
-          rule.getWhenByLanguageFormType().entrySet()) {
-        LanguageFormType conditionType = condition.getKey();
-        LanguageForm conditionValue = condition.getValue();
-        if (conditionType == null || conditionValue == null)
-          throw invalid(locale, rootKey, format("Selector rule for placeholder '%s' contains a null condition", placeholderName));
-        if (!selectorTypes.contains(conditionType))
-          throw invalid(locale, rootKey, format("Selector rule for placeholder '%s' uses unconfigured selector type %s",
-              placeholderName, conditionType));
-        if (!conditionType.getLanguageFormClass().isInstance(conditionValue))
-          throw invalid(locale, rootKey, format("Selector rule for placeholder '%s' pairs selector type %s with %s",
-              placeholderName, conditionType, conditionValue));
-      }
-    }
-
-    for (int leftIndex = 0; leftIndex < rules.size(); ++leftIndex) {
-      LanguageFormTranslationRule leftRule = rules.get(leftIndex);
-      for (int rightIndex = leftIndex + 1; rightIndex < rules.size(); ++rightIndex) {
-        LanguageFormTranslationRule rightRule = rules.get(rightIndex);
-        if (leftRule.getWhenByLanguageFormType().size() == rightRule.getWhenByLanguageFormType().size() &&
-            selectorRuleConditionsOverlap(leftRule.getWhenByLanguageFormType(), rightRule.getWhenByLanguageFormType()))
-          throw invalid(locale, rootKey, format(
-              "Selector rules for placeholder '%s' are ambiguous at equal specificity: %s and %s",
-              placeholderName, leftRule, rightRule));
-      }
-    }
-  }
-
-  private static boolean selectorRuleConditionsOverlap(
-      @NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> leftConditions,
-      @NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> rightConditions) {
-    for (Map.Entry<@NonNull LanguageFormType, @NonNull LanguageForm> leftCondition : leftConditions.entrySet()) {
-      LanguageForm rightLanguageForm = rightConditions.get(leftCondition.getKey());
-      if (rightLanguageForm != null && !rightLanguageForm.equals(leftCondition.getValue()))
-        return false;
-    }
-    return true;
+    throw new IllegalArgumentException(format("Unsupported language form %s", languageForm));
   }
 
   private static void validateTemplate(@NonNull Locale locale, @NonNull String rootKey,

@@ -51,8 +51,6 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_TOKENS = 512;
 	/** Hard ceiling and default for nested expression groups. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_NESTING_DEPTH = 64;
-	/** Hard ceiling and default for rules in a language-form selector. */
-	@NonNull public static final Integer MAXIMUM_SELECTOR_RULES = 128;
 	/** Hard ceiling and default for nested generated placeholders. */
 	@NonNull public static final Integer MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 64;
 	/** Hard ceiling and default for one interpolated value. */
@@ -70,7 +68,6 @@ public final class TranslationRuntimeLimits {
 	@NonNull private final Integer maximumExpressionCharacters;
 	@NonNull private final Integer maximumExpressionTokens;
 	@NonNull private final Integer maximumExpressionNestingDepth;
-	@NonNull private final Integer maximumSelectorRules;
 	@NonNull private final Integer maximumGeneratedPlaceholderDepth;
 	@NonNull private final Integer maximumInterpolatedOutputCharacters;
 	@NonNull private final Integer maximumGeneratedExpansionCharacters;
@@ -83,7 +80,6 @@ public final class TranslationRuntimeLimits {
 		this.maximumExpressionCharacters = builder.maximumExpressionCharacters;
 		this.maximumExpressionTokens = builder.maximumExpressionTokens;
 		this.maximumExpressionNestingDepth = builder.maximumExpressionNestingDepth;
-		this.maximumSelectorRules = builder.maximumSelectorRules;
 		this.maximumGeneratedPlaceholderDepth = builder.maximumGeneratedPlaceholderDepth;
 		this.maximumInterpolatedOutputCharacters = builder.maximumInterpolatedOutputCharacters;
 		this.maximumGeneratedExpansionCharacters = builder.maximumGeneratedExpansionCharacters;
@@ -112,8 +108,6 @@ public final class TranslationRuntimeLimits {
 	@NonNull public Integer getMaximumExpressionTokens() { return maximumExpressionTokens; }
 	/** @return maximum nested expression groups, not null */
 	@NonNull public Integer getMaximumExpressionNestingDepth() { return maximumExpressionNestingDepth; }
-	/** @return maximum rules in one selector, not null */
-	@NonNull public Integer getMaximumSelectorRules() { return maximumSelectorRules; }
 	/** @return maximum generated-placeholder nesting depth, not null */
 	@NonNull public Integer getMaximumGeneratedPlaceholderDepth() { return maximumGeneratedPlaceholderDepth; }
 	/** @return maximum characters in one interpolated value, not null */
@@ -135,7 +129,6 @@ public final class TranslationRuntimeLimits {
 				&& Objects.equals(maximumExpressionCharacters, that.maximumExpressionCharacters)
 				&& Objects.equals(maximumExpressionTokens, that.maximumExpressionTokens)
 				&& Objects.equals(maximumExpressionNestingDepth, that.maximumExpressionNestingDepth)
-				&& Objects.equals(maximumSelectorRules, that.maximumSelectorRules)
 				&& Objects.equals(maximumGeneratedPlaceholderDepth, that.maximumGeneratedPlaceholderDepth)
 				&& Objects.equals(maximumInterpolatedOutputCharacters, that.maximumInterpolatedOutputCharacters)
 				&& Objects.equals(maximumGeneratedExpansionCharacters, that.maximumGeneratedExpansionCharacters);
@@ -145,7 +138,7 @@ public final class TranslationRuntimeLimits {
 	public int hashCode() {
 		return Objects.hash(maximumNumberPrecision, maximumAbsoluteNumberScale, maximumVisibleDecimalPlaces,
 				maximumCompactExponent, maximumExpressionCharacters, maximumExpressionTokens,
-				maximumExpressionNestingDepth, maximumSelectorRules, maximumGeneratedPlaceholderDepth,
+				maximumExpressionNestingDepth, maximumGeneratedPlaceholderDepth,
 				maximumInterpolatedOutputCharacters, maximumGeneratedExpansionCharacters);
 	}
 
@@ -154,12 +147,12 @@ public final class TranslationRuntimeLimits {
 	public String toString() {
 		return format("%s{maximumNumberPrecision=%d, maximumAbsoluteNumberScale=%d, " +
 				"maximumVisibleDecimalPlaces=%d, maximumCompactExponent=%d, maximumExpressionCharacters=%d, " +
-				"maximumExpressionTokens=%d, maximumExpressionNestingDepth=%d, maximumSelectorRules=%d, " +
+				"maximumExpressionTokens=%d, maximumExpressionNestingDepth=%d, " +
 				"maximumGeneratedPlaceholderDepth=%d, maximumInterpolatedOutputCharacters=%d, " +
 				"maximumGeneratedExpansionCharacters=%d}", getClass().getSimpleName(), maximumNumberPrecision,
 				maximumAbsoluteNumberScale, maximumVisibleDecimalPlaces, maximumCompactExponent,
 				maximumExpressionCharacters, maximumExpressionTokens, maximumExpressionNestingDepth,
-				maximumSelectorRules, maximumGeneratedPlaceholderDepth, maximumInterpolatedOutputCharacters,
+				maximumGeneratedPlaceholderDepth, maximumInterpolatedOutputCharacters,
 				maximumGeneratedExpansionCharacters);
 	}
 
@@ -173,7 +166,6 @@ public final class TranslationRuntimeLimits {
 		@NonNull private Integer maximumExpressionCharacters = MAXIMUM_EXPRESSION_CHARACTERS;
 		@NonNull private Integer maximumExpressionTokens = MAXIMUM_EXPRESSION_TOKENS;
 		@NonNull private Integer maximumExpressionNestingDepth = MAXIMUM_EXPRESSION_NESTING_DEPTH;
-		@NonNull private Integer maximumSelectorRules = MAXIMUM_SELECTOR_RULES;
 		@NonNull private Integer maximumGeneratedPlaceholderDepth = MAXIMUM_GENERATED_PLACEHOLDER_DEPTH;
 		@NonNull private Integer maximumInterpolatedOutputCharacters = MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS;
 		@NonNull private Integer maximumGeneratedExpansionCharacters = MAXIMUM_GENERATED_EXPANSION_CHARACTERS;
@@ -188,7 +180,6 @@ public final class TranslationRuntimeLimits {
 			this.maximumExpressionCharacters = limits.maximumExpressionCharacters;
 			this.maximumExpressionTokens = limits.maximumExpressionTokens;
 			this.maximumExpressionNestingDepth = limits.maximumExpressionNestingDepth;
-			this.maximumSelectorRules = limits.maximumSelectorRules;
 			this.maximumGeneratedPlaceholderDepth = limits.maximumGeneratedPlaceholderDepth;
 			this.maximumInterpolatedOutputCharacters = limits.maximumInterpolatedOutputCharacters;
 			this.maximumGeneratedExpansionCharacters = limits.maximumGeneratedExpansionCharacters;
@@ -265,16 +256,6 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the rule-count limit for each selector-driven translation.
-		 *
-		 * @param value value from 0 through {@link #MAXIMUM_SELECTOR_RULES}, or null to restore the default
-		 * @return this builder, not null
-		 */
-		@NonNull public Builder maximumSelectorRules(@Nullable Integer value) {
-			this.maximumSelectorRules = value == null ? MAXIMUM_SELECTOR_RULES : value;
-			return this;
-		}
-		/**
 		 * Sets the generated-placeholder nesting limit.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_GENERATED_PLACEHOLDER_DEPTH}, or null to restore the default
@@ -320,7 +301,6 @@ public final class TranslationRuntimeLimits {
 			validatePositive("maximumExpressionCharacters", maximumExpressionCharacters, MAXIMUM_EXPRESSION_CHARACTERS);
 			validatePositive("maximumExpressionTokens", maximumExpressionTokens, MAXIMUM_EXPRESSION_TOKENS);
 			validateNonNegative("maximumExpressionNestingDepth", maximumExpressionNestingDepth, MAXIMUM_EXPRESSION_NESTING_DEPTH);
-			validateNonNegative("maximumSelectorRules", maximumSelectorRules, MAXIMUM_SELECTOR_RULES);
 			validateNonNegative("maximumGeneratedPlaceholderDepth", maximumGeneratedPlaceholderDepth, MAXIMUM_GENERATED_PLACEHOLDER_DEPTH);
 			validatePositive("maximumInterpolatedOutputCharacters", maximumInterpolatedOutputCharacters, MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS);
 			validateNonNegative("maximumGeneratedExpansionCharacters", maximumGeneratedExpansionCharacters, MAXIMUM_GENERATED_EXPANSION_CHARACTERS);

@@ -16,10 +16,7 @@
 
 package com.lokalized;
 
-import com.lokalized.LocalizedString.LanguageFormSelector;
-import com.lokalized.LocalizedString.PlaceholderMetadata;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
-import com.lokalized.LocalizedString.LanguageFormTranslationRule;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import com.lokalized.MinimalJson.Json;
 import com.lokalized.MinimalJson.JsonArray;
@@ -85,10 +82,6 @@ public final class LocalizedStringLoader {
   @NonNull
   private static final Map<@NonNull String, @NonNull LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
   @NonNull
-  private static final Map<@NonNull String, @NonNull LanguageFormType> SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME;
-  @NonNull
-  private static final Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE;
-  @NonNull
   private static final Logger LOGGER;
   @NonNull
   private static final ExpressionEvaluator EXPRESSION_EVALUATOR;
@@ -115,10 +108,6 @@ public final class LocalizedStringLoader {
     supportedLanguageForms.addAll(Arrays.asList(Phonetic.values()));
 
     Map<@NonNull String, @NonNull LanguageForm> supportedLanguageFormsByName = new LinkedHashMap<>();
-    Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> supportedLanguageFormNamesByType = new LinkedHashMap<>();
-
-    for (LanguageFormType languageFormType : LanguageFormType.values())
-      supportedLanguageFormNamesByType.put(languageFormType, new LinkedHashSet<>());
 
     for (LanguageForm languageForm : supportedLanguageForms) {
       if (!languageForm.getClass().isEnum())
@@ -175,17 +164,9 @@ public final class LocalizedStringLoader {
             languageForm.getClass().getSimpleName(), languageFormName));
 
       supportedLanguageFormsByName.put(languageFormName, languageForm);
-      supportedLanguageFormNamesByType.get(LanguageFormType.forLanguageForm(languageForm)).add(languageFormName);
     }
 
     SUPPORTED_LANGUAGE_FORMS_BY_NAME = Collections.unmodifiableMap(supportedLanguageFormsByName);
-    SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME = Collections.unmodifiableMap(new LinkedHashMap<>(LanguageFormType.getLanguageFormTypesByName()));
-    Map<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> immutableSupportedLanguageFormNamesByType = new LinkedHashMap<>();
-
-    for (Map.Entry<@NonNull LanguageFormType, @NonNull Set<@NonNull String>> entry : supportedLanguageFormNamesByType.entrySet())
-      immutableSupportedLanguageFormNamesByType.put(entry.getKey(), Collections.unmodifiableSet(new LinkedHashSet<>(entry.getValue())));
-
-    SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE = Collections.unmodifiableMap(immutableSupportedLanguageFormNamesByType);
     LANGUAGE_TAG_PATTERN = Pattern.compile("^[A-Za-z]{1,8}(-[A-Za-z0-9]{1,8})*$");
     JSON_EXTENSION = ".json";
     UTF_8_BOM = '\uFEFF';
@@ -1686,8 +1667,8 @@ public final class LocalizedStringLoader {
    * {@code OTHER} but omits {@code CARDINALITY_MANY}).
    * <p>
    * This is intentionally a warning rather than a hard failure: a translation whose placeholder can only ever
-   * receive a subset of values may legitimately supply a subset of forms. Selector-driven and range-driven
-   * translations are not checked because they are expected to be partial by design. Values that resolve to a
+   * receive a subset of values may legitimately supply a subset of forms. Range-driven translations are not checked
+   * because they are expected to be partial by design. Values that resolve to a
    * missing form are treated as resolution failures at runtime according to the configured
    * {@link TranslationFailureHandler}, so surfacing the gap here turns a silent runtime degradation into a visible
    * validation signal.
@@ -1714,8 +1695,8 @@ public final class LocalizedStringLoader {
       String placeholderKey = entry.getKey();
       LanguageFormTranslation languageFormTranslation = entry.getValue();
 
-      // Selector-driven and range-driven translations legitimately supply a subset of forms; do not check them.
-      if (languageFormTranslation.isSelectorDriven() || languageFormTranslation.getRange().isPresent())
+      // Range-driven translations legitimately supply a subset of forms; do not check them.
+      if (languageFormTranslation.getRange().isPresent())
         continue;
 
       warnOnIncompleteCardinalityTranslations(canonicalPath, locale, rootKey, placeholderKey,
@@ -1862,7 +1843,7 @@ public final class LocalizedStringLoader {
       if (translation == null)
         throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-      validateTranslationPlaceholders(canonicalPath, key, translation, Collections.emptyMap(), Collections.emptyMap());
+      validateTranslationPlaceholders(canonicalPath, key, translation, Collections.emptyMap());
       return localizedStringBuilder.translation(translation).build();
     } else if (jsonValue.isObject()) {
       // More complex case, there can be placeholders and alternatives.
@@ -1894,7 +1875,7 @@ public final class LocalizedStringLoader {
 
       JsonObject localizedStringObject = jsonValue.asObject();
       validateNoUnexpectedObjectMembers(canonicalPath, key, localizedStringObject, "localized string",
-          Set.of("translation", "commentary", "placeholderMetadata", "placeholders", "alternatives"));
+          Set.of("translation", "commentary", "placeholders", "alternatives"));
 
       String translation = null;
 
@@ -1916,103 +1897,6 @@ public final class LocalizedStringLoader {
           throw new LocalizedStringLoadingException(format("%s: commentary must be a string for key '%s'", canonicalPath, key));
 
         commentary = commentaryJsonValue.asString();
-      }
-
-      Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder = new LinkedHashMap<>();
-
-      JsonValue placeholderMetadataJsonValue = localizedStringObject.get("placeholderMetadata");
-
-      if (placeholderMetadataJsonValue != null) {
-        if (!placeholderMetadataJsonValue.isObject())
-          throw new LocalizedStringLoadingException(format("%s: the placeholderMetadata value must be an object. Key is '%s'", canonicalPath, key));
-
-        JsonObject placeholderMetadataJsonObject = placeholderMetadataJsonValue.asObject();
-
-        for (Member placeholderMetadataMember : placeholderMetadataJsonObject) {
-          String placeholderKey = placeholderMetadataMember.getName();
-          JsonValue placeholderMetadataValue = placeholderMetadataMember.getValue();
-
-          ensureValidPlaceholderName(canonicalPath, key, placeholderKey, "placeholder metadata");
-
-          if (!placeholderMetadataValue.isObject())
-            throw new LocalizedStringLoadingException(format("%s: placeholder metadata must be an object. Key is '%s'", canonicalPath, key));
-
-          JsonObject placeholderMetadataObject = placeholderMetadataValue.asObject();
-          validateNoUnexpectedObjectMembers(canonicalPath, key, placeholderMetadataObject,
-              format("placeholder metadata '%s'", placeholderKey), Set.of("type", "commentary", "example", "allowedValues"));
-          JsonValue typeJsonValue = placeholderMetadataObject.get("type");
-          JsonValue commentaryJsonValueForPlaceholder = placeholderMetadataObject.get("commentary");
-          JsonValue exampleJsonValue = placeholderMetadataObject.get("example");
-          JsonValue allowedValuesJsonValue = placeholderMetadataObject.get("allowedValues");
-          String type = null;
-          String placeholderCommentary = null;
-          String example = null;
-          Set<@NonNull String> allowedValues = new LinkedHashSet<>();
-
-          if (typeJsonValue != null) {
-            if (!typeJsonValue.isString())
-              throw new LocalizedStringLoadingException(format("%s: placeholder metadata type must be a string. Placeholder is '%s' for key '%s'",
-                  canonicalPath, placeholderKey, key));
-
-            type = typeJsonValue.asString();
-          }
-
-          if (commentaryJsonValueForPlaceholder != null) {
-            if (!commentaryJsonValueForPlaceholder.isString())
-              throw new LocalizedStringLoadingException(format("%s: placeholder metadata commentary must be a string. Placeholder is '%s' for key '%s'",
-                  canonicalPath, placeholderKey, key));
-
-            placeholderCommentary = commentaryJsonValueForPlaceholder.asString();
-          }
-
-          if (exampleJsonValue != null) {
-            if (!exampleJsonValue.isString())
-              throw new LocalizedStringLoadingException(format("%s: placeholder metadata example must be a string. Placeholder is '%s' for key '%s'",
-                  canonicalPath, placeholderKey, key));
-
-            example = exampleJsonValue.asString();
-          }
-
-          if (allowedValuesJsonValue != null) {
-            if (!allowedValuesJsonValue.isArray())
-              throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues must be an array. Placeholder is '%s' for key '%s'",
-                  canonicalPath, placeholderKey, key));
-
-            for (JsonValue allowedValueJsonValue : allowedValuesJsonValue.asArray()) {
-              if (allowedValueJsonValue == null || allowedValueJsonValue.isNull() || !allowedValueJsonValue.isString())
-                throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues entries must be strings. Placeholder is '%s' for key '%s'",
-                    canonicalPath, placeholderKey, key));
-
-              String allowedValue = allowedValueJsonValue.asString();
-
-              if (!allowedValues.add(allowedValue))
-                throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowedValues may not contain duplicates. " +
-                    "Duplicate value '%s' encountered for placeholder '%s' in key '%s'", canonicalPath, allowedValue, placeholderKey, key));
-            }
-          }
-
-          if (type != null) {
-            LanguageFormType languageFormType = SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.get(type);
-
-            if (languageFormType != null) {
-              Set<@NonNull String> supportedLanguageFormsForType = SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE.get(languageFormType);
-
-              for (String allowedValue : allowedValues) {
-                if (!supportedLanguageFormsForType.contains(allowedValue))
-                  throw new LocalizedStringLoadingException(format("%s: placeholder metadata allowed value '%s' is invalid for type '%s'. " +
-                          "Placeholder is '%s' for key '%s', valid values are [%s]", canonicalPath, allowedValue, type, placeholderKey, key,
-                      supportedLanguageFormsForType.stream().collect(Collectors.joining(", "))));
-              }
-            }
-          }
-
-          if (type == null && placeholderCommentary == null && example == null && allowedValues.isEmpty())
-            throw new LocalizedStringLoadingException(format("%s: placeholder metadata must define at least one field. Placeholder is '%s' for key '%s'",
-                canonicalPath, placeholderKey, key));
-
-          placeholderMetadataByPlaceholder.put(placeholderKey,
-              new PlaceholderMetadata(type, placeholderCommentary, example, allowedValues));
-        }
       }
 
       Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
@@ -2087,12 +1971,10 @@ public final class LocalizedStringLoader {
             canonicalPath, key));
 
       if (translation != null)
-        validateTranslationPlaceholders(canonicalPath, key, translation, placeholderMetadataByPlaceholder,
-            languageFormTranslationsByPlaceholder);
+        validateTranslationPlaceholders(canonicalPath, key, translation, languageFormTranslationsByPlaceholder);
 
       return localizedStringBuilder.translation(translation)
           .commentary(commentary)
-          .placeholderMetadataByPlaceholder(placeholderMetadataByPlaceholder)
           .languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
           .alternatives(alternatives)
           .build();
@@ -2105,29 +1987,18 @@ public final class LocalizedStringLoader {
   private static void validateTranslationPlaceholders(@NonNull String canonicalPath,
                                                       @NonNull String key,
                                                       @NonNull String translation,
-                                                      @NonNull Map<@NonNull String, @NonNull PlaceholderMetadata> placeholderMetadataByPlaceholder,
                                                       @NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(translation);
-    requireNonNull(placeholderMetadataByPlaceholder);
     requireNonNull(languageFormTranslationsByPlaceholder);
 
     Set<@NonNull String> referencedPlaceholderNames =
         validatePlaceholderReferences(canonicalPath, key, translation, "translation");
 
-    Set<@NonNull String> languageFormTranslationInputPlaceholderNames =
-        languageFormTranslationInputPlaceholderNames(languageFormTranslationsByPlaceholder);
-
     for (String placeholderName : languageFormTranslationsByPlaceholder.keySet())
       if (!referencedPlaceholderNames.contains(placeholderName))
         LOGGER.fine(format("%s: placeholder '%s' is declared for key '%s' but is not referenced by its translation",
-            canonicalPath, placeholderName, key));
-
-    for (String placeholderName : placeholderMetadataByPlaceholder.keySet())
-      if (!referencedPlaceholderNames.contains(placeholderName) &&
-          !languageFormTranslationInputPlaceholderNames.contains(placeholderName))
-        LOGGER.fine(format("%s: placeholder metadata for '%s' is declared for key '%s' but is not referenced by its translation or placeholder rules",
             canonicalPath, placeholderName, key));
   }
 
@@ -2157,27 +2028,6 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Set<@NonNull String> languageFormTranslationInputPlaceholderNames(
-      @NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
-    requireNonNull(languageFormTranslationsByPlaceholder);
-
-    Set<@NonNull String> placeholderNames = new LinkedHashSet<>();
-
-    for (LanguageFormTranslation languageFormTranslation : languageFormTranslationsByPlaceholder.values()) {
-      languageFormTranslation.getValue().ifPresent(placeholderNames::add);
-      languageFormTranslation.getRange().ifPresent(range -> {
-        placeholderNames.add(range.getStart());
-        placeholderNames.add(range.getEnd());
-      });
-
-      for (LanguageFormSelector selector : languageFormTranslation.getSelectors())
-        placeholderNames.add(selector.getValue());
-    }
-
-    return Collections.unmodifiableSet(placeholderNames);
-  }
-
-  @NonNull
   private static List<@NonNull Token> parseExpressionTokens(@NonNull String canonicalPath, @NonNull String expression) {
     requireNonNull(canonicalPath);
     requireNonNull(expression);
@@ -2200,28 +2050,17 @@ public final class LocalizedStringLoader {
 
     JsonValue valueJsonValue = placeholderJsonObject.get("value");
     JsonValue rangeJsonValue = placeholderJsonObject.get("range");
-    JsonValue selectorsJsonValue = placeholderJsonObject.get("selectors");
     JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
     validateNoUnexpectedObjectMembers(canonicalPath, key, placeholderJsonObject,
-        format("placeholder '%s'", placeholderKey), Set.of("value", "range", "selectors", "translations"));
+        format("placeholder '%s'", placeholderKey), Set.of("value", "range", "translations"));
     rejectExplicitNullPlaceholderMode(canonicalPath, key, placeholderKey, "value", valueJsonValue);
     rejectExplicitNullPlaceholderMode(canonicalPath, key, placeholderKey, "range", rangeJsonValue);
-    rejectExplicitNullPlaceholderMode(canonicalPath, key, placeholderKey, "selectors", selectorsJsonValue);
     boolean hasValue = valueJsonValue != null;
     boolean hasRangeValue = rangeJsonValue != null;
-    boolean hasSelectors = selectorsJsonValue != null;
 
-    if (!hasValue && !hasRangeValue && !hasSelectors)
-      throw new LocalizedStringLoadingException(format("%s: a placeholder translation value, range, or selectors block is required. Key is '%s'",
+    if (!hasValue && !hasRangeValue)
+      throw new LocalizedStringLoadingException(format("%s: a placeholder translation value or range is required. Key is '%s'",
           canonicalPath, key));
-
-    if (hasSelectors) {
-      if (hasValue || hasRangeValue)
-        throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations cannot define value or range. " +
-            "Placeholder is '%s' for key '%s'", canonicalPath, placeholderKey, key));
-
-      return parseSelectorDrivenLanguageFormTranslation(canonicalPath, key, placeholderKey, selectorsJsonValue, translationsJsonValue);
-    }
 
     if (hasValue && hasRangeValue)
       throw new LocalizedStringLoadingException(format("%s: a placeholder translation cannot have both a value and a range. Key is '%s'", canonicalPath, key));
@@ -2347,210 +2186,6 @@ public final class LocalizedStringLoader {
     return rangeValue != null
         ? new LanguageFormTranslation(rangeValue, translationsByLanguageForm)
         : new LanguageFormTranslation(value, translationsByLanguageForm);
-  }
-
-  @NonNull
-  private static LanguageFormTranslation parseSelectorDrivenLanguageFormTranslation(@NonNull String canonicalPath, @NonNull String key,
-                                                                                    @NonNull String placeholderKey, @NonNull JsonValue selectorsJsonValue,
-                                                                                    @Nullable JsonValue translationsJsonValue) {
-    requireNonNull(canonicalPath);
-    requireNonNull(key);
-    requireNonNull(placeholderKey);
-    requireNonNull(selectorsJsonValue);
-
-    if (!selectorsJsonValue.isArray())
-      throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations require selectors to be an array. " +
-          "Placeholder is '%s' for key '%s'", canonicalPath, placeholderKey, key));
-
-    List<@NonNull LanguageFormSelector> selectors = new ArrayList<>();
-    Set<@NonNull LanguageFormType> selectorTypes = new LinkedHashSet<>();
-
-    for (JsonValue selectorJsonValue : selectorsJsonValue.asArray()) {
-      if (selectorJsonValue == null || selectorJsonValue.isNull())
-        throw new LocalizedStringLoadingException(format("%s: selector entries cannot be null. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (!selectorJsonValue.isObject())
-        throw new LocalizedStringLoadingException(format("%s: selector entries must be objects. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      JsonObject selectorJsonObject = selectorJsonValue.asObject();
-      validateNoUnexpectedObjectMembers(canonicalPath, key, selectorJsonObject,
-          format("selector for placeholder '%s'", placeholderKey), Set.of("value", "form"));
-      JsonValue selectorValueJsonValue = selectorJsonObject.get("value");
-      JsonValue selectorFormJsonValue = selectorJsonObject.get("form");
-
-      if (selectorValueJsonValue == null || selectorValueJsonValue.isNull())
-        throw new LocalizedStringLoadingException(format("%s: selector value is required. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (selectorFormJsonValue == null || selectorFormJsonValue.isNull())
-        throw new LocalizedStringLoadingException(format("%s: selector form is required. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (!selectorValueJsonValue.isString())
-        throw new LocalizedStringLoadingException(format("%s: selector value must be a string. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (!selectorFormJsonValue.isString())
-        throw new LocalizedStringLoadingException(format("%s: selector form must be a string. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      String selectorValue = selectorValueJsonValue.asString();
-      String selectorFormName = selectorFormJsonValue.asString();
-
-      ensureValidPlaceholderName(canonicalPath, key, selectorValue, "selector value");
-
-      LanguageFormType languageFormType = SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.get(selectorFormName);
-
-      if (languageFormType == null)
-        throw new LocalizedStringLoadingException(format("%s: unexpected selector form encountered. Placeholder is '%s' for key '%s'. " +
-                "You provided '%s', valid values are [%s]", canonicalPath, placeholderKey, key, selectorFormName,
-            SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.keySet().stream().collect(Collectors.joining(", "))));
-
-      if (!selectorTypes.add(languageFormType))
-        throw new LocalizedStringLoadingException(format("%s: duplicate selector form '%s' encountered. Placeholder is '%s' for key '%s'",
-            canonicalPath, selectorFormName, placeholderKey, key));
-
-      selectors.add(new LanguageFormSelector(selectorValue, languageFormType));
-    }
-
-    if (selectors.isEmpty())
-      throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations require at least one selector. Placeholder is '%s' for key '%s'",
-          canonicalPath, placeholderKey, key));
-
-    if (translationsJsonValue == null || translationsJsonValue.isNull())
-      throw new LocalizedStringLoadingException(format("%s: placeholder translations are required. Key is '%s'", canonicalPath, key));
-
-    if (!translationsJsonValue.isArray())
-      throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations require translations to be an array. " +
-          "Placeholder is '%s' for key '%s'", canonicalPath, placeholderKey, key));
-
-    if (translationsJsonValue.asArray().size() > LanguageFormTranslation.MAXIMUM_SELECTOR_RULES)
-      throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations may contain at most %d rules. " +
-              "Placeholder is '%s' for key '%s'", canonicalPath, LanguageFormTranslation.MAXIMUM_SELECTOR_RULES,
-          placeholderKey, key));
-
-    List<@NonNull LanguageFormTranslationRule> translationRules = new ArrayList<>();
-
-    for (JsonValue translationJsonValue : translationsJsonValue.asArray()) {
-      if (translationJsonValue == null || translationJsonValue.isNull())
-        throw new LocalizedStringLoadingException(format("%s: selector-based translation rules cannot be null. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (!translationJsonValue.isObject())
-        throw new LocalizedStringLoadingException(format("%s: selector-based translation rules must be objects. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      JsonObject translationJsonObject = translationJsonValue.asObject();
-      validateNoUnexpectedObjectMembers(canonicalPath, key, translationJsonObject,
-          format("selector-based translation rule for placeholder '%s'", placeholderKey), Set.of("when", "value"));
-      JsonValue ruleValueJsonValue = translationJsonObject.get("value");
-      JsonValue whenJsonValue = translationJsonObject.get("when");
-
-      if (ruleValueJsonValue == null || ruleValueJsonValue.isNull())
-        throw new LocalizedStringLoadingException(format("%s: selector-based translation rules require a value. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      if (!ruleValueJsonValue.isString())
-        throw new LocalizedStringLoadingException(format("%s: selector-based translation rule values must be strings. Placeholder is '%s' for key '%s'",
-            canonicalPath, placeholderKey, key));
-
-      Map<@NonNull LanguageFormType, @NonNull LanguageForm> whenByLanguageFormType = new LinkedHashMap<>();
-
-      if (whenJsonValue != null) {
-        if (!whenJsonValue.isObject())
-          throw new LocalizedStringLoadingException(format("%s: selector-based translation rule conditions must be an object. Placeholder is '%s' for key '%s'",
-              canonicalPath, placeholderKey, key));
-
-        for (Member whenMember : whenJsonValue.asObject()) {
-          String selectorFormName = whenMember.getName();
-          JsonValue selectorLanguageFormJsonValue = whenMember.getValue();
-          LanguageFormType languageFormType = SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.get(selectorFormName);
-
-          if (languageFormType == null)
-            throw new LocalizedStringLoadingException(format("%s: unexpected selector condition form encountered. Placeholder is '%s' for key '%s'. " +
-                    "You provided '%s', valid values are [%s]", canonicalPath, placeholderKey, key, selectorFormName,
-                SUPPORTED_LANGUAGE_FORM_TYPES_BY_NAME.keySet().stream().collect(Collectors.joining(", "))));
-
-          if (!selectorTypes.contains(languageFormType))
-            throw new LocalizedStringLoadingException(format("%s: selector condition '%s' is not declared in selectors. Placeholder is '%s' for key '%s'",
-                canonicalPath, selectorFormName, placeholderKey, key));
-
-          if (!selectorLanguageFormJsonValue.isString())
-            throw new LocalizedStringLoadingException(format("%s: selector condition values must be strings. Placeholder is '%s' for key '%s'",
-                canonicalPath, placeholderKey, key));
-
-          String selectorLanguageFormName = selectorLanguageFormJsonValue.asString();
-          LanguageForm languageForm = SUPPORTED_LANGUAGE_FORMS_BY_NAME.get(selectorLanguageFormName);
-
-          if (languageForm == null)
-            throw new LocalizedStringLoadingException(format("%s: unexpected selector condition language form encountered. Placeholder is '%s' for key '%s'. " +
-                    "You provided '%s', valid values are [%s]", canonicalPath, placeholderKey, key, selectorLanguageFormName,
-                SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE.get(languageFormType).stream().collect(Collectors.joining(", "))));
-
-          if (!languageFormType.equals(LanguageFormType.forLanguageForm(languageForm)))
-            throw new LocalizedStringLoadingException(format("%s: selector condition '%s' must use one of [%s]. Placeholder is '%s' for key '%s'",
-                canonicalPath, selectorFormName, SUPPORTED_LANGUAGE_FORM_NAMES_BY_TYPE.get(languageFormType).stream().collect(Collectors.joining(", ")),
-                placeholderKey, key));
-
-          whenByLanguageFormType.put(languageFormType, languageForm);
-        }
-      }
-
-      String ruleValue = ruleValueJsonValue.asString();
-      validatePlaceholderReferences(canonicalPath, key, ruleValue, "selector-based translation rule");
-      translationRules.add(new LanguageFormTranslationRule(whenByLanguageFormType, ruleValue));
-    }
-
-    if (translationRules.isEmpty())
-      throw new LocalizedStringLoadingException(format("%s: selector-based placeholder translations require at least one rule. Placeholder is '%s' for key '%s'",
-          canonicalPath, placeholderKey, key));
-
-    validateSelectorTranslationRules(canonicalPath, key, placeholderKey, translationRules);
-
-    return new LanguageFormTranslation(selectors, translationRules);
-  }
-
-  private static void validateSelectorTranslationRules(@NonNull String canonicalPath, @NonNull String key,
-                                                       @NonNull String placeholderKey,
-                                                       @NonNull List<@NonNull LanguageFormTranslationRule> translationRules) {
-    requireNonNull(canonicalPath);
-    requireNonNull(key);
-    requireNonNull(placeholderKey);
-    requireNonNull(translationRules);
-
-    for (int i = 0; i < translationRules.size(); i++) {
-      LanguageFormTranslationRule leftRule = translationRules.get(i);
-
-      for (int j = i + 1; j < translationRules.size(); j++) {
-        LanguageFormTranslationRule rightRule = translationRules.get(j);
-
-        if (leftRule.getWhenByLanguageFormType().size() != rightRule.getWhenByLanguageFormType().size())
-          continue;
-
-        if (!selectorRuleConditionsOverlap(leftRule.getWhenByLanguageFormType(), rightRule.getWhenByLanguageFormType()))
-          continue;
-
-        throw new LocalizedStringLoadingException(format("%s: selector-based translation rules are ambiguous for placeholder '%s' in key '%s'. " +
-                "Rules %s and %s can both match with the same specificity", canonicalPath, placeholderKey, key, leftRule, rightRule));
-      }
-    }
-  }
-
-  private static boolean selectorRuleConditionsOverlap(@NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> leftConditions,
-                                                       @NonNull Map<@NonNull LanguageFormType, @NonNull LanguageForm> rightConditions) {
-    requireNonNull(leftConditions);
-    requireNonNull(rightConditions);
-
-    for (Map.Entry<@NonNull LanguageFormType, @NonNull LanguageForm> leftCondition : leftConditions.entrySet()) {
-      LanguageForm rightLanguageForm = rightConditions.get(leftCondition.getKey());
-
-      if (rightLanguageForm != null && !rightLanguageForm.equals(leftCondition.getValue()))
-        return false;
-    }
-
-    return true;
   }
 
   private static void validateNoUnexpectedObjectMembers(@NonNull String canonicalPath,

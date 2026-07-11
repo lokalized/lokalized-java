@@ -428,8 +428,8 @@ using the preference you supplied.
 
 Catalog construction and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
 The defaults cap numbers and numeric literals at 4,096 digits of precision and absolute scale, visible decimal places
-and compact exponents at 4,096, expressions at 4,096 characters / 512 tokens / 64 nested groups, selector-driven
-translations at 128 rules, generated placeholders at 64 levels, one interpolated result at 1 MiB, and cumulative
+and compact exponents at 4,096, expressions at 4,096 characters / 512 tokens / 64 nested groups, generated placeholders
+at 64 levels, one interpolated result at 1 MiB, and cumulative
 generated-fragment expansion at 8 MiB per lookup. These are hard ceilings; applications may lower them but cannot
 raise them. Configure them with
 [`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
@@ -439,7 +439,6 @@ and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokal
 TranslationRuntimeLimits runtimeLimits = TranslationRuntimeLimits.builder()
   .maximumExpressionCharacters(2_048)
   .maximumExpressionTokens(256)
-  .maximumSelectorRules(64)
   .maximumInterpolatedOutputCharacters(256 * 1_024)
   .maximumGeneratedExpansionCharacters(1024 * 1024)
   .build();
@@ -1592,15 +1591,15 @@ This is equivalent to the more verbose object form, which we don't need in this 
 }
 ```
 
-In addition to `translation`, each object form supports 4 additional keys: `commentary`, `placeholderMetadata`, `placeholders`, and `alternatives`.
+In addition to `translation`, each object form supports 3 additional keys: `commentary`, `placeholders`, and `alternatives`.
 
-All 5 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
+All 4 are optional, with the stipulation that you must provide either a `translation` or at least one `alternatives` value.
 
 ### JSON Schema
 
 A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
 
-The schema validates file structure, placeholder shapes, known language-form names, placeholder metadata, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits `CARDINALITY_MANY`). Values that resolve to a missing form surface during resolution according to the configured failure handler.
+The schema validates file structure, placeholder shapes, known language-form names, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits `CARDINALITY_MANY`). Values that resolve to a missing form surface during resolution according to the configured failure handler.
 
 Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each `LocalizedStringLoader.load*` method accepts as an optional argument:
 
@@ -1687,30 +1686,21 @@ In the below example of an `en` strings file, the application code provides the 
 }
 ```
 
-Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object.
+Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
 
-Lokalized supports 2 placeholder formats:
-
-* A simple single-axis format using `value` and `translations`
-* A selector-driven multi-axis format using `selectors` and rule-array `translations`
-
-#### Simple Placeholder Rules
-
-In the simple format:
-
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints, and selectors accept the corresponding cardinality and ordinality forms.
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
 
 Supported values for `translations` are [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), and [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) types.
 
-In the simple format, you may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).  Use the selector-driven format when one placeholder depends on more than one agreement dimension.
+You may not mix language forms in the same `translations` object.  For example, it is illegal to specify both [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and [`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE).
 
-Simple placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens. Use selector-driven placeholders with a default rule if you need data-level fallback behavior.
+Placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.
 
 Lokalized evaluates only translation-file-defined placeholders that are reachable from the selected translation.
-A selected language-form or selector-rule value may itself reference application-supplied placeholders or other
+A selected language-form value may itself reference application-supplied placeholders or other
 translation-file-defined placeholders; those fragments are expanded recursively. Cycles, excessive nesting, and
 interpolated output above 1,048,576 characters fail resolution clearly. Application-supplied values remain opaque and are never reinterpreted as template syntax, even
 when a value contains text such as `{{name}}`.
@@ -1741,109 +1731,9 @@ Here, the cardinalities of `minHours` and `maxHours` are evaluated to determine 
 
 You are prohibited from supplying both `range` and `value` fields - use `range` only for cardinality ranges and `value` otherwise.
 
-#### Selector-Driven Placeholder Rules
-
-Use selector-driven placeholders when a single placeholder depends on multiple language-form dimensions at once, for example `CASE` and `GENDER`.
-
-```json
-{
-  "Send the invoice to {{honorific}} {{lastName}}." : {
-    "translation" : "Senden Sie die Rechnung an {{honorific}} {{lastName}}.",
-    "placeholders" : {
-      "honorific" : {
-        "selectors" : [
-          {
-            "value" : "grammaticalCase",
-            "form" : "CASE"
-          },
-          {
-            "value" : "gender",
-            "form" : "GENDER"
-          }
-        ],
-        "translations" : [
-          {
-            "when" : {
-              "CASE" : "CASE_DATIVE",
-              "GENDER" : "GENDER_MASCULINE"
-            },
-            "value" : "Herrn"
-          },
-          {
-            "when" : {
-              "GENDER" : "GENDER_MASCULINE"
-            },
-            "value" : "Herr"
-          },
-          {
-            "when" : {
-              "GENDER" : "GENDER_FEMININE"
-            },
-            "value" : "Frau"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-In the selector-driven format:
-
-* `selectors` declares which application-supplied values to inspect and which language-form family each one belongs to.  Supported selector `form` values are `CARDINALITY`, `ORDINALITY`, `GENDER`, `CASE`, `DEFINITENESS`, `CLASSIFIER`, `FORMALITY`, `CLUSIVITY`, `ANIMACY`, and `PHONETIC`.
-* `translations` is an ordered list of rules.  Each rule has a `value` and may optionally have a `when` object.
-* `when` is a structured match, not a general expression language.  It may only contain selector-form names such as `CASE` or `GENDER`.
-* Lokalized selects the most specific matching rule.  In the above example, `CASE + GENDER` beats `GENDER` alone.
-* A rule with no `when` is the default rule.  If no rule matches and no default rule is provided, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.
-* Ambiguous overlapping rules with the same specificity are rejected while loading translations.
-* One selector-driven translation may contain at most 128 rules, exposed as `LanguageFormTranslation.MAXIMUM_SELECTOR_RULES`, so ambiguity validation has a fixed upper bound.
-
-Here is the selector-driven placeholder exercised with a few simple assertions:
-
-```java
-Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("de"))
-  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
-  .localeSupplier(matcher -> Locale.forLanguageTag("de"))
-  .build();
-
-// Most-specific CASE + GENDER rule
-assertEquals("Senden Sie die Rechnung an Herrn Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.",
-  Map.of(
-    "grammaticalCase", GrammaticalCase.DATIVE,
-    "gender", Gender.MASCULINE,
-    "lastName", "Weber"
-  )
-));
-
-// Falls back to the less-specific GENDER rule
-assertEquals("Senden Sie die Rechnung an Herr Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.",
-  Map.of(
-    "grammaticalCase", GrammaticalCase.NOMINATIVE,
-    "gender", Gender.MASCULINE,
-    "lastName", "Weber"
-  )
-));
-
-// Different less-specific GENDER rule
-assertEquals("Senden Sie die Rechnung an Frau Weber.", strings.get(
-  "Send the invoice to {{honorific}} {{lastName}}.",
-  Map.of(
-    "grammaticalCase", GrammaticalCase.NOMINATIVE,
-    "gender", Gender.FEMININE,
-    "lastName", "Weber"
-  )
-));
-```
-
-Selector-driven placeholders are for local agreement only.  Use `alternatives` when you need arbitrary boolean logic or whole-sentence rewrites.
-
 ### Alternatives
 
-You may specify bounded, parenthesized expressions in `alternatives` to fine-tune your translations. `alternatives`
-complement selector-driven placeholders: use placeholder selectors for local agreement on one slot, and use
-`alternatives` for broader conditional rewrites. Each object in an `alternatives` array contains exactly one expression.
+You may specify bounded, parenthesized expressions in `alternatives` to fine-tune your translations. Each object in an `alternatives` array contains exactly one expression.
 It's perfectly legal to have an alternative like this:
  
 ```text
@@ -1872,7 +1762,7 @@ bookCount == 50
 
 Note that the supported comparison operators for cardinality, ordinality, gender, and phonetic forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
 
-Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `commentary`, `placeholderMetadata`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
+Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `commentary`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
   
 Alternative evaluation follows these rules:
 
@@ -1962,54 +1852,6 @@ Built-in language-form constants are reserved in alternative expressions. A toke
 * The unary `!` operator
 * Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
 * A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
-
-### Placeholder Metadata
-
-The `placeholderMetadata` object lets you document individual placeholders for translators or tooling.  Unlike `placeholders`, it does not affect runtime evaluation.
-
-Each `placeholderMetadata` object key is the name of a placeholder and the value is an object with optional fields:
-
-* `type` is a translator-facing type label such as `STRING`, `NUMBER`, `DATE`, `GENDER`, or `CASE`
-* `commentary` is free-form placeholder-specific context
-* `example` is an example runtime value
-* `allowedValues` is an array of unique string values that are valid for this placeholder
-
-If `type` is one of Lokalized's built-in language-form families such as `GENDER` or `CASE`, any supplied `allowedValues` are validated against the corresponding built-in language-form values. Duplicate `allowedValues` entries are rejected.
-
-If `allowedValues` is omitted, Lokalized does not restrict the placeholder to a predefined set of values.
-
-```json
-{
-  "Send the invoice to {{honorific}} {{lastName}}." : {
-    "commentary" : "Shown in the invoice send-confirmation flow.",
-    "placeholderMetadata" : {
-      "grammaticalCase" : {
-        "type" : "CASE",
-        "commentary" : "Case required by the surrounding German preposition.",
-        "example" : "CASE_DATIVE",
-        "allowedValues" : ["CASE_NOMINATIVE", "CASE_DATIVE"]
-      },
-      "gender" : {
-        "type" : "GENDER",
-        "commentary" : "Recipient grammatical gender.",
-        "example" : "GENDER_MASCULINE",
-        "allowedValues" : ["GENDER_MASCULINE", "GENDER_FEMININE"]
-      },
-      "lastName" : {
-        "type" : "STRING",
-        "commentary" : "Recipient family name without honorific.",
-        "example" : "Weber"
-      },
-      "honorific" : {
-        "type" : "STRING",
-        "commentary" : "Derived placeholder selected by the translation rules below.",
-        "example" : "Herrn"
-      }
-    },
-    "translation" : "Senden Sie die Rechnung an {{honorific}} {{lastName}}."
-  }
-}
-```
 
 ## Inspection
 
@@ -2118,7 +1960,7 @@ The equivalent Lokalized file separates the sentence shape from the plural word 
 }
 ```
 
-That extra structure pays off when a phrase needs several agreement dimensions. A Spanish baseball translation can select gender-specific fragments such as `uno`/`una`, `jugadores`/`jugadoras`, and plural forms independently, while German address text can select `Herr`, `Herrn`, or `Frau` from the same selector-driven placeholder rules. Cardinality ranges use CLDR plural-range data, and phonetic choices such as English `a`/`an` or Spanish `el agua` use an application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html).
+That extra structure lets translators keep individual grammatical choices close to the words they affect. Cardinality ranges use CLDR plural-range data, and phonetic choices such as English `a`/`an` or Spanish `el agua` use an application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html). When an entire message depends on several values at once, use ordered `alternatives` or have application code choose a purpose-specific translation key.
 
 Use the standard JDK formatters for dates, times, numbers, percentages, and currency. Consider ICU MessageFormat/MF2 or Fluent when your team already has those translation workflows and needs broad ecosystem tooling. Consider gettext when PO-file tooling and translator workflows are the main constraint. Lokalized is strongest when the hard part is runtime agreement across plural, gender, case, range, definiteness, classifier, formality, clusivity, animacy, or phonetic forms.
 

@@ -80,27 +80,41 @@ public class LocalizedStringsSchemaTests {
   }
 
   @Test
-  public void schemaValidatesSelectorDrivenPlaceholderResources() throws IOException {
+  public void schemaRejectsRemovedSelectorsField() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
-        "  \"Send the invoice to {{honorific}} {{lastName}}.\" : {\n" +
-        "    \"translation\" : \"Senden Sie die Rechnung an {{honorific}} {{lastName}}.\",\n" +
+        "  \"Hello\" : {\n" +
+        "    \"translation\" : \"{{item}}\",\n" +
         "    \"placeholders\" : {\n" +
-        "      \"honorific\" : {\n" +
-        "        \"selectors\" : [\n" +
-        "          { \"value\" : \"grammaticalCase\", \"form\" : \"CASE\" },\n" +
-        "          { \"value\" : \"gender\", \"form\" : \"GENDER\" }\n" +
-        "        ],\n" +
+        "      \"item\" : {\n" +
+        "        \"value\" : \"count\",\n" +
+        "        \"selectors\" : [ { \"value\" : \"count\", \"form\" : \"CARDINALITY\" } ],\n" +
+        "        \"translations\" : { \"CARDINALITY_ONE\" : \"item\", \"CARDINALITY_OTHER\" : \"items\" }\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}", InputFormat.JSON);
+
+    assertFalse(validationMessages.isEmpty(), "Expected the removed selectors field to fail schema validation");
+  }
+
+  @Test
+  public void schemaRejectsRemovedRuleArrayTranslations() throws IOException {
+    List<Error> validationMessages = loadSchema().validate("{\n" +
+        "  \"Hello\" : {\n" +
+        "    \"translation\" : \"{{item}}\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"item\" : {\n" +
+        "        \"value\" : \"count\",\n" +
         "        \"translations\" : [\n" +
-        "          { \"when\" : { \"CASE\" : \"CASE_DATIVE\", \"GENDER\" : \"GENDER_MASCULINE\" }, \"value\" : \"Herrn\" },\n" +
-        "          { \"when\" : { \"GENDER\" : \"GENDER_FEMININE\" }, \"value\" : \"Frau\" },\n" +
-        "          { \"value\" : \"Herr\" }\n" +
+        "          { \"when\" : { \"CARDINALITY\" : \"CARDINALITY_ONE\" }, \"value\" : \"item\" },\n" +
+        "          { \"value\" : \"items\" }\n" +
         "        ]\n" +
         "      }\n" +
         "    }\n" +
         "  }\n" +
         "}", InputFormat.JSON);
 
-    assertTrue(validationMessages.isEmpty(), () -> validationMessageSummary(validationMessages));
+    assertFalse(validationMessages.isEmpty(), "Expected removed rule-array translations to fail schema validation");
   }
 
   @Test
@@ -108,10 +122,6 @@ public class LocalizedStringsSchemaTests {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello {{имя}}\" : {\n" +
         "    \"translation\" : \"Hello {{имя}} {{नाम}} {{книги}}\",\n" +
-        "    \"placeholderMetadata\" : {\n" +
-        "      \"имя\" : { \"type\" : \"STRING\", \"example\" : \"Ада\" },\n" +
-        "      \"नाम\" : { \"type\" : \"STRING\", \"example\" : \"Ada\" }\n" +
-        "    },\n" +
         "    \"placeholders\" : {\n" +
         "      \"книги\" : {\n" +
         "        \"value\" : \"caféCount\",\n" +
@@ -128,18 +138,32 @@ public class LocalizedStringsSchemaTests {
   public void schemaRejectsInvalidPlaceholderShape() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello\" : {\n" +
-        "    \"translation\" : \"Hello {{name}}\",\n" +
+        "    \"translation\" : \"{{items}}\",\n" +
         "    \"placeholders\" : {\n" +
-        "      \"name\" : {\n" +
-        "        \"value\" : \"name\",\n" +
-        "        \"selectors\" : [ { \"value\" : \"gender\", \"form\" : \"GENDER\" } ],\n" +
-        "        \"translations\" : { \"GENDER_FEMININE\" : \"Ada\" }\n" +
+        "      \"items\" : {\n" +
+        "        \"value\" : \"count\",\n" +
+        "        \"range\" : { \"start\" : \"min\", \"end\" : \"max\" },\n" +
+        "        \"translations\" : { \"CARDINALITY_ONE\" : \"item\", \"CARDINALITY_OTHER\" : \"items\" }\n" +
         "      }\n" +
         "    }\n" +
         "  }\n" +
         "}", InputFormat.JSON);
 
-    assertFalse(validationMessages.isEmpty(), "Expected mixed simple and selector-driven placeholder shapes to fail schema validation");
+    assertFalse(validationMessages.isEmpty(), "Expected mixed value and range placeholder shapes to fail schema validation");
+  }
+
+  @Test
+  public void schemaRejectsRemovedPlaceholderMetadataSyntax() throws IOException {
+    List<Error> validationMessages = loadSchema().validate("{\n" +
+        "  \"Hello {{name}}\" : {\n" +
+        "    \"translation\" : \"Hello {{name}}\",\n" +
+        "    \"placeholderMetadata\" : {\n" +
+        "      \"name\" : { \"type\" : \"STRING\", \"example\" : \"Ada\" }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}", InputFormat.JSON);
+
+    assertFalse(validationMessages.isEmpty(), "Expected removed placeholder metadata syntax to fail schema validation");
   }
 
   @Test

@@ -25,14 +25,21 @@ All notable changes to Lokalized will be documented in this file.
 - `PluralOperands.visibleDecimalPlaces(...)` no longer floors discarded digits. Reducing scale now throws
   `ArithmeticException` unless the supplied number is already rounded to that scale.
 - Programmatic `LocalizedString` catalogs now receive the same semantic validation as file-backed catalogs when
-  `Strings` is built, so invalid expressions, form maps, selectors, metadata, and generated fragments fail earlier.
+  `Strings` is built, so invalid expressions, form maps, and generated fragments fail earlier.
+- Removed the unused selector-driven placeholder format (`selectors`, rule-array `translations`, and `when`) and its
+  public `LanguageFormType`, `LanguageFormSelector`, and `LanguageFormTranslationRule` APIs. Use ordered
+  `alternatives` for catalog-owned multi-axis decisions, or select a purpose-specific translation key in application
+  code.
+- Removed the unused `placeholderMetadata` catalog field and `LocalizedString.PlaceholderMetadata` API. Put concise
+  translator guidance in message-level `commentary` or keep richer placeholder contracts in external translation
+  tooling.
 - `Range<T>` is now a final immutable `Iterable<T>` instead of a `Collection<T>`. Its mutation methods, collection
   facade, and `getInfinite()` were removed; use `getValues()` and boxed `isInfinite()`. Factories now reject null arrays
   and null elements instead of treating a null array as empty or retaining null values.
 - `LocalizedString` and its immutable nested value types are final, and `LocalizedString` construction is builder-only;
   runtime catalog immutability can no longer be invalidated by subclasses with mutable overridden getters.
 - `LanguageForm` is explicitly closed to the Lokalized-provided enum types. External implementations were never
-  resolvable by `LanguageFormType` and are now documented as unsupported.
+  resolvable by the translation runtime and are now documented as unsupported.
 - Every object in an `alternatives` array must contain exactly one expression. Nested alternatives now halt at the first
   matching branch even when its nested subtree does not produce a translation.
 - The default locale-fallback policy no longer hides runtime resolution failures by trying later locales. It continues
@@ -62,7 +69,7 @@ All notable changes to Lokalized will be documented in this file.
   parent-locale, and locale-validity behavior generated from pinned Unicode CLDR source data.
 - Added `PluralOperands` plus `Cardinality.forOperands(...)` and `Ordinality.forOperands(...)` for
   visible-decimal-place and compact-decimal plural evaluation. `PluralOperands` values are accepted by cardinality,
-  ordinality, and numeric alternative expressions as well as generated-placeholder rules and selectors.
+  ordinality, and numeric alternative expressions as well as generated-placeholder rules.
 - Added bidirectional isolation for caller-supplied placeholder values in resolved right-to-left locales,
   with `BidiIsolation.NONE` available as a global or per-invocation opt-out. The RTL script set is generated
   from pinned CLDR script metadata instead of maintained by hand.
@@ -76,7 +83,7 @@ All notable changes to Lokalized will be documented in this file.
   effective quality, match kind, considered locales, and an explicit unmatched state.
 - Added `Strings.Builder.localeMatchSupplier(...)` so request-scoped negotiation can retain original language ranges
   and strict match diagnostics; `localeSupplier(...)` remains available when only a selected locale is needed.
-- Added immutable `TranslationRuntimeLimits` for lowering the hard numeric, expression, selector, generated-placeholder,
+- Added immutable `TranslationRuntimeLimits` for lowering the hard numeric, expression, generated-placeholder,
   and interpolation safety ceilings globally, with direct support in `PluralOperands`.
 - Added aggregate catalog limits and explicit locale-to-classpath-resource loading for containers and custom
   classloaders that can open resources but cannot enumerate standard `file:` or `jar:` package URLs.
@@ -105,8 +112,8 @@ All notable changes to Lokalized will be documented in this file.
   alias descendants, such as `sh;q=0` excluding `sr-Latn-RS`.
 - Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
   limits, preventing many individually legal cached fragments from exhausting the heap.
-- Numeric literals and plural operands are validated before materialization and selector rule counts are bounded, so
-  compact exponents, decimal scales, and quadratic ambiguity checks cannot create unbounded work.
+- Numeric literals and plural operands are validated before materialization, so compact exponents and decimal scales
+  cannot create unbounded work.
 - Canonical-alias lookup records and evaluates against the actual loaded catalog locale, deduplicates equivalent
   catalog attempts, and keeps inspection APIs strict to exact members of `getSupportedLocales()`.
 - Classpath loading honors runtime-selected multi-release JAR entries, expands filesystem manifest `Class-Path` roots
@@ -142,6 +149,11 @@ All notable changes to Lokalized will be documented in this file.
   language-range-match methods; convenience overloads delegate to those core methods.
 - Replace `MissingTranslationException.getLocale()` with `getLookupLocale()`. Inspect `getLocaleMatchResult()` when the
   original negotiation outcome matters.
+- Replace selector-driven placeholders with ordered `alternatives`, placing the most specific expression first, or
+  have application code choose a purpose-specific translation key. Selector-driven catalogs from 2.1 are rejected by
+  the 3.0 loader.
+- Move useful `placeholderMetadata` notes into message-level `commentary` or external translation documentation.
+  Catalogs containing `placeholderMetadata` are rejected by the 3.0 loader.
 - Use `localeMatchSupplier(matcher -> matcher.matchFor(ranges))` instead of collapsing a request through
   `localeSupplier(matcher -> matcher.bestMatchFor(ranges))` when `TranslationResult` and failure diagnostics must retain
   the original language ranges.

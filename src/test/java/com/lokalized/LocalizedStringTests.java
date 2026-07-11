@@ -22,12 +22,11 @@ import org.junit.jupiter.api.Test;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Exercises {@link LocalizedString}.
  *
@@ -38,17 +37,8 @@ public class LocalizedStringTests {
   @Test
   public void immutableRuntimeModelTypesAreFinal() {
     assertTrue(Modifier.isFinal(LocalizedString.class.getModifiers()));
-    assertTrue(Modifier.isFinal(LocalizedString.PlaceholderMetadata.class.getModifiers()));
     assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslation.class.getModifiers()));
-    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormSelector.class.getModifiers()));
-    assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslationRule.class.getModifiers()));
     assertTrue(Modifier.isFinal(LocalizedString.LanguageFormTranslationRange.class.getModifiers()));
-  }
-
-  @Test
-  public void selectorDrivenFlagUsesBoxedPublicApiConvention() throws NoSuchMethodException {
-    assertTrue(LocalizedString.LanguageFormTranslation.class.getMethod("isSelectorDriven").getReturnType()
-        .equals(Boolean.class));
   }
 
   @Test
@@ -64,78 +54,19 @@ public class LocalizedStringTests {
         .languageFormTranslationsByPlaceholder(translationsByPlaceholder)
         .build();
 
+    translationsByLanguageForm.clear();
     translationsByPlaceholder.clear();
 
     assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("books"));
+    LanguageFormTranslation books = localizedString.getLanguageFormTranslationsByPlaceholder().get("books");
+    assertTrue(books.getTranslationsByLanguageForm().containsKey(Cardinality.ONE));
 
     assertThrows(UnsupportedOperationException.class,
         () -> localizedString.getLanguageFormTranslationsByPlaceholder().put("other", null),
         "Expected language form translations map to be unmodifiable");
-  }
-
-  @Test
-  public void placeholderMetadataIsDefensivelyCopied() {
-    Map<String, LocalizedString.PlaceholderMetadata> placeholderMetadataByPlaceholder = new HashMap<>();
-    placeholderMetadataByPlaceholder.put("lastName",
-        new LocalizedString.PlaceholderMetadata("STRING", "Recipient family name without title.", "Weber", Set.of("Weber", "Nguyen")));
-
-    LocalizedString localizedString = new LocalizedString.Builder("Hello {{lastName}}")
-        .translation("Hello {{lastName}}")
-        .placeholderMetadataByPlaceholder(placeholderMetadataByPlaceholder)
-        .build();
-
-    placeholderMetadataByPlaceholder.clear();
-
-    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("lastName"));
-
     assertThrows(UnsupportedOperationException.class,
-        () -> localizedString.getPlaceholderMetadataByPlaceholder().put("other", null),
-        "Expected placeholder metadata map to be unmodifiable");
-    assertThrows(UnsupportedOperationException.class,
-        () -> localizedString.getPlaceholderMetadataByPlaceholder().get("lastName").getAllowedValues().add("Singh"),
-        "Expected placeholder metadata allowed values to be unmodifiable");
-  }
-
-  @Test
-  public void selectorDrivenLanguageFormTranslationsAreDefensivelyCopied() {
-    Map<LanguageFormType, LanguageForm> whenByLanguageFormType = new HashMap<>();
-    whenByLanguageFormType.put(LanguageFormType.GENDER, Gender.MASCULINE);
-
-    List<LocalizedString.LanguageFormSelector> selectors = List.of(
-        new LocalizedString.LanguageFormSelector("gender", LanguageFormType.GENDER),
-        new LocalizedString.LanguageFormSelector("grammaticalCase", LanguageFormType.CASE)
-    );
-    List<LocalizedString.LanguageFormTranslationRule> translationRules = List.of(
-        new LocalizedString.LanguageFormTranslationRule(whenByLanguageFormType, "der"),
-        new LocalizedString.LanguageFormTranslationRule("die")
-    );
-
-    Map<String, LanguageFormTranslation> translationsByPlaceholder = new HashMap<>();
-    translationsByPlaceholder.put("article", new LanguageFormTranslation(selectors, translationRules));
-
-    LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
-        .translation("{{article}} {{noun}}")
-        .languageFormTranslationsByPlaceholder(translationsByPlaceholder)
-        .build();
-
-    whenByLanguageFormType.clear();
-    translationsByPlaceholder.clear();
-
-    LanguageFormTranslation languageFormTranslation = localizedString.getLanguageFormTranslationsByPlaceholder().get("article");
-
-    assertTrue(languageFormTranslation.isSelectorDriven());
-    assertTrue(languageFormTranslation.getSelectors().size() == 2);
-    assertTrue(languageFormTranslation.getTranslationRules().size() == 2);
-
-    assertThrows(UnsupportedOperationException.class,
-        () -> languageFormTranslation.getSelectors().add(new LocalizedString.LanguageFormSelector("other", LanguageFormType.GENDER)),
-        "Expected selector list to be unmodifiable");
-    assertThrows(UnsupportedOperationException.class,
-        () -> languageFormTranslation.getTranslationRules().add(new LocalizedString.LanguageFormTranslationRule("other")),
-        "Expected translation rules list to be unmodifiable");
-    assertThrows(UnsupportedOperationException.class,
-        () -> languageFormTranslation.getTranslationRules().get(0).getWhenByLanguageFormType().put(LanguageFormType.CASE, GrammaticalCase.DATIVE),
-        "Expected translation rule conditions map to be unmodifiable");
+        () -> books.getTranslationsByLanguageForm().put(Cardinality.OTHER, "books"),
+        "Expected each language form map to be unmodifiable");
   }
 
   @Test

@@ -477,20 +477,13 @@ public class LocalizedStringLoaderTests {
     String[] invalidCatalogs = {
         "{\"key\":{\"translation\":null}}",
         "{\"key\":{\"translation\":\"value\",\"commentary\":null}}",
-        "{\"key\":{\"translation\":\"value\",\"placeholderMetadata\":null}}",
-        "{\"key\":{\"translation\":\"value\",\"placeholderMetadata\":{\"name\":{\"type\":null}}}}",
         "{\"key\":{\"translation\":\"value\",\"placeholders\":null}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"range\":null}}}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":null,\"range\":{\"start\":\"a\",\"end\":\"b\"}}}}}",
-        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"selectors\":null}}}}",
-        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":null,\"selectors\":[{\"value\":\"count\",\"form\":\"CARDINALITY\"}]}}}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":null}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":[]}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":[null]}}",
-        "{\"key\":{\"translation\":\"value\",\"alternatives\":[{}]}}",
-        "{\"key\":{\"translation\":\"{{article}}\",\"placeholders\":{\"article\":{" +
-            "\"selectors\":[{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}]," +
-            "\"translations\":[{\"when\":null,\"value\":\"the\"}]}}}}"
+        "{\"key\":{\"translation\":\"value\",\"alternatives\":[{}]}}"
     };
 
     for (String invalidCatalog : invalidCatalogs)
@@ -854,10 +847,7 @@ public class LocalizedStringLoaderTests {
     tempDirectory.toFile().deleteOnExit();
 
     Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{नाम}} {{книги}}\",\"placeholderMetadata\":{" +
-            "\"имя\":{\"type\":\"STRING\",\"example\":\"Ада\"}," +
-            "\"नाम\":{\"type\":\"STRING\",\"example\":\"Ada\"}" +
-            "},\"placeholders\":{" +
+        ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{नाम}} {{книги}}\",\"placeholders\":{" +
             "\"книги\":{\"value\":\"caféCount\",\"translations\":{\"CARDINALITY_ONE\":\"book\",\"CARDINALITY_OTHER\":\"books\"}}" +
             "},\"alternatives\":[{\"caféCount == количество2\":{\"translation\":\"Matched {{имя}}\"}}]}}")
             .getBytes(StandardCharsets.UTF_8));
@@ -865,8 +855,6 @@ public class LocalizedStringLoaderTests {
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
     LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
 
-    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("имя"));
-    assertTrue(localizedString.getPlaceholderMetadataByPlaceholder().containsKey("नाम"));
     assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("книги"));
     assertEquals(1, localizedString.getAlternatives().size());
   }
@@ -904,23 +892,38 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testFilesystemLoadingRejectsUnknownSelectorRuleFields() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
-            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
-            "],\"translations\":[" +
-            "{\"when\":{\"GENDER\":\"GENDER_MASCULINE\"},\"value\":\"el\",\"notes\":\"unexpected\"}," +
-            "{\"value\":\"la\"}" +
-            "]}}}}").getBytes(StandardCharsets.UTF_8));
+  public void testLoadingRejectsRemovedPlaceholderMetadataSyntax() {
+    String catalog = "{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
+        "\"name\":{\"type\":\"STRING\",\"example\":\"Ada\"}}}}";
 
     LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected unknown selector rule fields to be rejected");
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "removed-metadata"));
 
-    assertTrue(exception.getMessage().contains("unexpected field 'notes'"));
+    assertTrue(exception.getMessage().contains("unexpected field 'placeholderMetadata'"));
+  }
+
+  @Test
+  public void testLoadingRejectsRemovedSelectorSyntax() {
+    String catalog = "{\"Items\":{\"translation\":\"{{items}}\",\"placeholders\":{\"items\":{" +
+        "\"selectors\":[{\"value\":\"count\",\"form\":\"CARDINALITY\"}]," +
+        "\"translations\":[{\"when\":{\"CARDINALITY\":\"CARDINALITY_ONE\"},\"value\":\"item\"}]}}}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "removed-selectors"));
+
+    assertTrue(exception.getMessage().contains("unexpected field 'selectors'"));
+  }
+
+  @Test
+  public void testLoadingRejectsRemovedRuleArrayTranslationsSyntax() {
+    String catalog = "{\"Items\":{\"translation\":\"{{items}}\",\"placeholders\":{\"items\":{" +
+        "\"value\":\"count\",\"translations\":[" +
+        "{\"when\":{\"CARDINALITY\":\"CARDINALITY_ONE\"},\"value\":\"item\"}]}}}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "removed-rule-array"));
+
+    assertTrue(exception.getMessage().contains("placeholder translations value must be an object"));
   }
 
   @Test
@@ -977,45 +980,6 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testFilesystemLoadingRejectsMalformedSelectorTranslationPlaceholders() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
-            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}" +
-            "],\"translations\":[" +
-            "{\"when\":{\"CASE\":\"CASE_NOMINATIVE\"},\"value\":\"the {{ noun }}\"}," +
-            "{\"value\":\"the\"}" +
-            "]}}}}").getBytes(StandardCharsets.UTF_8));
-
-    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected malformed placeholder references in selector fragments to be rejected");
-
-    assertTrue(exception.getMessage().contains("invalid placeholder reference in selector-based translation rule"));
-    assertTrue(exception.getMessage().contains("Malformed placeholder"));
-  }
-
-  @Test
-  public void testFilesystemLoadingRejectsReservedPlaceholderMetadataNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello\":{\"translation\":\"Hello\",\"placeholderMetadata\":{" +
-            "\"GENDER_MASCULINE\":{\"type\":\"STRING\",\"commentary\":\"Reserved name.\"}" +
-            "}}}").getBytes(StandardCharsets.UTF_8));
-
-    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected reserved placeholder metadata names to be rejected");
-
-    assertTrue(exception.getMessage().contains("reserved expression constants"));
-    assertTrue(exception.getMessage().contains("GENDER_MASCULINE"));
-  }
-
-  @Test
   public void testFilesystemLoadingRejectsMissingPlaceholderTranslations() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -1062,54 +1026,6 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testFilesystemLoadingAcceptsPlaceholderMetadata() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
-            "\"name\":{\"type\":\"STRING\",\"commentary\":\"Customer first name.\",\"example\":\"Ada\"}," +
-            "\"gender\":{\"type\":\"GENDER\",\"commentary\":\"Recipient grammatical gender.\",\"allowedValues\":[\"GENDER_MASCULINE\",\"GENDER_FEMININE\"]}" +
-            "}}}").getBytes(StandardCharsets.UTF_8));
-
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
-    LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
-
-    assertEquals("Ada", localizedString.getPlaceholderMetadataByPlaceholder().get("name").getExample().orElse(null));
-    assertEquals(2, localizedString.getPlaceholderMetadataByPlaceholder().get("gender").getAllowedValues().size());
-  }
-
-  @Test
-  public void testFilesystemLoadingRejectsInvalidPlaceholderMetadataAllowedValues() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
-            "\"gender\":{\"type\":\"GENDER\",\"allowedValues\":[\"GENDER_MASCULINE\",\"CASE_DATIVE\"]}" +
-            "}}}").getBytes(StandardCharsets.UTF_8));
-
-    assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected invalid placeholder metadata allowed values to fail during load");
-  }
-
-  @Test
-  public void testFilesystemLoadingRejectsDuplicatePlaceholderMetadataAllowedValues() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholderMetadata\":{" +
-            "\"gender\":{\"type\":\"GENDER\",\"allowedValues\":[\"GENDER_MASCULINE\",\"GENDER_MASCULINE\"]}" +
-            "}}}").getBytes(StandardCharsets.UTF_8));
-
-    assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected duplicate placeholder metadata allowed values to fail during load");
-  }
-
-  @Test
   public void testFilesystemLoadingRejectsNestedDuplicateObjectMembers() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-strings");
     tempDirectory.toFile().deleteOnExit();
@@ -1124,71 +1040,6 @@ public class LocalizedStringLoaderTests {
         "Expected duplicate nested JSON object members to fail during load");
 
     assertTrue(exception.getMessage().contains("duplicate JSON object member 'CARDINALITY_ONE'"));
-  }
-
-  @Test
-  public void testFilesystemLoadingAcceptsSelectorDrivenPlaceholderTranslations() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
-            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}," +
-            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
-            "],\"translations\":[" +
-            "{\"when\":{\"CASE\":\"CASE_NOMINATIVE\",\"GENDER\":\"GENDER_MASCULINE\"},\"value\":\"der\"}," +
-            "{\"value\":\"die\"}" +
-            "]}}}}").getBytes(StandardCharsets.UTF_8));
-
-    Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
-    LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
-    LocalizedString.LanguageFormTranslation translation = localizedString.getLanguageFormTranslationsByPlaceholder().get("article");
-
-    assertTrue(translation.isSelectorDriven());
-    assertEquals(2, translation.getSelectors().size());
-    assertEquals(2, translation.getTranslationRules().size());
-  }
-
-  @Test
-  public void testFilesystemLoadingRejectsAmbiguousSelectorDrivenPlaceholderTranslations() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Article\":{\"translation\":\"{{article}} {{noun}}\",\"placeholders\":{\"article\":{\"selectors\":[" +
-            "{\"value\":\"grammaticalCase\",\"form\":\"CASE\"}," +
-            "{\"value\":\"gender\",\"form\":\"GENDER\"}" +
-            "],\"translations\":[" +
-            "{\"when\":{\"CASE\":\"CASE_DATIVE\"},\"value\":\"dem\"}," +
-            "{\"when\":{\"GENDER\":\"GENDER_FEMININE\"},\"value\":\"die\"}" +
-            "]}}}}").getBytes(StandardCharsets.UTF_8));
-
-    assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory),
-        "Expected ambiguous selector-based translation rules to fail during load");
-  }
-
-  @Test
-  public void testFilesystemLoadingRejectsExcessiveSelectorRulesBeforeAmbiguityValidation() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
-    StringBuilder rules = new StringBuilder();
-
-    for (int index = 0; index < LocalizedString.LanguageFormTranslation.MAXIMUM_SELECTOR_RULES + 1; ++index) {
-      if (index > 0)
-        rules.append(',');
-      rules.append("{\"value\":\"item\"}");
-    }
-
-    Files.write(tempDirectory.resolve("en"),
-        ("{\"Items\":{\"translation\":\"{{noun}}\",\"placeholders\":{\"noun\":{\"selectors\":[" +
-            "{\"value\":\"count\",\"form\":\"CARDINALITY\"}],\"translations\":[" + rules + "]}}}}")
-            .getBytes(StandardCharsets.UTF_8));
-
-    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory));
-    assertTrue(exception.getMessage().contains("at most " +
-        LocalizedString.LanguageFormTranslation.MAXIMUM_SELECTOR_RULES + " rules"));
   }
 
   @Test
