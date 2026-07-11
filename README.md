@@ -38,7 +38,7 @@ String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 
 assertEquals("I didn't read any books.", message);
 ```
 
-Proudly powering production systems since 2017.
+Lokalized has proudly powered production systems since 2017.
 
 ## Design Goals
 
