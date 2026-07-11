@@ -175,11 +175,16 @@ public enum Ordinality implements LanguageForm {
   }
 
   /**
-   * Gets the BCP 47 locale tags for which ordinality operations are supported.
+   * Gets the BCP 47 locale tags represented directly in the generated CLDR plural-rule data and supported for
+   * ordinality operations.
+   * <p>
+   * This is not an exhaustive list of concrete locale tags accepted by ordinality operations. A locale with
+   * additional region or script subtags may be supported through fallback to a less-specific rule tag. Use
+   * {@link #supportedOrdinalitiesForLocale(Locale)} to check a concrete locale.
    * <p>
    * The set's values are sorted by natural string ordering.
    *
-   * @return the BCP 47 locale tags for which ordinality operations are supported, not null
+   * @return the directly represented BCP 47 locale tags supported for ordinality operations, not null
    */
   @NonNull
   public static SortedSet<@NonNull String> getSupportedLocaleTags() {

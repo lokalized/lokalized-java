@@ -1,4 +1,4 @@
-<a href="https://www.lokalized.com">
+<a href="https://lokalized.com">
     <picture>
         <source media="(prefers-color-scheme: dark)" srcset="https://cdn.lokalized.com/lokalized-gh-logo-dark-v5.png">
         <img alt="Lokalized" src="https://cdn.lokalized.com/lokalized-gh-logo-light-v5.png" width="300" height="93">
@@ -1156,7 +1156,7 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 Lokalized provides a [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) type which encapsulates cardinal functionality.
 
-[`Cardinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#getSupportedLocaleTags()) returns the BCP 47 locale tags backed by the pinned CLDR data.
+[`Cardinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#getSupportedLocaleTags()) returns the locale tags represented directly in the pinned CLDR cardinality-rule data. Concrete region- or script-qualified locales can also work through rule fallback; use [`Cardinality#supportedCardinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#supportedCardinalitiesForLocale(java.util.Locale)) to probe one.
 
 You may programmatically determine cardinality using [`Cardinality#forNumber(Number number, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.util.Locale)) and [`Cardinality#forNumber(Number number, Integer visibleDecimalPlaces, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.lang.Integer,java.util.Locale)) as shown below.
 
@@ -1417,7 +1417,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 [`Ordinality#forOperands(PluralOperands operands, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale)) is also available for advanced CLDR operand cases.
 
-[`Ordinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#getSupportedLocaleTags()) returns the BCP 47 locale tags for which ordinality operations are available.
+[`Ordinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#getSupportedLocaleTags()) returns the locale tags represented directly in the pinned CLDR plural-rule data. Concrete region- or script-qualified locales can also work through rule fallback; use [`Ordinality#supportedOrdinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#supportedOrdinalitiesForLocale(java.util.Locale)) to probe one.
 
 ## CLDR Data
 
@@ -1968,236 +1968,260 @@ Use the standard JDK formatters for dates, times, numbers, percentages, and curr
 
 ## Language Reference
 
-Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbook examples that show translation-file structure and Java lookup calls for that language's plural categories.
+Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbook examples that show translation-file structure and Java lookup calls for that language's plural categories. The page identifies the exact Java [`Locale`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html) construction (either `Locale.ROOT` or [`Locale.forLanguageTag(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html#forLanguageTag(java.lang.String))), the catalog filename accepted by [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html), inherited rule sources, and the formatting-data provenance.
 
-These pages list CLDR plural-rule locales, not every valid IETF BCP 47 locale tag. Regional tags may inherit from a parent language when CLDR does not define separate rules; for example, `pt-BR` uses `pt`, while `pt-PT` has its own page because its rules differ.
+The reference includes every canonical CLDR plural-rule locale and a curated set of widely used region- and script-qualified application profiles. These profiles make inherited behavior explicit without suggesting that every valid IETF BCP 47 tag needs a separate page.
+
+Exact tags for which CLDR supplies distinct rules, such as `pt-PT`, remain in the canonical CLDR table below. The curated table covers exact tags that inherit their plural rules from another entry.
+
+Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-JP`, and `ko-KR`, remain searchable on the website and point to the applicable plural-rule page. Their number formatting, unit wording, and application copy can still differ from the parent locale.
+
+### Curated exact-tag profiles
+
+| Locale profile | Tag | Plural rules from |
+|---|---|---|
+| [American English](https://lokalized.com/languages/en-US) | `en-US` | `en` |
+| [Arabic (Egypt)](https://lokalized.com/languages/ar-EG) | `ar-EG` | `ar` |
+| [Brazilian Portuguese](https://lokalized.com/languages/pt-BR) | `pt-BR` | `pt` |
+| [British English](https://lokalized.com/languages/en-GB) | `en-GB` | `en` |
+| [Canadian French](https://lokalized.com/languages/fr-CA) | `fr-CA` | `fr` |
+| [Chinese (China)](https://lokalized.com/languages/zh-CN) | `zh-CN` | `zh` |
+| [Chinese (Hong Kong SAR China)](https://lokalized.com/languages/zh-HK) | `zh-HK` | `zh` |
+| [Chinese (Taiwan)](https://lokalized.com/languages/zh-TW) | `zh-TW` | `zh` |
+| [English (India)](https://lokalized.com/languages/en-IN) | `en-IN` | `en` |
+| [European Spanish](https://lokalized.com/languages/es-ES) | `es-ES` | `es` |
+| [Latin American Spanish](https://lokalized.com/languages/es-419) | `es-419` | `es` |
+| [Mexican Spanish](https://lokalized.com/languages/es-MX) | `es-MX` | `es` |
+| [Serbian (Cyrillic)](https://lokalized.com/languages/sr-Cyrl) | `sr-Cyrl` | `sr` |
+| [Serbian (Latin)](https://lokalized.com/languages/sr-Latn) | `sr-Latn` | `sr` |
+| [Simplified Chinese](https://lokalized.com/languages/zh-Hans) | `zh-Hans` | `zh` |
+| [Swiss High German](https://lokalized.com/languages/de-CH) | `de-CH` | `de` |
+| [Traditional Chinese](https://lokalized.com/languages/zh-Hant) | `zh-Hant` | `zh` |
+
+### Canonical CLDR plural-rule locales
 
 | Language | Tag |
 |---|---|
-| [Afrikaans](https://www.lokalized.com/languages/af) | `af` |
-| [Akan](https://www.lokalized.com/languages/ak) | `ak` |
-| [Albanian (Shqip)](https://www.lokalized.com/languages/sq) | `sq` |
-| [Amharic (አማርኛ)](https://www.lokalized.com/languages/am) | `am` |
-| [Anii](https://www.lokalized.com/languages/blo) | `blo` |
-| [Arabic (العربية)](https://www.lokalized.com/languages/ar) | `ar` |
-| [Aragonese](https://www.lokalized.com/languages/an) | `an` |
-| [Armenian (հայերէն)](https://www.lokalized.com/languages/hy) | `hy` |
-| [Assamese (অসমীয়া)](https://www.lokalized.com/languages/as) | `as` |
-| [Asturian (asturianu)](https://www.lokalized.com/languages/ast) | `ast` |
-| [Asu (asa)](https://www.lokalized.com/languages/asa) | `asa` |
-| [Azeri (Azerbaijani)](https://www.lokalized.com/languages/az) | `az` |
-| [Baluchi](https://www.lokalized.com/languages/bal) | `bal` |
-| [Bambara (Bamanankan)](https://www.lokalized.com/languages/bm) | `bm` |
-| [Bangla (বাংলা)](https://www.lokalized.com/languages/bn) | `bn` |
-| [Basque (euskara)](https://www.lokalized.com/languages/eu) | `eu` |
-| [Belarusian (беларускі)](https://www.lokalized.com/languages/be) | `be` |
-| [Bemba (ChiBemba)](https://www.lokalized.com/languages/bem) | `bem` |
-| [Bena (Bəna)](https://www.lokalized.com/languages/bez) | `bez` |
-| [Bhojpuri](https://www.lokalized.com/languages/bho) | `bho` |
-| [Bodo (बर')](https://www.lokalized.com/languages/brx) | `brx` |
-| [Bosnian (босански)](https://www.lokalized.com/languages/bs) | `bs` |
-| [Breton (brezhoneg)](https://www.lokalized.com/languages/br) | `br` |
-| [Bulgarian (български)](https://www.lokalized.com/languages/bg) | `bg` |
-| [Burmese](https://www.lokalized.com/languages/my) | `my` |
-| [Cantonese (廣東話)](https://www.lokalized.com/languages/yue) | `yue` |
-| [Catalan (català)](https://www.lokalized.com/languages/ca) | `ca` |
-| [Cebuano](https://www.lokalized.com/languages/ceb) | `ceb` |
-| [Central Atlas Tamazight (Tamaziġt)](https://www.lokalized.com/languages/tzm) | `tzm` |
-| [Central Kurdish (کوردیی ناوەندی)](https://www.lokalized.com/languages/ckb) | `ckb` |
-| [Chechen (Нохчийн мотт)](https://www.lokalized.com/languages/ce) | `ce` |
-| [Cherokee (ᏣᎳᎩ ᎦᏬᏂᎯᏍᏗ)](https://www.lokalized.com/languages/chr) | `chr` |
-| [Chiga (Rukiga)](https://www.lokalized.com/languages/cgg) | `cgg` |
-| [Chuvash](https://www.lokalized.com/languages/cv) | `cv` |
-| [Colognian (Kölsch Platt)](https://www.lokalized.com/languages/ksh) | `ksh` |
-| [Cornish (Kernowek)](https://www.lokalized.com/languages/kw) | `kw` |
-| [Croatian (hrvatski)](https://www.lokalized.com/languages/hr) | `hr` |
-| [Czech (čeština)](https://www.lokalized.com/languages/cs) | `cs` |
-| [Danish (Dansk)](https://www.lokalized.com/languages/da) | `da` |
-| [Divehi (dhivehi)](https://www.lokalized.com/languages/dv) | `dv` |
-| [Dogri](https://www.lokalized.com/languages/doi) | `doi` |
-| [Dutch (Nederlands)](https://www.lokalized.com/languages/nl) | `nl` |
-| [Dzongkha (རྫོང་ཁ་)](https://www.lokalized.com/languages/dz) | `dz` |
-| [English](https://www.lokalized.com/languages/en) | `en` |
-| [Esperanto](https://www.lokalized.com/languages/eo) | `eo` |
-| [Estonian (Eesti)](https://www.lokalized.com/languages/et) | `et` |
-| [European Portuguese](https://www.lokalized.com/languages/pt-PT) | `pt-PT` |
-| [Ewe (Èʋe)](https://www.lokalized.com/languages/ee) | `ee` |
-| [Faroese (føroyskt)](https://www.lokalized.com/languages/fo) | `fo` |
-| [Filipino (Wikang Filipino)](https://www.lokalized.com/languages/fil) | `fil` |
-| [Finnish (suomi)](https://www.lokalized.com/languages/fi) | `fi` |
-| [French (français)](https://www.lokalized.com/languages/fr) | `fr` |
-| [Friulian (Furlan)](https://www.lokalized.com/languages/fur) | `fur` |
-| [Fulah (Fulfulde)](https://www.lokalized.com/languages/ff) | `ff` |
-| [Galician (galego)](https://www.lokalized.com/languages/gl) | `gl` |
-| [Ganda (Oluganda)](https://www.lokalized.com/languages/lg) | `lg` |
-| [Georgian (ქართული)](https://www.lokalized.com/languages/ka) | `ka` |
-| [German (Deutsch)](https://www.lokalized.com/languages/de) | `de` |
-| [Greek (Ελληνικά)](https://www.lokalized.com/languages/el) | `el` |
-| [Greenlandic (Kalaallisut)](https://www.lokalized.com/languages/kl) | `kl` |
-| [Gujarati (ગુજરાતી)](https://www.lokalized.com/languages/gu) | `gu` |
-| [Gun (Fon gbè)](https://www.lokalized.com/languages/guw) | `guw` |
-| [Hausa (هَرْشَن هَوْسَ‎)](https://www.lokalized.com/languages/ha) | `ha` |
-| [Hawaiian (Ōlelo Hawaiʻi)](https://www.lokalized.com/languages/haw) | `haw` |
-| [Hebrew (עברית)](https://www.lokalized.com/languages/he) | `he` |
-| [Hindi (हिंदी)](https://www.lokalized.com/languages/hi) | `hi` |
-| [Hmong Njua](https://www.lokalized.com/languages/hnj) | `hnj` |
-| [Hungarian (magyar)](https://www.lokalized.com/languages/hu) | `hu` |
-| [Icelandic (íslenska)](https://www.lokalized.com/languages/is) | `is` |
-| [Ido](https://www.lokalized.com/languages/io) | `io` |
-| [Igbo (Asụsụ Igbo)](https://www.lokalized.com/languages/ig) | `ig` |
-| [Inari Sami (anarâškielâ)](https://www.lokalized.com/languages/smn) | `smn` |
-| [Indonesian (Bahasa Indonesia)](https://www.lokalized.com/languages/id) | `id` |
-| [Interlingua](https://www.lokalized.com/languages/ia) | `ia` |
-| [Interlingue](https://www.lokalized.com/languages/ie) | `ie` |
-| [Inuktitut (ᐃᓄᒃᑎᑐᑦ)](https://www.lokalized.com/languages/iu) | `iu` |
-| [Irish (Gaeilge)](https://www.lokalized.com/languages/ga) | `ga` |
-| [Italian (italiano)](https://www.lokalized.com/languages/it) | `it` |
-| [Japanese (日本語)](https://www.lokalized.com/languages/ja) | `ja` |
-| [Javanese (basa Jawa)](https://www.lokalized.com/languages/jv) | `jv` |
-| [Javanese (basa Jawa)](https://www.lokalized.com/languages/jw) | `jw` |
-| [Jju (Kaje)](https://www.lokalized.com/languages/kaj) | `kaj` |
-| [Kabuverdianu (Kriolu)](https://www.lokalized.com/languages/kea) | `kea` |
-| [Kabyle (Taqbaylit)](https://www.lokalized.com/languages/kab) | `kab` |
-| [Kako](https://www.lokalized.com/languages/kkj) | `kkj` |
-| [Kannada (ಕನ್ನಡ)](https://www.lokalized.com/languages/kn) | `kn` |
-| [Kashmiri (कॉशुर)](https://www.lokalized.com/languages/ks) | `ks` |
-| [Kazakh (қазақ тілі)](https://www.lokalized.com/languages/kk) | `kk` |
-| [Khmer (ភាសាខ្មែរ)](https://www.lokalized.com/languages/km) | `km` |
-| [Kirghiz (кыргызча)](https://www.lokalized.com/languages/ky) | `ky` |
-| [Konkani](https://www.lokalized.com/languages/kok) | `kok` |
-| [Konkani (Latin)](https://www.lokalized.com/languages/kok-Latn) | `kok-Latn` |
-| [Korean (한국어)](https://www.lokalized.com/languages/ko) | `ko` |
-| [Koyraboro Senni (koyra-boro senn-i)](https://www.lokalized.com/languages/ses) | `ses` |
-| [Kurdish (کوردی)](https://www.lokalized.com/languages/ku) | `ku` |
-| [Lakota (Lakȟótiyapi)](https://www.lokalized.com/languages/lkt) | `lkt` |
-| [Langi (Kilaangi)](https://www.lokalized.com/languages/lag) | `lag` |
-| [Lao (ພາສາລາວ)](https://www.lokalized.com/languages/lo) | `lo` |
-| [Latvian (Latviešu)](https://www.lokalized.com/languages/lv) | `lv` |
-| [Ligurian](https://www.lokalized.com/languages/lij) | `lij` |
-| [Lingala (Lingála)](https://www.lokalized.com/languages/ln) | `ln` |
-| [Lithuanian (Lietuvių)](https://www.lokalized.com/languages/lt) | `lt` |
-| [lld](https://www.lokalized.com/languages/lld) | `lld` |
-| [Lojban (la .lojban.)](https://www.lokalized.com/languages/jbo) | `jbo` |
-| [Lower Sorbian (Dolnoserbski)](https://www.lokalized.com/languages/dsb) | `dsb` |
-| [Lule Sami (julevsámegiella)](https://www.lokalized.com/languages/smj) | `smj` |
-| [Luxembourgish (Lëtzebuergesch)](https://www.lokalized.com/languages/lb) | `lb` |
-| [Macedonian (македонски)](https://www.lokalized.com/languages/mk) | `mk` |
-| [Machame](https://www.lokalized.com/languages/jmc) | `jmc` |
-| [Makonde (Chi(ni)makonde)](https://www.lokalized.com/languages/kde) | `kde` |
-| [Malagasy (Fiteny Malagasy)](https://www.lokalized.com/languages/mg) | `mg` |
-| [Malay (بهاس ملايو‎)](https://www.lokalized.com/languages/ms) | `ms` |
-| [Malayalam (മലയാളം)](https://www.lokalized.com/languages/ml) | `ml` |
-| [Maltese (Malti)](https://www.lokalized.com/languages/mt) | `mt` |
-| [Mandarin Chinese (中文)](https://www.lokalized.com/languages/zh) | `zh` |
-| [Manx (Gaelg)](https://www.lokalized.com/languages/gv) | `gv` |
-| [Marathi (मराठी)](https://www.lokalized.com/languages/mr) | `mr` |
-| [Masai (ɔl Maa)](https://www.lokalized.com/languages/mas) | `mas` |
-| [Metaʼ](https://www.lokalized.com/languages/mgo) | `mgo` |
-| [Moldovan (limba moldovenească)](https://www.lokalized.com/languages/mo) | `mo` |
-| [Mongolian (монгол хэл)](https://www.lokalized.com/languages/mn) | `mn` |
-| [N’Ko](https://www.lokalized.com/languages/nqo) | `nqo` |
-| [Nahuatl (Nāhuatl)](https://www.lokalized.com/languages/nah) | `nah` |
-| [Najdi Arabic (اللهجة النجدية)](https://www.lokalized.com/languages/ars) | `ars` |
-| [Nama (Khoekhoegowab)](https://www.lokalized.com/languages/naq) | `naq` |
-| [Nepali (नेपाली भाषा)](https://www.lokalized.com/languages/ne) | `ne` |
-| [Ngiemboon (Ngyɛmbɔɔŋ)](https://www.lokalized.com/languages/nnh) | `nnh` |
-| [Ngomba (Nda’a)](https://www.lokalized.com/languages/jgo) | `jgo` |
-| [Nigerian Pidgin](https://www.lokalized.com/languages/pcm) | `pcm` |
-| [North Ndebele (isiNdebele)](https://www.lokalized.com/languages/nd) | `nd` |
-| [Northern Sami (davvisámegiella)](https://www.lokalized.com/languages/se) | `se` |
-| [Northern Sotho (Sesotho sa Leboa)](https://www.lokalized.com/languages/nso) | `nso` |
-| [Norwegian (norsk)](https://www.lokalized.com/languages/no) | `no` |
-| [Norwegian Bokmål (bokmål)](https://www.lokalized.com/languages/nb) | `nb` |
-| [Norwegian Nynorsk (nynorsk)](https://www.lokalized.com/languages/nn) | `nn` |
-| [Nyanja (Chinyanja)](https://www.lokalized.com/languages/ny) | `ny` |
-| [Nyankole (Runyankore)](https://www.lokalized.com/languages/nyn) | `nyn` |
-| [Odia (ଓଡ଼ିଆ)](https://www.lokalized.com/languages/or) | `or` |
-| [Oromo (Afaan Oromoo)](https://www.lokalized.com/languages/om) | `om` |
-| [Osage](https://www.lokalized.com/languages/osa) | `osa` |
-| [Ossetian (Ирон æвзаг)](https://www.lokalized.com/languages/os) | `os` |
-| [Papiamento (Papiamentu)](https://www.lokalized.com/languages/pap) | `pap` |
-| [Persian (فارسی)](https://www.lokalized.com/languages/fa) | `fa` |
-| [Polish (polski)](https://www.lokalized.com/languages/pl) | `pl` |
-| [Portuguese (português)](https://www.lokalized.com/languages/pt) | `pt` |
-| [Prussian (Prūsiskan)](https://www.lokalized.com/languages/prg) | `prg` |
-| [Punjabi (پنجابی)](https://www.lokalized.com/languages/pa) | `pa` |
-| [Pushto (پښتو)](https://www.lokalized.com/languages/ps) | `ps` |
-| [Romanian (română)](https://www.lokalized.com/languages/ro) | `ro` |
-| [Romansh (rumàntsch)](https://www.lokalized.com/languages/rm) | `rm` |
-| [Rombo (Kirombo)](https://www.lokalized.com/languages/rof) | `rof` |
-| [Undetermined (CLDR root)](https://www.lokalized.com/languages/root) | `und` |
-| [Russian (русский)](https://www.lokalized.com/languages/ru) | `ru` |
-| [Rwa (West Chaga)](https://www.lokalized.com/languages/rwk) | `rwk` |
-| [Saho (ሳሆኛ)](https://www.lokalized.com/languages/ssy) | `ssy` |
-| [Sakha (Саха тыла)](https://www.lokalized.com/languages/sah) | `sah` |
-| [Samburu (Sampur)](https://www.lokalized.com/languages/saq) | `saq` |
-| [Sami (Saami)](https://www.lokalized.com/languages/smi) | `smi` |
-| [Samogitian](https://www.lokalized.com/languages/sgs) | `sgs` |
-| [Sango (yângâ tî sängö)](https://www.lokalized.com/languages/sg) | `sg` |
-| [Santali](https://www.lokalized.com/languages/sat) | `sat` |
-| [Sardinian](https://www.lokalized.com/languages/sc) | `sc` |
-| [Scottish Gaelic (Gàidhlig)](https://www.lokalized.com/languages/gd) | `gd` |
-| [Sena (xisena)](https://www.lokalized.com/languages/seh) | `seh` |
-| [Serbian (Српски)](https://www.lokalized.com/languages/sr) | `sr` |
-| [Serbo-Croatian (srpskohrvatski)](https://www.lokalized.com/languages/sh) | `sh` |
-| [Shambala (kishambaa)](https://www.lokalized.com/languages/ksb) | `ksb` |
-| [Shona (chiShona)](https://www.lokalized.com/languages/sn) | `sn` |
-| [Sichuan Yi (ꆈꌠ꒿)](https://www.lokalized.com/languages/ii) | `ii` |
-| [Sicilian](https://www.lokalized.com/languages/scn) | `scn` |
-| [Sindhi](https://www.lokalized.com/languages/sd) | `sd` |
-| [Sinhalese (සිංහල)](https://www.lokalized.com/languages/si) | `si` |
-| [Skolt Sami (sääʹmǩiõll)](https://www.lokalized.com/languages/sms) | `sms` |
-| [Slovak (Slovenčina)](https://www.lokalized.com/languages/sk) | `sk` |
-| [Slovenian (Slovenščina)](https://www.lokalized.com/languages/sl) | `sl` |
-| [Soga (Lusoga)](https://www.lokalized.com/languages/xog) | `xog` |
-| [Somali (اف سومالى‎)](https://www.lokalized.com/languages/so) | `so` |
-| [South Ndebele (isiNdebele)](https://www.lokalized.com/languages/nr) | `nr` |
-| [Southern Kurdish (کوردی خوارگ)](https://www.lokalized.com/languages/sdh) | `sdh` |
-| [Southern Sami (Åarjelsaemien gïele)](https://www.lokalized.com/languages/sma) | `sma` |
-| [Southern Sotho (Sesotho)](https://www.lokalized.com/languages/st) | `st` |
-| [Spanish (español)](https://www.lokalized.com/languages/es) | `es` |
-| [Sundanese](https://www.lokalized.com/languages/su) | `su` |
-| [Swahili (Kiswahili)](https://www.lokalized.com/languages/sw) | `sw` |
-| [Swampy Cree](https://www.lokalized.com/languages/csw) | `csw` |
-| [Swati (SiSwati)](https://www.lokalized.com/languages/ss) | `ss` |
-| [Swedish (svenska)](https://www.lokalized.com/languages/sv) | `sv` |
-| [Swiss German (Schwiizerdütsch)](https://www.lokalized.com/languages/gsw) | `gsw` |
-| [Syriac (Leššānā Suryāyā)](https://www.lokalized.com/languages/syr) | `syr` |
-| [Tachelhit (Tašlḥiyt)](https://www.lokalized.com/languages/shi) | `shi` |
-| [Tagalog (Wikang Tagalog)](https://www.lokalized.com/languages/tl) | `tl` |
-| [Tamil (Tamiḻ)](https://www.lokalized.com/languages/ta) | `ta` |
-| [Telugu (తెలుగు)](https://www.lokalized.com/languages/te) | `te` |
-| [Teso (Ateso)](https://www.lokalized.com/languages/teo) | `teo` |
-| [Thai (ไทย)](https://www.lokalized.com/languages/th) | `th` |
-| [Tibetan (བོད་སྐད་)](https://www.lokalized.com/languages/bo) | `bo` |
-| [Tigre (ትግራይት)](https://www.lokalized.com/languages/tig) | `tig` |
-| [Tigrinya (ትግርኛ)](https://www.lokalized.com/languages/ti) | `ti` |
-| [Tok Pisin](https://www.lokalized.com/languages/tpi) | `tpi` |
-| [Tongan (lea faka-Tonga)](https://www.lokalized.com/languages/to) | `to` |
-| [Tsonga (Xitsonga)](https://www.lokalized.com/languages/ts) | `ts` |
-| [Tswana (Setswana)](https://www.lokalized.com/languages/tn) | `tn` |
-| [Turkish (Türkçe)](https://www.lokalized.com/languages/tr) | `tr` |
-| [Turkmen (Türkmençe)](https://www.lokalized.com/languages/tk) | `tk` |
-| [Tyap (Katab)](https://www.lokalized.com/languages/kcg) | `kcg` |
-| [Uighur (ئۇيغۇر تىلى)](https://www.lokalized.com/languages/ug) | `ug` |
-| [Ukrainian (українська)](https://www.lokalized.com/languages/uk) | `uk` |
-| [Upper Sorbian (hornjoserbšćina)](https://www.lokalized.com/languages/hsb) | `hsb` |
-| [Urdu (اُردُو)](https://www.lokalized.com/languages/ur) | `ur` |
-| [Uzbek (ўзбек тили)](https://www.lokalized.com/languages/uz) | `uz` |
-| [Venda (Tshivenḓa)](https://www.lokalized.com/languages/ve) | `ve` |
-| [Venetian](https://www.lokalized.com/languages/vec) | `vec` |
-| [Vietnamese (Tiếng Việt)](https://www.lokalized.com/languages/vi) | `vi` |
-| [Volapük](https://www.lokalized.com/languages/vo) | `vo` |
-| [Vunjo (Wuunjo)](https://www.lokalized.com/languages/vun) | `vun` |
-| [Walloon (Walon)](https://www.lokalized.com/languages/wa) | `wa` |
-| [Walser (Walscher)](https://www.lokalized.com/languages/wae) | `wae` |
-| [Welsh (Cymraeg)](https://www.lokalized.com/languages/cy) | `cy` |
-| [Western Frisian (Frysk)](https://www.lokalized.com/languages/fy) | `fy` |
-| [Wolof](https://www.lokalized.com/languages/wo) | `wo` |
-| [Xhosa (isiXhosa)](https://www.lokalized.com/languages/xh) | `xh` |
-| [Yiddish (יידיש)](https://www.lokalized.com/languages/yi) | `yi` |
-| [Yoruba (Èdè Yorùbá)](https://www.lokalized.com/languages/yo) | `yo` |
-| [Zulu (isiZulu)](https://www.lokalized.com/languages/zu) | `zu` |
+| [Afrikaans](https://lokalized.com/languages/af) | `af` |
+| [Akan](https://lokalized.com/languages/ak) | `ak` |
+| [Albanian (Shqip)](https://lokalized.com/languages/sq) | `sq` |
+| [Amharic (አማርኛ)](https://lokalized.com/languages/am) | `am` |
+| [Anii](https://lokalized.com/languages/blo) | `blo` |
+| [Arabic (العربية)](https://lokalized.com/languages/ar) | `ar` |
+| [Aragonese](https://lokalized.com/languages/an) | `an` |
+| [Armenian (հայերէն)](https://lokalized.com/languages/hy) | `hy` |
+| [Assamese (অসমীয়া)](https://lokalized.com/languages/as) | `as` |
+| [Asturian (asturianu)](https://lokalized.com/languages/ast) | `ast` |
+| [Asu (asa)](https://lokalized.com/languages/asa) | `asa` |
+| [Azeri (Azerbaijani)](https://lokalized.com/languages/az) | `az` |
+| [Baluchi](https://lokalized.com/languages/bal) | `bal` |
+| [Bambara (Bamanankan)](https://lokalized.com/languages/bm) | `bm` |
+| [Bangla (বাংলা)](https://lokalized.com/languages/bn) | `bn` |
+| [Basque (euskara)](https://lokalized.com/languages/eu) | `eu` |
+| [Belarusian (беларускі)](https://lokalized.com/languages/be) | `be` |
+| [Bemba (ChiBemba)](https://lokalized.com/languages/bem) | `bem` |
+| [Bena (Bəna)](https://lokalized.com/languages/bez) | `bez` |
+| [Bhojpuri](https://lokalized.com/languages/bho) | `bho` |
+| [Bodo (बर')](https://lokalized.com/languages/brx) | `brx` |
+| [Bosnian (босански)](https://lokalized.com/languages/bs) | `bs` |
+| [Breton (brezhoneg)](https://lokalized.com/languages/br) | `br` |
+| [Bulgarian (български)](https://lokalized.com/languages/bg) | `bg` |
+| [Burmese](https://lokalized.com/languages/my) | `my` |
+| [Cantonese (廣東話)](https://lokalized.com/languages/yue) | `yue` |
+| [Catalan (català)](https://lokalized.com/languages/ca) | `ca` |
+| [Cebuano](https://lokalized.com/languages/ceb) | `ceb` |
+| [Central Atlas Tamazight (Tamaziġt)](https://lokalized.com/languages/tzm) | `tzm` |
+| [Central Kurdish (کوردیی ناوەندی)](https://lokalized.com/languages/ckb) | `ckb` |
+| [Chechen (Нохчийн мотт)](https://lokalized.com/languages/ce) | `ce` |
+| [Cherokee (ᏣᎳᎩ ᎦᏬᏂᎯᏍᏗ)](https://lokalized.com/languages/chr) | `chr` |
+| [Chiga (Rukiga)](https://lokalized.com/languages/cgg) | `cgg` |
+| [Chuvash](https://lokalized.com/languages/cv) | `cv` |
+| [Colognian (Kölsch Platt)](https://lokalized.com/languages/ksh) | `ksh` |
+| [Cornish (Kernowek)](https://lokalized.com/languages/kw) | `kw` |
+| [Croatian (hrvatski)](https://lokalized.com/languages/hr) | `hr` |
+| [Czech (čeština)](https://lokalized.com/languages/cs) | `cs` |
+| [Danish (Dansk)](https://lokalized.com/languages/da) | `da` |
+| [Divehi (dhivehi)](https://lokalized.com/languages/dv) | `dv` |
+| [Dogri](https://lokalized.com/languages/doi) | `doi` |
+| [Dutch (Nederlands)](https://lokalized.com/languages/nl) | `nl` |
+| [Dzongkha (རྫོང་ཁ་)](https://lokalized.com/languages/dz) | `dz` |
+| [English](https://lokalized.com/languages/en) | `en` |
+| [Esperanto](https://lokalized.com/languages/eo) | `eo` |
+| [Estonian (Eesti)](https://lokalized.com/languages/et) | `et` |
+| [European Portuguese](https://lokalized.com/languages/pt-PT) | `pt-PT` |
+| [Ewe (Èʋe)](https://lokalized.com/languages/ee) | `ee` |
+| [Faroese (føroyskt)](https://lokalized.com/languages/fo) | `fo` |
+| [Filipino (Wikang Filipino)](https://lokalized.com/languages/fil) | `fil` |
+| [Finnish (suomi)](https://lokalized.com/languages/fi) | `fi` |
+| [French (français)](https://lokalized.com/languages/fr) | `fr` |
+| [Friulian (Furlan)](https://lokalized.com/languages/fur) | `fur` |
+| [Fulah (Fulfulde)](https://lokalized.com/languages/ff) | `ff` |
+| [Galician (galego)](https://lokalized.com/languages/gl) | `gl` |
+| [Ganda (Oluganda)](https://lokalized.com/languages/lg) | `lg` |
+| [Georgian (ქართული)](https://lokalized.com/languages/ka) | `ka` |
+| [German (Deutsch)](https://lokalized.com/languages/de) | `de` |
+| [Greek (Ελληνικά)](https://lokalized.com/languages/el) | `el` |
+| [Greenlandic (Kalaallisut)](https://lokalized.com/languages/kl) | `kl` |
+| [Gujarati (ગુજરાતી)](https://lokalized.com/languages/gu) | `gu` |
+| [Gun (Fon gbè)](https://lokalized.com/languages/guw) | `guw` |
+| [Hausa (هَرْشَن هَوْسَ‎)](https://lokalized.com/languages/ha) | `ha` |
+| [Hawaiian (Ōlelo Hawaiʻi)](https://lokalized.com/languages/haw) | `haw` |
+| [Hebrew (עברית)](https://lokalized.com/languages/he) | `he` |
+| [Hindi (हिंदी)](https://lokalized.com/languages/hi) | `hi` |
+| [Hmong Njua](https://lokalized.com/languages/hnj) | `hnj` |
+| [Hungarian (magyar)](https://lokalized.com/languages/hu) | `hu` |
+| [Icelandic (íslenska)](https://lokalized.com/languages/is) | `is` |
+| [Ido](https://lokalized.com/languages/io) | `io` |
+| [Igbo (Asụsụ Igbo)](https://lokalized.com/languages/ig) | `ig` |
+| [Inari Sami (anarâškielâ)](https://lokalized.com/languages/smn) | `smn` |
+| [Indonesian (Bahasa Indonesia)](https://lokalized.com/languages/id) | `id` |
+| [Interlingua](https://lokalized.com/languages/ia) | `ia` |
+| [Interlingue](https://lokalized.com/languages/ie) | `ie` |
+| [Inuktitut (ᐃᓄᒃᑎᑐᑦ)](https://lokalized.com/languages/iu) | `iu` |
+| [Irish (Gaeilge)](https://lokalized.com/languages/ga) | `ga` |
+| [Italian (italiano)](https://lokalized.com/languages/it) | `it` |
+| [Japanese (日本語)](https://lokalized.com/languages/ja) | `ja` |
+| [Javanese (basa Jawa)](https://lokalized.com/languages/jv) | `jv` |
+| [Jju (Kaje)](https://lokalized.com/languages/kaj) | `kaj` |
+| [Kabuverdianu (Kriolu)](https://lokalized.com/languages/kea) | `kea` |
+| [Kabyle (Taqbaylit)](https://lokalized.com/languages/kab) | `kab` |
+| [Kako](https://lokalized.com/languages/kkj) | `kkj` |
+| [Kannada (ಕನ್ನಡ)](https://lokalized.com/languages/kn) | `kn` |
+| [Kashmiri (कॉशुर)](https://lokalized.com/languages/ks) | `ks` |
+| [Kazakh (қазақ тілі)](https://lokalized.com/languages/kk) | `kk` |
+| [Khmer (ភាសាខ្មែរ)](https://lokalized.com/languages/km) | `km` |
+| [Kirghiz (кыргызча)](https://lokalized.com/languages/ky) | `ky` |
+| [Konkani](https://lokalized.com/languages/kok) | `kok` |
+| [Konkani (Latin)](https://lokalized.com/languages/kok-Latn) | `kok-Latn` |
+| [Korean (한국어)](https://lokalized.com/languages/ko) | `ko` |
+| [Koyraboro Senni (koyra-boro senn-i)](https://lokalized.com/languages/ses) | `ses` |
+| [Kurdish (کوردی)](https://lokalized.com/languages/ku) | `ku` |
+| [Lakota (Lakȟótiyapi)](https://lokalized.com/languages/lkt) | `lkt` |
+| [Langi (Kilaangi)](https://lokalized.com/languages/lag) | `lag` |
+| [Lao (ພາສາລາວ)](https://lokalized.com/languages/lo) | `lo` |
+| [Latvian (Latviešu)](https://lokalized.com/languages/lv) | `lv` |
+| [Ligurian](https://lokalized.com/languages/lij) | `lij` |
+| [Lingala (Lingála)](https://lokalized.com/languages/ln) | `ln` |
+| [Lithuanian (Lietuvių)](https://lokalized.com/languages/lt) | `lt` |
+| [lld](https://lokalized.com/languages/lld) | `lld` |
+| [Lojban (la .lojban.)](https://lokalized.com/languages/jbo) | `jbo` |
+| [Lower Sorbian (Dolnoserbski)](https://lokalized.com/languages/dsb) | `dsb` |
+| [Lule Sami (julevsámegiella)](https://lokalized.com/languages/smj) | `smj` |
+| [Luxembourgish (Lëtzebuergesch)](https://lokalized.com/languages/lb) | `lb` |
+| [Macedonian (македонски)](https://lokalized.com/languages/mk) | `mk` |
+| [Machame](https://lokalized.com/languages/jmc) | `jmc` |
+| [Makonde (Chi(ni)makonde)](https://lokalized.com/languages/kde) | `kde` |
+| [Malagasy (Fiteny Malagasy)](https://lokalized.com/languages/mg) | `mg` |
+| [Malay (بهاس ملايو‎)](https://lokalized.com/languages/ms) | `ms` |
+| [Malayalam (മലയാളം)](https://lokalized.com/languages/ml) | `ml` |
+| [Maltese (Malti)](https://lokalized.com/languages/mt) | `mt` |
+| [Mandarin Chinese (中文)](https://lokalized.com/languages/zh) | `zh` |
+| [Manx (Gaelg)](https://lokalized.com/languages/gv) | `gv` |
+| [Marathi (मराठी)](https://lokalized.com/languages/mr) | `mr` |
+| [Masai (ɔl Maa)](https://lokalized.com/languages/mas) | `mas` |
+| [Metaʼ](https://lokalized.com/languages/mgo) | `mgo` |
+| [Mongolian (монгол хэл)](https://lokalized.com/languages/mn) | `mn` |
+| [N’Ko](https://lokalized.com/languages/nqo) | `nqo` |
+| [Nahuatl (Nāhuatl)](https://lokalized.com/languages/nah) | `nah` |
+| [Najdi Arabic (اللهجة النجدية)](https://lokalized.com/languages/ars) | `ars` |
+| [Nama (Khoekhoegowab)](https://lokalized.com/languages/naq) | `naq` |
+| [Nepali (नेपाली भाषा)](https://lokalized.com/languages/ne) | `ne` |
+| [Ngiemboon (Ngyɛmbɔɔŋ)](https://lokalized.com/languages/nnh) | `nnh` |
+| [Ngomba (Nda’a)](https://lokalized.com/languages/jgo) | `jgo` |
+| [Nigerian Pidgin](https://lokalized.com/languages/pcm) | `pcm` |
+| [North Ndebele (isiNdebele)](https://lokalized.com/languages/nd) | `nd` |
+| [Northern Sami (davvisámegiella)](https://lokalized.com/languages/se) | `se` |
+| [Northern Sotho (Sesotho sa Leboa)](https://lokalized.com/languages/nso) | `nso` |
+| [Norwegian (norsk)](https://lokalized.com/languages/no) | `no` |
+| [Norwegian Bokmål (bokmål)](https://lokalized.com/languages/nb) | `nb` |
+| [Norwegian Nynorsk (nynorsk)](https://lokalized.com/languages/nn) | `nn` |
+| [Nyanja (Chinyanja)](https://lokalized.com/languages/ny) | `ny` |
+| [Nyankole (Runyankore)](https://lokalized.com/languages/nyn) | `nyn` |
+| [Odia (ଓଡ଼ିଆ)](https://lokalized.com/languages/or) | `or` |
+| [Oromo (Afaan Oromoo)](https://lokalized.com/languages/om) | `om` |
+| [Osage](https://lokalized.com/languages/osa) | `osa` |
+| [Ossetian (Ирон æвзаг)](https://lokalized.com/languages/os) | `os` |
+| [Papiamento (Papiamentu)](https://lokalized.com/languages/pap) | `pap` |
+| [Persian (فارسی)](https://lokalized.com/languages/fa) | `fa` |
+| [Polish (polski)](https://lokalized.com/languages/pl) | `pl` |
+| [Portuguese (português)](https://lokalized.com/languages/pt) | `pt` |
+| [Prussian (Prūsiskan)](https://lokalized.com/languages/prg) | `prg` |
+| [Punjabi (پنجابی)](https://lokalized.com/languages/pa) | `pa` |
+| [Pushto (پښتو)](https://lokalized.com/languages/ps) | `ps` |
+| [Romanian (română)](https://lokalized.com/languages/ro) | `ro` |
+| [Romansh (rumàntsch)](https://lokalized.com/languages/rm) | `rm` |
+| [Rombo (Kirombo)](https://lokalized.com/languages/rof) | `rof` |
+| [Undetermined (CLDR root)](https://lokalized.com/languages/root) | `und` |
+| [Russian (русский)](https://lokalized.com/languages/ru) | `ru` |
+| [Rwa (West Chaga)](https://lokalized.com/languages/rwk) | `rwk` |
+| [Saho (ሳሆኛ)](https://lokalized.com/languages/ssy) | `ssy` |
+| [Sakha (Саха тыла)](https://lokalized.com/languages/sah) | `sah` |
+| [Samburu (Sampur)](https://lokalized.com/languages/saq) | `saq` |
+| [Sami (Saami)](https://lokalized.com/languages/smi) | `smi` |
+| [Samogitian](https://lokalized.com/languages/sgs) | `sgs` |
+| [Sango (yângâ tî sängö)](https://lokalized.com/languages/sg) | `sg` |
+| [Santali](https://lokalized.com/languages/sat) | `sat` |
+| [Sardinian](https://lokalized.com/languages/sc) | `sc` |
+| [Scottish Gaelic (Gàidhlig)](https://lokalized.com/languages/gd) | `gd` |
+| [Sena (xisena)](https://lokalized.com/languages/seh) | `seh` |
+| [Serbian (Српски)](https://lokalized.com/languages/sr) | `sr` |
+| [Shambala (kishambaa)](https://lokalized.com/languages/ksb) | `ksb` |
+| [Shona (chiShona)](https://lokalized.com/languages/sn) | `sn` |
+| [Sichuan Yi (ꆈꌠ꒿)](https://lokalized.com/languages/ii) | `ii` |
+| [Sicilian](https://lokalized.com/languages/scn) | `scn` |
+| [Sindhi](https://lokalized.com/languages/sd) | `sd` |
+| [Sinhalese (සිංහල)](https://lokalized.com/languages/si) | `si` |
+| [Skolt Sami (sääʹmǩiõll)](https://lokalized.com/languages/sms) | `sms` |
+| [Slovak (Slovenčina)](https://lokalized.com/languages/sk) | `sk` |
+| [Slovenian (Slovenščina)](https://lokalized.com/languages/sl) | `sl` |
+| [Soga (Lusoga)](https://lokalized.com/languages/xog) | `xog` |
+| [Somali (اف سومالى‎)](https://lokalized.com/languages/so) | `so` |
+| [South Ndebele (isiNdebele)](https://lokalized.com/languages/nr) | `nr` |
+| [Southern Kurdish (کوردی خوارگ)](https://lokalized.com/languages/sdh) | `sdh` |
+| [Southern Sami (Åarjelsaemien gïele)](https://lokalized.com/languages/sma) | `sma` |
+| [Southern Sotho (Sesotho)](https://lokalized.com/languages/st) | `st` |
+| [Spanish (español)](https://lokalized.com/languages/es) | `es` |
+| [Sundanese](https://lokalized.com/languages/su) | `su` |
+| [Swahili (Kiswahili)](https://lokalized.com/languages/sw) | `sw` |
+| [Swampy Cree](https://lokalized.com/languages/csw) | `csw` |
+| [Swati (SiSwati)](https://lokalized.com/languages/ss) | `ss` |
+| [Swedish (svenska)](https://lokalized.com/languages/sv) | `sv` |
+| [Swiss German (Schwiizerdütsch)](https://lokalized.com/languages/gsw) | `gsw` |
+| [Syriac (Leššānā Suryāyā)](https://lokalized.com/languages/syr) | `syr` |
+| [Tachelhit (Tašlḥiyt)](https://lokalized.com/languages/shi) | `shi` |
+| [Tamil (Tamiḻ)](https://lokalized.com/languages/ta) | `ta` |
+| [Telugu (తెలుగు)](https://lokalized.com/languages/te) | `te` |
+| [Teso (Ateso)](https://lokalized.com/languages/teo) | `teo` |
+| [Thai (ไทย)](https://lokalized.com/languages/th) | `th` |
+| [Tibetan (བོད་སྐད་)](https://lokalized.com/languages/bo) | `bo` |
+| [Tigre (ትግራይት)](https://lokalized.com/languages/tig) | `tig` |
+| [Tigrinya (ትግርኛ)](https://lokalized.com/languages/ti) | `ti` |
+| [Tok Pisin](https://lokalized.com/languages/tpi) | `tpi` |
+| [Tongan (lea faka-Tonga)](https://lokalized.com/languages/to) | `to` |
+| [Tsonga (Xitsonga)](https://lokalized.com/languages/ts) | `ts` |
+| [Tswana (Setswana)](https://lokalized.com/languages/tn) | `tn` |
+| [Turkish (Türkçe)](https://lokalized.com/languages/tr) | `tr` |
+| [Turkmen (Türkmençe)](https://lokalized.com/languages/tk) | `tk` |
+| [Tyap (Katab)](https://lokalized.com/languages/kcg) | `kcg` |
+| [Uighur (ئۇيغۇر تىلى)](https://lokalized.com/languages/ug) | `ug` |
+| [Ukrainian (українська)](https://lokalized.com/languages/uk) | `uk` |
+| [Upper Sorbian (hornjoserbšćina)](https://lokalized.com/languages/hsb) | `hsb` |
+| [Urdu (اُردُو)](https://lokalized.com/languages/ur) | `ur` |
+| [Uzbek (ўзбек тили)](https://lokalized.com/languages/uz) | `uz` |
+| [Venda (Tshivenḓa)](https://lokalized.com/languages/ve) | `ve` |
+| [Venetian](https://lokalized.com/languages/vec) | `vec` |
+| [Vietnamese (Tiếng Việt)](https://lokalized.com/languages/vi) | `vi` |
+| [Volapük](https://lokalized.com/languages/vo) | `vo` |
+| [Vunjo (Wuunjo)](https://lokalized.com/languages/vun) | `vun` |
+| [Walloon (Walon)](https://lokalized.com/languages/wa) | `wa` |
+| [Walser (Walscher)](https://lokalized.com/languages/wae) | `wae` |
+| [Welsh (Cymraeg)](https://lokalized.com/languages/cy) | `cy` |
+| [Western Frisian (Frysk)](https://lokalized.com/languages/fy) | `fy` |
+| [Wolof](https://lokalized.com/languages/wo) | `wo` |
+| [Xhosa (isiXhosa)](https://lokalized.com/languages/xh) | `xh` |
+| [Yiddish (יידיש)](https://lokalized.com/languages/yi) | `yi` |
+| [Yoruba (Èdè Yorùbá)](https://lokalized.com/languages/yo) | `yo` |
+| [Zulu (isiZulu)](https://lokalized.com/languages/zu) | `zu` |
 
 ## java.util.logging
 

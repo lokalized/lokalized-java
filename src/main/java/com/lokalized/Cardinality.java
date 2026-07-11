@@ -256,11 +256,15 @@ public enum Cardinality implements LanguageForm {
   }
 
   /**
-   * Gets the BCP 47 locale tags for which cardinality operations are supported.
+   * Gets the BCP 47 locale tags represented directly in the generated CLDR cardinality-rule data.
+   * <p>
+   * This is not an exhaustive list of concrete locale tags accepted by cardinality operations. A locale with
+   * additional region or script subtags may be supported through fallback to a less-specific rule tag. Use
+   * {@link #supportedCardinalitiesForLocale(Locale)} to check a concrete locale.
    * <p>
    * The set's values are sorted by natural string ordering.
    *
-   * @return the BCP 47 locale tags for which cardinality operations are supported, not null
+   * @return the BCP 47 locale tags represented directly in the generated CLDR cardinality-rule data, not null
    */
   @NonNull
   public static SortedSet<@NonNull String> getSupportedLocaleTags() {
