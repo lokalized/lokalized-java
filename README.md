@@ -5,7 +5,7 @@
     </picture>
 </a>
 
-Lokalized facilitates natural-sounding software translations on the JVM.  Proudly powering production systems since 2017.
+Lokalized facilitates natural-sounding software translations on the JVM.
 
 It is both a file format...
 
@@ -37,6 +37,8 @@ It is both a file format...
 String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
 assertEquals("I didn't read any books.", message);
 ```
+
+Proudly powering production systems since 2017.
 
 ## Design Goals
 
