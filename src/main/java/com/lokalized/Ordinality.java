@@ -34,7 +34,7 @@ import static java.util.Objects.requireNonNull;
  * For example, English has four: {@code 1st, 2nd, 3rd, 4th}, while Swedish has two: {@code 1:a, 3:e}.
  * <p>
  * See the <a href="http://cldr.unicode.org/index/cldr-spec/plural-rules">Unicode Common Locale Data Repository</a>
- * and its <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
+ * and its <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
  * <p>
  * Per the CLDR:
  * <blockquote>
@@ -102,8 +102,11 @@ public enum Ordinality implements LanguageForm {
    * Gets an appropriate plural ordinality for the given number and locale.
    * <p>
    * Negative numbers are evaluated using their absolute value.
+   * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
+   * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
+   * {@link #forOperands(PluralOperands, Locale)}.
    * <p>
-   * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html</a>
+   * See <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR 48 Language Plural Rules</a>
    * for a cheat sheet.
    *
    * @param number the number that drives pluralization, not null
@@ -126,7 +129,7 @@ public enum Ordinality implements LanguageForm {
    * Most applications should use {@link #forNumber(Number, Locale)}. Use this overload when the displayed number has
    * details that are not fully represented by the Java {@link Number}, such as a compact-decimal exponent.
    * <p>
-   * See <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html</a>
+   * See <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR 48 Language Plural Rules</a>
    * for a cheat sheet.
    *
    * @param operands the CLDR plural operands that drive pluralization, not null

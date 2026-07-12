@@ -102,10 +102,12 @@ public class TranslationOptionsTests {
 
 	@Test
 	public void excessiveLanguageRangeListsAreRejectedDuringConstruction() {
-		List<LanguageRange> maximumLanguageRanges = Collections.nCopies(1000, new LanguageRange("*"));
-		List<LanguageRange> excessiveLanguageRanges = Collections.nCopies(1001, new LanguageRange("*"));
+		List<LanguageRange> maximumLanguageRanges = Collections.nCopies(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES,
+				new LanguageRange("*"));
+		List<LanguageRange> excessiveLanguageRanges = Collections.nCopies(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES + 1,
+				new LanguageRange("*"));
 
-		assertEquals(1000, TranslationOptions.forLanguageRanges(maximumLanguageRanges)
+		assertEquals(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES, TranslationOptions.forLanguageRanges(maximumLanguageRanges)
 				.getLanguageRanges().orElseThrow(AssertionError::new).size());
 		assertThrows(IllegalArgumentException.class,
 				() -> TranslationOptions.forLanguageRanges(excessiveLanguageRanges));

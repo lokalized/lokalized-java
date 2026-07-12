@@ -36,7 +36,7 @@ import static java.util.Objects.requireNonNull;
  * For example, English has two: {@code 1 dog, 2 dogs}, while Welsh has many: {@code 0 cŵn, 1 ci, 2 gi, 3 chi, 4 ci}.
  * <p>
  * See the <a href="http://cldr.unicode.org/index/cldr-spec/plural-rules">Unicode Common Locale Data Repository</a>
- * and its <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
+ * and its <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
  * <p>
  * Per the CLDR:
  * <blockquote>
@@ -110,8 +110,11 @@ public enum Cardinality implements LanguageForm {
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
    * <p>
    * If you do not provide a {@link BigDecimal} and wish to manually specify the number of visible decimals, use {@link #forNumber(Number, Integer, Locale)} instead.
+   * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
+   * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
+   * {@link #forOperands(PluralOperands, Locale)}.
    * <p>
-   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * See the <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
    *
    * @param number the number that drives pluralization, not null
@@ -137,8 +140,11 @@ public enum Cardinality implements LanguageForm {
    * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
    * Reducing the number's scale does not round implicitly; callers must supply an already-rounded value.
+   * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
+   * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
+   * {@link #forOperands(PluralOperands, Locale)}.
    * <p>
-   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * See the <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
    *
    * @param number               the number that drives pluralization, not null
@@ -164,7 +170,7 @@ public enum Cardinality implements LanguageForm {
    * Most applications should use {@link #forNumber(Number, Locale)}. Use this overload when the displayed number has
    * details that are not fully represented by the Java {@link Number}, such as a compact-decimal exponent.
    * <p>
-   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * See the <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
    *
    * @param operands the CLDR plural operands that drive pluralization, not null
@@ -189,7 +195,7 @@ public enum Cardinality implements LanguageForm {
    * determine the range's cardinality.  In English, we say {@code "0–1 days"} - the value {@code 1} is {@code CARDINALITY_ONE}
    * but the range is {@code CARDINALITY_OTHER}.
    * <p>
-   * See the <a href="http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
+   * See the <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">CLDR Language Plural Rules</a>
    * for further details.
    *
    * @param start  the cardinality for the start of the range, not null

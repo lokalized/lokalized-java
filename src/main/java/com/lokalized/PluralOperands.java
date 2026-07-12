@@ -34,35 +34,39 @@ import static java.util.Objects.requireNonNull;
  * Most applications should use {@link Cardinality#forNumber(Number, java.util.Locale)} or
  * {@link Ordinality#forNumber(Number, java.util.Locale)}. Use this type when the displayed number has details that
  * are not fully represented by the Java {@link Number}, such as an explicitly visible decimal count or a compact-decimal exponent.
+ * Builders use {@link TranslationRuntimeLimits#defaults()} unless
+ * {@link Builder#runtimeLimits(TranslationRuntimeLimits)} supplies different limits. This is also how callers opt up
+ * from the defaults to the hard ceilings exposed below.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
 public final class PluralOperands {
   /**
-   * Maximum precision accepted for a number used in plural operands or an alternative-expression numeric literal.
+   * Hard precision ceiling for a number used in plural operands or an alternative-expression numeric literal: 4,096.
    *
    * @since 3.0.0
    */
   @NonNull
   public static final Integer MAXIMUM_NUMBER_PRECISION = TranslationRuntimeLimits.MAXIMUM_NUMBER_PRECISION;
   /**
-   * Maximum absolute {@link BigDecimal#scale()} accepted for a number used in plural operands or an
-   * alternative-expression numeric literal.
+   * Hard ceiling for the absolute {@link BigDecimal#scale()} accepted for a number used in plural operands or an
+   * alternative-expression numeric literal: 4,096.
    *
    * @since 3.0.0
    */
   @NonNull
   public static final Integer MAXIMUM_ABSOLUTE_NUMBER_SCALE = TranslationRuntimeLimits.MAXIMUM_ABSOLUTE_NUMBER_SCALE;
   /**
-   * Maximum number of explicitly visible decimal places accepted by {@link Builder#visibleDecimalPlaces(Integer)}.
+   * Hard ceiling for explicitly visible decimal places accepted by
+   * {@link Builder#visibleDecimalPlaces(Integer)}: 4,096.
    *
    * @since 3.0.0
    */
   @NonNull
   public static final Integer MAXIMUM_VISIBLE_DECIMAL_PLACES = TranslationRuntimeLimits.MAXIMUM_VISIBLE_DECIMAL_PLACES;
   /**
-   * Maximum compact-decimal exponent accepted by {@link Builder#compactExponent(Integer)}.
+   * Hard ceiling for compact-decimal exponents accepted by {@link Builder#compactExponent(Integer)}: 4,096.
    *
    * @since 3.0.0
    */
@@ -300,9 +304,12 @@ public final class PluralOperands {
      * If omitted, {@link BigDecimal} scale is preserved and other {@link Number} types use their normalized decimal places.
      * Reducing the scale does not round implicitly: callers must supply an already-rounded number, otherwise
      * {@link #build()} throws {@link ArithmeticException}.
+     * The active {@link TranslationRuntimeLimits} determine the accepted maximum; the library default is
+     * {@link TranslationRuntimeLimits#DEFAULT_MAXIMUM_VISIBLE_DECIMAL_PLACES} and the hard ceiling is
+     * {@link #MAXIMUM_VISIBLE_DECIMAL_PLACES}.
      *
-     * @param visibleDecimalPlaces the visible decimal places, from zero through
-     *                             {@link #MAXIMUM_VISIBLE_DECIMAL_PLACES}, or null to use the number's natural scale
+     * @param visibleDecimalPlaces the visible decimal places, from zero through the active runtime limit, or null to
+     *                             use the number's natural scale
      * @return this builder, not null
      */
     @NonNull
@@ -315,9 +322,12 @@ public final class PluralOperands {
      * Specifies the compact-decimal exponent used by the CLDR {@code c} and {@code e} operands.
      * <p>
      * For example, a compact display such as {@code 1M} may be evaluated with a compact exponent of {@code 6}.
+     * The active {@link TranslationRuntimeLimits} determine the accepted maximum; the library default is
+     * {@link TranslationRuntimeLimits#DEFAULT_MAXIMUM_COMPACT_EXPONENT} and the hard ceiling is
+     * {@link #MAXIMUM_COMPACT_EXPONENT}.
      *
-     * @param compactExponent the compact-decimal exponent, from zero through {@link #MAXIMUM_COMPACT_EXPONENT},
-     *                        or null to use zero
+     * @param compactExponent the compact-decimal exponent, from zero through the active runtime limit, or null to use
+     *                        zero
      * @return this builder, not null
      */
     @NonNull

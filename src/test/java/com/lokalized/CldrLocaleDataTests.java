@@ -41,6 +41,18 @@ public class CldrLocaleDataTests {
     assertEquals("en-GB-oxendict", CldrLocaleData.canonicalLanguageTag("en-GB-oed"));
     assertEquals("und-Zinh", CldrLocaleData.canonicalLanguageTag("und-Qaai"));
     assertEquals("yue-HK-u-nu-hanidec", CldrLocaleData.canonicalLanguageTag("zh-yue-HK-u-nu-hanidec"));
+    assertEquals("ssy", CldrLocaleData.canonicalLanguageTag("aa-Saaho"));
+    assertEquals("hyw", CldrLocaleData.canonicalLanguageTag("hy-arevmda"));
+    assertEquals("ssy", LocaleUtils.normalizedLanguage(Locale.forLanguageTag("aa-Saaho"))
+        .orElseThrow(AssertionError::new));
+    assertEquals("hyw", LocaleUtils.normalizedLanguage(Locale.forLanguageTag("hy-arevmda"))
+        .orElseThrow(AssertionError::new));
+    assertEquals("he", LocaleUtils.normalizedLanguage(Locale.forLanguageTag("he"))
+        .orElseThrow(AssertionError::new));
+    assertEquals("yi", LocaleUtils.normalizedLanguage(Locale.forLanguageTag("yi"))
+        .orElseThrow(AssertionError::new));
+    assertEquals("id", LocaleUtils.normalizedLanguage(Locale.forLanguageTag("id"))
+        .orElseThrow(AssertionError::new));
   }
 
   @Test
@@ -120,6 +132,24 @@ public class CldrLocaleDataTests {
 
     assertEquals(List.of("zh-Hant-TW", "zh-Hant"), traditionalChineseTags);
     assertEquals(List.of("zh-TW"), taiwanChineseTags);
+  }
+
+  @Test
+  public void fallbackLocalesDeduplicateUnicodeExtensionTruncation() {
+    List<String> languageTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("en-US-u-ca-gregory")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+
+    assertEquals(List.of("en-US-u-ca-gregory", "en-US-u-ca", "en-US", "en"), languageTags);
+  }
+
+  @Test
+  public void fallbackLocalesDeduplicatePrivateUseTruncation() {
+    List<String> languageTags = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag("en-US-x-private")).stream()
+        .map(Locale::toLanguageTag)
+        .collect(Collectors.toList());
+
+    assertEquals(List.of("en-US-x-private", "en-US", "en"), languageTags);
   }
 
   private void assertCanonicalizationIsStable(String languageTag) {

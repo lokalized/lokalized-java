@@ -14,7 +14,7 @@
  * limitations under the License.
  *
  * This generated source contains data derived from Unicode CLDR 48.2. CLDR data files are
- * Copyright © 1991-2026 Unicode, Inc. and licensed under Unicode License v3.
+ * Copyright © 1991-2025 Unicode, Inc. and licensed under Unicode License v3.
  * See THIRD-PARTY-NOTICES.md.
  */
 

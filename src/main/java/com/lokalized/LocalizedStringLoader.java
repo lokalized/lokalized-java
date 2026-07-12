@@ -93,7 +93,7 @@ public final class LocalizedStringLoader {
 
   static {
     LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
-    EXPRESSION_EVALUATOR = new ExpressionEvaluator();
+    EXPRESSION_EVALUATOR = new ExpressionEvaluator(null, null, TranslationRuntimeLimits.hardCeilings());
 
     Set<@NonNull LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
     supportedLanguageForms.addAll(Arrays.asList(Gender.values()));
@@ -905,8 +905,7 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
 
-    String contents = readStrictUtf8(inputStream, source, loadingOptions);
-    return parseLocalizedStrings(source, contents, locale, warningHandler, loadingOptions);
+    return parse(inputStream, locale, source, new LoadingSession(loadingOptions, warningHandler));
   }
 
   /**
@@ -947,8 +946,10 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
 
+    LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
+    loadingSession.beginCatalog(source);
     String contents = readCharacters(reader, source, loadingOptions);
-    return parseLocalizedStrings(source, contents, locale, warningHandler, loadingOptions);
+    return parseLocalizedStrings(source, contents, locale, loadingSession);
   }
 
   /**
@@ -1429,17 +1430,7 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
 
-    String canonicalPath = canonicalPathForPath(path);
-
-    if (!Files.isRegularFile(path))
-      throw new LocalizedStringLoadingException(format("%s is not a regular file", canonicalPath));
-
-    try (InputStream inputStream = Files.newInputStream(path)) {
-      return parse(inputStream, locale, canonicalPath, warningHandler, loadingOptions);
-    } catch (IOException e) {
-      throw new LocalizedStringLoadingException(format("Unable to load localized strings file contents for %s",
-          canonicalPath), e);
-    }
+    return parseLocalizedStringsFile(path, locale, new LoadingSession(loadingOptions, warningHandler));
   }
 
   @NonNull
@@ -1472,24 +1463,17 @@ public final class LocalizedStringLoader {
 
     loadingSession.beginCatalog(source);
     String contents = readStrictUtf8(inputStream, source, loadingSession.getLoadingOptions(), loadingSession);
-    Set<@NonNull LocalizedString> localizedStrings = parseLocalizedStrings(source, contents, locale, loadingSession,
-        loadingSession, loadingSession.getLoadingOptions());
-    return localizedStrings;
-  }
-
-  @NonNull
-  private static String readStrictUtf8(@NonNull InputStream inputStream, @NonNull String source,
-                                       @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return readStrictUtf8(inputStream, source, loadingOptions, null);
+    return parseLocalizedStrings(source, contents, locale, loadingSession);
   }
 
   @NonNull
   private static String readStrictUtf8(@NonNull InputStream inputStream, @NonNull String source,
                                        @NonNull LocalizedStringLoadingOptions loadingOptions,
-                                       @Nullable LoadingSession loadingSession) {
+                                       @NonNull LoadingSession loadingSession) {
     requireNonNull(inputStream);
     requireNonNull(source);
     requireNonNull(loadingOptions);
+    requireNonNull(loadingSession);
 
     int maximumInputBytes = loadingOptions.getMaximumInputBytes();
     byte[] bytes;
@@ -1508,8 +1492,7 @@ public final class LocalizedStringLoader {
         if (bytesRead == 0)
           continue;
 
-        if (loadingSession != null)
-          loadingSession.addInputBytes(bytesRead, source);
+        loadingSession.addInputBytes(bytesRead, source);
 
         outputStream.write(buffer, 0, bytesRead);
       }
@@ -1591,24 +1574,13 @@ public final class LocalizedStringLoader {
   private static Set<@NonNull LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
                                                                      @NonNull String localizedStringsFileContents,
                                                                      @NonNull Locale locale,
-                                                                     @NonNull LocalizedStringWarningHandler warningHandler,
-                                                                     @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return parseLocalizedStrings(canonicalPath, localizedStringsFileContents, locale, warningHandler, null,
-        loadingOptions);
-  }
-
-  @NonNull
-  private static Set<@NonNull LocalizedString> parseLocalizedStrings(@NonNull String canonicalPath,
-                                                                     @NonNull String localizedStringsFileContents,
-                                                                     @NonNull Locale locale,
-                                                                     @NonNull LocalizedStringWarningHandler warningHandler,
-                                                                     @Nullable LoadingSession loadingSession,
-                                                                     @NonNull LocalizedStringLoadingOptions loadingOptions) {
+                                                                     @NonNull LoadingSession loadingSession) {
     requireNonNull(canonicalPath);
     requireNonNull(localizedStringsFileContents);
     requireNonNull(locale);
-    requireNonNull(warningHandler);
-    requireNonNull(loadingOptions);
+    requireNonNull(loadingSession);
+
+    LocalizedStringLoadingOptions loadingOptions = loadingSession.getLoadingOptions();
 
     if (isJsonWhitespaceOnly(localizedStringsFileContents))
       throw new LocalizedStringLoadingException(format(
@@ -1632,8 +1604,7 @@ public final class LocalizedStringLoader {
 
     JsonObject outerJsonObject = outerJsonValue.asObject();
 
-    if (loadingSession != null)
-      loadingSession.addTranslations(outerJsonObject.size(), canonicalPath);
+    loadingSession.addTranslations(outerJsonObject.size(), canonicalPath);
 
     Set<String> keys = new HashSet<>();
 
@@ -1645,7 +1616,7 @@ public final class LocalizedStringLoader {
 
       JsonValue value = member.getValue();
       validateNoDuplicateObjectMembers(canonicalPath, value, jsonObjectMemberPath("$", key));
-      LocalizedString localizedString = parseLocalizedString(canonicalPath, key, value, null);
+      LocalizedString localizedString = parseLocalizedString(canonicalPath, key, value, null, loadingSession);
 
       try {
         LocalizedStringValidator.validate(locale, localizedString);
@@ -1654,7 +1625,7 @@ public final class LocalizedStringLoader {
             "%s: semantic validation failed for localized string key '%s'", canonicalPath, key), e);
       }
 
-      warnOnIncompleteLanguageFormTranslations(canonicalPath, locale, key, localizedString, warningHandler);
+      warnOnIncompleteLanguageFormTranslations(canonicalPath, locale, key, localizedString, loadingSession);
       localizedStrings.add(localizedString);
     }
 
@@ -1814,18 +1785,23 @@ public final class LocalizedStringLoader {
    * <p>
    * Operates recursively if alternatives are encountered.
    *
-   * @param canonicalPath the unique path to the file (or URL) being parsed, used for error reporting. not null
-   * @param key           the toplevel translation key, not null
-   * @param jsonValue     the toplevel translation value - might be a simple string, might be a complex object. not null
+   * @param canonicalPath   the unique path to the file (or URL) being parsed, used for error reporting, not null
+   * @param key             the root translation key or nested alternative expression, not null
+   * @param jsonValue       the translation value, which may be a simple string or a complex object, not null
+   * @param expressionTokens pre-parsed tokens when this is an alternative, or null for a root translation
+   * @param loadingSession  load-wide resource budget, not null
    * @return a localized string instance, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key, @NonNull JsonValue jsonValue,
-                                                      @Nullable List<@NonNull Token> expressionTokens) {
+  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key,
+                                                      @NonNull JsonValue jsonValue,
+                                                      @Nullable List<@NonNull Token> expressionTokens,
+                                                      @NonNull LoadingSession loadingSession) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(jsonValue);
+    requireNonNull(loadingSession);
 
     LocalizedString.Builder localizedStringBuilder = new LocalizedString.Builder(key).expressionTokens(expressionTokens);
 
@@ -1960,8 +1936,10 @@ public final class LocalizedStringLoader {
           for (Member member : outerJsonObject) {
             String alternativeKey = member.getName();
             JsonValue alternativeValue = member.getValue();
+            loadingSession.addTranslations(1, canonicalPath);
             List<@NonNull Token> alternativeTokens = parseExpressionTokens(canonicalPath, alternativeKey);
-            alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue, alternativeTokens));
+            alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue, alternativeTokens,
+                loadingSession));
           }
         }
       }

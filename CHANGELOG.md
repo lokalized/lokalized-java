@@ -19,9 +19,17 @@ All notable changes to Lokalized will be documented in this file.
   reserved language-form placeholder names, invalid locale filenames in explicitly loaded filesystem catalog
   directories, invalid alternative expressions, explicit null placeholder modes, blank/BOM-only catalogs, and
   malformed UTF-8 at load time. Invalid locale filenames discovered on the classpath are warnings instead.
-- Existing loader overloads now apply per-resource defaults of 16 MiB input, 16 MiB reader characters, and 128 JSON
-  nesting levels. Classpath package paths must be nonempty, slash-relative, and free of traversal segments; trailing
-  slashes are normalized.
+- Existing loader overloads now apply per-resource defaults of 8 MiB input, 8,388,608 reader UTF-16 code units, and 64
+  JSON nesting levels, plus load-wide defaults of 32 MiB input, 256 catalogs, 100,000 localized-string nodes, and 1,000
+  warnings. Translation and warning limits now also apply to single-resource `parse(...)` calls, and the translation
+  count includes nested alternatives. Classpath package paths must be nonempty, slash-relative, and free of traversal
+  segments; trailing slashes are normalized.
+- Locale matching now accepts at most 32 parsed language ranges per call. The count includes equivalent ranges added by
+  `Locale.LanguageRange.parse(...)`, not only the comma-separated values in the source header.
+- Runtime safety defaults are lower: 1,024 for numeric precision, absolute scale, and visible decimal places; 64 for
+  compact exponents; 2,048 characters / 256 tokens / 32 nested groups for expressions; 32 generated-placeholder
+  levels; 262,144 UTF-16 code units of interpolated output; and 1,048,576 code units of cumulative generated expansion.
+  The previous values remain hard ceilings and can be selected explicitly with `TranslationRuntimeLimits`.
 - `PluralOperands.visibleDecimalPlaces(...)` no longer floors discarded digits. Reducing scale now throws
   `ArithmeticException` unless the supplied number is already rounded to that scale.
 - Programmatic `LocalizedString` catalogs now receive the same semantic validation as file-backed catalogs when
@@ -83,8 +91,8 @@ All notable changes to Lokalized will be documented in this file.
   effective quality, match kind, considered locales, and an explicit unmatched state.
 - Added `Strings.Builder.localeMatchSupplier(...)` so request-scoped negotiation can retain original language ranges
   and strict match diagnostics; `localeSupplier(...)` remains available when only a selected locale is needed.
-- Added immutable `TranslationRuntimeLimits` for lowering the hard numeric, expression, generated-placeholder,
-  and interpolation safety ceilings globally, with direct support in `PluralOperands`.
+- Added immutable `TranslationRuntimeLimits` for configuring numeric, expression, generated-placeholder, and
+  interpolation safety limits within documented hard ceilings, with direct support in `PluralOperands`.
 - Added aggregate catalog limits and explicit locale-to-classpath-resource loading for containers and custom
   classloaders that can open resources but cannot enumerate standard `file:` or `jar:` package URLs.
 
@@ -94,24 +102,36 @@ All notable changes to Lokalized will be documented in this file.
   The default handler returns the key with caller-supplied placeholders interpolated.
 - Locale matching now uses full CLDR aliases, including compound aliases and context-sensitive
   multi-territory replacements, parent locales, likely subtags, and script-aware matching.
+- Plural-rule lookup now canonicalizes the complete locale tag before selecting cardinality, ordinality, and range
+  data, so compound language aliases such as `aa-Saaho` → `ssy` no longer fail or fall through to the wrong language.
 - Exact loaded locale tags win before canonical-equivalent aliases; language-range quality weights and
-  `q=0` exclusions are honored.
+  `q=0` exclusions are honored. Exact private-use tags such as `x-acme` can be selected consistently through locale
+  and language-range options, while multiple private-use or undetermined catalogs no longer require meaningless
+  primary-language tiebreakers.
+- Locale fallback chains are deduplicated after conversion to `Locale`, avoiding repeated attempts when RFC 4647
+  truncation leaves a trailing extension singleton that Java discards.
+- Fallback after a resolution failure preserves the first application exception without mutating it with suppressed
+  failures from later locale attempts.
 - Sparse locale files can fall back per key through the locale candidate chain.
 - Placeholder and expression identifiers now share the same Unicode letter/digit naming policy.
 - Selected generated-placeholder fragments may reference caller values and other generated placeholders recursively;
-  cycles, excessive depth, and output above 1,048,576 characters are resolution failures.
+  cycles, excessive depth, and output above the configured limit are resolution failures. The default output limit is
+  262,144 UTF-16 code units, with a 1,048,576-code-unit hard ceiling.
 - Alternatives-only keys for which no condition matches are reported as
   `TranslationFailureReason.NO_MATCHING_ALTERNATIVE` without a synthetic expression-evaluation cause.
-- Failure-key interpolation is capped at 1,048,576 characters; if interpolation would exceed the cap, the raw key is
-  returned.
+- Failure-key interpolation uses the configured output limit, 262,144 UTF-16 code units by default; if interpolation
+  would exceed the cap, the raw key is returned.
 - `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched locale
   preferences resolve to the configured fallback locale.
-- Language-range matching accepts at most 1,000 preferences per call. If every supported locale is excluded by
-  `q=0`, `bestMatchFor(...)` returns the configured fallback while strict `matchFor(...)` reports no acceptable locale.
+- Language-range matching accepts at most 32 parsed preferences per call. `Locale.LanguageRange.parse(...)` may expand
+  one source range into multiple IANA-equivalent ranges, all of which count toward the limit. If every supported locale
+  is excluded by `q=0`, `bestMatchFor(...)` returns the configured fallback while strict `matchFor(...)` reports no
+  acceptable locale.
 - Language-range matching no longer crosses known likely-script boundaries and applies `q=0` exclusions to canonical
   alias descendants, such as `sh;q=0` excluding `sr-Latn-RS`.
 - Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
-  limits, preventing many individually legal cached fragments from exhausting the heap.
+  limits, preventing many individually legal cached fragments from exhausting the heap. The default cumulative budget
+  is 1,048,576 UTF-16 code units, with an 8,388,608-code-unit hard ceiling.
 - Numeric literals and plural operands are validated before materialization, so compact exponents and decimal scales
   cannot create unbounded work.
 - Canonical-alias lookup records and evaluates against the actual loaded catalog locale, deduplicates equivalent
@@ -164,8 +184,17 @@ All notable changes to Lokalized will be documented in this file.
   locale filenames in explicitly loaded filesystem catalog directories, invalid alternative expressions, explicit
   null placeholder modes, blank/BOM-only catalogs, and malformed UTF-8 are rejected while loading. Use `{}` for an
   empty catalog.
-- Review catalog sizes and nesting against the new per-resource defaults (16 MiB bytes/characters and depth 128).
-  Pass `LocalizedStringLoadingOptions` to lower limits where appropriate; nesting cannot be raised above 128.
+- Review catalog sizes and nesting against the new per-resource defaults (8 MiB input, 8,388,608 reader UTF-16 code
+  units, and depth 64) and load-wide defaults (32 MiB input and 256 catalogs). The 100,000-translation budget counts
+  top-level messages and nested alternatives, and it and the 1,000-warning budget also apply to single-resource `parse(...)`
+  calls. A configured total-input budget also applies to single-resource `Path` and `InputStream` parsing. Pass
+  `LocalizedStringLoadingOptions` to select different limits; nesting cannot be raised above 128.
+- Bound the raw `Accept-Language` header size before calling `Locale.LanguageRange.parse(...)`, then ensure the parsed
+  list contains at most 32 ranges. Parsing may add equivalent ranges, and Lokalized cannot bound work that occurs before
+  it receives the parsed list.
+- Review any application that relied on the previous runtime defaults. Use `TranslationRuntimeLimits` to opt back up
+  where necessary; the previous numeric, expression, generated-placeholder, interpolation, and expansion values remain
+  hard ceilings.
 - Prefer a namespaced classpath package such as `com/example/myapp/strings`. Enable
   `LocalizedStringLoadingOptions.Builder.exhaustiveClasspathSearch(true)` only when a JAR omits package directory
   entries. Classpath `.json` resources whose filenames are not valid locale tags are warning-and-skip, but remain fatal

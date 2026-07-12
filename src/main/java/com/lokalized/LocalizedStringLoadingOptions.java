@@ -29,10 +29,12 @@ import static java.util.Objects.requireNonNull;
 /**
  * Options applied while discovering and loading localized strings files.
  * <p>
- * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The character limit
- * applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized. Aggregate
- * limits apply to multi-resource filesystem and classpath loads; the single-resource {@code parse(...)} methods retain
- * their per-resource semantics.
+ * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The UTF-16 code-unit
+ * limit applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized. The
+ * catalog, translation, and warning limits apply to every load, including single-resource {@code parse(...)}
+ * operations. The aggregate byte limit also applies to path and input-stream parsing; it cannot apply to a
+ * {@link java.io.Reader} because the original byte representation is unavailable.
+ * <p>
  * Exhaustive classpath searching is disabled by default because it inspects every filesystem and JAR root visible to
  * a classloader. Enable it only when localized strings are packaged in a JAR that omits directory entries and ordinary
  * {@link ClassLoader#getResources(String)} discovery therefore cannot find the requested package.
@@ -42,33 +44,33 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 public final class LocalizedStringLoadingOptions {
-	/** Default maximum number of bytes read from one localized strings resource: 16 MiB. */
+	/** Default maximum read from one localized strings resource: 8,388,608 bytes (8 MiB). */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_INPUT_BYTES = 16 * 1024 * 1024;
-	/** Default maximum number of characters read from one {@link java.io.Reader}: 16 MiB characters. */
+	public static final Integer DEFAULT_MAXIMUM_INPUT_BYTES = 8 * 1024 * 1024;
+	/** Default maximum read from one {@link java.io.Reader}: 8,388,608 UTF-16 code units. */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_READER_CHARACTERS = 16 * 1024 * 1024;
-	/** Default maximum JSON object/array nesting depth. */
+	public static final Integer DEFAULT_MAXIMUM_READER_CHARACTERS = 8 * 1024 * 1024;
+	/** Default maximum JSON object/array nesting depth: 64. */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_JSON_NESTING_DEPTH = 128;
-	/** Whether exhaustive classpath-root searching is enabled by default. */
+	public static final Integer DEFAULT_MAXIMUM_JSON_NESTING_DEPTH = 64;
+	/** Whether exhaustive classpath-root searching is enabled by default: false. */
 	@NonNull
 	public static final Boolean DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH = false;
-	/** Highest configurable JSON nesting depth supported by the recursive parser. */
+	/** Highest configurable JSON nesting depth supported by the loader: 128. */
 	@NonNull
 	public static final Integer MAXIMUM_JSON_NESTING_DEPTH = 128;
-	/** Default maximum total bytes read by one multi-resource load: 64 MiB. */
+	/** Default maximum total read by one load: 33,554,432 bytes (32 MiB). */
 	@NonNull
-	public static final Long DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES = 64L * 1024L * 1024L;
-	/** Default maximum number of catalogs accepted by one multi-resource load. */
+	public static final Long DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES = 32L * 1024L * 1024L;
+	/** Default maximum number of catalogs accepted by one load: 256. */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_CATALOGS = 1_000;
-	/** Default maximum number of translations accepted by one multi-resource load. */
+	public static final Integer DEFAULT_MAXIMUM_CATALOGS = 256;
+	/** Default maximum root translations and nested alternatives accepted by one load: 100,000. */
 	@NonNull
 	public static final Integer DEFAULT_MAXIMUM_TRANSLATIONS = 100_000;
-	/** Default maximum number of warnings emitted by one multi-resource load. */
+	/** Default maximum number of warnings emitted by one load: 1,000. */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_WARNINGS = 10_000;
+	public static final Integer DEFAULT_MAXIMUM_WARNINGS = 1_000;
 
 	@NonNull
 	private static final LocalizedStringLoadingOptions DEFAULTS = new Builder().build();
@@ -140,7 +142,7 @@ public final class LocalizedStringLoadingOptions {
 		return maximumInputBytes;
 	}
 
-	/** @return the maximum characters accepted from a reader */
+	/** @return the maximum UTF-16 code units accepted from a reader */
 	@NonNull
 	public Integer getMaximumReaderCharacters() {
 		return maximumReaderCharacters;
@@ -164,7 +166,8 @@ public final class LocalizedStringLoadingOptions {
 	}
 
 	/**
-	 * Gets the maximum total bytes accepted by one multi-resource filesystem or classpath load.
+	 * Gets the maximum total bytes accepted by one filesystem, classpath, path, or input-stream load.
+	 * This limit does not apply to reader input because its original byte representation is unavailable.
 	 *
 	 * @return the aggregate byte limit, not null
 	 */
@@ -173,19 +176,19 @@ public final class LocalizedStringLoadingOptions {
 		return maximumTotalInputBytes;
 	}
 
-	/** @return the maximum catalogs accepted by one multi-resource load, not null */
+	/** @return the maximum catalogs accepted by one load, not null */
 	@NonNull
 	public Integer getMaximumCatalogs() {
 		return maximumCatalogs;
 	}
 
-	/** @return the maximum translations accepted by one multi-resource load, not null */
+	/** @return the maximum root translations and nested alternatives accepted by one load, not null */
 	@NonNull
 	public Integer getMaximumTranslations() {
 		return maximumTranslations;
 	}
 
-	/** @return the maximum warnings emitted by one multi-resource load, not null */
+	/** @return the maximum warnings emitted by one load, not null */
 	@NonNull
 	public Integer getMaximumWarnings() {
 		return maximumWarnings;
@@ -256,9 +259,9 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum characters accepted from a reader.
+		 * Sets the maximum UTF-16 code units accepted from a reader.
 		 *
-		 * @param maximumReaderCharacters positive character limit
+		 * @param maximumReaderCharacters positive UTF-16 code-unit limit
 		 * @return this builder, not null
 		 */
 		@NonNull
@@ -304,8 +307,8 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum total bytes accepted by one multi-resource filesystem or classpath load.
-		 * Single-resource {@code parse(...)} calls continue to use only {@link #maximumInputBytes(Integer)}.
+		 * Sets the maximum total bytes accepted by one filesystem, classpath, path, or input-stream load.
+		 * This limit does not apply to reader input because its original byte representation is unavailable.
 		 *
 		 * @param maximumTotalInputBytes positive aggregate byte limit, not null
 		 * @return this builder, not null
@@ -320,7 +323,7 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum catalogs accepted by one multi-resource load.
+		 * Sets the maximum catalogs accepted by one load.
 		 *
 		 * @param maximumCatalogs positive catalog limit, not null
 		 * @return this builder, not null
@@ -335,7 +338,7 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum translations accepted by one multi-resource load.
+		 * Sets the maximum root translations and nested alternatives accepted by one load.
 		 *
 		 * @param maximumTranslations nonnegative translation limit, not null
 		 * @return this builder, not null
@@ -350,7 +353,7 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum warnings emitted by one multi-resource load.
+		 * Sets the maximum warnings emitted by one load.
 		 *
 		 * @param maximumWarnings nonnegative warning limit, not null
 		 * @return this builder, not null

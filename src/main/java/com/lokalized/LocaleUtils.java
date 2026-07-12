@@ -38,9 +38,9 @@ class LocaleUtils {
   /**
    * Normalizes a locale's language code to its canonical form.
    * <p>
-   * See <a target="_blank" href="https://docs.oracle.com/javase/8/docs/api/java/util/Locale.html#getLanguage--">Javadoc for {@code Locale#getLanguage()}</a>.
+   * See <a target="_blank" href="https://docs.oracle.com/javase/9/docs/api/java/util/Locale.html#getLanguage--">Javadoc for {@code Locale#getLanguage()}</a>.
    * <p>
-   * For backwards compatibility, the {@code Locale#convertOldISOCodes()} method ensures {@code Locale#getLanguage()} will always return these now-superseded codes:
+   * On older supported JDK releases, {@code Locale#getLanguage()} preserves these superseded codes for compatibility:
    * <p>
    * <ul>
    * <li>{@code iw} for {@code he} (Hebrew)</li>
@@ -48,7 +48,8 @@ class LocaleUtils {
    * <li>{@code in} for {@code id} (Indonesian)</li>
    * </ul>
    * <p>
-   * This method ensures we always work with the "modern" versions and other CLDR language aliases.
+   * This method canonicalizes the full locale tag before extracting its language, so compound CLDR language aliases
+   * such as {@code aa-Saaho} to {@code ssy} are handled as well as one-subtag aliases.
    *
    * @param locale the locale for which the language code is extracted, not null
    * @return the normalized language for the locale (if present), not null
@@ -61,7 +62,27 @@ class LocaleUtils {
     if (language == null || "".equals(language) || "*".equals(language))
       return Optional.empty();
 
-    language = CldrLocaleData.languageAliasFor(language).orElse(language);
+    return languageForCanonicalTag(CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag()));
+  }
+
+  /**
+   * Extracts the primary language from an already-canonical BCP 47 tag without round-tripping through
+   * {@link Locale#getLanguage()}, whose legacy-code behavior differs across supported JDK releases.
+   */
+  static Optional<String> languageForCanonicalTag(@NonNull String canonicalLanguageTag) {
+    requireNonNull(canonicalLanguageTag);
+
+    if (canonicalLanguageTag.equalsIgnoreCase("x") ||
+        canonicalLanguageTag.toLowerCase(Locale.ROOT).startsWith("x-"))
+      return Optional.empty();
+
+    int separatorIndex = canonicalLanguageTag.indexOf('-');
+    String language = separatorIndex < 0
+        ? canonicalLanguageTag
+        : canonicalLanguageTag.substring(0, separatorIndex);
+
+    if ("".equals(language) || "und".equalsIgnoreCase(language))
+      return Optional.empty();
 
     return Optional.of(language);
   }

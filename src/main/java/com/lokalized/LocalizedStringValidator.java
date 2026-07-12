@@ -43,7 +43,8 @@ import static java.util.Objects.requireNonNull;
 final class LocalizedStringValidator {
   private static final int MAXIMUM_ALTERNATIVE_DEPTH = 128;
   @NonNull
-  private static final ExpressionEvaluator EXPRESSION_EVALUATOR = new ExpressionEvaluator();
+  private static final ExpressionEvaluator EXPRESSION_EVALUATOR = new ExpressionEvaluator(null, null,
+      TranslationRuntimeLimits.hardCeilings());
   @NonNull
   private static final Set<@NonNull String> RESERVED_LANGUAGE_FORM_NAMES;
 

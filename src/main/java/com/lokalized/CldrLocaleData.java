@@ -97,18 +97,6 @@ final class CldrLocaleData {
   }
 
   @NonNull
-  static Optional<String> languageAliasFor(@NonNull String language) {
-    requireNonNull(language);
-
-    @Nullable String alias = LANGUAGE_ALIASES_BY_TAG.get(keyFor(language));
-
-    if (alias == null)
-      return Optional.empty();
-
-    return Optional.of(languageFor(alias));
-  }
-
-  @NonNull
   static Locale canonicalLocale(@NonNull Locale locale) {
     requireNonNull(locale);
     return localeForTag(canonicalLanguageTag(locale.toLanguageTag()));
@@ -150,13 +138,13 @@ final class CldrLocaleData {
     addFallbackTags(candidateTags, canonicalLanguageTag);
     addParentTags(candidateTags, canonicalLanguageTag);
 
-    List<@NonNull Locale> candidateLocales = new ArrayList<>(candidateTags.size());
+    LinkedHashSet<@NonNull Locale> candidateLocales = new LinkedHashSet<>();
 
     for (String candidateTag : candidateTags)
       if (!ROOT_PARENT.equals(candidateTag))
         candidateLocales.add(localeForTag(candidateTag));
 
-    return Collections.unmodifiableList(candidateLocales);
+    return Collections.unmodifiableList(new ArrayList<>(candidateLocales));
   }
 
   @NonNull
@@ -257,6 +245,11 @@ final class CldrLocaleData {
 
     TagParts tagParts = TagParts.forLanguageTag(languageTag);
     return tagParts.getLanguage().length() == 0 || UNDETERMINED_LANGUAGE.equalsIgnoreCase(tagParts.getLanguage());
+  }
+
+  static boolean isPrivateUseLanguageTag(@NonNull String languageTag) {
+    requireNonNull(languageTag);
+    return TagParts.forLanguageTag(languageTag).isPrivateUse();
   }
 
   private static boolean isKnownLanguage(String language) {
@@ -502,12 +495,6 @@ final class CldrLocaleData {
       return Locale.ROOT;
 
     return Locale.forLanguageTag(languageTag);
-  }
-
-  @NonNull
-  private static String languageFor(@NonNull String languageTag) {
-    int separatorIndex = languageTag.indexOf('-');
-    return (separatorIndex < 0 ? languageTag : languageTag.substring(0, separatorIndex)).toLowerCase(Locale.ROOT);
   }
 
   @NonNull

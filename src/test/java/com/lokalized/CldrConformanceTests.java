@@ -24,8 +24,9 @@ import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.util.EnumSet;
 import java.util.Formatter;
-import java.util.Map;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -105,6 +106,58 @@ public class CldrConformanceTests {
     for (GeneratedCldrConformanceData.CardinalityRangeRule rule : GeneratedCldrConformanceData.cardinalityRangeRules())
       for (String localeTag : valuesIn(rule.getLocales()))
         assertRange(localeTag, rule.getStart(), rule.getEnd(), rule.getExpected());
+  }
+
+  @Test
+  public void generatedLanguageAliasesUseCanonicalPluralBehavior() {
+    List<Number> sampleNumbers = List.of(
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 20, 21, 100, 1_000,
+        new BigDecimal("0.1"), new BigDecimal("1.0"), new BigDecimal("1.1"), new BigDecimal("2.0"));
+
+    for (String[] alias : GeneratedCldrLocaleData.LANGUAGE_ALIASES) {
+      Locale aliasLocale = Locale.forLanguageTag(alias[0]);
+      Locale canonicalLocale = CldrLocaleData.canonicalLocale(aliasLocale);
+      String message = format("Mismatched CLDR language alias %s -> %s (Java locale %s)",
+          alias[0], canonicalLocale.toLanguageTag(), aliasLocale.toLanguageTag());
+      Set<Cardinality> canonicalCardinalities = Cardinality.supportedCardinalitiesForLocale(canonicalLocale);
+      Set<Ordinality> canonicalOrdinalities = Ordinality.supportedOrdinalitiesForLocale(canonicalLocale);
+
+      assertEquals(canonicalCardinalities, Cardinality.supportedCardinalitiesForLocale(aliasLocale), message);
+      assertEquals(canonicalOrdinalities, Ordinality.supportedOrdinalitiesForLocale(aliasLocale), message);
+      assertEquals(Cardinality.exampleIntegerValuesForLocale(canonicalLocale),
+          Cardinality.exampleIntegerValuesForLocale(aliasLocale), message);
+      assertEquals(Cardinality.exampleDecimalValuesForLocale(canonicalLocale),
+          Cardinality.exampleDecimalValuesForLocale(aliasLocale), message);
+      assertEquals(Ordinality.exampleIntegerValuesForLocale(canonicalLocale),
+          Ordinality.exampleIntegerValuesForLocale(aliasLocale), message);
+
+      if (!canonicalCardinalities.isEmpty()) {
+        for (Number sampleNumber : sampleNumbers)
+          assertEquals(Cardinality.forNumber(sampleNumber, canonicalLocale),
+              Cardinality.forNumber(sampleNumber, aliasLocale), message + " for " + sampleNumber);
+
+        for (Cardinality start : Cardinality.values())
+          for (Cardinality end : Cardinality.values())
+            assertEquals(Cardinality.forRange(start, end, canonicalLocale),
+                Cardinality.forRange(start, end, aliasLocale), message + " for " + start + "-" + end);
+      }
+
+      if (!canonicalOrdinalities.isEmpty())
+        for (Number sampleNumber : sampleNumbers)
+          assertEquals(Ordinality.forNumber(sampleNumber, canonicalLocale),
+              Ordinality.forNumber(sampleNumber, aliasLocale), message + " for " + sampleNumber);
+    }
+  }
+
+  @Test
+  public void privateUseLocalesUseRootPluralRules() {
+    Locale privateUseLocale = Locale.forLanguageTag("x-acme");
+
+    assertEquals(Set.of(Cardinality.OTHER), Cardinality.supportedCardinalitiesForLocale(privateUseLocale));
+    assertEquals(Set.of(Ordinality.OTHER), Ordinality.supportedOrdinalitiesForLocale(privateUseLocale));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, privateUseLocale));
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, privateUseLocale));
+    assertEquals(Cardinality.ONE, Cardinality.forRange(Cardinality.OTHER, Cardinality.ONE, privateUseLocale));
   }
 
   private void assertCardinality(String localeTag, String sample, Cardinality expected) {

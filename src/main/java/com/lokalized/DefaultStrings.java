@@ -269,13 +269,18 @@ class DefaultStrings implements Strings {
 		Map<@NonNull String, @NonNull Set<@NonNull Locale>> supportedLocalesByLanguageCode = new HashMap<>(localizedStringsByLocale.size());
 
 		for (Locale supportedLocale : localizedStringsByLocale.keySet()) {
-			String languageCode = LocaleUtils.normalizedLanguage(supportedLocale)
-					.orElse(supportedLocale.getLanguage());
-			Set<@NonNull Locale> locales = supportedLocalesByLanguageCode.get(languageCode);
+			Optional<@NonNull String> languageCode = LocaleUtils.normalizedLanguage(supportedLocale);
+
+			// Private-use and undetermined tags have no primary-language matching semantics. They can be selected exactly,
+			// but multiple such catalogs do not create the broad-language ambiguity that tiebreakers resolve.
+			if (!languageCode.isPresent())
+				continue;
+
+			Set<@NonNull Locale> locales = supportedLocalesByLanguageCode.get(languageCode.get());
 
 			if (locales == null) {
 				locales = new HashSet<>();
-				supportedLocalesByLanguageCode.put(languageCode, locales);
+				supportedLocalesByLanguageCode.put(languageCode.get(), locales);
 			}
 
 			locales.add(supportedLocale);
@@ -541,8 +546,6 @@ class DefaultStrings implements Strings {
 
 						if (firstFallbackFailure == null)
 							firstFallbackFailure = e;
-						else if (firstFallbackFailure != e)
-							firstFallbackFailure.addSuppressed(e);
 
 						logger.finer(format("Unable to resolve key '%s' for locale '%s'. Cause: %s",
 								key, candidateLocale.toLanguageTag(), e.getMessage()));
@@ -1232,9 +1235,9 @@ class DefaultStrings implements Strings {
 	public LocaleMatchResult matchFor(@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
 
-		if (languageRanges.size() > TranslationOptions.MAXIMUM_LANGUAGE_RANGES)
+		if (languageRanges.size() > LocaleMatcher.MAXIMUM_LANGUAGE_RANGES)
 			throw new IllegalArgumentException(format("At most %d language ranges are supported, but received %d",
-					TranslationOptions.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
+					LocaleMatcher.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
 
 		List<@NonNull LanguageRange> requestedLanguageRanges = new ArrayList<>(languageRanges.size());
 
@@ -1278,6 +1281,7 @@ class DefaultStrings implements Strings {
 		for (LanguageRange languageRange : sortedLanguageRanges) {
 			String range = languageRange.getRange(); // e.g. "pt" or "pt-PT"
 			double weight = languageRange.getWeight();
+			boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
 
 			if (weight <= 0)
 				continue;
@@ -1286,7 +1290,7 @@ class DefaultStrings implements Strings {
 				return localeMatch(preferredLocaleForWildcard(availableLocales), languageRange,
 						highestEffectiveWeight, LocaleMatchType.WILDCARD, requestedLanguageRanges, consideredLocales);
 
-			if (CldrLocaleData.hasUndeterminedLanguage(range))
+			if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
 				continue;
 
 			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
@@ -1296,6 +1300,11 @@ class DefaultStrings implements Strings {
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
 					return localeMatch(locale, languageRange, highestEffectiveWeight, LocaleMatchType.EXACT,
 							requestedLanguageRanges, consideredLocales);
+
+			// Private-use tags have no language semantics to broaden. They can select an exact catalog,
+			// but must not be treated as an ordinary primary language such as "x".
+			if (privateUseRange)
+				continue;
 
 			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
 			// so honor configured tiebreakers rather than returning the first lexicographic alias.
@@ -1449,17 +1458,21 @@ class DefaultStrings implements Strings {
 
 		String range = languageRange.getRange();
 		String localeTag = locale.toLanguageTag();
+		boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
 
 		if ("*".equals(range))
 			return 0;
 
-		if (CldrLocaleData.hasUndeterminedLanguage(range))
+		if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
 			return -1;
 
 		int subtagCount = range.split("-").length;
 
 		if (localeTag.equalsIgnoreCase(range))
 			return 10_000 + subtagCount;
+
+		if (privateUseRange)
+			return -1;
 
 		// Locale.filter applies q=0 exclusions and therefore returns no matches when handed a singleton
 		// zero-weight range. Specificity needs a structural match probe independent of quality so that a

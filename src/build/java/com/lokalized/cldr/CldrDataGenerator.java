@@ -887,7 +887,7 @@ public final class CldrDataGenerator {
           .append(" *\n")
           .append(" * This generated source contains data derived from Unicode CLDR ")
           .append(CLDR_VERSION).append(". CLDR data files are\n")
-          .append(" * Copyright © 1991-2026 Unicode, Inc. and licensed under Unicode License v3.\n")
+          .append(" * Copyright © 1991-2025 Unicode, Inc. and licensed under Unicode License v3.\n")
           .append(" * See THIRD-PARTY-NOTICES.md.\n")
           .append(" */\n")
           .append("\n")

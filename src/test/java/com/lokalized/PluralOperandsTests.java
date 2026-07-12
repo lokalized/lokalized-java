@@ -34,6 +34,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 @ThreadSafe
 public class PluralOperandsTests {
   @Test
+  public void publishedSafetyCeilingsHaveDocumentedValues() {
+    assertEquals(Integer.valueOf(4_096), PluralOperands.MAXIMUM_NUMBER_PRECISION);
+    assertEquals(Integer.valueOf(4_096), PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE);
+    assertEquals(Integer.valueOf(4_096), PluralOperands.MAXIMUM_VISIBLE_DECIMAL_PLACES);
+    assertEquals(Integer.valueOf(4_096), PluralOperands.MAXIMUM_COMPACT_EXPONENT);
+  }
+
+  @Test
   public void bigDecimalScaleIsPreserved() {
     PluralOperands operands = PluralOperands.forNumber(new BigDecimal("-1.50")).build();
 
@@ -115,6 +123,7 @@ public class PluralOperandsTests {
   public void excessiveVisibleDecimalPlacesAreRejectedBeforeScaleExpansion() {
     assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(1)
         .visibleDecimalPlaces(PluralOperands.MAXIMUM_VISIBLE_DECIMAL_PLACES + 1)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings())
         .build());
   }
 
@@ -122,6 +131,7 @@ public class PluralOperandsTests {
   public void excessiveCompactExponentIsRejectedBeforeDecimalShifting() {
     assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(1)
         .compactExponent(PluralOperands.MAXIMUM_COMPACT_EXPONENT + 1)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings())
         .build());
   }
 
@@ -133,9 +143,12 @@ public class PluralOperandsTests {
         -PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE - 1);
     BigDecimal minimumIntegerScale = new BigDecimal(BigInteger.ONE, Integer.MIN_VALUE);
 
-    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePositiveScale).build());
-    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessiveNegativeScale).build());
-    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(minimumIntegerScale).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePositiveScale)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings()).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessiveNegativeScale)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings()).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(minimumIntegerScale)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings()).build());
   }
 
   @Test
@@ -143,7 +156,8 @@ public class PluralOperandsTests {
     BigDecimal excessivePrecision = new BigDecimal(BigInteger.TEN.pow(PluralOperands.MAXIMUM_NUMBER_PRECISION));
 
     assertEquals(PluralOperands.MAXIMUM_NUMBER_PRECISION + 1, excessivePrecision.precision());
-    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePrecision).build());
+    assertThrows(IllegalArgumentException.class, () -> PluralOperands.forNumber(excessivePrecision)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings()).build());
   }
 
   @Test
@@ -152,6 +166,7 @@ public class PluralOperandsTests {
         BigInteger.TEN.pow(PluralOperands.MAXIMUM_NUMBER_PRECISION).subtract(BigInteger.ONE));
     PluralOperands operands = PluralOperands.forNumber(maximumPrecision)
         .compactExponent(PluralOperands.MAXIMUM_COMPACT_EXPONENT)
+        .runtimeLimits(TranslationRuntimeLimits.hardCeilings())
         .build();
 
     assertEquals(PluralOperands.MAXIMUM_NUMBER_PRECISION + PluralOperands.MAXIMUM_COMPACT_EXPONENT,

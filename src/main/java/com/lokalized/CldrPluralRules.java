@@ -238,13 +238,17 @@ final class CldrPluralRules {
 
   @NonNull
   private static List<@NonNull String> localeCandidates(@NonNull Locale locale) {
-    Optional<@NonNull String> language = LocaleUtils.normalizedLanguage(locale);
+    String canonicalLanguageTag = CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag());
+    Locale canonicalLocale = Locale.forLanguageTag(canonicalLanguageTag);
+    Optional<@NonNull String> language = LocaleUtils.languageForCanonicalTag(canonicalLanguageTag);
 
     if (!language.isPresent())
-      return CldrLocaleData.hasUndeterminedLanguage(locale.toLanguageTag()) ? List.of("root") : Collections.emptyList();
+      return CldrLocaleData.hasUndeterminedLanguage(canonicalLocale.toLanguageTag())
+          ? List.of("root")
+          : Collections.emptyList();
 
-    @NonNull String script = locale.getScript();
-    @NonNull String country = locale.getCountry();
+    @NonNull String script = canonicalLocale.getScript();
+    @NonNull String country = canonicalLocale.getCountry();
     LinkedHashSet<@NonNull String> candidates = new LinkedHashSet<>();
 
     if (script != null && script.length() > 0 && country != null && country.length() > 0)

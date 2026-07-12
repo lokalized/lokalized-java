@@ -64,6 +64,25 @@ public class LocalizedStringLoaderTests {
 		LocalizedStringLoadingOptions copy = defaults.toBuilder().build();
 		LocalizedStringLoadingOptions lower = defaults.toBuilder().maximumCatalogs(10).build();
 
+		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES);
+		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS);
+		assertEquals(Integer.valueOf(64), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_JSON_NESTING_DEPTH);
+		assertEquals(Boolean.FALSE, LocalizedStringLoadingOptions.DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH);
+		assertEquals(Integer.valueOf(128), LocalizedStringLoadingOptions.MAXIMUM_JSON_NESTING_DEPTH);
+		assertEquals(Long.valueOf(33_554_432L), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES);
+		assertEquals(Integer.valueOf(256), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_CATALOGS);
+		assertEquals(Integer.valueOf(100_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATIONS);
+		assertEquals(Integer.valueOf(1_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS);
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES, defaults.getMaximumInputBytes());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS,
+				defaults.getMaximumReaderCharacters());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_JSON_NESTING_DEPTH,
+				defaults.getMaximumJsonNestingDepth());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES,
+				defaults.getMaximumTotalInputBytes());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_CATALOGS, defaults.getMaximumCatalogs());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATIONS, defaults.getMaximumTranslations());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS, defaults.getMaximumWarnings());
 		assertEquals(defaults, copy);
 		assertEquals(defaults.hashCode(), copy.hashCode());
 		assertNotEquals(defaults, lower);
@@ -400,7 +419,7 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testFilesystemLoadingEnforcesAggregateLimitsWithoutChangingSingleResourceParse() throws IOException {
+  public void testFilesystemLoadingEnforcesAggregateLimits() throws IOException {
     Path tempDirectory = Files.createTempDirectory("lokalized-aggregate-limits");
     tempDirectory.toFile().deleteOnExit();
     String englishCatalog = "{\"hello\":\"world\"}";
@@ -429,15 +448,72 @@ public class LocalizedStringLoaderTests {
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, translationLimited)).getMessage()
         .contains("aggregate maximum of 1 translations"));
 
-    LocalizedStringLoadingOptions aggregateLimitsIgnoredBySingleResourceParse =
-        LocalizedStringLoadingOptions.builder()
-            .maximumTotalInputBytes(1L)
-            .maximumTranslations(0)
-            .maximumWarnings(0)
-            .build();
-    assertEquals(1, LocalizedStringLoader.parse(
-        new ByteArrayInputStream(englishCatalog.getBytes(StandardCharsets.UTF_8)), Locale.ENGLISH, "single-resource",
-        LocalizedStringWarningHandler.ignore(), aggregateLimitsIgnoredBySingleResourceParse).size());
+  }
+
+  @Test
+  public void testSingleResourceParseEnforcesLoadWideLimits() throws IOException {
+    String catalog = "{\"hello\":\"world\"}";
+    byte[] catalogBytes = catalog.getBytes(StandardCharsets.UTF_8);
+    Path file = Files.createTempFile("lokalized-single-resource-limits", ".json");
+    file.toFile().deleteOnExit();
+    Files.write(file, catalogBytes);
+    LocalizedStringLoadingOptions noTranslations = LocalizedStringLoadingOptions.builder()
+        .maximumTranslations(0)
+        .build();
+
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(file, Locale.ENGLISH, LocalizedStringWarningHandler.ignore(),
+            noTranslations)).getMessage().contains("aggregate maximum of 0 translations"));
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new ByteArrayInputStream(catalogBytes), Locale.ENGLISH, "input-stream",
+            LocalizedStringWarningHandler.ignore(), noTranslations)).getMessage()
+        .contains("aggregate maximum of 0 translations"));
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "reader",
+            LocalizedStringWarningHandler.ignore(), noTranslations)).getMessage()
+        .contains("aggregate maximum of 0 translations"));
+
+    LocalizedStringLoadingOptions aggregateByteLimited = LocalizedStringLoadingOptions.builder()
+        .maximumTotalInputBytes(catalogBytes.length - 1L)
+        .build();
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new ByteArrayInputStream(catalogBytes), Locale.ENGLISH, "input-stream",
+            LocalizedStringWarningHandler.ignore(), aggregateByteLimited)).getMessage()
+        .contains("aggregate maximum"));
+  }
+
+  @Test
+  public void testSingleResourceParseEnforcesWarningLimit() {
+    String incompleteRussian = "{\"books\":{\"translation\":\"{{books}}\",\"placeholders\":{\"books\":{" +
+        "\"value\":\"count\",\"translations\":{\"CARDINALITY_ONE\":\"книга\"," +
+        "\"CARDINALITY_OTHER\":\"книг\"}}}}}";
+    LocalizedStringLoadingOptions noWarnings = LocalizedStringLoadingOptions.builder()
+        .maximumWarnings(0)
+        .build();
+
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(incompleteRussian), Locale.forLanguageTag("ru"),
+            "single-warning", LocalizedStringWarningHandler.ignore(), noWarnings)).getMessage()
+        .contains("aggregate maximum of 0 warnings"));
+  }
+
+  @Test
+  public void testNestedAlternativesCountTowardTranslationLimit() {
+    String catalog = "{\"root\":{\"translation\":\"fallback\",\"alternatives\":[" +
+        "{\"count == 1\":\"one\"}]}}";
+    LocalizedStringLoadingOptions oneTranslation = LocalizedStringLoadingOptions.builder()
+        .maximumTranslations(1)
+        .build();
+    LocalizedStringLoadingOptions twoTranslations = LocalizedStringLoadingOptions.builder()
+        .maximumTranslations(2)
+        .build();
+
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "nested-alternative",
+            LocalizedStringWarningHandler.ignore(), oneTranslation)).getMessage()
+        .contains("aggregate maximum of 1 translations"));
+    assertEquals(1, LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "nested-alternative",
+        LocalizedStringWarningHandler.ignore(), twoTranslations).size());
   }
 
 	@Test

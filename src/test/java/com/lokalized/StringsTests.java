@@ -221,6 +221,34 @@ public class StringsTests {
 	}
 
 	@Test
+	public void exactPrivateUseCatalogsCanBeSelectedConsistentlyWithoutLanguageTiebreakers() {
+		Locale english = Locale.ENGLISH;
+		Locale acmeLocale = Locale.forLanguageTag("x-acme");
+		Locale betaLocale = Locale.forLanguageTag("x-beta");
+		LocalizedString englishGreeting = new LocalizedString.Builder("Hello").translation("English").build();
+		LocalizedString acmeGreeting = new LocalizedString.Builder("Hello").translation("Acme").build();
+		LocalizedString betaGreeting = new LocalizedString.Builder("Hello").translation("Beta").build();
+
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(englishGreeting),
+						acmeLocale, Set.of(acmeGreeting),
+						betaLocale, Set.of(betaGreeting)))
+				.localeSupplier(matcher -> english)
+				.build();
+
+		LocaleMatchResult acmeMatchResult = strings.matchFor(acmeLocale);
+		assertEquals(acmeLocale, acmeMatchResult.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, acmeMatchResult.getMatchType());
+		assertEquals(acmeLocale, strings.bestMatchFor(acmeLocale));
+		assertEquals("Acme", strings.get("Hello", TranslationOptions.forLocale(acmeLocale)));
+		assertEquals("Acme", strings.get("Hello", TranslationOptions.forLanguageRanges(
+				List.of(new LanguageRange("x-acme")))));
+		assertEquals("Beta", strings.get("Hello", TranslationOptions.forLanguageRanges(
+				List.of(new LanguageRange("x-beta")))));
+	}
+
+	@Test
 	public void likelySubtagTiesUseConfiguredTiebreakers() {
 		LocalizedString enUs = new LocalizedString.Builder("Hello").translation("Hello from en-US").build();
 		LocalizedString enGb = new LocalizedString.Builder("Hello").translation("Hello from en-GB").build();
@@ -1366,7 +1394,7 @@ public class StringsTests {
 	}
 
 	@Test
-	public void throwExceptionTranslationFailureHandlerPreservesFirstResolutionFailure() {
+	public void throwExceptionTranslationFailureHandlerPreservesFirstResolutionFailureWithoutMutatingIt() {
 		LocalizedString requestedLocalizedString = new LocalizedString.Builder("Count")
 				.translation("{{count}} {{items}}")
 				.languageFormTranslationsByPlaceholder(Map.of(
@@ -1398,8 +1426,42 @@ public class StringsTests {
 				"Expected throwException() to rethrow the first resolution failure");
 
 		assertTrue(exception.getMessage().contains("MANY"));
-		assertEquals(1, exception.getSuppressed().length);
-		assertTrue(exception.getSuppressed()[0].getMessage().contains("OTHER"));
+		assertEquals(0, exception.getSuppressed().length);
+	}
+
+	@Test
+	public void localeFallbackDoesNotAccumulateDiagnosticsOnApplicationExceptions() {
+		Locale english = Locale.forLanguageTag("en");
+		Locale french = Locale.forLanguageTag("fr");
+		RuntimeException sharedResolverFailure = new UnsupportedOperationException("shared resolver failure");
+		LocalizedString phoneticFrench = new LocalizedString.Builder("Phonetic")
+				.translation("{{article}}")
+				.languageFormTranslationsByPlaceholder(Map.of(
+						"article", new LocalizedString.LanguageFormTranslation("term", Map.of(
+								Phonetic.VOWEL, "voyelle",
+								Phonetic.CONSONANT, "consonne"
+						))
+				))
+				.build();
+		LocalizedString brokenEnglish = new LocalizedString.Builder("Phonetic")
+				.translation("{{missing}}")
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						english, Set.of(brokenEnglish),
+						french, Set.of(phoneticFrench)
+				))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
+				.phoneticResolver((term, locale) -> {
+					throw sharedResolverFailure;
+				})
+				.build();
+
+		for (int lookup = 0; lookup < 5; ++lookup)
+			assertEquals("Phonetic", strings.get("Phonetic", Map.of("term", "apple")));
+
+		assertEquals(0, sharedResolverFailure.getSuppressed().length);
 	}
 
 	@Test
@@ -1971,7 +2033,8 @@ public class StringsTests {
 	@Test
 	public void failureKeyInterpolationReturnsRawKeyWhenOutputWouldExceedLimit() {
 		String key = "Missing {{value}}";
-		char[] oversizedCharacters = new char[1024 * 1024 + 1];
+		char[] oversizedCharacters = new char[
+				TranslationRuntimeLimits.DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS + 1];
 		Arrays.fill(oversizedCharacters, 'x');
 		String oversizedValue = new String(oversizedCharacters);
 		Locale english = Locale.forLanguageTag("en");
@@ -1998,7 +2061,8 @@ public class StringsTests {
 					Cardinality.OTHER, "{{B}}")));
 		}
 
-		char[] largeCharacters = new char[600_000];
+		char[] largeCharacters = new char[
+				TranslationRuntimeLimits.DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS / 2];
 		Arrays.fill(largeCharacters, 'x');
 		String largeValue = new String(largeCharacters);
 		generated.put("B", new LocalizedString.LanguageFormTranslation("count", Map.of(
@@ -2106,7 +2170,8 @@ public class StringsTests {
 		IllegalStateException exception = assertThrows(IllegalStateException.class,
 				() -> buildFailFastStrings(localizedString).get("Expansion", Map.of("count", 1)));
 
-		assertTrue(exception.getMessage().contains("maximum of 1048576 characters"));
+		assertTrue(exception.getMessage().contains("maximum of " +
+				TranslationRuntimeLimits.DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS + " characters"));
 	}
 
 	@Test

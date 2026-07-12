@@ -306,8 +306,16 @@ public class LocaleMatcherTests {
         .localeSupplier(matcher -> english)
         .build();
 
-    assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(
-        Collections.nCopies(1001, new LanguageRange("*"))));
+		assertEquals(Integer.valueOf(32), LocaleMatcher.MAXIMUM_LANGUAGE_RANGES);
+		List<LanguageRange> maximumLanguageRanges = Collections.nCopies(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES,
+				new LanguageRange("en"));
+		List<LanguageRange> excessiveLanguageRanges = Collections.nCopies(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES + 1,
+				new LanguageRange("en"));
+
+		assertEquals(english, strings.bestMatchFor(maximumLanguageRanges));
+		assertEquals(english, strings.matchFor(maximumLanguageRanges).getLocale().orElseThrow(AssertionError::new));
+		assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(excessiveLanguageRanges));
+		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(excessiveLanguageRanges));
   }
 
   private Strings englishStrings(Locale fallbackLocale, Locale otherLocale) {

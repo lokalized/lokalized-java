@@ -40,8 +40,6 @@ import static java.util.Objects.requireNonNull;
  */
 @ThreadSafe
 public final class TranslationOptions {
-	static final int MAXIMUM_LANGUAGE_RANGES = 1000;
-
 	@NonNull
 	private static final TranslationOptions NONE;
 
@@ -102,7 +100,8 @@ public final class TranslationOptions {
 	 *
 	 * @param languageRanges language ranges to use, not null
 	 * @return translation options, not null
-	 * @throws IllegalArgumentException if more than 1,000 language ranges are supplied
+	 * @throws IllegalArgumentException if more than {@link LocaleMatcher#MAXIMUM_LANGUAGE_RANGES} language ranges are
+	 *                                  supplied
 	 */
 	@NonNull
 	public static TranslationOptions forLanguageRanges(@NonNull List<@NonNull LanguageRange> languageRanges) {
@@ -249,9 +248,9 @@ public final class TranslationOptions {
 	private static List<@NonNull LanguageRange> immutableLanguageRanges(@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(languageRanges);
 
-		if (languageRanges.size() > MAXIMUM_LANGUAGE_RANGES)
+		if (languageRanges.size() > LocaleMatcher.MAXIMUM_LANGUAGE_RANGES)
 			throw new IllegalArgumentException(String.format("At most %d language ranges are supported, but received %d",
-					MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
+					LocaleMatcher.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
 
 		List<@NonNull LanguageRange> copy = new ArrayList<>(languageRanges.size());
 
@@ -311,7 +310,8 @@ public final class TranslationOptions {
 		 *
 		 * @param languageRanges language ranges to use, may be null
 		 * @return this builder, not null
-		 * @throws IllegalArgumentException if more than 1,000 language ranges are supplied
+		 * @throws IllegalArgumentException if more than {@link LocaleMatcher#MAXIMUM_LANGUAGE_RANGES} language ranges are
+		 *                                  supplied
 		 */
 		@NonNull
 		public Builder languageRanges(@Nullable List<@NonNull LanguageRange> languageRanges) {

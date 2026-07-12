@@ -101,7 +101,8 @@ public class ExpressionEvaluatorTests {
 
 	@Test
 	public void numericLiteralScaleIsValidatedBeforeEvaluation() {
-		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, null,
+				TranslationRuntimeLimits.hardCeilings());
 		String excessiveScaleExpression = "1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1) + " == 1";
 
 		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
@@ -123,7 +124,8 @@ public class ExpressionEvaluatorTests {
 
 	@Test
 	public void numericLiteralSafetyBoundaryIsAccepted() {
-		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, null,
+				TranslationRuntimeLimits.hardCeilings());
 		String boundaryLiteral = "1e" + PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE;
 
 		assertTrue(expressionEvaluator.evaluate(boundaryLiteral + " == " + boundaryLiteral, LOCALE));
@@ -416,7 +418,8 @@ public class ExpressionEvaluatorTests {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
 		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
-				() -> expressionEvaluator.evaluate(orExpressionWithClauseCount(129), Map.of("a", 1), LOCALE),
+				() -> expressionEvaluator.evaluate(orExpressionWithClauseCount(
+						TranslationRuntimeLimits.DEFAULT_MAXIMUM_EXPRESSION_TOKENS / 4 + 1), Map.of("a", 1), LOCALE),
 				"Expected expressions with too many tokens to throw");
 
 		assertTrue(exception.getMessage().contains("maximum supported token count"),
@@ -428,7 +431,8 @@ public class ExpressionEvaluatorTests {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
 		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
-				() -> expressionEvaluator.evaluate(nestedExpression(65), Map.of("a", 1), LOCALE),
+				() -> expressionEvaluator.evaluate(nestedExpression(
+						TranslationRuntimeLimits.DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH + 1), Map.of("a", 1), LOCALE),
 				"Expected overly deep expressions to throw");
 
 		assertTrue(exception.getMessage().contains("maximum supported depth"),
@@ -484,10 +488,11 @@ public class ExpressionEvaluatorTests {
 	}
 
 	private String overlongExpression() {
-		StringBuilder expression = new StringBuilder(4_103);
+		StringBuilder expression = new StringBuilder(
+				TranslationRuntimeLimits.DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS + 7);
 		expression.append("a == 1");
 
-		for (int i = 0; i < 4_096; ++i)
+		for (int i = 0; i < TranslationRuntimeLimits.DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS; ++i)
 			expression.append(' ');
 
 		return expression.toString();

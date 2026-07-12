@@ -29,37 +29,73 @@ import static java.lang.String.format;
  * Immutable safety limits for translation construction and evaluation.
  * <p>
  * The defaults are deliberately generous enough for normal catalogs while bounding work that is proportional to
- * untrusted catalog data or runtime values. Builders may lower a limit, but cannot raise it above the library's hard
- * ceiling. A single instance is safe to share between {@link Strings} instances and threads.
+ * untrusted catalog data or runtime values. Builders may customize a limit through the library's hard ceiling.
+ * Catalog loaders validate expressions against hard ceilings because an application's runtime policy is not yet
+ * available; {@link Strings} construction then enforces its configured limits. A single instance is safe to share
+ * between {@link Strings} instances and threads.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
  */
 @Immutable
 public final class TranslationRuntimeLimits {
-	/** Hard ceiling and default for decimal precision. */
+	/** Default limit for decimal precision: 1,024. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_NUMBER_PRECISION = 1_024;
+	/** Default limit for the absolute value of a decimal scale: 1,024. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_ABSOLUTE_NUMBER_SCALE = 1_024;
+	/** Default limit for explicitly visible decimal places: 1,024. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_VISIBLE_DECIMAL_PLACES = 1_024;
+	/** Default limit for compact-decimal exponents: 64. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_COMPACT_EXPONENT = 64;
+	/** Default limit for expression source characters: 2,048. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS = 2_048;
+	/** Default limit for expression tokens: 256. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_TOKENS = 256;
+	/** Default limit for nested expression groups: 32. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH = 32;
+	/** Default limit for nested generated placeholders: 32. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 32;
+	/** Default limit for one interpolated value: 262,144 UTF-16 code units. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 256 * 1_024;
+	/** Default cumulative generated-placeholder expansion limit: 1,048,576 UTF-16 code units per translation. */
+	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 1_024 * 1_024;
+
+	/** Hard ceiling for decimal precision: 4,096. */
 	@NonNull public static final Integer MAXIMUM_NUMBER_PRECISION = 4_096;
-	/** Hard ceiling and default for the absolute value of a decimal scale. */
+	/** Hard ceiling for the absolute value of a decimal scale: 4,096. */
 	@NonNull public static final Integer MAXIMUM_ABSOLUTE_NUMBER_SCALE = 4_096;
-	/** Hard ceiling and default for explicitly visible decimal places. */
+	/** Hard ceiling for explicitly visible decimal places: 4,096. */
 	@NonNull public static final Integer MAXIMUM_VISIBLE_DECIMAL_PLACES = 4_096;
-	/** Hard ceiling and default for compact-decimal exponents. */
+	/** Hard ceiling for compact-decimal exponents: 4,096. */
 	@NonNull public static final Integer MAXIMUM_COMPACT_EXPONENT = 4_096;
-	/** Hard ceiling and default for expression source characters. */
+	/** Hard ceiling for expression source characters: 4,096. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_CHARACTERS = 4_096;
-	/** Hard ceiling and default for expression tokens. */
+	/** Hard ceiling for expression tokens: 512. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_TOKENS = 512;
-	/** Hard ceiling and default for nested expression groups. */
+	/** Hard ceiling for nested expression groups: 64. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_NESTING_DEPTH = 64;
-	/** Hard ceiling and default for nested generated placeholders. */
+	/** Hard ceiling for nested generated placeholders: 64. */
 	@NonNull public static final Integer MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 64;
-	/** Hard ceiling and default for one interpolated value. */
+	/** Hard ceiling for one interpolated value: 1,048,576 UTF-16 code units. */
 	@NonNull public static final Integer MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 1_024 * 1_024;
-	/** Hard ceiling and default for cumulative generated-placeholder expansion during one translation. */
+	/** Hard ceiling for cumulative generated-placeholder expansion: 8,388,608 UTF-16 code units per translation. */
 	@NonNull public static final Integer MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 8 * 1_024 * 1_024;
 
 	@NonNull
 	private static final TranslationRuntimeLimits DEFAULTS = new Builder().build();
+	@NonNull
+	private static final TranslationRuntimeLimits HARD_CEILINGS = new Builder()
+			.maximumNumberPrecision(MAXIMUM_NUMBER_PRECISION)
+			.maximumAbsoluteNumberScale(MAXIMUM_ABSOLUTE_NUMBER_SCALE)
+			.maximumVisibleDecimalPlaces(MAXIMUM_VISIBLE_DECIMAL_PLACES)
+			.maximumCompactExponent(MAXIMUM_COMPACT_EXPONENT)
+			.maximumExpressionCharacters(MAXIMUM_EXPRESSION_CHARACTERS)
+			.maximumExpressionTokens(MAXIMUM_EXPRESSION_TOKENS)
+			.maximumExpressionNestingDepth(MAXIMUM_EXPRESSION_NESTING_DEPTH)
+			.maximumGeneratedPlaceholderDepth(MAXIMUM_GENERATED_PLACEHOLDER_DEPTH)
+			.maximumInterpolatedOutputCharacters(MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS)
+			.maximumGeneratedExpansionCharacters(MAXIMUM_GENERATED_EXPANSION_CHARACTERS)
+			.build();
 
 	@NonNull private final Integer maximumNumberPrecision;
 	@NonNull private final Integer maximumAbsoluteNumberScale;
@@ -88,6 +124,9 @@ public final class TranslationRuntimeLimits {
 	/** @return the library-default limits, not null */
 	@NonNull public static TranslationRuntimeLimits defaults() { return DEFAULTS; }
 
+	/** @return the library hard ceilings, not null */
+	@NonNull static TranslationRuntimeLimits hardCeilings() { return HARD_CEILINGS; }
+
 	/** @return a builder initialized to the library defaults, not null */
 	@NonNull public static Builder builder() { return new Builder(); }
 
@@ -110,9 +149,9 @@ public final class TranslationRuntimeLimits {
 	@NonNull public Integer getMaximumExpressionNestingDepth() { return maximumExpressionNestingDepth; }
 	/** @return maximum generated-placeholder nesting depth, not null */
 	@NonNull public Integer getMaximumGeneratedPlaceholderDepth() { return maximumGeneratedPlaceholderDepth; }
-	/** @return maximum characters in one interpolated value, not null */
+	/** @return maximum UTF-16 code units in one interpolated value, not null */
 	@NonNull public Integer getMaximumInterpolatedOutputCharacters() { return maximumInterpolatedOutputCharacters; }
-	/** @return maximum cumulative generated-placeholder expansion characters, not null */
+	/** @return maximum cumulative generated-placeholder expansion UTF-16 code units, not null */
 	@NonNull public Integer getMaximumGeneratedExpansionCharacters() { return maximumGeneratedExpansionCharacters; }
 
 	@Override
@@ -159,16 +198,16 @@ public final class TranslationRuntimeLimits {
 	/** Builder for {@link TranslationRuntimeLimits}. */
 	@NotThreadSafe
 	public static final class Builder {
-		@NonNull private Integer maximumNumberPrecision = MAXIMUM_NUMBER_PRECISION;
-		@NonNull private Integer maximumAbsoluteNumberScale = MAXIMUM_ABSOLUTE_NUMBER_SCALE;
-		@NonNull private Integer maximumVisibleDecimalPlaces = MAXIMUM_VISIBLE_DECIMAL_PLACES;
-		@NonNull private Integer maximumCompactExponent = MAXIMUM_COMPACT_EXPONENT;
-		@NonNull private Integer maximumExpressionCharacters = MAXIMUM_EXPRESSION_CHARACTERS;
-		@NonNull private Integer maximumExpressionTokens = MAXIMUM_EXPRESSION_TOKENS;
-		@NonNull private Integer maximumExpressionNestingDepth = MAXIMUM_EXPRESSION_NESTING_DEPTH;
-		@NonNull private Integer maximumGeneratedPlaceholderDepth = MAXIMUM_GENERATED_PLACEHOLDER_DEPTH;
-		@NonNull private Integer maximumInterpolatedOutputCharacters = MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS;
-		@NonNull private Integer maximumGeneratedExpansionCharacters = MAXIMUM_GENERATED_EXPANSION_CHARACTERS;
+		@NonNull private Integer maximumNumberPrecision = DEFAULT_MAXIMUM_NUMBER_PRECISION;
+		@NonNull private Integer maximumAbsoluteNumberScale = DEFAULT_MAXIMUM_ABSOLUTE_NUMBER_SCALE;
+		@NonNull private Integer maximumVisibleDecimalPlaces = DEFAULT_MAXIMUM_VISIBLE_DECIMAL_PLACES;
+		@NonNull private Integer maximumCompactExponent = DEFAULT_MAXIMUM_COMPACT_EXPONENT;
+		@NonNull private Integer maximumExpressionCharacters = DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS;
+		@NonNull private Integer maximumExpressionTokens = DEFAULT_MAXIMUM_EXPRESSION_TOKENS;
+		@NonNull private Integer maximumExpressionNestingDepth = DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH;
+		@NonNull private Integer maximumGeneratedPlaceholderDepth = DEFAULT_MAXIMUM_GENERATED_PLACEHOLDER_DEPTH;
+		@NonNull private Integer maximumInterpolatedOutputCharacters = DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS;
+		@NonNull private Integer maximumGeneratedExpansionCharacters = DEFAULT_MAXIMUM_GENERATED_EXPANSION_CHARACTERS;
 
 		private Builder() {}
 
@@ -192,7 +231,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumNumberPrecision(@Nullable Integer value) {
-			this.maximumNumberPrecision = value == null ? MAXIMUM_NUMBER_PRECISION : value;
+			this.maximumNumberPrecision = value == null ? DEFAULT_MAXIMUM_NUMBER_PRECISION : value;
 			return this;
 		}
 		/**
@@ -202,7 +241,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumAbsoluteNumberScale(@Nullable Integer value) {
-			this.maximumAbsoluteNumberScale = value == null ? MAXIMUM_ABSOLUTE_NUMBER_SCALE : value;
+			this.maximumAbsoluteNumberScale = value == null ? DEFAULT_MAXIMUM_ABSOLUTE_NUMBER_SCALE : value;
 			return this;
 		}
 		/**
@@ -212,7 +251,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumVisibleDecimalPlaces(@Nullable Integer value) {
-			this.maximumVisibleDecimalPlaces = value == null ? MAXIMUM_VISIBLE_DECIMAL_PLACES : value;
+			this.maximumVisibleDecimalPlaces = value == null ? DEFAULT_MAXIMUM_VISIBLE_DECIMAL_PLACES : value;
 			return this;
 		}
 		/**
@@ -222,7 +261,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumCompactExponent(@Nullable Integer value) {
-			this.maximumCompactExponent = value == null ? MAXIMUM_COMPACT_EXPONENT : value;
+			this.maximumCompactExponent = value == null ? DEFAULT_MAXIMUM_COMPACT_EXPONENT : value;
 			return this;
 		}
 		/**
@@ -232,7 +271,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumExpressionCharacters(@Nullable Integer value) {
-			this.maximumExpressionCharacters = value == null ? MAXIMUM_EXPRESSION_CHARACTERS : value;
+			this.maximumExpressionCharacters = value == null ? DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS : value;
 			return this;
 		}
 		/**
@@ -242,7 +281,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumExpressionTokens(@Nullable Integer value) {
-			this.maximumExpressionTokens = value == null ? MAXIMUM_EXPRESSION_TOKENS : value;
+			this.maximumExpressionTokens = value == null ? DEFAULT_MAXIMUM_EXPRESSION_TOKENS : value;
 			return this;
 		}
 		/**
@@ -252,7 +291,7 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumExpressionNestingDepth(@Nullable Integer value) {
-			this.maximumExpressionNestingDepth = value == null ? MAXIMUM_EXPRESSION_NESTING_DEPTH : value;
+			this.maximumExpressionNestingDepth = value == null ? DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH : value;
 			return this;
 		}
 		/**
@@ -262,27 +301,27 @@ public final class TranslationRuntimeLimits {
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumGeneratedPlaceholderDepth(@Nullable Integer value) {
-			this.maximumGeneratedPlaceholderDepth = value == null ? MAXIMUM_GENERATED_PLACEHOLDER_DEPTH : value;
+			this.maximumGeneratedPlaceholderDepth = value == null ? DEFAULT_MAXIMUM_GENERATED_PLACEHOLDER_DEPTH : value;
 			return this;
 		}
 		/**
-		 * Sets the maximum character count for one interpolated result.
+		 * Sets the maximum UTF-16 code-unit count for one interpolated result.
 		 *
 		 * @param value value from 1 through {@link #MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumInterpolatedOutputCharacters(@Nullable Integer value) {
-			this.maximumInterpolatedOutputCharacters = value == null ? MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS : value;
+			this.maximumInterpolatedOutputCharacters = value == null ? DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS : value;
 			return this;
 		}
 		/**
-		 * Sets the cumulative character budget for generated placeholder fragments in one lookup.
+		 * Sets the cumulative UTF-16 code-unit budget for generated placeholder fragments in one lookup.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_GENERATED_EXPANSION_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null
 		 */
 		@NonNull public Builder maximumGeneratedExpansionCharacters(@Nullable Integer value) {
-			this.maximumGeneratedExpansionCharacters = value == null ? MAXIMUM_GENERATED_EXPANSION_CHARACTERS : value;
+			this.maximumGeneratedExpansionCharacters = value == null ? DEFAULT_MAXIMUM_GENERATED_EXPANSION_CHARACTERS : value;
 			return this;
 		}
 

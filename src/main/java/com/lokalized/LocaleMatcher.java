@@ -37,6 +37,17 @@ import static java.util.Objects.requireNonNull;
  */
 public interface LocaleMatcher {
 	/**
+	 * Maximum number of parsed language ranges accepted by one matching operation: 32.
+	 * <p>
+	 * {@link LanguageRange#parse(String)} may add IANA-equivalent ranges, so this limit applies to the returned list,
+	 * not the number of comma-separated ranges in the source header.
+	 *
+	 * @since 3.0.0
+	 */
+	@NonNull
+	public static final Integer MAXIMUM_LANGUAGE_RANGES = 32;
+
+	/**
 	 * Strictly negotiates a locale without manufacturing a configured-fallback match.
 	 *
 	 * @param locale requested locale, not null
@@ -53,7 +64,7 @@ public interface LocaleMatcher {
 	 *
 	 * @param languageRanges requested language ranges, not null
 	 * @return diagnostic match result, not null
-	 * @throws IllegalArgumentException if more than 1000 language ranges are supplied
+	 * @throws IllegalArgumentException if more than {@link #MAXIMUM_LANGUAGE_RANGES} language ranges are supplied
 	 */
 	@NonNull
 	LocaleMatchResult matchFor(@NonNull List<@NonNull LanguageRange> languageRanges);
@@ -72,7 +83,7 @@ public interface LocaleMatcher {
 	 *
 	 * @param languageRanges the ordered list of language ranges for which to find the best match.
 	 * @return the best-matching locale, not null
-	 * @throws IllegalArgumentException if more than 1000 language ranges are supplied
+	 * @throws IllegalArgumentException if more than {@link #MAXIMUM_LANGUAGE_RANGES} language ranges are supplied
 	 */
 	@NonNull
 	Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges);

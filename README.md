@@ -319,11 +319,15 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 * Language-range quality weights are honored, and a `q=0` range excludes that locale and its matching descendants when another acceptable loaded locale remains
 * `Locale.ROOT`, `und`, wildcard-only ranges, empty preference lists, and unmatched requests resolve to the configured fallback locale
 
-[`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) accepts at most 1,000 language ranges
-per call to bound work on untrusted `Accept-Language` input.
+[`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) accepts at most
+[`32` parsed language ranges](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#MAXIMUM_LANGUAGE_RANGES)
+per call to bound matching work. This count applies to the list returned by
+[`LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String)),
+which may add IANA-equivalent ranges beyond those written in the header.
 [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) enforces the same limit when
-the options are constructed, before a lookup begins. `bestMatchFor(...)` always returns a locale and uses the configured
-fallback when nothing is acceptable.
+the options are constructed, before a lookup begins. Applications accepting untrusted `Accept-Language` values should
+also limit the raw HTTP header size before parsing; Lokalized receives the parsed list and cannot bound the parser's
+work. `bestMatchFor(...)` always returns a locale and uses the configured fallback when nothing is acceptable.
 
 ## Loading Localized Strings
 
@@ -351,13 +355,17 @@ One or more trailing slashes are ignored; leading slashes and traversal remain i
 The valid BCP 47 tag `und` represents Java's `Locale.ROOT`, so a root catalog is named `und.json`; tags such as
 `und-Latn.json` are also supported.
 
-Loading is bounded per resource and per multi-resource operation by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
-The default limit is 16 MiB for a `Path` or `InputStream`, 16 MiB characters for a `Reader`, and 128 levels of
+Loading is bounded per resource and per load by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
+The default limit is 8 MiB for a `Path` or `InputStream`, 8,388,608 UTF-16 code units for a `Reader`, and 64 levels of
 JSON object/array nesting. A filesystem directory, discovered classpath package, or explicit classpath-resource mapping
-is additionally limited to 64 MiB total input, 1,000 catalogs, 100,000 translations, and 10,000 warnings. Overloads
-accepting loading options can lower the limits; the parser's hard maximum nesting depth is 128. Single-resource
-`parse(...)` methods apply only the per-resource limits. Input streams are decoded as strict UTF-8, and blank or BOM-only
-catalogs are rejected—use `{}` for an intentionally empty catalog.
+is additionally limited to 32 MiB total input and 256 catalogs. All loading operations, including single-resource
+`parse(...)` methods, accept at most 100,000 localized-string nodes and 1,000 warnings by default. The translation count
+includes top-level messages and every nested alternative, so alternatives cannot bypass the work budget. Overloads
+accepting loading options may lower or raise these defaults; the loader's hard maximum nesting depth is 128. The total
+input-byte limit also applies to single-resource `Path` and `InputStream` parsing, while it cannot apply to a `Reader`
+because the original byte representation is unavailable. A single-resource parse consumes one catalog from its
+catalog-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected—use `{}`
+for an intentionally empty catalog.
 
 Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
 Some JAR creation tools omit directory entries, which makes their packages invisible to ordinary discovery. Enable
@@ -371,11 +379,12 @@ the same filename, which catches mistakes in a catalog directory owned by the ap
 ```java
 LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
   .maximumInputBytes(4 * 1024 * 1024)
+  .maximumReaderCharacters(4 * 1024 * 1024)
   .maximumTotalInputBytes(16L * 1024L * 1024L)
   .maximumCatalogs(100)
   .maximumTranslations(25_000)
-  .maximumWarnings(1_000)
-  .maximumJsonNestingDepth(64)
+  .maximumWarnings(500)
+  .maximumJsonNestingDepth(32)
   .exhaustiveClasspathSearch(true) // Only for JARs that omit package directory entries
   .build();
 
@@ -429,20 +438,22 @@ using the preference you supplied.
 ## Runtime Safety Limits
 
 Catalog construction and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
-The defaults cap numbers and numeric literals at 4,096 digits of precision and absolute scale, visible decimal places
-and compact exponents at 4,096, expressions at 4,096 characters / 512 tokens / 64 nested groups, generated placeholders
-at 64 levels, one interpolated result at 1 MiB, and cumulative
-generated-fragment expansion at 8 MiB per lookup. These are hard ceilings; applications may lower them but cannot
-raise them. Configure them with
+The defaults cap numbers and numeric literals at 1,024 digits of precision and absolute scale, explicitly visible
+decimal places at 1,024, compact exponents at 64, expressions at 2,048 characters / 256 tokens / 32 nested groups,
+generated placeholders at 32 levels, one interpolated result at 262,144 UTF-16 code units, and cumulative
+generated-fragment expansion at 1,048,576 UTF-16 code units per lookup. Applications may lower or raise the defaults with
 [`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
 and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.Builder.html).
+Hard ceilings remain 4,096 for numeric precision, absolute scale, visible decimal places, and compact exponents;
+4,096 characters / 512 tokens / 64 nested groups for expressions; 64 levels for generated placeholders; 1,048,576
+UTF-16 code units for one interpolated result; and 8,388,608 UTF-16 code units for cumulative generated expansion.
 
 ```java
 TranslationRuntimeLimits runtimeLimits = TranslationRuntimeLimits.builder()
-  .maximumExpressionCharacters(2_048)
-  .maximumExpressionTokens(256)
-  .maximumInterpolatedOutputCharacters(256 * 1_024)
-  .maximumGeneratedExpansionCharacters(1024 * 1024)
+  .maximumExpressionCharacters(1_024)
+  .maximumExpressionTokens(128)
+  .maximumInterpolatedOutputCharacters(128 * 1_024)
+  .maximumGeneratedExpansionCharacters(512 * 1_024)
   .build();
 
 Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
@@ -456,9 +467,11 @@ Apply the limits to a provider with
 [`Strings.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
 It can also be supplied directly through
 [`PluralOperands.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
-Limit violations in a catalog fail during
-loading or `Strings` construction where possible; violations
-caused by lookup values or generated expansion are resolution failures.
+The loader validates expressions and numeric literals against hard ceilings because it does not yet know which runtime
+policy an application will select. `Strings` construction then compiles the catalog and enforces its configured limits,
+so a catalog may load successfully but be rejected by `Strings` under the defaults. This preserves an explicit opt-up
+path without allowing work above the hard ceilings. Violations caused by lookup values or generated expansion are
+resolution failures.
 
 ## A More Complex Example
 
@@ -685,7 +698,7 @@ Let's look at an example related to birthdays.
 
 ### English Translation File
 
-English has 4 ordinals.
+CLDR defines four ordinal categories for English.
 
 ```json
 {
@@ -715,7 +728,7 @@ English has 4 ordinals.
 
 ### Spanish Translation File
 
-Spanish doesn't have ordinals, so we can disregard them.  But we do have a few special cases - a first birthday and a quinceañera for girls.
+CLDR assigns Spanish only `ORDINALITY_OTHER`, so ordinal category selection does not vary by number. Spanish still has ordinal expressions; this example uses application-specific birthday wording instead of an ordinal-suffix map.
 
 ```json
 {
@@ -745,7 +758,7 @@ String message = strings.get("{{hisOrHer}} {{year}}th birthday party is next wee
 
 assertEquals("His 18th birthday party is next week.", message);
 
-// The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 11, 21, ...) in English
+// The ORDINALITY_ONE rule is applied to any of the "one" numbers (1, 21, 31, ...) in English
 message = strings.get("{{hisOrHer}} {{year}}th birthday party is next week.",
   Map.of(
     "hisOrHer", Gender.FEMININE,
@@ -1127,7 +1140,7 @@ For example: `1 book, 2 books, ...`
 
 Plural rules vary widely across languages.
 
-Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
+Lokalized supports these values according to [CLDR 48 rules](https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html):
 
 * [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO)
 * [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE)
@@ -1202,9 +1215,20 @@ assertEquals(Cardinality.MANY, cardinality);
 scale would discard a nonzero digit, `build()` throws `ArithmeticException`; round the displayed value explicitly
 before constructing its operands so plural selection and presentation cannot silently disagree.
 
-To keep plural-operand construction predictably bounded, Lokalized accepts at most 4,096 significant digits, an
-absolute decimal scale of 4,096, 4,096 explicitly visible decimal places, and a compact exponent of 4,096. The
-corresponding limits are exposed as boxed constants on [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html).
+To keep plural-operand construction predictably bounded, the defaults accept at most 1,024 significant digits, an
+absolute decimal scale of 1,024, 1,024 explicitly visible decimal places, and a compact exponent of 64. Applications
+can configure these through [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html),
+up to hard ceilings of 4,096 for each value. The hard ceilings are also exposed as boxed constants on
+[`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html).
+Apply custom limits to a `Strings` instance with
+[`Strings.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits))
+or to direct plural-operand construction with
+[`PluralOperands.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
+The [`Cardinality.forNumber(...)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.util.Locale))
+and [`Ordinality.forNumber(...)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forNumber(java.lang.Number,java.util.Locale))
+convenience methods use the library defaults; for an opted-up value, build `PluralOperands` explicitly and pass them to
+[`Cardinality.forOperands(...)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale))
+or [`Ordinality.forOperands(...)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale)).
 
 ### Plural Cardinality Ranges
 
@@ -1360,9 +1384,9 @@ assertEquals("Recibi la carta.", strings.get("I received a {{noun}}.", Map.of("n
 
 For example: `1st, 2nd, 3rd, 4th, ...`
 
-Similar to plural cardinality, ordinal rules very widely across languages.
+Similar to plural cardinality, ordinal rules vary widely across languages.
 
-Lokalized supports these values according to [CLDR rules](http://www.unicode.org/cldr/charts/latest/supplemental/language_plural_rules.html):
+Lokalized supports these values according to [CLDR 48 rules](https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html):
 
 * [`ORDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#ZERO)
 * [`ORDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#ONE)
@@ -1375,7 +1399,7 @@ Again, like cardinal values, ordinals do not necessarily map to the named number
 
 #### Spanish
 
-* [`ORDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#OTHER): Matches everything (this language has no ordinal form)
+* [`ORDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#OTHER): Matches every number (CLDR defines no category-dependent ordinal variation for Spanish)
 
 #### English
 
@@ -1386,8 +1410,8 @@ Again, like cardinal values, ordinals do not necessarily map to the named number
 
 #### Italian
 
-* [`ORDINALITY_MANY`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#MANY): Matches 8, 11, 80, 800 (e.g. `Prendi l'8° a destra`)
-* [`ORDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `	Prendi la 7° a destra`)
+* [`ORDINALITY_MANY`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#MANY): Matches 8, 11, 80, 800 (e.g. `Prendi l’8° a destra`)
+* [`ORDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#OTHER): Everything else (e.g. `Prendi la 7° a destra`)
 
 Lokalized provides an [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) type which encapsulates ordinal functionality.
 
@@ -1704,8 +1728,11 @@ Placeholder rules are strict: if your application supplies or resolves a languag
 Lokalized evaluates only translation-file-defined placeholders that are reachable from the selected translation.
 A selected language-form value may itself reference application-supplied placeholders or other
 translation-file-defined placeholders; those fragments are expanded recursively. Cycles, excessive nesting, and
-interpolated output above 1,048,576 characters fail resolution clearly. Application-supplied values remain opaque and are never reinterpreted as template syntax, even
-when a value contains text such as `{{name}}`.
+interpolated output above the configured limit fail resolution clearly. The default is 262,144 UTF-16 code units,
+and applications can opt up to the 1,048,576-code-unit hard ceiling with
+[`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html). Application-supplied
+values remain opaque and are never reinterpreted as template syntax, even when a value contains text such as
+`{{name}}`.
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 
@@ -1744,11 +1771,14 @@ gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
 
 Standard boolean operator precedence applies: `&&` binds tighter than `||`.
 
-Numeric literals are parsed and safety-checked when translations are loaded. They use the same precision and absolute
-scale limits as [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), so an exponent
-cannot defer an unbounded decimal materialization until lookup time. Expressions are limited to 4,096 source
-characters, 512 tokens, and 64 nested groups by default; `Strings` applications may lower these ceilings with
-[`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
+Numeric literals and expressions are parsed and checked against hard ceilings when translations are loaded. Numeric
+literals use the same precision and absolute-scale limits as
+[`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), so an exponent cannot defer
+unbounded decimal materialization until lookup time. The configured runtime policy is applied when `Strings` compiles
+the catalog. Expressions are limited to 2,048 source characters, 256 tokens, and 32 nested groups by default. `Strings`
+applications may configure these with
+[`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html), up to hard
+ceilings of 4,096 characters, 512 tokens, and 64 nested groups.
 
 Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` also expose their numeric value for ordinary numeric comparisons. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
  
@@ -1968,7 +1998,7 @@ Use the standard JDK formatters for dates, times, numbers, percentages, and curr
 
 ## Language Reference
 
-Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbook examples that show translation-file structure and Java lookup calls for that language's plural categories. The page identifies the exact Java [`Locale`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html) construction (either `Locale.ROOT` or [`Locale.forLanguageTag(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html#forLanguageTag(java.lang.String))), the catalog filename accepted by [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html), inherited rule sources, and the formatting-data provenance.
+Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbooks that show translation-file structure and Java lookup calls for that language's plural and ordinal categories. When verified day-phrase wording is unavailable, the page labels the gap and renders a neutral, translator-owned structural skeleton instead of guessing the language's word order. Locales with multiple ordinal categories also receive a runnable ordinal cookbook when CLDR supplies a complete set of localized minimal-pair patterns; incomplete source coverage is labeled rather than filled with guessed copy. The page identifies the exact Java [`Locale`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html) construction (either `Locale.ROOT` or [`Locale.forLanguageTag(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html#forLanguageTag(java.lang.String))), the catalog filename accepted by [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html), inherited rule sources, and the formatting-data provenance.
 
 The reference includes every canonical CLDR plural-rule locale and a curated set of widely used region- and script-qualified application profiles. These profiles make inherited behavior explicit without suggesting that every valid IETF BCP 47 tag needs a separate page.
 
