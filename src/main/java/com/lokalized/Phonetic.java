@@ -177,7 +177,7 @@ public enum Phonetic implements LanguageForm {
 	 * Examples: "agua", "águila", "hacha", "alma"
 	 * → "el agua" (not "la agua"), but "las aguas" in plural
 	 * <p>
-	 * Note: The noun remains feminine—adjectives still agree femininely:
+	 * Note: The noun remains feminine - adjectives still agree femininely:
 	 * "el agua fría" (the cold water).
 	 */
 	STRESSED_A,

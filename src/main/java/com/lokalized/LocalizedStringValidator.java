@@ -16,7 +16,10 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.ExpressionAlternative;
+import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
+import com.lokalized.LocalizedString.PlaceholderDefinition;
 import org.jspecify.annotations.NonNull;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -100,19 +103,19 @@ final class LocalizedStringValidator {
   static void validate(@NonNull Locale locale, @NonNull LocalizedString localizedString) {
     requireNonNull(locale);
     requireNonNull(localizedString);
-    Set<@NonNull LocalizedString> validated = Collections.newSetFromMap(new IdentityHashMap<>());
+    Map<@NonNull LocalizedString, @NonNull Integer> maximumValidatedDepth = new IdentityHashMap<>();
     Set<@NonNull LocalizedString> active = Collections.newSetFromMap(new IdentityHashMap<>());
-    validate(locale, localizedString, localizedString.getKey(), false, 0, validated, active);
+    validate(locale, localizedString, localizedString.getKey(), false, 0, maximumValidatedDepth, active);
   }
 
   private static void validate(@NonNull Locale locale, @NonNull LocalizedString localizedString,
                                @NonNull String rootKey, boolean alternative, int depth,
-                               @NonNull Set<@NonNull LocalizedString> validated,
+                               @NonNull Map<@NonNull LocalizedString, @NonNull Integer> maximumValidatedDepth,
                                @NonNull Set<@NonNull LocalizedString> active) {
     requireNonNull(locale);
     requireNonNull(localizedString);
     requireNonNull(rootKey);
-    requireNonNull(validated);
+    requireNonNull(maximumValidatedDepth);
     requireNonNull(active);
 
     if (depth > MAXIMUM_ALTERNATIVE_DEPTH)
@@ -122,7 +125,11 @@ final class LocalizedStringValidator {
     if (active.contains(localizedString))
       throw invalid(locale, rootKey, "Alternative graph contains an identity cycle");
 
-    if (validated.contains(localizedString))
+    Integer previousValidatedDepth = maximumValidatedDepth.get(localizedString);
+
+    // A validation completed at an equal or deeper placement proves this subtree fits from the current placement.
+    // A shallower cached placement cannot prove that a shared subtree still fits when reused deeper in a DAG.
+    if (previousValidatedDepth != null && previousValidatedDepth >= depth)
       return;
 
     active.add(localizedString);
@@ -130,19 +137,19 @@ final class LocalizedStringValidator {
     boolean validationCompleted = false;
 
     try {
-      validateCurrent(locale, localizedString, rootKey, alternative, depth, validated, active);
+      validateCurrent(locale, localizedString, rootKey, alternative, depth, maximumValidatedDepth, active);
       validationCompleted = true;
     } finally {
       active.remove(localizedString);
 
       if (validationCompleted)
-        validated.add(localizedString);
+        maximumValidatedDepth.put(localizedString, depth);
     }
   }
 
   private static void validateCurrent(@NonNull Locale locale, @NonNull LocalizedString localizedString,
                                       @NonNull String rootKey, boolean alternative, int depth,
-                                      @NonNull Set<@NonNull LocalizedString> validated,
+                                      @NonNull Map<@NonNull LocalizedString, @NonNull Integer> maximumValidatedDepth,
                                       @NonNull Set<@NonNull LocalizedString> active) {
 
     if (alternative) {
@@ -157,22 +164,31 @@ final class LocalizedStringValidator {
     localizedString.getTranslation().ifPresent(translation ->
         validateTemplate(locale, rootKey, "translation", translation));
 
-    for (Map.Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
-        localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+    for (Map.Entry<@NonNull String, @NonNull PlaceholderDefinition> entry :
+        localizedString.getPlaceholderDefinitions().entrySet()) {
       String placeholderName = entry.getKey();
-      LanguageFormTranslation languageFormTranslation = entry.getValue();
+      PlaceholderDefinition placeholderDefinition = entry.getValue();
 
       validateIdentifier(locale, rootKey, placeholderName, "generated placeholder");
-      if (languageFormTranslation == null)
-        throw invalid(locale, rootKey, format("Generated placeholder '%s' has a null translation definition", placeholderName));
+      if (placeholderDefinition == null)
+        throw invalid(locale, rootKey, format("Generated placeholder '%s' has a null placeholder definition", placeholderName));
 
-      validateLanguageFormTranslation(locale, rootKey, placeholderName, languageFormTranslation);
+      if (placeholderDefinition instanceof LanguageFormTranslation) {
+        validateLanguageFormTranslation(locale, rootKey, placeholderName,
+            (LanguageFormTranslation) placeholderDefinition);
+      } else if (placeholderDefinition instanceof ExpressionTranslation) {
+        validateExpressionTranslation(locale, rootKey, placeholderName,
+            (ExpressionTranslation) placeholderDefinition);
+      } else {
+        throw invalid(locale, rootKey, format("Generated placeholder '%s' uses an unsupported definition type %s",
+            placeholderName, placeholderDefinition.getClass().getName()));
+      }
     }
 
     for (LocalizedString nestedAlternative : localizedString.getAlternatives()) {
       if (nestedAlternative == null)
         throw invalid(locale, rootKey, "Alternative lists may not contain null entries");
-      validate(locale, nestedAlternative, rootKey, true, depth + 1, validated, active);
+      validate(locale, nestedAlternative, rootKey, true, depth + 1, maximumValidatedDepth, active);
     }
   }
 
@@ -216,6 +232,37 @@ final class LocalizedStringValidator {
 
     if (languageFormTranslation.getRange().isPresent() && !languageFormTypes.contains(Cardinality.class))
       throw invalid(locale, rootKey, format("Range-driven placeholder '%s' only supports cardinality", placeholderName));
+  }
+
+  private static void validateExpressionTranslation(@NonNull Locale locale, @NonNull String rootKey,
+                                                    @NonNull String placeholderName,
+                                                    @NonNull ExpressionTranslation expressionTranslation) {
+    validateTemplate(locale, rootKey,
+        format("default translation for generated placeholder '%s'", placeholderName),
+        expressionTranslation.getTranslation());
+
+    List<@NonNull ExpressionAlternative> alternatives = expressionTranslation.getAlternatives();
+
+    for (int alternativeIndex = 0; alternativeIndex < alternatives.size(); ++alternativeIndex) {
+      ExpressionAlternative alternative = alternatives.get(alternativeIndex);
+
+      if (alternative == null)
+        throw invalid(locale, rootKey, format(
+            "Generated placeholder '%s' contains a null expression alternative at index %d",
+            placeholderName, alternativeIndex));
+
+      try {
+        EXPRESSION_EVALUATOR.parseAndValidateExpressionTokens(alternative.getExpression());
+      } catch (ExpressionEvaluationException e) {
+        throw invalid(locale, rootKey, format(
+            "Invalid expression alternative %d for generated placeholder '%s', expression '%s': %s",
+            alternativeIndex, placeholderName, alternative.getExpression(), e.getMessage()), e);
+      }
+
+      validateTemplate(locale, rootKey, format(
+          "translation for generated placeholder '%s' expression alternative %d ('%s')",
+          placeholderName, alternativeIndex, alternative.getExpression()), alternative.getTranslation());
+    }
   }
 
   @NonNull

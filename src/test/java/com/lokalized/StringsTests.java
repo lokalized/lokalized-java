@@ -142,6 +142,8 @@ public class StringsTests {
 								strings.get("I read {{bookCount}} books", Map.of("bookCount", 0)));
 						assertEquals("I am going on holiday",
 								strings.get("I am going on vacation", TranslationOptions.forLocale(britishEnglish)));
+						assertEquals("Found at least 10 results instantly.",
+								searchResult(strings, 10, "10", 10, "10", 250, "2 seconds"));
 					}
 				}));
 			}
@@ -754,7 +756,7 @@ public class StringsTests {
 	public void phoneticPlaceholderTest() {
 		LocalizedString localizedString = new LocalizedString.Builder("{{article}} {{noun}}")
 				.translation("{{article}} {{noun}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"article", new LocalizedString.LanguageFormTranslation("noun", Map.of(
 								Phonetic.VOWEL, "an",
 								Phonetic.CONSONANT, "a"
@@ -843,8 +845,10 @@ public class StringsTests {
 
 		// He was one of the 10 best baseball players.
 		// She was one of the 10 best baseball players.
+		// This person was one of the 10 best baseball players.
 		// He was the best baseball player.
 		// She was the best baseball player.
+		// This person was the best baseball player.
 
 		String translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -878,6 +882,20 @@ public class StringsTests {
 
 		assertEquals("She was the best baseball player.", translation);
 
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.", Map.of(
+				"heOrShe", Gender.COMMON,
+				"groupSize", 10
+		));
+
+		assertEquals("This person was one of the 10 best baseball players.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.", Map.of(
+				"heOrShe", Gender.COMMON,
+				"groupSize", 1
+		));
+
+		assertEquals("This person was the best baseball player.", translation);
+
 		// Switch to Spanish
 		strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -889,8 +907,10 @@ public class StringsTests {
 
 		// Fue uno de los 10 mejores jugadores de béisbol.
 		// Fue una de las 10 mejores jugadoras de béisbol.
+		// Esta persona estaba entre las 10 personas que mejor jugaban al béisbol.
 		// Él era el mejor jugador de béisbol.
 		// Ella era la mejor jugadora de béisbol.
+		// Esta persona era quien mejor jugaba al béisbol.
 
 		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
 				new HashMap<String, Object>() {{
@@ -923,6 +943,43 @@ public class StringsTests {
 				}});
 
 		assertEquals("Ella era la mejor jugadora de béisbol.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.", Map.of(
+				"heOrShe", Gender.COMMON,
+				"groupSize", 10
+		));
+
+		assertEquals("Esta persona estaba entre las 10 personas que mejor jugaban al béisbol.", translation);
+
+		translation = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.", Map.of(
+				"heOrShe", Gender.COMMON,
+				"groupSize", 1
+		));
+
+		assertEquals("Esta persona era quien mejor jugaba al béisbol.", translation);
+	}
+
+	@Test
+	public void fileBackedExpressionFragmentsCoverIndependentSearchResultAxes() {
+		Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
+				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+				.localeSupplier(matcher -> Locale.ENGLISH)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(Locale.ENGLISH, Locale.forLanguageTag("en-GB"))))
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		assertEquals("Found no results instantly.", searchResult(strings, 0, "0", 10, "10", 250, "2 seconds"));
+		assertEquals("Found no results in 2 seconds.", searchResult(strings, 0, "0", 10, "10", 1_500,
+				"2 seconds"));
+		assertEquals("Found at least 10 results instantly.", searchResult(strings, 10, "10", 10, "10", 250,
+				"2 seconds"));
+		assertEquals("Found at least 10 results in 2 seconds.", searchResult(strings, 10, "10", 10, "10", 1_500,
+				"2 seconds"));
+		assertEquals("Found 3 results instantly.", searchResult(strings, 3, "3", 10, "10", 250, "2 seconds"));
+		assertEquals("Found 3 results in 2 seconds.", searchResult(strings, 3, "3", 10, "10", 1_500,
+				"2 seconds"));
+		assertEquals("Found 1 result instantly.", searchResult(strings, 1, "1", 10, "10", 250, "2 seconds"));
 	}
 
 	@Test
@@ -945,7 +1002,7 @@ public class StringsTests {
 	public void missingCardinalityPlaceholderValuesThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{items}}")
 				.translation("You have {{count}} {{items}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "item",
 								Cardinality.OTHER, "items"
@@ -964,7 +1021,7 @@ public class StringsTests {
 	public void invalidOrdinalityPlaceholderValuesThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("It is your {{year}}{{suffix}} birthday")
 				.translation("It is your {{year}}{{suffix}} birthday")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"suffix", new LocalizedString.LanguageFormTranslation("year", Map.of(
 								Ordinality.ONE, "st",
 								Ordinality.OTHER, "th"
@@ -983,7 +1040,7 @@ public class StringsTests {
 	public void invalidGenderPlaceholderValuesThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("{{title}} Doe")
 				.translation("{{title}} Doe")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"title", new LocalizedString.LanguageFormTranslation("gender", Map.of(
 								Gender.MASCULINE, "Mr",
 								Gender.FEMININE, "Ms"
@@ -1002,7 +1059,7 @@ public class StringsTests {
 	public void nonCardinalityRangePlaceholdersThrowAtBuildTime() {
 		LocalizedString localizedString = new LocalizedString.Builder("Range example")
 				.translation("{{form}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"form", new LocalizedString.LanguageFormTranslation(
 								new LocalizedString.LanguageFormTranslationRange("start", "end"),
 								Map.of(
@@ -1039,7 +1096,7 @@ public class StringsTests {
 	public void missingPlaceholderTranslationsThrow() {
 		LocalizedString localizedString = new LocalizedString.Builder("You have {{count}} {{itemLabel}}")
 				.translation("You have {{count}} {{itemLabel}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"itemLabel", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "item"
 						))
@@ -1216,7 +1273,7 @@ public class StringsTests {
 	public void bidiIsolationDoesNotWrapFileDefinedPlaceholders() {
 		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
 				.translation("{{title}} {{name}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"title", new LocalizedString.LanguageFormTranslation("gender", Map.of(
 								Gender.MASCULINE, "السيد",
 								Gender.FEMININE, "السيدة",
@@ -1244,7 +1301,7 @@ public class StringsTests {
 		Locale arabic = Locale.forLanguageTag("ar");
 		LocalizedString localizedString = new LocalizedString.Builder("LeadTime")
 				.translation("{{leadTime}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"leadTime", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ZERO, "{{formattedCount}} يوم",
 								Cardinality.ONE, "{{formattedCount}} يوم",
@@ -1354,7 +1411,7 @@ public class StringsTests {
 		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
 		LocalizedString localizedString = new LocalizedString.Builder("Phonetic")
 				.translation("{{term}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"term", new LocalizedString.LanguageFormTranslation("term", Map.of(
 								Phonetic.CONSONANT, "consonant",
 								Phonetic.VOWEL, "vowel"
@@ -1397,7 +1454,7 @@ public class StringsTests {
 	public void throwExceptionTranslationFailureHandlerPreservesFirstResolutionFailureWithoutMutatingIt() {
 		LocalizedString requestedLocalizedString = new LocalizedString.Builder("Count")
 				.translation("{{count}} {{items}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "item"
 						))
@@ -1405,7 +1462,7 @@ public class StringsTests {
 				.build();
 		LocalizedString fallbackLocalizedString = new LocalizedString.Builder("Count")
 				.translation("{{count}} {{items}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"items", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.FEW, "items"
 						))
@@ -1436,7 +1493,7 @@ public class StringsTests {
 		RuntimeException sharedResolverFailure = new UnsupportedOperationException("shared resolver failure");
 		LocalizedString phoneticFrench = new LocalizedString.Builder("Phonetic")
 				.translation("{{article}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"article", new LocalizedString.LanguageFormTranslation("term", Map.of(
 								Phonetic.VOWEL, "voyelle",
 								Phonetic.CONSONANT, "consonne"
@@ -1655,7 +1712,7 @@ public class StringsTests {
 		Locale french = Locale.forLanguageTag("fr");
 		LocalizedString frenchString = new LocalizedString.Builder("Snapshot")
 				.translation("{{article}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"article", new LocalizedString.LanguageFormTranslation("word", Map.of(
 								Phonetic.VOWEL, "vowel",
 								Phonetic.CONSONANT, "consonant"
@@ -1689,7 +1746,7 @@ public class StringsTests {
 	public void cardinalityAndOrdinalityInputsAcceptResolvedFormsAndPluralOperands() {
 		LocalizedString localizedString = new LocalizedString.Builder("Forms")
 				.translation("{{cardinal}} {{ordinal}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"cardinal", new LocalizedString.LanguageFormTranslation("cardinalValue", Map.of(
 								Cardinality.ONE, "one",
 								Cardinality.OTHER, "other"
@@ -1722,7 +1779,7 @@ public class StringsTests {
 
 		LocalizedString rangeString = new LocalizedString.Builder("Range")
 				.translation("{{range}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"range", new LocalizedString.LanguageFormTranslation(
 								new LocalizedString.LanguageFormTranslationRange("start", "end"), rangeTranslations)
 				))
@@ -2070,7 +2127,7 @@ public class StringsTests {
 				Cardinality.OTHER, largeValue)));
 		LocalizedString localizedString = new LocalizedString.Builder("Large")
 				.translation(translation.toString())
-				.languageFormTranslationsByPlaceholder(generated)
+				.placeholderDefinitions(generated)
 				.build();
 		Locale english = Locale.ENGLISH;
 		Strings strings = Strings.withFallbackLocale(english)
@@ -2088,7 +2145,7 @@ public class StringsTests {
 	public void unusedGeneratedPlaceholderTranslationsAreNotResolved() {
 		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
 				.translation("Hello")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"unused", new LocalizedString.LanguageFormTranslation("missingCount", Map.of(
 								Cardinality.ONE, "one",
 								Cardinality.OTHER, "other"
@@ -2100,10 +2157,613 @@ public class StringsTests {
 	}
 
 	@Test
+	public void expressionFragmentsUseDefaultsAndOrderedExactThresholdAndCompoundRules() {
+		LocalizedString.ExpressionTranslation fragment = new LocalizedString.ExpressionTranslation("default", List.of(
+				new LocalizedString.ExpressionAlternative("count == 1", "exact"),
+				new LocalizedString.ExpressionAlternative("count > 2 && enabled == 1", "compound"),
+				new LocalizedString.ExpressionAlternative("count >= 2", "threshold")
+		));
+		LocalizedString localizedString = new LocalizedString.Builder("Selection")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", fragment))
+				.build();
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("default", strings.get("Selection", Map.of("count", 0, "enabled", 1)));
+		assertEquals("exact", strings.get("Selection", Map.of("count", 1, "enabled", 1)));
+		assertEquals("threshold", strings.get("Selection", Map.of("count", 2, "enabled", 1)));
+		assertEquals("compound", strings.get("Selection", Map.of("count", 3, "enabled", 1)));
+		assertEquals("threshold", strings.get("Selection", Map.of("count", 3, "enabled", 0)));
+	}
+
+	@Test
+	public void firstMatchingFragmentPreventsLaterBrokenPredicateEvaluation() {
+		LocalizedString localizedString = new LocalizedString.Builder("Ordered")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("default", List.of(
+						new LocalizedString.ExpressionAlternative("count == 1", "first"),
+						new LocalizedString.ExpressionAlternative("missing == 1", "broken")
+				))))
+				.build();
+
+		assertEquals("first", buildFailFastStrings(localizedString).get("Ordered", Map.of("count", 1)));
+	}
+
+	@Test
+	public void expressionFragmentsSupportNumericPluralCardinalityAndOrdinalityOperands() {
+		PluralOperands one = PluralOperands.forNumber(1).build();
+		PluralOperands two = PluralOperands.forNumber(2).build();
+		LocalizedString localizedString = new LocalizedString.Builder("Expression forms")
+				.translation("{{exact}} {{cardinal}} {{ordinal}}")
+				.placeholderDefinitions(Map.of(
+						"exact", new LocalizedString.ExpressionTranslation("not-exact", List.of(
+								new LocalizedString.ExpressionAlternative("exactValue == 1", "exact-one"))),
+						"cardinal", new LocalizedString.ExpressionTranslation("not-one", List.of(
+								new LocalizedString.ExpressionAlternative("cardinalValue == CARDINALITY_ONE", "one"))),
+						"ordinal", new LocalizedString.ExpressionTranslation("not-second", List.of(
+								new LocalizedString.ExpressionAlternative("ordinalValue == ORDINALITY_TWO", "second")))
+				))
+				.build();
+
+		assertEquals("exact-one one second", buildFailFastStrings(localizedString).get("Expression forms", Map.of(
+				"exactValue", one,
+				"cardinalValue", one,
+				"ordinalValue", two
+		)));
+	}
+
+	@Test
+	public void expressionFragmentNumericOrderingRejectsFormattedStringsDirectly() {
+		LocalizedString localizedString = new LocalizedString.Builder("Numeric")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("slow", List.of(
+						new LocalizedString.ExpressionAlternative("duration < 1000", "fast")))))
+				.build();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> buildFailFastStrings(localizedString).get("Numeric", Map.of("duration", "999")));
+		assertTrue(exception.getMessage().contains("requires numeric operands"));
+		assertTrue(exception.getMessage().contains("Number or PluralOperands"));
+	}
+
+	@Test
+	public void fragmentPredicateOperandFailuresAreResolutionFailures() {
+		AtomicReference<TranslationFailure> failureHolder = new AtomicReference<>();
+		LocalizedString localizedString = new LocalizedString.Builder("Fragment operand failure")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("slow", List.of(
+						new LocalizedString.ExpressionAlternative("duration < 1000", "fast")))))
+				.build();
+		Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
+				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, Set.of(localizedString)))
+				.localeSupplier(matcher -> Locale.ENGLISH)
+				.translationFailureHandler(failure -> {
+					failureHolder.set(failure);
+					return TranslationFailureResponse.returnString("handled");
+				})
+				.build();
+
+		assertEquals("handled", strings.get("Fragment operand failure"));
+		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, failureHolder.get().getReason());
+		assertTrue(failureHolder.get().getCause().orElseThrow(AssertionError::new)
+				instanceof ExpressionEvaluationException);
+
+		failureHolder.set(null);
+		assertEquals("handled", strings.get("Fragment operand failure", Map.of("duration", "999")));
+		assertEquals(TranslationFailureReason.RESOLUTION_FAILURE, failureHolder.get().getReason());
+		assertTrue(failureHolder.get().getCause().orElseThrow(AssertionError::new)
+				instanceof ExpressionEvaluationException);
+	}
+
+	@Test
+	public void translationOnlyFragmentsCanComposeCallerAndGeneratedValues() {
+		LocalizedString localizedString = new LocalizedString.Builder("Product")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of(
+						"productName", new LocalizedString.ExpressionTranslation("Firefox"),
+						"label", new LocalizedString.ExpressionTranslation("{{productName}} for {{name}}")
+				))
+				.build();
+
+		assertEquals("Firefox for Ada", buildFailFastStrings(localizedString).get("Product", Map.of("name", "Ada")));
+	}
+
+	@Test
+	public void rootIntermediateAndTerminalDefinitionsContributeToSelectedScope() {
+		LocalizedString terminal = new LocalizedString.Builder("terminal == 1")
+				.translation("{{root}} {{middle}} {{nearest}} {{leaf}}")
+				.placeholderDefinitions(Map.of("leaf", new LocalizedString.ExpressionTranslation("leaf")))
+				.build();
+		LocalizedString intermediate = new LocalizedString.Builder("middle == 1")
+				.placeholderDefinitions(Map.of(
+						"middle", new LocalizedString.ExpressionTranslation("middle"),
+						"nearest", new LocalizedString.ExpressionTranslation("intermediate")))
+				.alternatives(List.of(terminal))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Scope")
+				.placeholderDefinitions(Map.of(
+						"root", new LocalizedString.ExpressionTranslation("root"),
+						"nearest", new LocalizedString.ExpressionTranslation("root-nearest")))
+				.alternatives(List.of(intermediate))
+				.build();
+
+		assertEquals("root middle intermediate leaf", buildFailFastStrings(root).get("Scope", Map.of(
+				"middle", 1,
+				"terminal", 1,
+				"root", "caller root",
+				"nearest", "caller nearest"
+		)));
+	}
+
+	@Test
+	public void inheritedFragmentsLateBindDependenciesFromTheSelectedChild() {
+		LocalizedString child = new LocalizedString.Builder("branch == 1")
+				.translation("{{summary}}")
+				.placeholderDefinitions(Map.of("noun", new LocalizedString.ExpressionTranslation("child noun")))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Late binding")
+				.placeholderDefinitions(Map.of("summary", new LocalizedString.ExpressionTranslation("parent {{noun}}")))
+				.alternatives(List.of(child))
+				.build();
+
+		assertEquals("parent child noun", buildFailFastStrings(root).get("Late binding", Map.of(
+				"branch", 1,
+				"noun", "caller noun"
+		)));
+	}
+
+	@Test
+	public void inheritedParentFragmentsUseChildOverridesForTheirDependencies() {
+		LocalizedString child = new LocalizedString.Builder("branch == 1")
+				.translation("{{summary}}")
+				.placeholderDefinitions(Map.of("noun", new LocalizedString.ExpressionTranslation("child noun")))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Overridden dependency")
+				.placeholderDefinitions(Map.of(
+						"summary", new LocalizedString.ExpressionTranslation("parent {{noun}}"),
+						"noun", new LocalizedString.ExpressionTranslation("parent noun")
+				))
+				.alternatives(List.of(child))
+				.build();
+
+		assertEquals("parent child noun", buildFailFastStrings(root).get("Overridden dependency", Map.of("branch", 1)));
+	}
+
+	@Test
+	public void nearestChildReplacesTheWholeDefinitionWithoutMergingAlternativesOrForms() {
+		LocalizedString child = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("child default")))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Replacement")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("parent default", List.of(
+						new LocalizedString.ExpressionAlternative("count == 1", "parent one")))))
+				.alternatives(List.of(child))
+				.build();
+
+		assertEquals("child default", buildFailFastStrings(root).get("Replacement", Map.of(
+				"branch", 1,
+				"count", 1
+		)));
+
+		LocalizedString formChild = new LocalizedString.Builder("branch == 1")
+				.translation("{{noun}}")
+				.placeholderDefinitions(Map.of("noun", new LocalizedString.LanguageFormTranslation("count", Map.of(
+						Cardinality.ONE, "child item"))))
+				.build();
+		LocalizedString formRoot = new LocalizedString.Builder("Form replacement")
+				.placeholderDefinitions(Map.of("noun", new LocalizedString.LanguageFormTranslation("count", Map.of(
+						Cardinality.ONE, "parent item",
+						Cardinality.OTHER, "parent items"))))
+				.alternatives(List.of(formChild))
+				.build();
+		IllegalStateException exception = assertThrows(IllegalStateException.class,
+				() -> buildFailFastStrings(formRoot).get("Form replacement", Map.of("branch", 1, "count", 2)));
+		assertTrue(exception.getMessage().contains("Missing Cardinality translation for OTHER"));
+	}
+
+	@Test
+	public void selectedChildrenCanReplaceDefinitionsAcrossKinds() {
+		LocalizedString formChild = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.LanguageFormTranslation("gender", Map.of(
+						Gender.MASCULINE, "he",
+						Gender.FEMININE, "she",
+						Gender.COMMON, "they",
+						Gender.NEUTER, "it"
+				))))
+				.build();
+		LocalizedString expressionParent = new LocalizedString.Builder("Expression parent")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("parent")))
+				.alternatives(List.of(formChild))
+				.build();
+
+		assertEquals("she", buildFailFastStrings(expressionParent).get("Expression parent", Map.of(
+				"branch", 1,
+				"gender", Gender.FEMININE
+		)));
+
+		LocalizedString expressionChild = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("child")))
+				.build();
+		LocalizedString formParent = new LocalizedString.Builder("Form parent")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.LanguageFormTranslation("gender", Map.of(
+						Gender.MASCULINE, "parent",
+						Gender.FEMININE, "parent",
+						Gender.COMMON, "parent",
+						Gender.NEUTER, "parent"
+				))))
+				.alternatives(List.of(expressionChild))
+				.build();
+
+		assertEquals("child", buildFailFastStrings(formParent).get("Form parent", Map.of(
+				"branch", 1,
+				"gender", Gender.FEMININE
+		)));
+	}
+
+	@Test
+	public void selectedBranchDefinitionsShadowCallerValuesAndDoNotLeakAcrossSiblings() {
+		LocalizedString first = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("first")))
+				.build();
+		LocalizedString second = new LocalizedString.Builder("branch == 2")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("second")))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Branches")
+				.alternatives(List.of(first, second))
+				.build();
+		Strings strings = buildFailFastStrings(root);
+
+		assertEquals("first", strings.get("Branches", Map.of("branch", 1, "label", "caller")));
+		assertEquals("second", strings.get("Branches", Map.of("branch", 2, "label", "caller")));
+		assertEquals("first", strings.get("Branches", Map.of("branch", 1, "label", "caller")));
+	}
+
+	@Test
+	public void expressionAndLanguageFormFragmentsCanFormMixedDependencyChains() {
+		LocalizedString localizedString = new LocalizedString.Builder("Chain")
+				.translation("{{wrapper}}")
+				.placeholderDefinitions(Map.of(
+						"wrapper", new LocalizedString.ExpressionTranslation("{{choice}} for {{name}}"),
+						"choice", new LocalizedString.ExpressionTranslation("{{noun}}", List.of(
+								new LocalizedString.ExpressionAlternative("count == 0", "nothing"))),
+						"noun", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item",
+								Cardinality.OTHER, "items"))
+				))
+				.build();
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("nothing for Ada", strings.get("Chain", Map.of("count", 0, "name", "Ada")));
+		assertEquals("item for Ada", strings.get("Chain", Map.of("count", 1, "name", "Ada")));
+		assertEquals("items for Ada", strings.get("Chain", Map.of("count", 2, "name", "Ada")));
+	}
+
+	@Test
+	public void expressionConditionsAndLanguageFormSelectorsAlwaysReadRawCallerValues() {
+		LocalizedString localizedString = new LocalizedString.Builder("Raw values")
+				.translation("{{count}} {{status}} {{noun}}")
+				.placeholderDefinitions(Map.of(
+						"count", new LocalizedString.ExpressionTranslation("generated-count"),
+						"status", new LocalizedString.ExpressionTranslation("many", List.of(
+								new LocalizedString.ExpressionAlternative("count == 1", "single"))),
+						"noun", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item",
+								Cardinality.OTHER, "items"))
+				))
+				.build();
+		Strings strings = buildFailFastStrings(localizedString);
+
+		assertEquals("generated-count single item", strings.get("Raw values", Map.of("count", 1)));
+		assertEquals("generated-count many items", strings.get("Raw values", Map.of("count", 2)));
+	}
+
+	@Test
+	public void generatedDefinitionsCannotSatisfyMissingRawLanguageFormSelectors() {
+		LocalizedString localizedString = new LocalizedString.Builder("Missing raw selector")
+				.translation("{{count}} {{noun}}")
+				.placeholderDefinitions(Map.of(
+						"count", new LocalizedString.ExpressionTranslation("1"),
+						"noun", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "item",
+								Cardinality.OTHER, "items"))
+				))
+				.build();
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> buildFailFastStrings(localizedString).get("Missing raw selector"));
+		assertTrue(exception.getMessage().contains("Missing value for placeholder 'count'"));
+	}
+
+	@Test
+	public void rangeEndpointsAlwaysReadRawCallerValuesDespiteGeneratedNameCollisions() {
+		Map<LanguageForm, String> translations = new LinkedHashMap<>();
+		for (Cardinality cardinality : Cardinality.values())
+			translations.put(cardinality, cardinality.name());
+
+		LocalizedString localizedString = new LocalizedString.Builder("Raw range")
+				.translation("{{start}} {{end}} {{range}}")
+				.placeholderDefinitions(Map.of(
+						"start", new LocalizedString.ExpressionTranslation("generated-start"),
+						"end", new LocalizedString.ExpressionTranslation("generated-end"),
+						"range", new LocalizedString.LanguageFormTranslation(
+								new LocalizedString.LanguageFormTranslationRange("start", "end"), translations)
+				))
+				.build();
+		Strings strings = buildFailFastStrings(localizedString);
+		Cardinality expected = Cardinality.forRange(Cardinality.ONE, Cardinality.OTHER, Locale.ENGLISH);
+
+		assertEquals("generated-start generated-end " + expected.name(),
+				strings.get("Raw range", Map.of("start", 1, "end", 2)));
+
+		IllegalArgumentException missingStart = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Raw range", Map.of("end", 2)));
+		assertTrue(missingStart.getMessage().contains("Missing range start placeholder 'start'"));
+
+		IllegalArgumentException missingEnd = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Raw range", Map.of("start", 1)));
+		assertTrue(missingEnd.getMessage().contains("Missing range end placeholder 'end'"));
+	}
+
+	@Test
+	public void shadowedUnusedAndUnselectedBrokenDefinitionsRemainUnevaluated() {
+		LocalizedString selected = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of(
+						"label", new LocalizedString.ExpressionTranslation("safe"),
+						"unused", new LocalizedString.ExpressionTranslation("default", List.of(
+								new LocalizedString.ExpressionAlternative("missingUnused == 1", "broken")))
+				))
+				.build();
+		LocalizedString unselected = new LocalizedString.Builder("branch == 2")
+				.translation("{{broken}}")
+				.placeholderDefinitions(Map.of("broken", new LocalizedString.ExpressionTranslation("default", List.of(
+						new LocalizedString.ExpressionAlternative("missingSibling == 1", "broken")))))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Demand driven")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.LanguageFormTranslation("missingShadowed", Map.of(
+						Cardinality.ONE, "parent",
+						Cardinality.OTHER, "parent"))))
+				.alternatives(List.of(selected, unselected))
+				.build();
+
+		assertEquals("safe", buildFailFastStrings(root).get("Demand driven", Map.of("branch", 1)));
+	}
+
+	@Test
+	public void onlyTheSelectedFragmentContributesDependencies() {
+		LocalizedString localizedString = new LocalizedString.Builder("Selected dependencies")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of(
+						"fragment", new LocalizedString.ExpressionTranslation("{{broken}}", List.of(
+								new LocalizedString.ExpressionAlternative("choice == 1", "safe"))),
+						"broken", new LocalizedString.LanguageFormTranslation("missing", Map.of(
+								Cardinality.ONE, "one",
+								Cardinality.OTHER, "other"))
+				))
+				.build();
+
+		assertEquals("safe", buildFailFastStrings(localizedString).get("Selected dependencies", Map.of("choice", 1)));
+	}
+
+	@Test
+	public void matchedFragmentResolutionFailureDoesNotFallThroughToLaterRulesOrDefault() {
+		LocalizedString localizedString = new LocalizedString.Builder("No fallthrough")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("default", List.of(
+						new LocalizedString.ExpressionAlternative("count == 1", "{{missing}}"),
+						new LocalizedString.ExpressionAlternative("count >= 1", "later")))))
+				.build();
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> buildFailFastStrings(localizedString).get("No fallthrough", Map.of("count", 1)));
+		assertTrue(exception.getMessage().contains("missing"));
+		assertTrue(exception.getMessage().contains("definition declared at No fallthrough"));
+		assertTrue(exception.getMessage().contains("selected expression 'count == 1'"));
+	}
+
+	@Test
+	public void selectedLanguageFormInterpolationFailuresIdentifyTheSelectedForm() {
+		LocalizedString localizedString = new LocalizedString.Builder("Form interpolation provenance")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.LanguageFormTranslation("count", Map.of(
+						Cardinality.ONE, "{{missing}}",
+						Cardinality.OTHER, "other"))))
+				.build();
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> buildFailFastStrings(localizedString).get("Form interpolation provenance", Map.of("count", 1)));
+		assertTrue(exception.getMessage().contains("selected Cardinality.ONE"));
+		assertTrue(exception.getMessage().contains("definition declared at Form interpolation provenance"));
+	}
+
+	@Test
+	public void expressionAndMixedGeneratedPlaceholderCyclesFailClearly() {
+		LocalizedString direct = new LocalizedString.Builder("Direct expression cycle")
+				.translation("{{a}}")
+				.placeholderDefinitions(Map.of("a", new LocalizedString.ExpressionTranslation("{{a}}")))
+				.build();
+		IllegalStateException directException = assertThrows(IllegalStateException.class,
+				() -> buildFailFastStrings(direct).get("Direct expression cycle"));
+		assertTrue(directException.getMessage().contains("a -> a"));
+
+		LocalizedString mixed = new LocalizedString.Builder("Mixed cycle")
+				.translation("{{a}}")
+				.placeholderDefinitions(Map.of(
+						"a", new LocalizedString.ExpressionTranslation("{{b}}"),
+						"b", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "{{a}}",
+								Cardinality.OTHER, "{{a}}"))
+				))
+				.build();
+		IllegalStateException mixedException = assertThrows(IllegalStateException.class,
+				() -> buildFailFastStrings(mixed).get("Mixed cycle", Map.of("count", 1)));
+		assertTrue(mixedException.getMessage().contains("a -> b -> a"));
+	}
+
+	@Test
+	public void fragmentFailuresUseResolutionFailurePolicyAndReevaluateForEachCandidateLocale() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		LocalizedString frenchString = new LocalizedString.Builder("Locale-sensitive fragment")
+				.translation("{{fragment}} {{missingOutput}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("French other", List.of(
+						new LocalizedString.ExpressionAlternative("count == CARDINALITY_ONE", "French one")))))
+				.build();
+		LocalizedString englishString = new LocalizedString.Builder("Locale-sensitive fragment")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("English other", List.of(
+						new LocalizedString.ExpressionAlternative("count == CARDINALITY_ONE", "English one")))))
+				.build();
+		Map<Locale, Set<LocalizedString>> localizedStrings = Map.of(
+				english, Set.of(englishString),
+				french, Set.of(frenchString)
+		);
+		Strings defaultPolicy = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.translationFailureHandler(failure ->
+						TranslationFailureResponse.returnString(failure.getReason().name()))
+				.build();
+		Strings fallbackOnAnyFailure = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		assertEquals("RESOLUTION_FAILURE", defaultPolicy.get("Locale-sensitive fragment", Map.of("count", 0)));
+		assertEquals("English other", fallbackOnAnyFailure.get("Locale-sensitive fragment", Map.of("count", 0)),
+				"English must reevaluate cardinality after French classified zero as ONE");
+	}
+
+	@Test
+	public void successfulFragmentSelectionUsesTheCurrentCandidateLocalesGrammar() {
+		Locale english = Locale.ENGLISH;
+		Locale russian = Locale.forLanguageTag("ru");
+		LocalizedString russianString = new LocalizedString.Builder("Successful locale-sensitive fragment")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("Russian other", List.of(
+						new LocalizedString.ExpressionAlternative("count == CARDINALITY_ONE", "Russian one")))))
+				.build();
+		LocalizedString englishString = new LocalizedString.Builder("Successful locale-sensitive fragment")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("English other", List.of(
+						new LocalizedString.ExpressionAlternative("count == CARDINALITY_ONE", "English one")))))
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						russian, Set.of(russianString),
+						english, Set.of(englishString)))
+				.localeSupplier(matcher -> russian)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		TranslationResult result = strings.getResult("Successful locale-sensitive fragment",
+				Map.of("count", Long.valueOf(21)));
+
+		assertEquals("Russian one", result.getTranslation());
+		assertEquals(russian, result.getResolvedLocale().orElseThrow(AssertionError::new));
+		assertEquals(List.of(russian), result.getAttemptedLocales());
+	}
+
+	@Test
+	public void generatedScopeIsFreshForEveryFallbackCandidate() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		LocalizedString frenchString = new LocalizedString.Builder("Fresh fallback scope")
+				.translation("{{label}} {{missing}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("français")))
+				.build();
+		LocalizedString englishString = new LocalizedString.Builder("Fresh fallback scope")
+				.translation("{{label}}")
+				.build();
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(
+						french, Set.of(frenchString),
+						english, Set.of(englishString)))
+				.localeSupplier(matcher -> french)
+				.translationFallbackPolicy(TranslationFallbackPolicy.fallbackOnAnyFailure())
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		assertEquals("caller", strings.get("Fresh fallback scope", Map.of("label", "caller")));
+	}
+
+	@Test
+	public void inheritedDefinitionFailuresReportDeclarationProvenance() {
+		LocalizedString expressionChild = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.build();
+		LocalizedString expressionRoot = new LocalizedString.Builder("Expression provenance")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("default", List.of(
+						new LocalizedString.ExpressionAlternative("missing == 1", "selected")))))
+				.alternatives(List.of(expressionChild))
+				.build();
+		ExpressionEvaluationException expressionException = assertThrows(ExpressionEvaluationException.class,
+				() -> buildFailFastStrings(expressionRoot).get("Expression provenance", Map.of("branch", 1)));
+		assertTrue(expressionException.getMessage().contains("definition declared at Expression provenance"));
+		assertTrue(!expressionException.getMessage().contains("definition declared at Expression provenance ->"));
+
+		LocalizedString formChild = new LocalizedString.Builder("branch == 1")
+				.translation("{{label}}")
+				.build();
+		LocalizedString formRoot = new LocalizedString.Builder("Form provenance")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.LanguageFormTranslation("missing", Map.of(
+						Cardinality.ONE, "one",
+						Cardinality.OTHER, "other"))))
+				.alternatives(List.of(formChild))
+				.build();
+		IllegalArgumentException formException = assertThrows(IllegalArgumentException.class,
+				() -> buildFailFastStrings(formRoot).get("Form provenance", Map.of("branch", 1)));
+		assertTrue(formException.getMessage().contains("definition declared at Form provenance"));
+		assertTrue(!formException.getMessage().contains("definition declared at Form provenance ->"));
+	}
+
+	@Test
+	public void selectedChildDeclaredExpressionFailuresReportChildDeclarationProvenance() {
+		LocalizedString child = new LocalizedString.Builder("count >= 1")
+				.translation("{{label}}")
+				.placeholderDefinitions(Map.of("label", new LocalizedString.ExpressionTranslation("default", List.of(
+						new LocalizedString.ExpressionAlternative("missing == 1", "selected")))))
+				.build();
+		LocalizedString root = new LocalizedString.Builder("Child provenance")
+				.alternatives(List.of(child))
+				.build();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> buildFailFastStrings(root).get("Child provenance", Map.of("count", Long.valueOf(1))));
+
+		assertTrue(exception.getMessage().contains(
+				"definition declared at Child provenance -> alternative[count >= 1]"));
+	}
+
+	@Test
+	public void bidiIsolationWrapsCallerValuesButNotTranslationOwnedExpressionFragments() {
+		Locale arabic = Locale.forLanguageTag("ar");
+		LocalizedString localizedString = new LocalizedString.Builder("Expression bidi")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment",
+						new LocalizedString.ExpressionTranslation("ثابت {{code}}")))
+				.build();
+		Strings strings = Strings.withFallbackLocale(arabic)
+				.localizedStringSupplier(() -> Map.of(arabic, Set.of(localizedString)))
+				.localeSupplier(matcher -> arabic)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.build();
+
+		assertEquals("ثابت \u2068ACME-42\u2069", strings.get("Expression bidi", Map.of("code", "ACME-42")));
+	}
+
+	@Test
 	public void generatedPlaceholderFragmentsCanReferenceExternalAndGeneratedPlaceholders() {
 		LocalizedString localizedString = new LocalizedString.Builder("Books")
 				.translation("{{label}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"label", new LocalizedString.LanguageFormTranslation("quantity", Map.of(
 								Cardinality.ONE, "{{count}} {{noun}}",
 								Cardinality.OTHER, "{{count}} {{noun}}"
@@ -2127,7 +2787,7 @@ public class StringsTests {
 	public void generatedPlaceholderCyclesFailClearly() {
 		LocalizedString localizedString = new LocalizedString.Builder("Cycle")
 				.translation("{{a}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"a", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "{{b}}",
 								Cardinality.OTHER, "{{b}}"
@@ -2164,7 +2824,7 @@ public class StringsTests {
 		)));
 		LocalizedString localizedString = new LocalizedString.Builder("Expansion")
 				.translation("{{p0}}")
-				.languageFormTranslationsByPlaceholder(generatedPlaceholders)
+				.placeholderDefinitions(generatedPlaceholders)
 				.build();
 
 		IllegalStateException exception = assertThrows(IllegalStateException.class,
@@ -2178,7 +2838,7 @@ public class StringsTests {
 	public void programmaticGeneratedFragmentsValidatePlaceholderSyntaxAtBuildTime() {
 		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
 				.translation("{{label}}")
-				.languageFormTranslationsByPlaceholder(Map.of(
+				.placeholderDefinitions(Map.of(
 						"label", new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "bad}}",
 								Cardinality.OTHER, "good"
@@ -2260,6 +2920,19 @@ public class StringsTests {
 				() -> strings.getKeysForLocale(en).add("Other"));
 		assertThrows(UnsupportedOperationException.class,
 				() -> strings.getMissingKeys(en, en).add("Other"));
+	}
+
+	private String searchResult(Strings strings, Integer resultCount, String formattedResultCount,
+									Integer resultLimit, String formattedResultLimit, Integer elapsedMilliseconds,
+									String formattedDuration) {
+		return strings.get("Search completed.", Map.of(
+				"resultCount", resultCount,
+				"formattedResultCount", formattedResultCount,
+				"resultLimit", resultLimit,
+				"formattedResultLimit", formattedResultLimit,
+				"elapsedMilliseconds", elapsedMilliseconds,
+				"formattedDuration", formattedDuration
+		));
 	}
 
 	private Strings buildStrings(LocalizedString localizedString) {

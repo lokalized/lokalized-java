@@ -31,9 +31,11 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The UTF-16 code-unit
  * limit applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized. The
- * catalog, translation, and warning limits apply to every load, including single-resource {@code parse(...)}
+ * catalog, translation-node, and warning limits apply to every load, including single-resource {@code parse(...)}
  * operations. The aggregate byte limit also applies to path and input-stream parsing; it cannot apply to a
  * {@link java.io.Reader} because the original byte representation is unavailable.
+ * The translation-node limit bounds parsed model structure; the byte and character limits separately bound the
+ * catalog text containing that structure.
  * <p>
  * Exhaustive classpath searching is disabled by default because it inspects every filesystem and JAR root visible to
  * a classloader. Enable it only when localized strings are packaged in a JAR that omits directory entries and ordinary
@@ -65,9 +67,12 @@ public final class LocalizedStringLoadingOptions {
 	/** Default maximum number of catalogs accepted by one load: 256. */
 	@NonNull
 	public static final Integer DEFAULT_MAXIMUM_CATALOGS = 256;
-	/** Default maximum root translations and nested alternatives accepted by one load: 100,000. */
+	/**
+	 * Default maximum translation nodes accepted by one load: 100,000. Translation nodes comprise root entries,
+	 * whole-message alternatives, placeholder definitions, and expression-fragment alternatives.
+	 */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_TRANSLATIONS = 100_000;
+	public static final Integer DEFAULT_MAXIMUM_TRANSLATION_NODES = 100_000;
 	/** Default maximum number of warnings emitted by one load: 1,000. */
 	@NonNull
 	public static final Integer DEFAULT_MAXIMUM_WARNINGS = 1_000;
@@ -81,24 +86,25 @@ public final class LocalizedStringLoadingOptions {
 	private final boolean exhaustiveClasspathSearch;
 	private final long maximumTotalInputBytes;
 	private final int maximumCatalogs;
-	private final int maximumTranslations;
+	private final int maximumTranslationNodes;
 	private final int maximumWarnings;
 
-	private LocalizedStringLoadingOptions(int maximumInputBytes,
-													 int maximumReaderCharacters,
-													 int maximumJsonNestingDepth,
-													 boolean exhaustiveClasspathSearch,
-													 long maximumTotalInputBytes,
-													 int maximumCatalogs,
-													 int maximumTranslations,
-													 int maximumWarnings) {
+	private LocalizedStringLoadingOptions(
+			int maximumInputBytes,
+			int maximumReaderCharacters,
+			int maximumJsonNestingDepth,
+			boolean exhaustiveClasspathSearch,
+			long maximumTotalInputBytes,
+			int maximumCatalogs,
+			int maximumTranslationNodes,
+			int maximumWarnings) {
 		this.maximumInputBytes = maximumInputBytes;
 		this.maximumReaderCharacters = maximumReaderCharacters;
 		this.maximumJsonNestingDepth = maximumJsonNestingDepth;
 		this.exhaustiveClasspathSearch = exhaustiveClasspathSearch;
 		this.maximumTotalInputBytes = maximumTotalInputBytes;
 		this.maximumCatalogs = maximumCatalogs;
-		this.maximumTranslations = maximumTranslations;
+		this.maximumTranslationNodes = maximumTranslationNodes;
 		this.maximumWarnings = maximumWarnings;
 	}
 
@@ -132,7 +138,7 @@ public final class LocalizedStringLoadingOptions {
 				.exhaustiveClasspathSearch(exhaustiveClasspathSearch)
 				.maximumTotalInputBytes(maximumTotalInputBytes)
 				.maximumCatalogs(maximumCatalogs)
-				.maximumTranslations(maximumTranslations)
+				.maximumTranslationNodes(maximumTranslationNodes)
 				.maximumWarnings(maximumWarnings);
 	}
 
@@ -182,10 +188,15 @@ public final class LocalizedStringLoadingOptions {
 		return maximumCatalogs;
 	}
 
-	/** @return the maximum root translations and nested alternatives accepted by one load, not null */
+	/**
+	 * Gets the maximum translation nodes accepted by one load. Translation nodes comprise root entries,
+	 * whole-message alternatives, placeholder definitions, and expression-fragment alternatives.
+	 *
+	 * @return the aggregate translation-node limit, not null
+	 */
 	@NonNull
-	public Integer getMaximumTranslations() {
-		return maximumTranslations;
+	public Integer getMaximumTranslationNodes() {
+		return maximumTranslationNodes;
 	}
 
 	/** @return the maximum warnings emitted by one load, not null */
@@ -207,14 +218,14 @@ public final class LocalizedStringLoadingOptions {
 				&& exhaustiveClasspathSearch == that.exhaustiveClasspathSearch
 				&& maximumTotalInputBytes == that.maximumTotalInputBytes
 				&& maximumCatalogs == that.maximumCatalogs
-				&& maximumTranslations == that.maximumTranslations
+				&& maximumTranslationNodes == that.maximumTranslationNodes
 				&& maximumWarnings == that.maximumWarnings;
 	}
 
 	@Override
 	public int hashCode() {
 		return Objects.hash(maximumInputBytes, maximumReaderCharacters, maximumJsonNestingDepth,
-				exhaustiveClasspathSearch, maximumTotalInputBytes, maximumCatalogs, maximumTranslations, maximumWarnings);
+				exhaustiveClasspathSearch, maximumTotalInputBytes, maximumCatalogs, maximumTranslationNodes, maximumWarnings);
 	}
 
 	@Override
@@ -222,9 +233,9 @@ public final class LocalizedStringLoadingOptions {
 	public String toString() {
 		return format("%s{maximumInputBytes=%d, maximumReaderCharacters=%d, maximumJsonNestingDepth=%d, " +
 				"exhaustiveClasspathSearch=%s, maximumTotalInputBytes=%d, maximumCatalogs=%d, " +
-				"maximumTranslations=%d, maximumWarnings=%d}", getClass().getSimpleName(), maximumInputBytes,
+				"maximumTranslationNodes=%d, maximumWarnings=%d}", getClass().getSimpleName(), maximumInputBytes,
 				maximumReaderCharacters, maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes,
-				maximumCatalogs, maximumTranslations, maximumWarnings);
+				maximumCatalogs, maximumTranslationNodes, maximumWarnings);
 	}
 
 	/** Builder for {@link LocalizedStringLoadingOptions}. */
@@ -236,7 +247,7 @@ public final class LocalizedStringLoadingOptions {
 		private boolean exhaustiveClasspathSearch = DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH;
 		private long maximumTotalInputBytes = DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES;
 		private int maximumCatalogs = DEFAULT_MAXIMUM_CATALOGS;
-		private int maximumTranslations = DEFAULT_MAXIMUM_TRANSLATIONS;
+		private int maximumTranslationNodes = DEFAULT_MAXIMUM_TRANSLATION_NODES;
 		private int maximumWarnings = DEFAULT_MAXIMUM_WARNINGS;
 
 		private Builder() {
@@ -338,17 +349,18 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum root translations and nested alternatives accepted by one load.
+		 * Sets the maximum translation nodes accepted by one load. Translation nodes comprise root entries,
+		 * whole-message alternatives, placeholder definitions, and expression-fragment alternatives.
 		 *
-		 * @param maximumTranslations nonnegative translation limit, not null
+		 * @param maximumTranslationNodes nonnegative translation-node limit, not null
 		 * @return this builder, not null
 		 */
 		@NonNull
-		public Builder maximumTranslations(@NonNull Integer maximumTranslations) {
-			if (requireNonNull(maximumTranslations) < 0)
-				throw new IllegalArgumentException("maximumTranslations must be nonnegative");
+		public Builder maximumTranslationNodes(@NonNull Integer maximumTranslationNodes) {
+			if (requireNonNull(maximumTranslationNodes) < 0)
+				throw new IllegalArgumentException("maximumTranslationNodes must be nonnegative");
 
-			this.maximumTranslations = maximumTranslations;
+			this.maximumTranslationNodes = maximumTranslationNodes;
 			return this;
 		}
 
@@ -372,7 +384,7 @@ public final class LocalizedStringLoadingOptions {
 		public LocalizedStringLoadingOptions build() {
 			return new LocalizedStringLoadingOptions(maximumInputBytes, maximumReaderCharacters,
 					maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes, maximumCatalogs,
-					maximumTranslations, maximumWarnings);
+					maximumTranslationNodes, maximumWarnings);
 		}
 	}
 }

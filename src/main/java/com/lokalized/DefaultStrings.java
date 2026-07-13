@@ -16,11 +16,16 @@
 
 package com.lokalized;
 
+import com.lokalized.ExpressionEvaluator.CompiledExpression;
+import com.lokalized.LocalizedString.ExpressionAlternative;
+import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
+import com.lokalized.LocalizedString.PlaceholderDefinition;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -107,7 +112,9 @@ class DefaultStrings implements Strings {
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale;
 	@NonNull
-	private final Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledExpressionTokensByAlternative;
+	private final Map<@NonNull LocalizedString, @NonNull CompiledExpression> compiledExpressionsByAlternative;
+	@NonNull
+	private final Map<@NonNull ExpressionAlternative, @NonNull CompiledExpression> compiledExpressionsByFragmentAlternative;
 
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
@@ -380,8 +387,11 @@ class DefaultStrings implements Strings {
 
 		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
 				new HashMap<>(localizedStringsByLocale.size());
-		Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledExpressionTokensByAlternative =
+		Map<@NonNull LocalizedString, @NonNull CompiledExpression> compiledExpressionsByAlternative =
 				new IdentityHashMap<>();
+		Map<@NonNull ExpressionAlternative, @NonNull CompiledExpression> compiledExpressionsByFragmentAlternative =
+				new IdentityHashMap<>();
+		Set<@NonNull LocalizedString> compiledLocalizedStrings = Collections.newSetFromMap(new IdentityHashMap<>());
 
 		for (Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
 			Locale locale = entry.getKey();
@@ -392,9 +402,10 @@ class DefaultStrings implements Strings {
 					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
 
 				validateLocalizedString(locale, localizedString);
-				compileAlternativeExpressions(localizedString, compiledExpressionTokensByAlternative);
-
 				String key = localizedString.getKey();
+				compileExpressions(localizedString, locale, key, key, compiledExpressionsByAlternative,
+						compiledExpressionsByFragmentAlternative, compiledLocalizedStrings);
+
 				LocalizedString existing = localizedStringsByKey.putIfAbsent(key, localizedString);
 
 				if (existing != null)
@@ -405,26 +416,79 @@ class DefaultStrings implements Strings {
 		}
 
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByKeyByLocale);
-		this.compiledExpressionTokensByAlternative = Collections.unmodifiableMap(compiledExpressionTokensByAlternative);
+		this.compiledExpressionsByAlternative = Collections.unmodifiableMap(compiledExpressionsByAlternative);
+		this.compiledExpressionsByFragmentAlternative =
+				Collections.unmodifiableMap(compiledExpressionsByFragmentAlternative);
 
 		this.localeSupplier = localeSupplier;
 		this.localeMatchSupplier = localeMatchSupplier;
 	}
 
-	private void compileAlternativeExpressions(@NonNull LocalizedString localizedString,
-																			 @NonNull Map<@NonNull LocalizedString, @NonNull List<@NonNull Token>> compiledTokens) {
+	private void compileExpressions(@NonNull LocalizedString localizedString,
+														@NonNull Locale locale,
+														@NonNull String rootKey,
+														@NonNull String declarationPath,
+											@NonNull Map<@NonNull LocalizedString, @NonNull CompiledExpression> compiledAlternatives,
+											@NonNull Map<@NonNull ExpressionAlternative, @NonNull CompiledExpression> compiledFragmentAlternatives,
+											@NonNull Set<@NonNull LocalizedString> compiledLocalizedStrings) {
 		requireNonNull(localizedString);
-		requireNonNull(compiledTokens);
+		requireNonNull(locale);
+		requireNonNull(rootKey);
+		requireNonNull(declarationPath);
+		requireNonNull(compiledAlternatives);
+		requireNonNull(compiledFragmentAlternatives);
+		requireNonNull(compiledLocalizedStrings);
 
-		for (LocalizedString alternative : localizedString.getAlternatives()) {
-			if (compiledTokens.containsKey(alternative))
+		if (!compiledLocalizedStrings.add(localizedString))
+			return;
+
+		for (Entry<@NonNull String, @NonNull PlaceholderDefinition> placeholderEntry :
+				localizedString.getPlaceholderDefinitions().entrySet()) {
+			String placeholderName = placeholderEntry.getKey();
+			PlaceholderDefinition placeholderDefinition = placeholderEntry.getValue();
+
+			if (!(placeholderDefinition instanceof ExpressionTranslation))
 				continue;
 
-			List<@NonNull Token> expressionTokens =
-					getExpressionEvaluator().parseAndValidateExpressionTokens(alternative.getKey());
+			ExpressionTranslation expressionTranslation = (ExpressionTranslation) placeholderDefinition;
+			for (int alternativeIndex = 0; alternativeIndex < expressionTranslation.getAlternatives().size();
+					 ++alternativeIndex) {
+				ExpressionAlternative alternative = expressionTranslation.getAlternatives().get(alternativeIndex);
 
-			compiledTokens.put(alternative, Collections.unmodifiableList(new ArrayList<>(expressionTokens)));
-			compileAlternativeExpressions(alternative, compiledTokens);
+				if (compiledFragmentAlternatives.containsKey(alternative))
+					continue;
+
+				try {
+					compiledFragmentAlternatives.put(alternative,
+							getExpressionEvaluator().compile(alternative.getExpression()));
+				} catch (ExpressionEvaluationException e) {
+					throw new ExpressionEvaluationException(format(
+							"Unable to compile generated-fragment alternative %d expression '%s' for placeholder '%s' " +
+									"declared at %s in root key '%s' for locale '%s': %s",
+							alternativeIndex, alternative.getExpression(), placeholderName, declarationPath, rootKey,
+							locale.toLanguageTag(),
+							e.getMessage()), e);
+				}
+			}
+		}
+
+		for (LocalizedString alternative : localizedString.getAlternatives()) {
+			String alternativePath = format("%s -> alternative[%s]", declarationPath, alternative.getKey());
+
+			if (!compiledAlternatives.containsKey(alternative)) {
+				try {
+					compiledAlternatives.put(alternative,
+							getExpressionEvaluator().compile(alternative.getKey()));
+				} catch (ExpressionEvaluationException e) {
+					throw new ExpressionEvaluationException(format(
+							"Unable to compile whole-message alternative expression '%s' at %s in root key '%s' " +
+									"for locale '%s': %s",
+							alternative.getKey(), alternativePath, rootKey, locale.toLanguageTag(), e.getMessage()), e);
+				}
+			}
+
+			compileExpressions(alternative, locale, rootKey, alternativePath, compiledAlternatives, compiledFragmentAlternatives,
+					compiledLocalizedStrings);
 		}
 	}
 
@@ -518,7 +582,6 @@ class DefaultStrings implements Strings {
 			CatalogCandidate catalogCandidate = catalogCandidates.get(candidateIndex);
 			Locale candidateLocale = catalogCandidate.getLocale();
 			attemptedLocales.add(candidateLocale);
-			Map<@NonNull String, @Nullable Object> mutableContext = new HashMap<>(immutableContext);
 			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = catalogCandidate.getLocalizedStrings();
 			TranslationFailureReason attemptFailureReason = TranslationFailureReason.MISSING_TRANSLATION;
 			@Nullable Throwable attemptCause = null;
@@ -528,8 +591,8 @@ class DefaultStrings implements Strings {
 
 				if (localizedString != null) {
 					try {
-						Optional<String> translation = getInternal(key, localizedString, mutableContext, immutableContext,
-								candidateLocale, bidiIsolation);
+						Optional<String> translation = getInternal(key, localizedString, Collections.emptyMap(),
+								immutableContext, candidateLocale, bidiIsolation, key);
 
 						if (translation.isPresent())
 							return new TranslationResult(key, translation.get(), locale, localeMatchResult, candidateLocale, attemptedLocales,
@@ -602,7 +665,7 @@ class DefaultStrings implements Strings {
 	 *
 	 * @param key              the toplevel translation key (always the same regardless of recursion depth), not null
 	 * @param localizedString  the localized string on which to operate, not null
-	 * @param mutableContext   the mutable context for the translation, not null
+	 * @param inheritedPlaceholderBindings placeholder bindings inherited from selected ancestors, not null
 	 * @param immutableContext an immutable snapshot of the user-supplied translation context, not null
 	 * @param locale           the locale to use for evaluation, not null
 	 * @param bidiIsolation    the bidirectional isolation behavior to apply, not null
@@ -610,26 +673,37 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	protected Optional<String> getInternal(@NonNull String key, @NonNull LocalizedString localizedString,
-																				 @NonNull Map<@NonNull String, @Nullable Object> mutableContext,
-																				 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-																				 @NonNull Locale locale,
-																				 @NonNull BidiIsolation bidiIsolation) {
+																 @NonNull Map<@NonNull String, @NonNull PlaceholderBinding> inheritedPlaceholderBindings,
+																 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+																 @NonNull Locale locale,
+																 @NonNull BidiIsolation bidiIsolation,
+																 @NonNull String selectedPath) {
 		requireNonNull(key);
 		requireNonNull(localizedString);
-		requireNonNull(mutableContext);
+		requireNonNull(inheritedPlaceholderBindings);
 		requireNonNull(immutableContext);
 		requireNonNull(locale);
 		requireNonNull(bidiIsolation);
+		requireNonNull(selectedPath);
+
+		Map<@NonNull String, @NonNull PlaceholderBinding> effectivePlaceholderBindings =
+				new LinkedHashMap<>(inheritedPlaceholderBindings);
+		for (Entry<@NonNull String, @NonNull PlaceholderDefinition> entry :
+				localizedString.getPlaceholderDefinitions().entrySet())
+			effectivePlaceholderBindings.put(entry.getKey(),
+					new PlaceholderBinding(entry.getValue(), selectedPath));
+		effectivePlaceholderBindings = Collections.unmodifiableMap(effectivePlaceholderBindings);
 
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
-			if (alternativeMatches(alternative, mutableContext, locale)) {
+			if (alternativeMatches(alternative, immutableContext, locale)) {
 				logger.finer(format("An alternative match for '%s' was found for key '%s'", alternative.getKey(), key));
 
 				// If we have a matching alternative, recurse into it
 				// Alternatives are ordered first-match rules. Once a condition matches, only that branch may resolve;
 				// an unmatched nested subtree must not fall through to a later sibling.
-				return getInternal(key, alternative, mutableContext, immutableContext, locale, bidiIsolation);
+				return getInternal(key, alternative, effectivePlaceholderBindings, immutableContext, locale, bidiIsolation,
+						format("%s -> alternative[%s]", selectedPath, alternative.getKey()));
 			}
 		}
 
@@ -637,11 +711,11 @@ class DefaultStrings implements Strings {
 			return Optional.empty();
 
 		String translation = localizedString.getTranslation().get();
-		Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder =
-				localizedString.getLanguageFormTranslationsByPlaceholder();
+		Map<@NonNull String, @Nullable Object> generatedContext = new HashMap<>();
+		Map<@NonNull String, @NonNull String> generatedSelectionDescriptions = new HashMap<>();
 		Set<@NonNull String> pendingGeneratedPlaceholderNames = new LinkedHashSet<>();
 		Set<@NonNull String> resolvedGeneratedPlaceholderNames = new HashSet<>();
-		enqueueGeneratedPlaceholderDependencies(translation, languageFormTranslationsByPlaceholder,
+		enqueueGeneratedPlaceholderDependencies(translation, effectivePlaceholderBindings.keySet(),
 				pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
 
 		while (!pendingGeneratedPlaceholderNames.isEmpty()) {
@@ -651,359 +725,484 @@ class DefaultStrings implements Strings {
 			if (!resolvedGeneratedPlaceholderNames.add(placeholderName))
 				continue;
 
-			// File-defined generated placeholders take precedence over same-named caller values.
-			mutableContext.remove(placeholderName);
-			LanguageFormTranslation languageFormTranslation = languageFormTranslationsByPlaceholder.get(placeholderName);
+			PlaceholderBinding placeholderBinding = effectivePlaceholderBindings.get(placeholderName);
+			if (placeholderBinding == null)
+				throw new IllegalStateException(format(
+						"No effective definition was found for generated placeholder '%s' in key '%s'", placeholderName, key));
 
-			Object value = null;
-			Object rangeStart = null;
-			Object rangeEnd = null;
-			Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
-			Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
-			Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
-			Map<@NonNull GrammaticalCase, @NonNull String> translationsByGrammaticalCase = new HashMap<>();
-			Map<@NonNull Definiteness, @NonNull String> translationsByDefiniteness = new HashMap<>();
-			Map<@NonNull Classifier, @NonNull String> translationsByClassifier = new HashMap<>();
-			Map<@NonNull Formality, @NonNull String> translationsByFormality = new HashMap<>();
-			Map<@NonNull Clusivity, @NonNull String> translationsByClusivity = new HashMap<>();
-			Map<@NonNull Animacy, @NonNull String> translationsByAnimacy = new HashMap<>();
-			Map<@NonNull Phonetic, @NonNull String> translationsByPhonetic = new HashMap<>();
-
-			if (languageFormTranslation.getRange().isPresent()) {
-				LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
-				rangeStart = unwrapOptional(immutableContext.get(languageFormTranslationRange.getStart()));
-				rangeEnd = unwrapOptional(immutableContext.get(languageFormTranslationRange.getEnd()));
-			} else {
-				value = unwrapOptional(immutableContext.get(languageFormTranslation.getValue().get()));
-			}
-
-			for (Entry<@NonNull LanguageForm, @NonNull String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
-				LanguageForm languageForm = translationEntry.getKey();
-				String translatedLanguageForm = translationEntry.getValue();
-
-				if (languageForm instanceof Cardinality)
-					translationsByCardinality.put((Cardinality) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Ordinality)
-					translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Gender)
-					translationsByGender.put((Gender) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof GrammaticalCase)
-					translationsByGrammaticalCase.put((GrammaticalCase) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Definiteness)
-					translationsByDefiniteness.put((Definiteness) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Classifier)
-					translationsByClassifier.put((Classifier) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Formality)
-					translationsByFormality.put((Formality) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Clusivity)
-					translationsByClusivity.put((Clusivity) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Animacy)
-					translationsByAnimacy.put((Animacy) languageForm, translatedLanguageForm);
-				else if (languageForm instanceof Phonetic)
-					translationsByPhonetic.put((Phonetic) languageForm, translatedLanguageForm);
-				else
-					throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
-			}
-
-			int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
-					(translationsByOrdinality.size() > 0 ? 1 : 0) +
-					(translationsByGender.size() > 0 ? 1 : 0) +
-					(translationsByGrammaticalCase.size() > 0 ? 1 : 0) +
-					(translationsByDefiniteness.size() > 0 ? 1 : 0) +
-					(translationsByClassifier.size() > 0 ? 1 : 0) +
-					(translationsByFormality.size() > 0 ? 1 : 0) +
-					(translationsByClusivity.size() > 0 ? 1 : 0) +
-					(translationsByAnimacy.size() > 0 ? 1 : 0) +
-					(translationsByPhonetic.size() > 0 ? 1 : 0);
-
-			if (distinctLanguageForms > 1)
-				throw new IllegalArgumentException(format("You cannot mix-and-match language forms. Offending localized string was %s", localizedString));
-
-			if (distinctLanguageForms == 0)
+			PlaceholderDefinition placeholderDefinition = placeholderBinding.getDefinition();
+			if (placeholderDefinition instanceof ExpressionTranslation) {
+				try {
+					ResolvedFragment resolvedFragment = resolveExpressionTranslation(
+							(ExpressionTranslation) placeholderDefinition,
+							immutableContext, locale);
+					generatedContext.put(placeholderName, resolvedFragment.getTemplate());
+					generatedSelectionDescriptions.put(placeholderName,
+							resolvedFragment.getSelectionDescription());
+					enqueueGeneratedPlaceholderDependencies(resolvedFragment.getTemplate(),
+							effectivePlaceholderBindings.keySet(),
+							pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
+				} catch (RuntimeException e) {
+					throw contextualizePlaceholderFailure(key, placeholderName, placeholderBinding, e);
+				}
 				continue;
+			}
 
-			if (languageFormTranslation.getRange().isPresent() && translationsByCardinality.isEmpty())
-				throw new IllegalArgumentException(format("Range-based translations are only supported for %s. Offending localized string was %s",
-						Cardinality.class.getSimpleName(), localizedString));
+			if (!(placeholderDefinition instanceof LanguageFormTranslation))
+				throw new IllegalStateException(format("Unsupported generated placeholder definition type %s for '%s' in key '%s'",
+						placeholderDefinition.getClass().getName(), placeholderName, key));
 
-			// Handle plural cardinalities
-			if (translationsByCardinality.size() > 0) {
-				// Special case: calculate range from min and max if this is a range-driven cardinality
+			LanguageFormTranslation languageFormTranslation = (LanguageFormTranslation) placeholderDefinition;
+			try {
+				Object value = null;
+				Object rangeStart = null;
+				Object rangeEnd = null;
+				Map<@NonNull Cardinality, @NonNull String> translationsByCardinality = new HashMap<>();
+				Map<@NonNull Ordinality, @NonNull String> translationsByOrdinality = new HashMap<>();
+				Map<@NonNull Gender, @NonNull String> translationsByGender = new HashMap<>();
+				Map<@NonNull GrammaticalCase, @NonNull String> translationsByGrammaticalCase = new HashMap<>();
+				Map<@NonNull Definiteness, @NonNull String> translationsByDefiniteness = new HashMap<>();
+				Map<@NonNull Classifier, @NonNull String> translationsByClassifier = new HashMap<>();
+				Map<@NonNull Formality, @NonNull String> translationsByFormality = new HashMap<>();
+				Map<@NonNull Clusivity, @NonNull String> translationsByClusivity = new HashMap<>();
+				Map<@NonNull Animacy, @NonNull String> translationsByAnimacy = new HashMap<>();
+				Map<@NonNull Phonetic, @NonNull String> translationsByPhonetic = new HashMap<>();
+				String selectionDescription = null;
+
 				if (languageFormTranslation.getRange().isPresent()) {
 					LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
-
-					if (rangeStart == null)
-						throw new IllegalArgumentException(format("Missing range start placeholder '%s' for key '%s'",
-								languageFormTranslationRange.getStart(), key));
-
-					if (rangeEnd == null)
-						throw new IllegalArgumentException(format("Missing range end placeholder '%s' for key '%s'",
-								languageFormTranslationRange.getEnd(), key));
-
-					Cardinality startCardinality = cardinalityForValue(key, languageFormTranslationRange.getStart(),
-							rangeStart, locale, "Range start placeholder");
-					Cardinality endCardinality = cardinalityForValue(key, languageFormTranslationRange.getEnd(),
-							rangeEnd, locale, "Range end placeholder");
-					Cardinality rangeCardinality = Cardinality.forRange(startCardinality, endCardinality, locale);
-
-					String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
-
-					if (cardinalityTranslation == null)
-						throw new IllegalStateException(format("Missing %s translation for range cardinality %s (start was %s, end was %s). Localized string was %s",
-								Cardinality.class.getSimpleName(), rangeCardinality.name(), startCardinality.name(), endCardinality.name(), localizedString));
-
-					mutableContext.put(placeholderName, cardinalityTranslation);
+					rangeStart = unwrapOptional(immutableContext.get(languageFormTranslationRange.getStart()));
+					rangeEnd = unwrapOptional(immutableContext.get(languageFormTranslationRange.getEnd()));
 				} else {
-					// Normal "non-range" cardinality
+					value = unwrapOptional(immutableContext.get(languageFormTranslation.getValue().get()));
+				}
+
+				for (Entry<@NonNull LanguageForm, @NonNull String> translationEntry : languageFormTranslation.getTranslationsByLanguageForm().entrySet()) {
+					LanguageForm languageForm = translationEntry.getKey();
+					String translatedLanguageForm = translationEntry.getValue();
+
+					if (languageForm instanceof Cardinality)
+						translationsByCardinality.put((Cardinality) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Ordinality)
+						translationsByOrdinality.put((Ordinality) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Gender)
+						translationsByGender.put((Gender) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof GrammaticalCase)
+						translationsByGrammaticalCase.put((GrammaticalCase) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Definiteness)
+						translationsByDefiniteness.put((Definiteness) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Classifier)
+						translationsByClassifier.put((Classifier) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Formality)
+						translationsByFormality.put((Formality) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Clusivity)
+						translationsByClusivity.put((Clusivity) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Animacy)
+						translationsByAnimacy.put((Animacy) languageForm, translatedLanguageForm);
+					else if (languageForm instanceof Phonetic)
+						translationsByPhonetic.put((Phonetic) languageForm, translatedLanguageForm);
+					else
+						throw new IllegalArgumentException(format("Encountered unrecognized language form %s", languageForm));
+				}
+
+				int distinctLanguageForms = (translationsByCardinality.size() > 0 ? 1 : 0) +
+						(translationsByOrdinality.size() > 0 ? 1 : 0) +
+						(translationsByGender.size() > 0 ? 1 : 0) +
+						(translationsByGrammaticalCase.size() > 0 ? 1 : 0) +
+						(translationsByDefiniteness.size() > 0 ? 1 : 0) +
+						(translationsByClassifier.size() > 0 ? 1 : 0) +
+						(translationsByFormality.size() > 0 ? 1 : 0) +
+						(translationsByClusivity.size() > 0 ? 1 : 0) +
+						(translationsByAnimacy.size() > 0 ? 1 : 0) +
+						(translationsByPhonetic.size() > 0 ? 1 : 0);
+
+				if (distinctLanguageForms > 1)
+					throw new IllegalArgumentException("You cannot mix-and-match language forms in one placeholder definition");
+
+				if (distinctLanguageForms == 0)
+					continue;
+
+				if (languageFormTranslation.getRange().isPresent() && translationsByCardinality.isEmpty())
+					throw new IllegalArgumentException(format("Range-based translations are only supported for %s",
+							Cardinality.class.getSimpleName()));
+
+				// Handle plural cardinalities
+				if (translationsByCardinality.size() > 0) {
+					// Special case: calculate range from min and max if this is a range-driven cardinality
+					if (languageFormTranslation.getRange().isPresent()) {
+						LanguageFormTranslationRange languageFormTranslationRange = languageFormTranslation.getRange().get();
+
+						if (rangeStart == null)
+							throw new IllegalArgumentException(format("Missing range start placeholder '%s' for key '%s'",
+									languageFormTranslationRange.getStart(), key));
+
+						if (rangeEnd == null)
+							throw new IllegalArgumentException(format("Missing range end placeholder '%s' for key '%s'",
+									languageFormTranslationRange.getEnd(), key));
+
+						Cardinality startCardinality = cardinalityForValue(key, languageFormTranslationRange.getStart(),
+								rangeStart, locale, "Range start placeholder");
+						Cardinality endCardinality = cardinalityForValue(key, languageFormTranslationRange.getEnd(),
+								rangeEnd, locale, "Range end placeholder");
+						Cardinality rangeCardinality = Cardinality.forRange(startCardinality, endCardinality, locale);
+
+						String cardinalityTranslation = translationsByCardinality.get(rangeCardinality);
+
+						if (cardinalityTranslation == null)
+							throw new IllegalStateException(format("Missing %s translation for range cardinality %s (start was %s, end was %s)",
+									Cardinality.class.getSimpleName(), rangeCardinality.name(), startCardinality.name(), endCardinality.name()));
+
+						generatedContext.put(placeholderName, cardinalityTranslation);
+						selectionDescription = format("%s.%s range (start %s, end %s)",
+								Cardinality.class.getSimpleName(), rangeCardinality.name(), startCardinality.name(),
+								endCardinality.name());
+					} else {
+						// Normal "non-range" cardinality
+						if (value == null)
+							throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+									languageFormTranslation.getValue().get(), key));
+
+						Cardinality cardinality = cardinalityForValue(key, languageFormTranslation.getValue().get(),
+								value, locale, "Placeholder");
+						String cardinalityTranslation = translationsByCardinality.get(cardinality);
+
+						if (cardinalityTranslation == null)
+							throw new IllegalStateException(format("Missing %s translation for %s",
+									Cardinality.class.getSimpleName(), cardinality.name()));
+
+						generatedContext.put(placeholderName, cardinalityTranslation);
+						selectionDescription = format("%s.%s", Cardinality.class.getSimpleName(), cardinality.name());
+					}
+				}
+
+				// Handle plural ordinalities
+				if (translationsByOrdinality.size() > 0) {
 					if (value == null)
 						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
 								languageFormTranslation.getValue().get(), key));
 
-					Cardinality cardinality = cardinalityForValue(key, languageFormTranslation.getValue().get(),
+					Ordinality ordinality = ordinalityForValue(key, languageFormTranslation.getValue().get(),
 							value, locale, "Placeholder");
-					String cardinalityTranslation = translationsByCardinality.get(cardinality);
+					String ordinalityTranslation = translationsByOrdinality.get(ordinality);
 
-					if (cardinalityTranslation == null)
-						throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-								Cardinality.class.getSimpleName(), cardinality.name(), localizedString));
+					if (ordinalityTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Ordinality.class.getSimpleName(), ordinality.name()));
 
-					mutableContext.put(placeholderName, cardinalityTranslation);
-				}
-			}
-
-			// Handle plural ordinalities
-			if (translationsByOrdinality.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				Ordinality ordinality = ordinalityForValue(key, languageFormTranslation.getValue().get(),
-						value, locale, "Placeholder");
-				String ordinalityTranslation = translationsByOrdinality.get(ordinality);
-
-				if (ordinalityTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Ordinality.class.getSimpleName(), ordinality.name(), localizedString));
-
-				mutableContext.put(placeholderName, ordinalityTranslation);
-			}
-
-			// Handle genders
-			if (translationsByGender.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Gender))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Gender.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Gender gender = (Gender) value;
-				String genderTranslation = translationsByGender.get(gender);
-
-				if (genderTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Gender.class.getSimpleName(), gender.name(), localizedString));
-
-				mutableContext.put(placeholderName, genderTranslation);
-			}
-
-			// Handle grammatical cases
-			if (translationsByGrammaticalCase.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof GrammaticalCase))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, GrammaticalCase.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				GrammaticalCase grammaticalCase = (GrammaticalCase) value;
-				String grammaticalCaseTranslation = translationsByGrammaticalCase.get(grammaticalCase);
-
-				if (grammaticalCaseTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							GrammaticalCase.class.getSimpleName(), grammaticalCase.name(), localizedString));
-
-				mutableContext.put(placeholderName, grammaticalCaseTranslation);
-			}
-
-			// Handle definiteness
-			if (translationsByDefiniteness.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Definiteness))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Definiteness.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Definiteness definiteness = (Definiteness) value;
-				String definitenessTranslation = translationsByDefiniteness.get(definiteness);
-
-				if (definitenessTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Definiteness.class.getSimpleName(), definiteness.name(), localizedString));
-
-				mutableContext.put(placeholderName, definitenessTranslation);
-			}
-
-			// Handle classifiers
-			if (translationsByClassifier.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Classifier))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Classifier.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Classifier classifier = (Classifier) value;
-				String classifierTranslation = translationsByClassifier.get(classifier);
-
-				if (classifierTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Classifier.class.getSimpleName(), classifier.name(), localizedString));
-
-				mutableContext.put(placeholderName, classifierTranslation);
-			}
-
-			// Handle formality
-			if (translationsByFormality.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Formality))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Formality.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Formality formality = (Formality) value;
-				String formalityTranslation = translationsByFormality.get(formality);
-
-				if (formalityTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Formality.class.getSimpleName(), formality.name(), localizedString));
-
-				mutableContext.put(placeholderName, formalityTranslation);
-			}
-
-			// Handle clusivity
-			if (translationsByClusivity.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Clusivity))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Clusivity.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Clusivity clusivity = (Clusivity) value;
-				String clusivityTranslation = translationsByClusivity.get(clusivity);
-
-				if (clusivityTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Clusivity.class.getSimpleName(), clusivity.name(), localizedString));
-
-				mutableContext.put(placeholderName, clusivityTranslation);
-			}
-
-			// Handle animacy
-			if (translationsByAnimacy.size() > 0) {
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				if (!(value instanceof Animacy))
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
-							languageFormTranslation.getValue().get(), key, Animacy.class.getSimpleName(), value.getClass().getSimpleName()));
-
-				Animacy animacy = (Animacy) value;
-				String animacyTranslation = translationsByAnimacy.get(animacy);
-
-				if (animacyTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Animacy.class.getSimpleName(), animacy.name(), localizedString));
-
-				mutableContext.put(placeholderName, animacyTranslation);
-			}
-
-			// Handle phonetics
-			if (translationsByPhonetic.size() > 0) {
-				if (languageFormTranslation.getRange().isPresent())
-					throw new IllegalArgumentException(format("Phonetic translations cannot use ranges. Offending localized string was %s", localizedString));
-
-				if (value == null)
-					throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
-							languageFormTranslation.getValue().get(), key));
-
-				Phonetic phonetic;
-
-				if (value instanceof Phonetic) {
-					phonetic = (Phonetic) value;
-				} else if (value instanceof CharSequence) {
-					PhoneticResolver resolver = getPhoneticResolver();
-					phonetic = resolver.resolve(value.toString(), locale);
-
-					if (phonetic == null)
-						throw new IllegalArgumentException(format("%s returned null for placeholder '%s' in key '%s'",
-								PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
-				} else {
-					throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s or %s but was %s",
-							languageFormTranslation.getValue().get(), key, Phonetic.class.getSimpleName(),
-							CharSequence.class.getSimpleName(), value.getClass().getSimpleName()));
+					generatedContext.put(placeholderName, ordinalityTranslation);
+					selectionDescription = format("%s.%s", Ordinality.class.getSimpleName(), ordinality.name());
 				}
 
-				String phoneticTranslation = translationsByPhonetic.get(phonetic);
+				// Handle genders
+				if (translationsByGender.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
 
-				if (phoneticTranslation == null)
-					throw new IllegalStateException(format("Missing %s translation for %s. Localized string was %s",
-							Phonetic.class.getSimpleName(), phonetic.name(), localizedString));
+					if (!(value instanceof Gender))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Gender.class.getSimpleName(), value.getClass().getSimpleName()));
 
-				mutableContext.put(placeholderName, phoneticTranslation);
+					Gender gender = (Gender) value;
+					String genderTranslation = translationsByGender.get(gender);
+
+					if (genderTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Gender.class.getSimpleName(), gender.name()));
+
+					generatedContext.put(placeholderName, genderTranslation);
+					selectionDescription = format("%s.%s", Gender.class.getSimpleName(), gender.name());
+				}
+
+				// Handle grammatical cases
+				if (translationsByGrammaticalCase.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof GrammaticalCase))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, GrammaticalCase.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					GrammaticalCase grammaticalCase = (GrammaticalCase) value;
+					String grammaticalCaseTranslation = translationsByGrammaticalCase.get(grammaticalCase);
+
+					if (grammaticalCaseTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								GrammaticalCase.class.getSimpleName(), grammaticalCase.name()));
+
+					generatedContext.put(placeholderName, grammaticalCaseTranslation);
+					selectionDescription = format("%s.%s", GrammaticalCase.class.getSimpleName(), grammaticalCase.name());
+				}
+
+				// Handle definiteness
+				if (translationsByDefiniteness.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof Definiteness))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Definiteness.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					Definiteness definiteness = (Definiteness) value;
+					String definitenessTranslation = translationsByDefiniteness.get(definiteness);
+
+					if (definitenessTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Definiteness.class.getSimpleName(), definiteness.name()));
+
+					generatedContext.put(placeholderName, definitenessTranslation);
+					selectionDescription = format("%s.%s", Definiteness.class.getSimpleName(), definiteness.name());
+				}
+
+				// Handle classifiers
+				if (translationsByClassifier.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof Classifier))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Classifier.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					Classifier classifier = (Classifier) value;
+					String classifierTranslation = translationsByClassifier.get(classifier);
+
+					if (classifierTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Classifier.class.getSimpleName(), classifier.name()));
+
+					generatedContext.put(placeholderName, classifierTranslation);
+					selectionDescription = format("%s.%s", Classifier.class.getSimpleName(), classifier.name());
+				}
+
+				// Handle formality
+				if (translationsByFormality.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof Formality))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Formality.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					Formality formality = (Formality) value;
+					String formalityTranslation = translationsByFormality.get(formality);
+
+					if (formalityTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Formality.class.getSimpleName(), formality.name()));
+
+					generatedContext.put(placeholderName, formalityTranslation);
+					selectionDescription = format("%s.%s", Formality.class.getSimpleName(), formality.name());
+				}
+
+				// Handle clusivity
+				if (translationsByClusivity.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof Clusivity))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Clusivity.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					Clusivity clusivity = (Clusivity) value;
+					String clusivityTranslation = translationsByClusivity.get(clusivity);
+
+					if (clusivityTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Clusivity.class.getSimpleName(), clusivity.name()));
+
+					generatedContext.put(placeholderName, clusivityTranslation);
+					selectionDescription = format("%s.%s", Clusivity.class.getSimpleName(), clusivity.name());
+				}
+
+				// Handle animacy
+				if (translationsByAnimacy.size() > 0) {
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					if (!(value instanceof Animacy))
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s but was %s",
+								languageFormTranslation.getValue().get(), key, Animacy.class.getSimpleName(), value.getClass().getSimpleName()));
+
+					Animacy animacy = (Animacy) value;
+					String animacyTranslation = translationsByAnimacy.get(animacy);
+
+					if (animacyTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Animacy.class.getSimpleName(), animacy.name()));
+
+					generatedContext.put(placeholderName, animacyTranslation);
+					selectionDescription = format("%s.%s", Animacy.class.getSimpleName(), animacy.name());
+				}
+
+				// Handle phonetics
+				if (translationsByPhonetic.size() > 0) {
+					if (languageFormTranslation.getRange().isPresent())
+						throw new IllegalArgumentException("Phonetic translations cannot use ranges");
+
+					if (value == null)
+						throw new IllegalArgumentException(format("Missing value for placeholder '%s' in key '%s'",
+								languageFormTranslation.getValue().get(), key));
+
+					Phonetic phonetic;
+
+					if (value instanceof Phonetic) {
+						phonetic = (Phonetic) value;
+					} else if (value instanceof CharSequence) {
+						PhoneticResolver resolver = getPhoneticResolver();
+						phonetic = resolver.resolve(value.toString(), locale);
+
+						if (phonetic == null)
+							throw new IllegalArgumentException(format("%s returned null for placeholder '%s' in key '%s'",
+									PhoneticResolver.class.getSimpleName(), languageFormTranslation.getValue().get(), key));
+					} else {
+						throw new IllegalArgumentException(format("Placeholder '%s' in key '%s' must be a %s or %s but was %s",
+								languageFormTranslation.getValue().get(), key, Phonetic.class.getSimpleName(),
+								CharSequence.class.getSimpleName(), value.getClass().getSimpleName()));
+					}
+
+					String phoneticTranslation = translationsByPhonetic.get(phonetic);
+
+					if (phoneticTranslation == null)
+						throw new IllegalStateException(format("Missing %s translation for %s",
+								Phonetic.class.getSimpleName(), phonetic.name()));
+
+					generatedContext.put(placeholderName, phoneticTranslation);
+					selectionDescription = format("%s.%s", Phonetic.class.getSimpleName(), phonetic.name());
+				}
+
+				Object generatedTranslation = generatedContext.get(placeholderName);
+
+				if (generatedTranslation instanceof String) {
+					generatedSelectionDescriptions.put(placeholderName,
+							selectionDescription == null ? "language-form translation" : selectionDescription);
+					enqueueGeneratedPlaceholderDependencies((String) generatedTranslation, effectivePlaceholderBindings.keySet(),
+							pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
+				}
+			} catch (RuntimeException e) {
+				throw contextualizePlaceholderFailure(key, placeholderName, placeholderBinding, e);
 			}
-
-			Object generatedTranslation = mutableContext.get(placeholderName);
-
-			if (generatedTranslation instanceof String)
-				enqueueGeneratedPlaceholderDependencies((String) generatedTranslation, languageFormTranslationsByPlaceholder,
-						pendingGeneratedPlaceholderNames, resolvedGeneratedPlaceholderNames);
 		}
 
-		return Optional.of(interpolateTemplate(key, translation, mutableContext, immutableContext,
-				languageFormTranslationsByPlaceholder.keySet(), locale, bidiIsolation, new HashMap<>(), new ArrayList<>(),
+		return Optional.of(interpolateTemplate(key, translation, generatedContext, generatedSelectionDescriptions,
+				immutableContext, effectivePlaceholderBindings, locale, bidiIsolation, new HashMap<>(), new ArrayList<>(),
 				new GeneratedExpansionBudget(getRuntimeLimits().getMaximumGeneratedExpansionCharacters()), 0));
 	}
 
+	@NonNull
+	private ResolvedFragment resolveExpressionTranslation(@NonNull ExpressionTranslation expressionTranslation,
+															 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+															 @NonNull Locale locale) {
+		requireNonNull(expressionTranslation);
+		requireNonNull(immutableContext);
+		requireNonNull(locale);
+
+		for (ExpressionAlternative alternative : expressionTranslation.getAlternatives()) {
+			CompiledExpression compiledExpression = compiledExpressionsByFragmentAlternative.get(alternative);
+
+			if (compiledExpression == null)
+				throw new IllegalStateException(format(
+						"No compiled expression was found for generated-fragment alternative '%s'",
+						alternative.getExpression()));
+
+			try {
+				if (getExpressionEvaluator().evaluateCompiledExpression(compiledExpression, immutableContext, locale))
+					return new ResolvedFragment(alternative.getTranslation(),
+							format("expression '%s'", alternative.getExpression()));
+			} catch (ExpressionEvaluationException e) {
+				throw new ExpressionEvaluationException(format(
+						"Unable to evaluate generated-fragment expression '%s': %s",
+						alternative.getExpression(), e.getMessage()), e);
+			} catch (IllegalArgumentException e) {
+				throw new IllegalArgumentException(format(
+						"Unable to evaluate generated-fragment expression '%s': %s",
+						alternative.getExpression(), e.getMessage()), e);
+			} catch (IllegalStateException e) {
+				throw new IllegalStateException(format(
+						"Unable to evaluate generated-fragment expression '%s': %s",
+						alternative.getExpression(), e.getMessage()), e);
+			}
+		}
+
+		return new ResolvedFragment(expressionTranslation.getTranslation(), "default translation");
+	}
+
+	@NonNull
+	private static RuntimeException contextualizePlaceholderFailure(@NonNull String key,
+																							@NonNull String placeholderName,
+																							@NonNull PlaceholderBinding placeholderBinding,
+																							@NonNull RuntimeException cause) {
+		return contextualizePlaceholderFailure(key, placeholderName, placeholderBinding, null, cause);
+	}
+
+	@NonNull
+	private static RuntimeException contextualizePlaceholderFailure(@NonNull String key,
+																							@NonNull String placeholderName,
+																							@NonNull PlaceholderBinding placeholderBinding,
+																							@Nullable String selectionDescription,
+																							@NonNull RuntimeException cause) {
+		requireNonNull(key);
+		requireNonNull(placeholderName);
+		requireNonNull(placeholderBinding);
+		requireNonNull(cause);
+
+		String causeMessage = cause.getMessage() == null ? cause.getClass().getSimpleName() : cause.getMessage();
+		String selectionContext = selectionDescription == null ? "" : format("; selected %s", selectionDescription);
+		String message = format(
+				"Unable to resolve generated placeholder '%s' (%s) for key '%s'; definition declared at %s%s: %s",
+				placeholderName, placeholderBinding.getDefinition().getClass().getSimpleName(), key,
+				placeholderBinding.getDeclaringPath(), selectionContext, causeMessage);
+
+		if (cause instanceof ExpressionEvaluationException)
+			return new ExpressionEvaluationException(message, cause);
+
+		if (cause instanceof IllegalArgumentException)
+			return new IllegalArgumentException(message, cause);
+
+		if (cause instanceof IllegalStateException)
+			return new IllegalStateException(message, cause);
+
+		// Preserve application exception identity and type (for example, a custom resolver failure). These exceptions
+		// are already attributable to the configured extension point and may be inspected directly by failure handlers.
+		return cause;
+	}
+
 	private static void enqueueGeneratedPlaceholderDependencies(@NonNull String template,
-																							@NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
+																							@NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
 																							@NonNull Set<@NonNull String> pendingGeneratedPlaceholderNames,
 																							@NonNull Set<@NonNull String> resolvedGeneratedPlaceholderNames) {
 		requireNonNull(template);
-		requireNonNull(languageFormTranslationsByPlaceholder);
+		requireNonNull(fileDefinedPlaceholderNames);
 		requireNonNull(pendingGeneratedPlaceholderNames);
 		requireNonNull(resolvedGeneratedPlaceholderNames);
 
 		for (String placeholderName : StringInterpolator.placeholderNamesIn(template))
-			if (languageFormTranslationsByPlaceholder.containsKey(placeholderName) &&
+			if (fileDefinedPlaceholderNames.contains(placeholderName) &&
 					!resolvedGeneratedPlaceholderNames.contains(placeholderName))
 				pendingGeneratedPlaceholderNames.add(placeholderName);
 	}
 
 	@NonNull
 	private String interpolateTemplate(@NonNull String key, @NonNull String template,
-														 @NonNull Map<@NonNull String, @Nullable Object> generatedContext,
-														 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
-														 @NonNull Set<@NonNull String> fileDefinedPlaceholderNames,
-														 @NonNull Locale locale, @NonNull BidiIsolation bidiIsolation,
+												 @NonNull Map<@NonNull String, @Nullable Object> generatedContext,
+												 @NonNull Map<@NonNull String, @NonNull String> generatedSelectionDescriptions,
+												 @NonNull Map<@NonNull String, @Nullable Object> immutableContext,
+												 @NonNull Map<@NonNull String, @NonNull PlaceholderBinding> placeholderBindings,
+												 @NonNull Locale locale, @NonNull BidiIsolation bidiIsolation,
 																 @NonNull Map<@NonNull String, @NonNull String> expandedGeneratedValues,
 																 @NonNull List<@NonNull String> generatedPlaceholderPath,
 																 @NonNull GeneratedExpansionBudget generatedExpansionBudget, int depth) {
 		requireNonNull(key);
 		requireNonNull(template);
 		requireNonNull(generatedContext);
+		requireNonNull(generatedSelectionDescriptions);
 		requireNonNull(immutableContext);
-		requireNonNull(fileDefinedPlaceholderNames);
+		requireNonNull(placeholderBindings);
 		requireNonNull(locale);
 		requireNonNull(bidiIsolation);
 		requireNonNull(expandedGeneratedValues);
@@ -1018,7 +1217,7 @@ class DefaultStrings implements Strings {
 		Map<@NonNull String, @Nullable Object> interpolationContext = new HashMap<>();
 
 		for (String placeholderName : StringInterpolator.placeholderNamesIn(template)) {
-			if (fileDefinedPlaceholderNames.contains(placeholderName)) {
+			if (placeholderBindings.containsKey(placeholderName)) {
 				if (expandedGeneratedValues.containsKey(placeholderName)) {
 					interpolationContext.put(placeholderName, expandedGeneratedValues.get(placeholderName));
 					continue;
@@ -1040,10 +1239,15 @@ class DefaultStrings implements Strings {
 					generatedPlaceholderPath.add(placeholderName);
 					try {
 						String expandedValue = interpolateTemplate(key, (String) generatedValue,
-								generatedContext, immutableContext, fileDefinedPlaceholderNames, locale, bidiIsolation,
+								generatedContext, generatedSelectionDescriptions, immutableContext, placeholderBindings,
+								locale, bidiIsolation,
 								expandedGeneratedValues, generatedPlaceholderPath, generatedExpansionBudget, depth + 1);
 						expandedGeneratedValues.put(placeholderName, expandedValue);
 						interpolationContext.put(placeholderName, expandedValue);
+					} catch (RuntimeException e) {
+						throw contextualizePlaceholderFailure(key, placeholderName,
+								placeholderBindings.get(placeholderName),
+								generatedSelectionDescriptions.get(placeholderName), e);
 					} finally {
 						generatedPlaceholderPath.remove(generatedPlaceholderPath.size() - 1);
 					}
@@ -1201,12 +1405,12 @@ class DefaultStrings implements Strings {
 		requireNonNull(context);
 		requireNonNull(locale);
 
-		List<@NonNull Token> expressionTokens = compiledExpressionTokensByAlternative.get(alternative);
+		CompiledExpression compiledExpression = compiledExpressionsByAlternative.get(alternative);
 
-		if (expressionTokens == null)
+		if (compiledExpression == null)
 			throw new IllegalStateException(format("No compiled expression was found for alternative '%s'", alternative.getKey()));
 
-		return getExpressionEvaluator().evaluateReversePolishNotationTokens(expressionTokens, context, locale);
+		return getExpressionEvaluator().evaluateCompiledExpression(compiledExpression, context, locale);
 	}
 
 	@NonNull
@@ -1957,6 +2161,48 @@ class DefaultStrings implements Strings {
 	@NonNull
 	protected Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> getLocalizedStringsByKeyByLocale() {
 		return localizedStringsByKeyByLocale;
+	}
+
+	@Immutable
+	private static final class ResolvedFragment {
+		@NonNull private final String template;
+		@NonNull private final String selectionDescription;
+
+		private ResolvedFragment(@NonNull String template, @NonNull String selectionDescription) {
+			this.template = requireNonNull(template);
+			this.selectionDescription = requireNonNull(selectionDescription);
+		}
+
+		@NonNull
+		private String getTemplate() {
+			return template;
+		}
+
+		@NonNull
+		private String getSelectionDescription() {
+			return selectionDescription;
+		}
+	}
+
+	@Immutable
+	private static final class PlaceholderBinding {
+		@NonNull private final PlaceholderDefinition definition;
+		@NonNull private final String declaringPath;
+
+		private PlaceholderBinding(@NonNull PlaceholderDefinition definition, @NonNull String declaringPath) {
+			this.definition = requireNonNull(definition);
+			this.declaringPath = requireNonNull(declaringPath);
+		}
+
+		@NonNull
+		private PlaceholderDefinition getDefinition() {
+			return definition;
+		}
+
+		@NonNull
+		private String getDeclaringPath() {
+			return declaringPath;
+		}
 	}
 
 	private static final class GeneratedExpansionBudget {

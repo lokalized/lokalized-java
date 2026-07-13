@@ -32,6 +32,15 @@ import static java.util.Objects.requireNonNull;
 /**
  * Diagnostic result for a translation lookup. Collection state is defensively copied; an optional failure cause is
  * exposed by reference.
+ * <p>
+ * If evaluating a reachable {@link LocalizedString.ExpressionAlternative expression-fragment predicate} or
+ * interpolating its selected/default fragment fails, a handler-produced result reports
+ * {@link TranslationFailureReason#RESOLUTION_FAILURE} and exposes the runtime cause. The
+ * {@link TranslationFallbackPolicy#fallbackOnMissingTranslationOrNoMatchingAlternative() default fallback policy}
+ * stops at that failure, while
+ * {@link TranslationFallbackPolicy#fallbackOnAnyFailure()} may first try another locale. Expression-selected fragments
+ * have required defaults and therefore cannot themselves produce
+ * {@link TranslationFailureReason#NO_MATCHING_ALTERNATIVE}.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
@@ -58,7 +67,8 @@ public final class TranslationResult {
 	 * @param attemptedLocales ordered locales actually attempted, not null
 	 * @param status result status, not null
 	 * @param failureReason final failure reason for a handler response, otherwise null
-	 * @param cause first runtime resolution cause, otherwise null
+	 * @param cause first runtime resolution cause, including an evaluated expression-fragment or selected/default
+	 *              fragment failure, otherwise null
 	 * @throws IllegalArgumentException if success and failure state is mixed, a resolution cause and reason disagree,
 	 *                                  attempted locales contain duplicates, or the resolved locale was not attempted
 	 */
@@ -80,7 +90,8 @@ public final class TranslationResult {
 	 * @param attemptedLocales ordered locales actually attempted, not null
 	 * @param status result status, not null
 	 * @param failureReason final failure reason for a handler response, otherwise null
-	 * @param cause runtime resolution cause, otherwise null
+	 * @param cause runtime resolution cause, including an evaluated expression-fragment or selected/default fragment
+	 *              failure, otherwise null
 	 * @throws IllegalArgumentException if success and failure state is mixed, a resolution cause and reason disagree,
 	 *                                  attempted locales contain duplicates, or the resolved locale was not attempted
 	 */
@@ -163,13 +174,24 @@ public final class TranslationResult {
 		return status;
 	}
 
-	/** @return final lookup failure reason for handler-produced results, otherwise empty, not null */
+	/**
+	 * Gets the final lookup failure reason for handler-produced results.
+	 * <p>
+	 * Evaluated expression-fragment predicate and selected/default fragment failures are
+	 * {@link TranslationFailureReason#RESOLUTION_FAILURE}; an expression-selected fragment cannot itself produce
+	 * {@link TranslationFailureReason#NO_MATCHING_ALTERNATIVE} because it has a required default.
+	 *
+	 * @return final lookup failure reason for handler-produced results, otherwise empty, not null
+	 */
 	@NonNull
 	public Optional<@NonNull TranslationFailureReason> getFailureReason() {
 		return Optional.ofNullable(failureReason);
 	}
 
-	/** @return first runtime resolution cause for a failed lookup, otherwise empty, not null */
+	/**
+	 * @return first runtime resolution cause for a failed lookup, including an evaluated expression-fragment or
+	 * selected/default fragment failure, otherwise empty, not null
+	 */
 	@NonNull
 	public Optional<@NonNull Throwable> getCause() {
 		return Optional.ofNullable(cause);

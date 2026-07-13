@@ -28,6 +28,15 @@ import static java.util.Objects.requireNonNull;
  * Decides how Lokalized should respond when a localized string lookup fails after the configured
  * {@link TranslationFallbackPolicy} stops fallback or all locale candidates are exhausted.
  * <p>
+ * Failures from evaluating a reachable {@link LocalizedString.ExpressionAlternative expression-fragment predicate}
+ * or interpolating its selected/default fragment are reported as
+ * {@link TranslationFailureReason#RESOLUTION_FAILURE}. The
+ * {@link TranslationFallbackPolicy#fallbackOnMissingTranslationOrNoMatchingAlternative() default fallback policy}
+ * stops on these failures, while
+ * {@link TranslationFallbackPolicy#fallbackOnAnyFailure()} may try another locale before invoking this handler. An
+ * expression-selected fragment always has a default translation, so its selection cannot itself produce
+ * {@link TranslationFailureReason#NO_MATCHING_ALTERNATIVE}.
+ * <p>
  * Handlers shared by a {@link Strings} instance may be invoked concurrently and must be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -46,10 +55,11 @@ public interface TranslationFailureHandler {
 	/**
 	 * Returns the lookup key itself after interpolating supplied placeholders into it.
 	 * <p>
-	 * Unmatched alternatives and runtime resolution failures are handled the same way as missing translations. Use
-	 * {@link #throwException()} or a custom handler that throws for
-	 * {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken placeholder rules, expressions, or custom
-	 * resolvers.
+	 * Unmatched whole-message alternatives and runtime resolution failures are handled the same way as missing
+	 * translations. This includes failures in evaluated expression-fragment predicates and selected/default fragments.
+	 * Use {@link #throwException()} or a custom handler that throws for
+	 * {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken generated-placeholder rules, expressions,
+	 * interpolation, or custom resolvers.
 	 *
 	 * @return the handler, not null
 	 */
@@ -63,6 +73,9 @@ public interface TranslationFailureHandler {
 
 	/**
 	 * Throws an exception for failed lookups.
+	 * <p>
+	 * A runtime cause supplied for {@link TranslationFailureReason#RESOLUTION_FAILURE} is rethrown. Other failure reasons
+	 * produce a {@link MissingTranslationException}.
 	 *
 	 * @return the handler, not null
 	 */
@@ -79,10 +92,11 @@ public interface TranslationFailureHandler {
 	 * <p>
 	 * Placeholder values are not logged.
 	 * <p>
-	 * Unmatched alternatives and runtime resolution failures are handled the same way as missing translations after
-	 * logging. Use {@link #throwException()} or a custom handler that throws for
-	 * {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken placeholder rules, expressions, or custom
-	 * resolvers.
+	 * Unmatched whole-message alternatives and runtime resolution failures are handled the same way as missing
+	 * translations after logging. This includes failures in evaluated expression-fragment predicates and
+	 * selected/default fragments. Use {@link #throwException()} or a custom handler that throws for
+	 * {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken generated-placeholder rules, expressions,
+	 * interpolation, or custom resolvers.
 	 *
 	 * @param logger logger to use, not null
 	 * @return the handler, not null

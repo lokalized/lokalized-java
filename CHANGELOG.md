@@ -15,15 +15,25 @@ All notable changes to Lokalized will be documented in this file.
   `getSupportedLocales()`, `getKeysForLocale(Locale)`, and `getMissingKeys(Locale, Locale)`.
 - Renamed `Cardinality.getSupportedLanguageCodes()` and `Ordinality.getSupportedLanguageCodes()` to
   `getSupportedLocaleTags()` because the returned values are BCP 47 locale tags, not only language codes.
+- Replaced `LocalizedString.getLanguageFormTranslationsByPlaceholder()` and
+  `LocalizedString.Builder.languageFormTranslationsByPlaceholder(...)` with the unified
+  `getPlaceholderDefinitions()` and `placeholderDefinitions(...)` API. Inspection code now receives
+  `Map<String, PlaceholderDefinition>` and must distinguish `LanguageFormTranslation` from
+  `ExpressionTranslation`.
+- Whole-message alternatives now inherit generated-placeholder definitions from every node on the selected path. A
+  nearer child replaces a complete same-named ancestor definition, and selected ancestor definitions take precedence
+  over same-named caller values during output interpolation.
 - Loader validation is stricter and now rejects duplicate nested JSON members, malformed placeholders,
   reserved language-form placeholder names, invalid locale filenames in explicitly loaded filesystem catalog
   directories, invalid alternative expressions, explicit null placeholder modes, blank/BOM-only catalogs, and
   malformed UTF-8 at load time. Invalid locale filenames discovered on the classpath are warnings instead.
 - Existing loader overloads now apply per-resource defaults of 8 MiB input, 8,388,608 reader UTF-16 code units, and 64
-  JSON nesting levels, plus load-wide defaults of 32 MiB input, 256 catalogs, 100,000 localized-string nodes, and 1,000
-  warnings. Translation and warning limits now also apply to single-resource `parse(...)` calls, and the translation
-  count includes nested alternatives. Classpath package paths must be nonempty, slash-relative, and free of traversal
-  segments; trailing slashes are normalized.
+  JSON nesting levels, plus load-wide defaults of 32 MiB input, 256 catalogs, 100,000 translation nodes, and 1,000
+  warnings. Translation-node and warning limits now also apply to single-resource `parse(...)` calls. The node count
+  includes roots, whole-message alternatives, every placeholder definition, and every expression-fragment
+  alternative. Classpath package paths must be nonempty, slash-relative, and free of traversal segments; trailing
+  slashes are normalized. The loading-options API is named `maximumTranslationNodes(...)`/
+  `getMaximumTranslationNodes()` accordingly.
 - Locale matching now accepts at most 32 parsed language ranges per call. The count includes equivalent ranges added by
   `Locale.LanguageRange.parse(...)`, not only the comma-separated values in the source header.
 - Runtime safety defaults are lower: 1,024 for numeric precision, absolute scale, and visible decimal places; 64 for
@@ -44,12 +54,17 @@ All notable changes to Lokalized will be documented in this file.
 - `Range<T>` is now a final immutable `Iterable<T>` instead of a `Collection<T>`. Its mutation methods, collection
   facade, and `getInfinite()` were removed; use `getValues()` and boxed `isInfinite()`. Factories now reject null arrays
   and null elements instead of treating a null array as empty or retaining null values.
-- `LocalizedString` and its immutable nested value types are final, and `LocalizedString` construction is builder-only;
-  runtime catalog immutability can no longer be invalidated by subclasses with mutable overridden getters.
+- `LocalizedString` and its concrete immutable nested value types are final, and `LocalizedString` construction is
+  builder-only; runtime catalog immutability can no longer be invalidated by subclasses with mutable overridden
+  getters. The abstract `PlaceholderDefinition` base is closed by a private constructor.
 - `LanguageForm` is explicitly closed to the Lokalized-provided enum types. External implementations were never
   resolvable by the translation runtime and are now documented as unsupported.
 - Every object in an `alternatives` array must contain exactly one expression. Nested alternatives now halt at the first
   matching branch even when its nested subtree does not produce a translation.
+- Exact `==`/`!=` predicates between a `CharSequence` operand and a numeric value now reject the nonnumeric operand
+  before phonetic resolution. With fail-fast `Strings`, this may now surface `ExpressionEvaluationException` rather
+  than the default `PhoneticResolver`'s `IllegalStateException`; ordered numeric comparisons already surfaced
+  `ExpressionEvaluationException`. Pass a `Number` or numeric `PluralOperands` for numeric predicates.
 - The default locale-fallback policy no longer hides runtime resolution failures by trying later locales. It continues
   for missing translations and unmatched alternatives; use `TranslationFallbackPolicy.fallbackOnAnyFailure()` to
   preserve the legacy behavior.
@@ -95,6 +110,9 @@ All notable changes to Lokalized will be documented in this file.
   interpolation safety limits within documented hard ceilings, with direct support in `PluralOperands`.
 - Added aggregate catalog limits and explicit locale-to-classpath-resource loading for containers and custom
   classloaders that can open resources but cannot enumerate standard `file:` or `jar:` package URLs.
+- Added expression-selected generated fragments. A placeholder may declare a required default `translation` and an
+  optional ordered list of string-valued expression alternatives; the first match wins. Omitting alternatives creates
+  a scoped constant/composed fragment.
 
 ### Behavior Changes
 
@@ -117,6 +135,15 @@ All notable changes to Lokalized will be documented in this file.
 - Selected generated-placeholder fragments may reference caller values and other generated placeholders recursively;
   cycles, excessive depth, and output above the configured limit are resolution failures. The default output limit is
   262,144 UTF-16 code units, with a 1,048,576-code-unit hard ceiling.
+- Whole-message and expression-fragment predicates evaluate against one immutable caller-input snapshot and the locale
+  of the candidate catalog. Language-form selectors and range endpoints also always read raw caller input; generated
+  values never become predicate operands or selector inputs.
+- Expression fragments use ordered first-match/default selection and demand-driven dependency resolution. Unselected,
+  shadowed, and unreachable definitions consume no lookup-time expansion work. Both placeholder kinds share recursive
+  expansion, cycle detection, safety limits, fallback behavior, and bidi handling.
+- Expression-fragment predicate and selected-fragment interpolation errors are resolution failures. The default
+  fallback policy stops, while `fallbackOnAnyFailure()` may continue. Because every expression fragment has a default,
+  it cannot itself produce `NO_MATCHING_ALTERNATIVE`.
 - Alternatives-only keys for which no condition matches are reported as
   `TranslationFailureReason.NO_MATCHING_ALTERNATIVE` without a synthetic expression-evaluation cause.
 - Failure-key interpolation uses the configured output limit, 262,144 UTF-16 code units by default; if interpolation
@@ -160,6 +187,15 @@ All notable changes to Lokalized will be documented in this file.
 - Update custom `Strings` implementations with the three new inspection methods.
 - Replace `Cardinality.getSupportedLanguageCodes()` and `Ordinality.getSupportedLanguageCodes()` with
   the corresponding `getSupportedLocaleTags()` calls.
+- Replace `LocalizedString.Builder.languageFormTranslationsByPlaceholder(...)` with
+  `placeholderDefinitions(...)`, and replace `getLanguageFormTranslationsByPlaceholder()` with
+  `getPlaceholderDefinitions()`. The returned map is now `Map<String, PlaceholderDefinition>`; use `instanceof` before
+  casting and handle both `LanguageFormTranslation` and `ExpressionTranslation` (plus unfamiliar future
+  library-defined subtypes defensively).
+- Replace `LocalizedStringLoadingOptions.Builder.maximumTranslations(...)` and `getMaximumTranslations()` with
+  `maximumTranslationNodes(...)` and `getMaximumTranslationNodes()`. Recheck configured boundaries because every
+  placeholder definition and expression-fragment alternative now counts in addition to roots and whole-message
+  alternatives.
 - Replace `Range` collection operations with `range.getValues()` and replace `getInfinite()` with boxed
   `isInfinite()`.
 - If an application intentionally relied on fallback after a corrupt translation failed to resolve, configure
@@ -185,9 +221,10 @@ All notable changes to Lokalized will be documented in this file.
   null placeholder modes, blank/BOM-only catalogs, and malformed UTF-8 are rejected while loading. Use `{}` for an
   empty catalog.
 - Review catalog sizes and nesting against the new per-resource defaults (8 MiB input, 8,388,608 reader UTF-16 code
-  units, and depth 64) and load-wide defaults (32 MiB input and 256 catalogs). The 100,000-translation budget counts
-  top-level messages and nested alternatives, and it and the 1,000-warning budget also apply to single-resource `parse(...)`
-  calls. A configured total-input budget also applies to single-resource `Path` and `InputStream` parsing. Pass
+  units, and depth 64) and load-wide defaults (32 MiB input and 256 catalogs). The 100,000-translation-node budget
+  counts roots, whole-message alternatives, placeholder definitions, and expression-fragment alternatives; it and the
+  1,000-warning budget also apply to single-resource `parse(...)` calls. A configured total-input budget also applies
+  to single-resource `Path` and `InputStream` parsing. Pass
   `LocalizedStringLoadingOptions` to select different limits; nesting cannot be raised above 128.
 - Bound the raw `Accept-Language` header size before calling `Locale.LanguageRange.parse(...)`, then ensure the parsed
   list contains at most 32 ranges. Parsing may add equivalent ranges, and Lokalized cannot bound work that occurs before
@@ -207,3 +244,24 @@ All notable changes to Lokalized will be documented in this file.
   `LocalizedStringWarningHandler.ignore()` to retain silent loading or `throwException()` for build-time strictness.
 - Right-to-left locale output may now include Unicode FSI/PDI controls around caller-supplied placeholder
   values. Use `BidiIsolation.NONE` only for sinks that cannot accept bidi controls.
+
+Selected-branch placeholder inheritance intentionally changes one caller-collision case. Given this catalog:
+
+```json
+{
+  "Message" : {
+    "placeholders" : {
+      "label" : { "translation" : "catalog label" }
+    },
+    "alternatives" : [
+      { "mode == 1" : "{{label}}" }
+    ]
+  }
+}
+```
+
+the selected child previously rendered a caller-supplied `label`; it now inherits and renders `catalog label`. Rename
+the caller value or add an explicit child definition when the old behavior was intentional. Inherited definitions also
+affect interpolation and selectors differently by design: an inherited generated `count` supplies rendered
+`{{count}}`, while a language-form definition whose `value` is `count` still classifies the caller's raw `count`.
+`range.start` and `range.end` follow the same raw-input rule. Prefer distinct names such as `count` and `countText`.

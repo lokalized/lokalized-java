@@ -16,6 +16,10 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.ExpressionAlternative;
+import com.lokalized.LocalizedString.ExpressionTranslation;
+import com.lokalized.LocalizedString.LanguageFormTranslation;
+import com.lokalized.LocalizedString.PlaceholderDefinition;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 
@@ -63,6 +67,9 @@ public class LocalizedStringLoaderTests {
 		LocalizedStringLoadingOptions defaults = LocalizedStringLoadingOptions.defaults();
 		LocalizedStringLoadingOptions copy = defaults.toBuilder().build();
 		LocalizedStringLoadingOptions lower = defaults.toBuilder().maximumCatalogs(10).build();
+		LocalizedStringLoadingOptions lowerTranslationNodeLimit = defaults.toBuilder()
+				.maximumTranslationNodes(99_999)
+				.build();
 
 		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES);
 		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS);
@@ -71,7 +78,7 @@ public class LocalizedStringLoaderTests {
 		assertEquals(Integer.valueOf(128), LocalizedStringLoadingOptions.MAXIMUM_JSON_NESTING_DEPTH);
 		assertEquals(Long.valueOf(33_554_432L), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES);
 		assertEquals(Integer.valueOf(256), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_CATALOGS);
-		assertEquals(Integer.valueOf(100_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATIONS);
+		assertEquals(Integer.valueOf(100_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATION_NODES);
 		assertEquals(Integer.valueOf(1_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS);
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES, defaults.getMaximumInputBytes());
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS,
@@ -81,12 +88,15 @@ public class LocalizedStringLoaderTests {
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES,
 				defaults.getMaximumTotalInputBytes());
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_CATALOGS, defaults.getMaximumCatalogs());
-		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATIONS, defaults.getMaximumTranslations());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATION_NODES,
+				defaults.getMaximumTranslationNodes());
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS, defaults.getMaximumWarnings());
 		assertEquals(defaults, copy);
 		assertEquals(defaults.hashCode(), copy.hashCode());
 		assertNotEquals(defaults, lower);
+		assertNotEquals(defaults, lowerTranslationNodeLimit);
 		assertTrue(lower.toString().contains("maximumCatalogs=10"));
+		assertTrue(defaults.toString().contains("maximumTranslationNodes=100000"));
 	}
   @Test
   public void testClasspathLoading() {
@@ -413,7 +423,7 @@ public class LocalizedStringLoaderTests {
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoadingOptions.builder().maximumCatalogs(0));
     assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringLoadingOptions.builder().maximumTranslations(-1));
+        () -> LocalizedStringLoadingOptions.builder().maximumTranslationNodes(-1));
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoadingOptions.builder().maximumWarnings(-1));
   }
@@ -434,8 +444,8 @@ public class LocalizedStringLoaderTests {
         .maximumTotalInputBytes((long) englishCatalog.getBytes(StandardCharsets.UTF_8).length +
             frenchCatalog.getBytes(StandardCharsets.UTF_8).length - 1L)
         .build();
-    LocalizedStringLoadingOptions translationLimited = LocalizedStringLoadingOptions.builder()
-        .maximumTranslations(1)
+    LocalizedStringLoadingOptions translationNodeLimited = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(1)
         .build();
 
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
@@ -445,8 +455,8 @@ public class LocalizedStringLoaderTests {
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, byteLimited)).getMessage()
         .contains("aggregate maximum"));
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, translationLimited)).getMessage()
-        .contains("aggregate maximum of 1 translations"));
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, translationNodeLimited)).getMessage()
+        .contains("aggregate maximum of 1 translation nodes"));
 
   }
 
@@ -457,21 +467,21 @@ public class LocalizedStringLoaderTests {
     Path file = Files.createTempFile("lokalized-single-resource-limits", ".json");
     file.toFile().deleteOnExit();
     Files.write(file, catalogBytes);
-    LocalizedStringLoadingOptions noTranslations = LocalizedStringLoadingOptions.builder()
-        .maximumTranslations(0)
+    LocalizedStringLoadingOptions noTranslationNodes = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(0)
         .build();
 
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(file, Locale.ENGLISH, LocalizedStringWarningHandler.ignore(),
-            noTranslations)).getMessage().contains("aggregate maximum of 0 translations"));
+            noTranslationNodes)).getMessage().contains("aggregate maximum of 0 translation nodes"));
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(new ByteArrayInputStream(catalogBytes), Locale.ENGLISH, "input-stream",
-            LocalizedStringWarningHandler.ignore(), noTranslations)).getMessage()
-        .contains("aggregate maximum of 0 translations"));
+            LocalizedStringWarningHandler.ignore(), noTranslationNodes)).getMessage()
+        .contains("aggregate maximum of 0 translation nodes"));
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "reader",
-            LocalizedStringWarningHandler.ignore(), noTranslations)).getMessage()
-        .contains("aggregate maximum of 0 translations"));
+            LocalizedStringWarningHandler.ignore(), noTranslationNodes)).getMessage()
+        .contains("aggregate maximum of 0 translation nodes"));
 
     LocalizedStringLoadingOptions aggregateByteLimited = LocalizedStringLoadingOptions.builder()
         .maximumTotalInputBytes(catalogBytes.length - 1L)
@@ -498,37 +508,37 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
-  public void testNestedAlternativesCountTowardTranslationLimit() {
+  public void testNestedAlternativesCountTowardTranslationNodeLimit() {
     String catalog = "{\"root\":{\"translation\":\"fallback\",\"alternatives\":[" +
         "{\"count == 1\":\"one\"}]}}";
-    LocalizedStringLoadingOptions oneTranslation = LocalizedStringLoadingOptions.builder()
-        .maximumTranslations(1)
+    LocalizedStringLoadingOptions oneTranslationNode = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(1)
         .build();
-    LocalizedStringLoadingOptions twoTranslations = LocalizedStringLoadingOptions.builder()
-        .maximumTranslations(2)
+    LocalizedStringLoadingOptions twoTranslationNodes = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(2)
         .build();
 
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "nested-alternative",
-            LocalizedStringWarningHandler.ignore(), oneTranslation)).getMessage()
-        .contains("aggregate maximum of 1 translations"));
+            LocalizedStringWarningHandler.ignore(), oneTranslationNode)).getMessage()
+        .contains("aggregate maximum of 1 translation nodes"));
     assertEquals(1, LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "nested-alternative",
-        LocalizedStringWarningHandler.ignore(), twoTranslations).size());
+        LocalizedStringWarningHandler.ignore(), twoTranslationNodes).size());
   }
 
 	@Test
-	public void testTranslationLimitIsReservedBeforeCatalogEntryValidation() throws IOException {
-		Path tempDirectory = Files.createTempDirectory("lokalized-translation-limit");
+	public void testTranslationNodeLimitIsReservedBeforeCatalogEntryValidation() throws IOException {
+		Path tempDirectory = Files.createTempDirectory("lokalized-translation-node-limit");
 		tempDirectory.toFile().deleteOnExit();
 		Files.write(tempDirectory.resolve("en.json"),
 				"{\"first\":\"ok\",\"second\":{\"translation\":null}}".getBytes(StandardCharsets.UTF_8));
-		LocalizedStringLoadingOptions oneTranslation = LocalizedStringLoadingOptions.builder()
-				.maximumTranslations(1)
+		LocalizedStringLoadingOptions oneTranslationNode = LocalizedStringLoadingOptions.builder()
+				.maximumTranslationNodes(1)
 				.build();
 
 		LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
-				() -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, oneTranslation));
-		assertTrue(exception.getMessage().contains("aggregate maximum of 1 translations"));
+				() -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, oneTranslationNode));
+		assertTrue(exception.getMessage().contains("aggregate maximum of 1 translation nodes"));
 	}
 
   @Test
@@ -556,6 +566,7 @@ public class LocalizedStringLoaderTests {
         "{\"key\":{\"translation\":\"value\",\"placeholders\":null}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"range\":null}}}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":null,\"range\":{\"start\":\"a\",\"end\":\"b\"}}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"value\":\"count\",\"translations\":null}}}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":null}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":[]}}",
         "{\"key\":{\"translation\":\"value\",\"alternatives\":[null]}}",
@@ -580,6 +591,229 @@ public class LocalizedStringLoaderTests {
 
     assertTrue(exception.getMessage().contains("exactly one expression"));
     assertTrue(exception.getMessage().contains("first-match precedence"));
+  }
+
+  @Test
+  public void testLoaderParsesConstantAndConditionalTemplatePlaceholders() {
+    String catalog = "{\"Search completed.\":{\"translation\":\"Found {{resultSummary}} {{timing}}.\"," +
+        "\"placeholders\":{" +
+        "\"resultSummary\":{\"translation\":\"{{formattedResultCount}} {{resultNoun}}\"," +
+        "\"alternatives\":[{\"resultCount == 0\":\"no results\"}," +
+        "{\"resultCount >= resultLimit\":\"at least {{formattedResultLimit}} results\"}]}," +
+        "\"timing\":{\"translation\":\"in {{formattedDuration}}\"}," +
+        "\"resultNoun\":{\"value\":\"resultCount\",\"translations\":{" +
+        "\"CARDINALITY_ONE\":\"result\",\"CARDINALITY_OTHER\":\"results\"}}}}}";
+
+    LocalizedString localizedString = LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+        "template-placeholder-test", LocalizedStringWarningHandler.ignore(),
+        LocalizedStringLoadingOptions.defaults()).iterator().next();
+    Map<String, PlaceholderDefinition> definitions = localizedString.getPlaceholderDefinitions();
+
+    assertEquals(3, definitions.size());
+    assertTrue(definitions.get("resultSummary") instanceof ExpressionTranslation);
+    assertTrue(definitions.get("timing") instanceof ExpressionTranslation);
+    assertTrue(definitions.get("resultNoun") instanceof LanguageFormTranslation);
+
+    ExpressionTranslation resultSummary = (ExpressionTranslation) definitions.get("resultSummary");
+    assertEquals("{{formattedResultCount}} {{resultNoun}}", resultSummary.getTranslation());
+    assertEquals(List.of(
+        new ExpressionAlternative("resultCount == 0", "no results"),
+        new ExpressionAlternative("resultCount >= resultLimit", "at least {{formattedResultLimit}} results")),
+        resultSummary.getAlternatives());
+
+    ExpressionTranslation timing = (ExpressionTranslation) definitions.get("timing");
+    assertEquals("in {{formattedDuration}}", timing.getTranslation());
+    assertTrue(timing.getAlternatives().isEmpty());
+  }
+
+  @Test
+  public void testLoaderRejectsInvalidTemplatePlaceholderShapes() {
+    String[] invalidPlaceholderDefinitions = {
+        "{\"alternatives\":[{\"count == 0\":\"none\"}]}",
+        "{\"translation\":null}",
+        "{\"translation\":{}}",
+        "{\"translation\":\"default\",\"alternatives\":null}",
+        "{\"translation\":\"default\",\"alternatives\":{}}",
+        "{\"translation\":\"default\",\"alternatives\":[]}",
+        "{\"translation\":\"default\",\"alternatives\":[null]}",
+        "{\"translation\":\"default\",\"alternatives\":[\"not an object\"]}",
+        "{\"translation\":\"default\",\"alternatives\":[{}]}",
+        "{\"translation\":\"default\",\"alternatives\":[{\"a == 1\":\"one\",\"a == 2\":\"two\"}]}",
+        "{\"translation\":\"default\",\"alternatives\":[{\"count == 0\":null}]}",
+        "{\"translation\":\"default\",\"alternatives\":[{\"count == 0\":{\"translation\":\"none\"}}]}"
+    };
+
+    for (String placeholderDefinition : invalidPlaceholderDefinitions) {
+      String catalog = "{\"root\":{\"translation\":\"{{summary}}\",\"placeholders\":{\"summary\":" +
+          placeholderDefinition + "}}}";
+      assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+              "invalid-template-placeholder", LocalizedStringWarningHandler.ignore(),
+              LocalizedStringLoadingOptions.defaults()), placeholderDefinition);
+    }
+  }
+
+  @Test
+  public void testLoaderReportsContextForInvalidTemplateExpressionsAndFragments() {
+    String invalidExpressionCatalog = "{\"root.key\":{\"translation\":\"fixed\",\"placeholders\":{" +
+        "\"summary\":{\"translation\":\"default\",\"alternatives\":[{\"count ==\":\"none\"}]}}}}";
+    LocalizedStringLoadingException expressionException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(invalidExpressionCatalog), Locale.ENGLISH,
+            "context-source", LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults()));
+
+    assertTrue(expressionException.getMessage().contains("context-source"));
+    assertTrue(expressionException.getMessage().contains("root.key"));
+    assertTrue(expressionException.getMessage().contains("summary"));
+    assertTrue(expressionException.getMessage().contains("alternative 0"));
+    assertTrue(expressionException.getMessage().contains("count =="));
+
+    String invalidDefaultCatalog = "{\"root.key\":{\"translation\":\"fixed\",\"placeholders\":{" +
+        "\"summary\":{\"translation\":\"{{ malformed }}\"}}}}";
+    LocalizedStringLoadingException defaultException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(invalidDefaultCatalog), Locale.ENGLISH,
+            "context-source", LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults()));
+
+    assertTrue(defaultException.getMessage().contains("default fragment"));
+    assertTrue(defaultException.getMessage().contains("summary"));
+    assertTrue(defaultException.getMessage().contains("root.key"));
+
+    String invalidAlternativeCatalog = "{\"root.key\":{\"translation\":\"fixed\",\"placeholders\":{" +
+        "\"summary\":{\"translation\":\"default\",\"alternatives\":[" +
+        "{\"count == 0\":\"{{ malformed }}\"}]}}}}";
+    LocalizedStringLoadingException alternativeException = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(invalidAlternativeCatalog), Locale.ENGLISH,
+            "context-source", LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults()));
+
+    assertTrue(alternativeException.getMessage().contains("fragment alternative 0"));
+    assertTrue(alternativeException.getMessage().contains("count == 0"));
+    assertTrue(alternativeException.getMessage().contains("summary"));
+    assertTrue(alternativeException.getMessage().contains("root.key"));
+  }
+
+  @Test
+  public void testLoaderReportsSelectedPathForInvalidPlaceholdersInNestedWholeMessageAlternatives() {
+    String catalog = "{\"root.key\":{\"translation\":\"default\",\"alternatives\":[" +
+        "{\"count >= 1\":{\"translation\":\"outer\",\"alternatives\":[" +
+        "{\"priority == 1\":{\"translation\":\"Broken {{ name }}\"}}]}}]}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+            "nested-placeholder-context", LocalizedStringWarningHandler.ignore(),
+            LocalizedStringLoadingOptions.defaults()));
+
+    assertTrue(exception.getMessage().contains("invalid placeholder reference"));
+    assertTrue(exception.getMessage().contains("root.key"));
+    assertTrue(exception.getMessage().contains(
+        "root.key -> alternative[count >= 1] -> alternative[priority == 1]"));
+  }
+
+  @Test
+  public void testLoaderRejectsMixedPlaceholderModesByMemberPresenceBeforeNullChecks() {
+    List<String> mixedPlaceholderDefinitions = new ArrayList<>(List.of(
+        "{\"value\":\"count\",\"translation\":null}",
+        "{\"value\":null,\"translation\":\"default\"}",
+        "{\"translations\":null,\"alternatives\":null}"
+    ));
+
+    for (String languageFormMember : List.of("value", "range", "translations"))
+      for (String templateMember : List.of("translation", "alternatives"))
+        mixedPlaceholderDefinitions.add(format("{\"%s\":null,\"%s\":null}",
+            languageFormMember, templateMember));
+
+    for (String placeholderDefinition : mixedPlaceholderDefinitions) {
+      String catalog = "{\"root.key\":{\"translation\":\"{{summary}}\",\"placeholders\":{\"summary\":" +
+          placeholderDefinition + "}}}";
+      LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "mixed-placeholder-mode",
+              LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults()));
+
+      assertTrue(exception.getMessage().contains("mixes language-form members"), placeholderDefinition);
+      assertTrue(exception.getMessage().contains("template members"), placeholderDefinition);
+      assertTrue(exception.getMessage().contains("summary"), placeholderDefinition);
+      assertTrue(exception.getMessage().contains("root.key"), placeholderDefinition);
+    }
+  }
+
+  @Test
+  public void testLoaderRejectsUnknownPlaceholderMembersBeforeMixedModeChecks() {
+    String catalog = "{\"root\":{\"translation\":\"{{summary}}\",\"placeholders\":{\"summary\":{" +
+        "\"value\":\"count\",\"translation\":\"default\",\"unknown\":null}}}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "unknown-before-mode"));
+
+    assertTrue(exception.getMessage().contains("unexpected field 'unknown'"));
+    assertFalse(exception.getMessage().contains("mixes language-form members"));
+  }
+
+  @Test
+  public void testAllPlaceholderKindsCountTowardTranslationNodeLimit() {
+    String catalog = "{\"root\":{\"translation\":\"{{noun}} {{constant}} {{summary}}\"," +
+        "\"placeholders\":{" +
+        "\"noun\":{\"value\":\"count\",\"translations\":{" +
+        "\"CARDINALITY_ONE\":\"item\",\"CARDINALITY_OTHER\":\"items\"}}," +
+        "\"constant\":{\"translation\":\"ready\"}," +
+        "\"summary\":{\"translation\":\"normal\",\"alternatives\":[" +
+        "{\"count == 0\":\"none\"},{\"count > 5\":\"many\"}]}}," +
+        "\"alternatives\":[{\"count < 0\":\"negative\"}]}}";
+    LocalizedStringLoadingOptions sixTranslationNodes = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(6)
+        .build();
+    LocalizedStringLoadingOptions sevenTranslationNodes = LocalizedStringLoadingOptions.builder()
+        .maximumTranslationNodes(7)
+        .build();
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "translation-node-count",
+            LocalizedStringWarningHandler.ignore(), sixTranslationNodes));
+    assertTrue(exception.getMessage().contains("aggregate maximum of 6 translation nodes"));
+    assertEquals(1, LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+        "translation-node-count", LocalizedStringWarningHandler.ignore(), sevenTranslationNodes).size());
+  }
+
+  @Test
+  public void testEveryTranslationNodeKindHasAnExactIndependentBoundary() {
+    List<Entry<String, Integer>> catalogsAndExpectedNodes = List.of(
+        Map.entry("{}", 0),
+        Map.entry("{\"root\":\"value\"}", 1),
+        Map.entry("{\"root\":{\"translation\":\"{{noun}}\",\"placeholders\":{\"noun\":{" +
+            "\"value\":\"count\",\"translations\":{\"CARDINALITY_ONE\":\"item\"}}}}}", 2),
+        Map.entry("{\"root\":{\"translation\":\"{{range}}\",\"placeholders\":{\"range\":{" +
+            "\"range\":{\"start\":\"min\",\"end\":\"max\"},\"translations\":{" +
+            "\"CARDINALITY_OTHER\":\"items\"}}}}}", 2),
+        Map.entry("{\"root\":{\"translation\":\"{{constant}}\",\"placeholders\":{\"constant\":{" +
+            "\"translation\":\"ready\"}}}}", 2),
+        Map.entry("{\"root\":{\"translation\":\"{{fragment}}\",\"placeholders\":{\"fragment\":{" +
+            "\"translation\":\"default\",\"alternatives\":[{\"count == 0\":\"none\"}]}}}}", 3),
+        Map.entry("{\"root\":{\"translation\":\"{{fragment}}\",\"placeholders\":{\"fragment\":{" +
+            "\"translation\":\"default\",\"alternatives\":[{\"count == 0\":\"none\"}," +
+            "{\"count == 1\":\"one\"}]}}}}", 4),
+        Map.entry("{\"root\":{\"translation\":\"default\",\"alternatives\":[{" +
+            "\"count == 1\":\"one\"}]}}", 2)
+    );
+
+    for (Entry<String, Integer> catalogAndExpectedNodes : catalogsAndExpectedNodes) {
+      String catalog = catalogAndExpectedNodes.getKey();
+      Integer expectedNodes = catalogAndExpectedNodes.getValue();
+      LocalizedStringLoadingOptions exactBoundary = LocalizedStringLoadingOptions.builder()
+          .maximumTranslationNodes(expectedNodes)
+          .build();
+
+      assertEquals(expectedNodes == 0 ? 0 : 1,
+          LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH, "isolated-node-boundary",
+              LocalizedStringWarningHandler.ignore(), exactBoundary).size(), catalog);
+
+      if (expectedNodes > 0) {
+        LocalizedStringLoadingOptions oneBelowBoundary = LocalizedStringLoadingOptions.builder()
+            .maximumTranslationNodes(expectedNodes - 1)
+            .build();
+        LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+            () -> LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+                "isolated-node-boundary", LocalizedStringWarningHandler.ignore(), oneBelowBoundary), catalog);
+        assertTrue(exception.getMessage().contains(
+            format("aggregate maximum of %d translation nodes", expectedNodes - 1)), catalog);
+      }
+    }
   }
 
   @Test
@@ -931,7 +1165,7 @@ public class LocalizedStringLoaderTests {
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromFilesystem(tempDirectory);
     LocalizedString localizedString = localizedStringsByLocale.get(Locale.forLanguageTag("en")).iterator().next();
 
-    assertTrue(localizedString.getLanguageFormTranslationsByPlaceholder().containsKey("книги"));
+    assertTrue(localizedString.getPlaceholderDefinitions().containsKey("книги"));
     assertEquals(1, localizedString.getAlternatives().size());
   }
 

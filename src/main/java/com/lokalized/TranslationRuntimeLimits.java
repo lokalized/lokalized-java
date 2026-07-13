@@ -33,6 +33,12 @@ import static java.lang.String.format;
  * Catalog loaders validate expressions against hard ceilings because an application's runtime policy is not yet
  * available; {@link Strings} construction then enforces its configured limits. A single instance is safe to share
  * between {@link Strings} instances and threads.
+ * <p>
+ * Expression source, token, and nesting limits apply equally to whole-message alternative predicates and
+ * {@link LocalizedString.ExpressionAlternative expression-fragment predicates}. Generated-placeholder depth and
+ * cumulative expansion limits are shared by {@link LocalizedString.LanguageFormTranslation language-form fragments}
+ * and {@link LocalizedString.ExpressionTranslation expression-selected fragments}, including dependencies that cross
+ * between the two kinds.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
@@ -47,17 +53,20 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer DEFAULT_MAXIMUM_VISIBLE_DECIMAL_PLACES = 1_024;
 	/** Default limit for compact-decimal exponents: 64. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_COMPACT_EXPONENT = 64;
-	/** Default limit for expression source characters: 2,048. */
+	/** Default limit for characters in one whole-message or generated-fragment expression: 2,048. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS = 2_048;
-	/** Default limit for expression tokens: 256. */
+	/** Default limit for tokens in one whole-message or generated-fragment expression: 256. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_TOKENS = 256;
-	/** Default limit for nested expression groups: 32. */
+	/** Default limit for nested groups in one whole-message or generated-fragment expression: 32. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH = 32;
-	/** Default limit for nested generated placeholders: 32. */
+	/** Default limit for nested generated placeholders across both definition kinds: 32. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 32;
-	/** Default limit for one interpolated value: 262,144 UTF-16 code units. */
+	/** Default limit for one interpolated message or generated fragment: 262,144 UTF-16 code units. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 256 * 1_024;
-	/** Default cumulative generated-placeholder expansion limit: 1,048,576 UTF-16 code units per translation. */
+	/**
+	 * Default cumulative expansion limit across both generated-placeholder kinds: 1,048,576 UTF-16 code units per
+	 * catalog-candidate attempt.
+	 */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 1_024 * 1_024;
 
 	/** Hard ceiling for decimal precision: 4,096. */
@@ -68,17 +77,20 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer MAXIMUM_VISIBLE_DECIMAL_PLACES = 4_096;
 	/** Hard ceiling for compact-decimal exponents: 4,096. */
 	@NonNull public static final Integer MAXIMUM_COMPACT_EXPONENT = 4_096;
-	/** Hard ceiling for expression source characters: 4,096. */
+	/** Hard ceiling for characters in one whole-message or generated-fragment expression: 4,096. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_CHARACTERS = 4_096;
-	/** Hard ceiling for expression tokens: 512. */
+	/** Hard ceiling for tokens in one whole-message or generated-fragment expression: 512. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_TOKENS = 512;
-	/** Hard ceiling for nested expression groups: 64. */
+	/** Hard ceiling for nested groups in one whole-message or generated-fragment expression: 64. */
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_NESTING_DEPTH = 64;
-	/** Hard ceiling for nested generated placeholders: 64. */
+	/** Hard ceiling for nested generated placeholders across both definition kinds: 64. */
 	@NonNull public static final Integer MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 64;
-	/** Hard ceiling for one interpolated value: 1,048,576 UTF-16 code units. */
+	/** Hard ceiling for one interpolated message or generated fragment: 1,048,576 UTF-16 code units. */
 	@NonNull public static final Integer MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 1_024 * 1_024;
-	/** Hard ceiling for cumulative generated-placeholder expansion: 8,388,608 UTF-16 code units per translation. */
+	/**
+	 * Hard ceiling for cumulative expansion across both generated-placeholder kinds: 8,388,608 UTF-16 code units per
+	 * catalog-candidate attempt.
+	 */
 	@NonNull public static final Integer MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 8 * 1_024 * 1_024;
 
 	@NonNull
@@ -141,17 +153,20 @@ public final class TranslationRuntimeLimits {
 	@NonNull public Integer getMaximumVisibleDecimalPlaces() { return maximumVisibleDecimalPlaces; }
 	/** @return maximum compact-decimal exponent, not null */
 	@NonNull public Integer getMaximumCompactExponent() { return maximumCompactExponent; }
-	/** @return maximum expression source characters, not null */
+	/** @return maximum characters in one whole-message or generated-fragment expression, not null */
 	@NonNull public Integer getMaximumExpressionCharacters() { return maximumExpressionCharacters; }
-	/** @return maximum expression tokens, not null */
+	/** @return maximum tokens in one whole-message or generated-fragment expression, not null */
 	@NonNull public Integer getMaximumExpressionTokens() { return maximumExpressionTokens; }
-	/** @return maximum nested expression groups, not null */
+	/** @return maximum nested groups in one whole-message or generated-fragment expression, not null */
 	@NonNull public Integer getMaximumExpressionNestingDepth() { return maximumExpressionNestingDepth; }
-	/** @return maximum generated-placeholder nesting depth, not null */
+	/** @return maximum generated-placeholder nesting depth across both definition kinds, not null */
 	@NonNull public Integer getMaximumGeneratedPlaceholderDepth() { return maximumGeneratedPlaceholderDepth; }
-	/** @return maximum UTF-16 code units in one interpolated value, not null */
+	/** @return maximum UTF-16 code units in one interpolated message or generated fragment, not null */
 	@NonNull public Integer getMaximumInterpolatedOutputCharacters() { return maximumInterpolatedOutputCharacters; }
-	/** @return maximum cumulative generated-placeholder expansion UTF-16 code units, not null */
+	/**
+	 * @return maximum cumulative expansion across both generated-placeholder kinds in UTF-16 code units per
+	 * catalog-candidate attempt, not null
+	 */
 	@NonNull public Integer getMaximumGeneratedExpansionCharacters() { return maximumGeneratedExpansionCharacters; }
 
 	@Override
@@ -265,7 +280,7 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the expression-source-length limit.
+		 * Sets the source-length limit for each whole-message or generated-fragment expression.
 		 *
 		 * @param value value from 1 through {@link #MAXIMUM_EXPRESSION_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null
@@ -275,7 +290,7 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the expression-token-count limit.
+		 * Sets the token-count limit for each whole-message or generated-fragment expression.
 		 *
 		 * @param value value from 1 through {@link #MAXIMUM_EXPRESSION_TOKENS}, or null to restore the default
 		 * @return this builder, not null
@@ -285,7 +300,7 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the nested-expression-group limit.
+		 * Sets the nested-group limit for each whole-message or generated-fragment expression.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_EXPRESSION_NESTING_DEPTH}, or null to restore the default
 		 * @return this builder, not null
@@ -295,7 +310,7 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the generated-placeholder nesting limit.
+		 * Sets the generated-placeholder nesting limit shared by language-form and expression-selected fragments.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_GENERATED_PLACEHOLDER_DEPTH}, or null to restore the default
 		 * @return this builder, not null
@@ -305,7 +320,7 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the maximum UTF-16 code-unit count for one interpolated result.
+		 * Sets the maximum UTF-16 code-unit count for one interpolated message or generated fragment.
 		 *
 		 * @param value value from 1 through {@link #MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null
@@ -315,7 +330,8 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the cumulative UTF-16 code-unit budget for generated placeholder fragments in one lookup.
+		 * Sets the cumulative UTF-16 code-unit budget shared by language-form and expression-selected generated fragments
+		 * in one catalog-candidate attempt. Locale fallback starts a fresh budget for each candidate.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_GENERATED_EXPANSION_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null

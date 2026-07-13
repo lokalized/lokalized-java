@@ -22,6 +22,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -194,6 +195,61 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void compiledExpressionsCanBeReusedAcrossContexts() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		ExpressionEvaluator.CompiledExpression compiledExpression =
+				expressionEvaluator.compile("resultCount >= resultLimit");
+
+		assertTrue(expressionEvaluator.evaluateCompiledExpression(compiledExpression,
+				Map.of("resultCount", 100, "resultLimit", 100), LOCALE));
+		assertFalse(expressionEvaluator.evaluateCompiledExpression(compiledExpression,
+				Map.of("resultCount", 99, "resultLimit", 100), LOCALE));
+	}
+
+	@Test
+	public void numericComparisonsRejectFormattedStringsWithDirectTypeDiagnostic() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		assertNumericStringDiagnostic(expressionEvaluator, "formattedCount >= count",
+				Map.of("formattedCount", "250", "count", 100), "formattedCount", String.class);
+		assertNumericStringDiagnostic(expressionEvaluator, "count >= formattedCount",
+				Map.of("count", 100, "formattedCount", "250"), "formattedCount", String.class);
+		assertNumericStringDiagnostic(expressionEvaluator, "formattedCount == 250",
+				Map.of("formattedCount", "250"), "formattedCount", String.class);
+		assertNumericStringDiagnostic(expressionEvaluator, "250 == formattedCount",
+				Map.of("formattedCount", "250"), "formattedCount", String.class);
+		assertNumericStringDiagnostic(expressionEvaluator, "formattedCount != 250",
+				Map.of("formattedCount", Optional.of("250")), "formattedCount", String.class);
+	}
+
+	@Test
+	public void languageFormComparisonDiagnosticsAreNotMaskedByNumericPrecheck() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+
+		ExpressionEvaluationException genderOrderingException = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("leftGender < rightGender", Map.of(
+						"leftGender", Gender.MASCULINE,
+						"rightGender", Gender.FEMININE
+				), LOCALE));
+
+		assertTrue(genderOrderingException.getMessage().contains("gender comparisons"));
+		assertFalse(genderOrderingException.getMessage().contains("requires numeric operands"));
+
+		ExpressionEvaluationException incompatibleException = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("count == gender", Map.of(
+						"count", 1,
+						"gender", Gender.MASCULINE
+				), LOCALE));
+
+		assertTrue(incompatibleException.getMessage().contains("incompatible"));
+		assertTrue(incompatibleException.getMessage().contains(Integer.class.getSimpleName()));
+		assertTrue(incompatibleException.getMessage().contains(Gender.class.getSimpleName()));
+		assertFalse(incompatibleException.getMessage().contains("requires numeric operands"));
+		assertFalse(incompatibleException.getMessage().contains("NUMBER"));
+		assertFalse(incompatibleException.getMessage().contains("GENDER"));
+	}
+
+	@Test
 	public void unknownOperandTypesThrow() {
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
 
@@ -215,6 +271,10 @@ public class ExpressionEvaluatorTests {
 				"Plural operands should drive cardinality comparisons");
 		assertTrue(expressionEvaluator.evaluate("value == " + ordinalityName, Map.of("value", operands), LOCALE),
 				"Plural operands should drive ordinality comparisons");
+		assertTrue(expressionEvaluator.evaluate(cardinalityName + " == value", Map.of("value", 1), LOCALE),
+				"Numbers should remain comparable to cardinality values");
+		assertTrue(expressionEvaluator.evaluate("value == " + ordinalityName, Map.of("value", 1), LOCALE),
+				"Numbers should remain comparable to ordinality values");
 	}
 
 	@Test
@@ -485,6 +545,25 @@ public class ExpressionEvaluatorTests {
 		});
 
 		assertTrue(expressionEvaluator.evaluate("ignored", LOCALE), "Custom tokenizer output should be evaluated");
+	}
+
+	private void assertNumericStringDiagnostic(
+			ExpressionEvaluator expressionEvaluator,
+			String expression,
+			Map<String, Object> context,
+			String placeholder,
+			Class<?> runtimeClass) {
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate(expression, context, LOCALE));
+
+		assertTrue(exception.getMessage().contains("requires numeric operands"));
+		assertTrue(exception.getMessage().contains(Number.class.getSimpleName()));
+		assertTrue(exception.getMessage().contains(PluralOperands.class.getSimpleName()));
+		assertTrue(exception.getMessage().contains("placeholder '" + placeholder + "'"));
+		assertTrue(exception.getMessage().contains(runtimeClass.getSimpleName()));
+		assertTrue(exception.getMessage().contains(expression));
+		assertFalse(exception.getMessage().contains("PHONETIC"));
+		assertFalse(exception.getMessage().contains("NUMBER ("));
 	}
 
 	private String overlongExpression() {

@@ -30,9 +30,22 @@ import java.util.function.Supplier;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Contract for localized string providers - given a key and optional placeholders, return a localized string.
+ * Contract for localized string providers - given a key and optional caller-supplied placeholders, return a localized
+ * string.
  * <p>
  * Format is {@code "You are missing {{requiredFieldCount}} required fields."}
+ * <p>
+ * Each lookup observes one unmodifiable shallow snapshot of the caller-supplied placeholder map. Whole-message
+ * alternative predicates, {@link LocalizedString.ExpressionTranslation expression-fragment} predicates, and
+ * {@link LocalizedString.LanguageFormTranslation language-form} selectors read from that same snapshot for every
+ * locale candidate. Generated placeholder values do not become expression operands or language-form selector inputs;
+ * in particular, a language-form {@code value} or range endpoint always names raw caller input.
+ * <p>
+ * Generated-placeholder definitions declared by a {@link LocalizedString} are inherited along the selected
+ * whole-message alternative branch. The nearest selected descendant's complete definition replaces a same-named
+ * ancestor definition, unselected sibling definitions are invisible, and the resulting definition takes precedence
+ * over a same-named caller value when rendering output. Definitions are frozen for the selected branch before any
+ * generated fragment is resolved.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -128,6 +141,10 @@ public interface Strings extends LocaleMatcher {
 	 * <p>
 	 * A handler response that throws still throws; successful translations and return-key/return-string responses are
 	 * represented by the returned result.
+	 * <p>
+	 * The supplied map is shallow-copied once before the first locale candidate is attempted. Alternative predicates,
+	 * language-form selectors, failure reporting, and every fallback candidate observe that same snapshot. Generated
+	 * fragments are resolved separately and cannot change expression operands or selector inputs.
 	 *
 	 * @param key          localization key, not null
 	 * @param placeholders caller-supplied placeholders, may be null
@@ -321,6 +338,9 @@ public interface Strings extends LocaleMatcher {
 		 * Applies the policy that decides whether failed locale attempts continue to fallback candidates.
 		 * <p>
 		 * The policy may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
+		 * The default {@link TranslationFallbackPolicy#fallbackOnMissingTranslationOrNoMatchingAlternative()} policy stops
+		 * on {@link TranslationFailureReason#RESOLUTION_FAILURE}, including failures while evaluating an expression-fragment
+		 * predicate or interpolating its selected/default fragment.
 		 *
 		 * @param translationFallbackPolicy locale fallback policy, may be null to use the safe default
 		 * @return this builder, not null
@@ -333,6 +353,11 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies safety limits to catalog construction and translation evaluation.
+		 * <p>
+		 * Expression limits apply to both whole-message alternatives and
+		 * {@link LocalizedString.ExpressionAlternative expression-fragment alternatives}. Generated-placeholder depth and
+		 * expansion limits are shared by {@link LocalizedString.LanguageFormTranslation language-form} and
+		 * {@link LocalizedString.ExpressionTranslation expression-selected} fragments.
 		 *
 		 * @param runtimeLimits runtime limits, may be null to use the library defaults
 		 * @return this builder, not null
@@ -346,6 +371,9 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies bidirectional isolation behavior for caller-supplied placeholder values.
+		 * <p>
+		 * Translation-owned text in generated fragments is not isolated; caller-supplied values interpolated into those
+		 * fragments use this policy.
 		 *
 		 * @param bidiIsolation bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
 		 * @return this builder instance, useful for chaining. not null

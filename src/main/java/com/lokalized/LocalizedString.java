@@ -48,38 +48,35 @@ public final class LocalizedString {
   private final String translation;
   @Nullable
   private final String commentary;
-  @Nullable
-  private final List<@NonNull Token> expressionTokens;
   @NonNull
-  private final Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
+  private final Map<@NonNull String, @NonNull PlaceholderDefinition> placeholderDefinitions;
   @NonNull
   private final List<@NonNull LocalizedString> alternatives;
 
   /**
    * Constructs a localized string with a key, default translation, and additional translation rules.
    *
-   * @param key                                   this string's translation key, not null
-   * @param translation                           this string's default translation, may be null
-   * @param commentary                            this string's commentary (usage/translation notes), may be null
-   * @param languageFormTranslationsByPlaceholder per-language-form translations that correspond to a placeholder value, may be null
-   * @param alternatives                          alternative expression-driven translations for this string, may be null
+   * @param key                    this string's translation key, not null
+   * @param translation            this string's default translation, may be null
+   * @param commentary             this string's commentary (usage/translation notes), may be null
+   * @param placeholderDefinitions generated-placeholder definitions, may be null
+   * @param alternatives           alternative expression-driven translations for this string, may be null
    */
   private LocalizedString(@NonNull String key, @Nullable String translation, @Nullable String commentary,
-                          @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder,
-                          @Nullable List<@NonNull LocalizedString> alternatives,
-                          @Nullable List<@NonNull Token> expressionTokens) {
+                          @Nullable Map<@NonNull String, ? extends @NonNull PlaceholderDefinition> placeholderDefinitions,
+                          @Nullable List<@NonNull LocalizedString> alternatives) {
     requireNonNull(key);
 
     this.key = key;
     this.translation = translation;
     this.commentary = commentary;
-    this.expressionTokens = expressionTokens == null ? null : Collections.unmodifiableList(new ArrayList<>(expressionTokens));
 
-    if (languageFormTranslationsByPlaceholder == null) {
-      this.languageFormTranslationsByPlaceholder = Collections.emptyMap();
+    if (placeholderDefinitions == null) {
+      this.placeholderDefinitions = Collections.emptyMap();
     } else {
-      // Defensive copy to unmodifiable map
-      this.languageFormTranslationsByPlaceholder = Collections.unmodifiableMap(new LinkedHashMap<>(languageFormTranslationsByPlaceholder));
+      Map<@NonNull String, @NonNull PlaceholderDefinition> placeholderDefinitionsCopy = new LinkedHashMap<>();
+      placeholderDefinitionsCopy.putAll(placeholderDefinitions);
+      this.placeholderDefinitions = Collections.unmodifiableMap(placeholderDefinitionsCopy);
     }
 
     // Defensive copy to unmodifiable list
@@ -108,8 +105,8 @@ public final class LocalizedString {
     if (getCommentary().isPresent())
       components.add(format("commentary=%s", getCommentary().get()));
 
-    if (getLanguageFormTranslationsByPlaceholder().size() > 0)
-      components.add(format("languageFormTranslationsByPlaceholder=%s", getLanguageFormTranslationsByPlaceholder()));
+    if (getPlaceholderDefinitions().size() > 0)
+      components.add(format("placeholderDefinitions=%s", getPlaceholderDefinitions()));
 
     if (getAlternatives().size() > 0)
       components.add(format("alternatives=%s", getAlternatives()));
@@ -136,7 +133,7 @@ public final class LocalizedString {
     return Objects.equals(getKey(), localizedString.getKey())
         && Objects.equals(getTranslation(), localizedString.getTranslation())
         && Objects.equals(getCommentary(), localizedString.getCommentary())
-        && Objects.equals(getLanguageFormTranslationsByPlaceholder(), localizedString.getLanguageFormTranslationsByPlaceholder())
+        && Objects.equals(getPlaceholderDefinitions(), localizedString.getPlaceholderDefinitions())
         && Objects.equals(getAlternatives(), localizedString.getAlternatives());
   }
 
@@ -147,7 +144,7 @@ public final class LocalizedString {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getKey(), getTranslation(), getCommentary(), getLanguageFormTranslationsByPlaceholder(),
+    return Objects.hash(getKey(), getTranslation(), getCommentary(), getPlaceholderDefinitions(),
         getAlternatives());
   }
 
@@ -182,15 +179,18 @@ public final class LocalizedString {
   }
 
   /**
-   * Gets per-language-form translations that correspond to a placeholder value.
+   * Gets the generated-placeholder definitions declared by this localized string.
    * <p>
-   * For example, language form {@code GENDER_MASCULINE} might be translated as {@code He} for placeholder {@code subject}.
+   * Current concrete types are {@link LanguageFormTranslation} and {@link ExpressionTranslation}. Consumers should
+   * inspect the definition type with {@code instanceof} before accessing subtype-specific state and handle unfamiliar
+   * future library-defined types defensively.
    *
-   * @return per-language-form translations that correspond to a placeholder value, not null
+   * @return generated-placeholder definitions keyed by placeholder name, not null
+   * @since 3.0.0
    */
   @NonNull
-  public Map<@NonNull String, @NonNull LanguageFormTranslation> getLanguageFormTranslationsByPlaceholder() {
-    return languageFormTranslationsByPlaceholder;
+  public Map<@NonNull String, @NonNull PlaceholderDefinition> getPlaceholderDefinitions() {
+    return placeholderDefinitions;
   }
 
   /**
@@ -206,12 +206,6 @@ public final class LocalizedString {
   public List<@NonNull LocalizedString> getAlternatives() {
     return alternatives;
   }
-
-  @Nullable
-  List<@NonNull Token> getExpressionTokens() {
-    return expressionTokens;
-  }
-
 
   /**
    * Builder used to construct instances of {@link LocalizedString}.
@@ -229,11 +223,9 @@ public final class LocalizedString {
     @Nullable
     private String commentary;
     @Nullable
-    private Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder;
+    private Map<@NonNull String, ? extends @NonNull PlaceholderDefinition> placeholderDefinitions;
     @Nullable
     private List<@NonNull LocalizedString> alternatives;
-    @Nullable
-    private List<@NonNull Token> expressionTokens;
 
     /**
      * Constructs a localized string builder with the given key.
@@ -270,15 +262,16 @@ public final class LocalizedString {
     }
 
     /**
-     * Applies per-language-form translations to this builder.
+     * Applies generated-placeholder definitions to this builder.
      *
-     * @param languageFormTranslationsByPlaceholder per-language-form translations, may be null
+     * @param placeholderDefinitions generated-placeholder definitions keyed by placeholder name, may be null
      * @return this builder instance, useful for chaining. not null
+     * @since 3.0.0
      */
     @NonNull
-    public Builder languageFormTranslationsByPlaceholder(
-        @Nullable Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
-      this.languageFormTranslationsByPlaceholder = languageFormTranslationsByPlaceholder;
+    public Builder placeholderDefinitions(
+        @Nullable Map<@NonNull String, ? extends @NonNull PlaceholderDefinition> placeholderDefinitions) {
+      this.placeholderDefinitions = placeholderDefinitions;
       return this;
     }
 
@@ -294,12 +287,6 @@ public final class LocalizedString {
       return this;
     }
 
-    @NonNull
-    Builder expressionTokens(@Nullable List<@NonNull Token> expressionTokens) {
-      this.expressionTokens = expressionTokens;
-      return this;
-    }
-
     /**
      * Constructs an instance of {@link LocalizedString}.
      *
@@ -307,9 +294,23 @@ public final class LocalizedString {
      */
     @NonNull
     public LocalizedString build() {
-      return new LocalizedString(key, translation, commentary, languageFormTranslationsByPlaceholder, alternatives,
-          expressionTokens);
+      return new LocalizedString(key, translation, commentary, placeholderDefinitions, alternatives);
     }
+  }
+
+  /**
+   * Closed base type for generated-placeholder definitions.
+   * <p>
+   * The constructor is private so callers cannot introduce definition types that Lokalized does not know how to
+   * validate or resolve. Library releases may add new concrete subtypes; consumers should therefore inspect values
+   * returned by {@link LocalizedString#getPlaceholderDefinitions()} before casting.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   * @since 3.0.0
+   */
+  @Immutable
+  public abstract static class PlaceholderDefinition {
+    private PlaceholderDefinition() {}
   }
 
   /**
@@ -322,7 +323,7 @@ public final class LocalizedString {
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */
   @Immutable
-  public static final class LanguageFormTranslation {
+  public static final class LanguageFormTranslation extends PlaceholderDefinition {
     @Nullable
     private final String value;
     @Nullable
@@ -433,6 +434,205 @@ public final class LocalizedString {
     @NonNull
     public Map<@NonNull LanguageForm, @NonNull String> getTranslationsByLanguageForm() {
       return translationsByLanguageForm;
+    }
+  }
+
+  /**
+   * A generated fragment with a required default translation and optional ordered expression-driven alternatives.
+   * <p>
+   * The first alternative whose expression matches supplies the fragment. If none match, the default translation is
+   * used. The one-argument constructor creates a translation-only scoped fragment.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   * @since 3.0.0
+   */
+  @Immutable
+  public static final class ExpressionTranslation extends PlaceholderDefinition {
+    @NonNull
+    private final String translation;
+    @NonNull
+    private final List<@NonNull ExpressionAlternative> alternatives;
+
+    /**
+     * Constructs a translation-only generated fragment.
+     *
+     * @param translation the fragment translation, not null
+     */
+    public ExpressionTranslation(@NonNull String translation) {
+      requireNonNull(translation);
+
+      this.translation = translation;
+      this.alternatives = Collections.emptyList();
+    }
+
+    /**
+     * Constructs a generated fragment with a default translation and ordered expression-driven alternatives.
+     *
+     * @param translation  the default fragment translation, not null
+     * @param alternatives the ordered expression-driven alternatives, not null or empty
+     */
+    public ExpressionTranslation(@NonNull String translation,
+                                 @NonNull List<@NonNull ExpressionAlternative> alternatives) {
+      requireNonNull(translation);
+      requireNonNull(alternatives);
+
+      if (alternatives.isEmpty())
+        throw new IllegalArgumentException("alternatives must not be empty; use ExpressionTranslation(String) for a translation-only fragment");
+
+      this.translation = translation;
+      this.alternatives = Collections.unmodifiableList(new ArrayList<>(alternatives));
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @NonNull
+    public String toString() {
+      return format("%s{translation=%s, alternatives=%s}", getClass().getSimpleName(), getTranslation(),
+          getAlternatives());
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      ExpressionTranslation expressionTranslation = (ExpressionTranslation) other;
+
+      return Objects.equals(getTranslation(), expressionTranslation.getTranslation())
+          && Objects.equals(getAlternatives(), expressionTranslation.getAlternatives());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getTranslation(), getAlternatives());
+    }
+
+    /**
+     * Gets the default fragment translation.
+     *
+     * @return the default fragment translation, not null
+     */
+    @NonNull
+    public String getTranslation() {
+      return translation;
+    }
+
+    /**
+     * Gets the ordered expression-driven alternatives.
+     *
+     * @return the ordered expression-driven alternatives, empty for a translation-only fragment, not null
+     */
+    @NonNull
+    public List<@NonNull ExpressionAlternative> getAlternatives() {
+      return alternatives;
+    }
+  }
+
+  /**
+   * An expression and the generated fragment translation selected when that expression matches.
+   *
+   * @author <a href="https://revetkn.com">Mark Allen</a>
+   * @since 3.0.0
+   */
+  @Immutable
+  public static final class ExpressionAlternative {
+    @NonNull
+    private final String expression;
+    @NonNull
+    private final String translation;
+
+    /**
+     * Constructs an expression-driven fragment alternative.
+     *
+     * @param expression  the localization expression, not null
+     * @param translation the fragment translation, not null
+     */
+    public ExpressionAlternative(@NonNull String expression, @NonNull String translation) {
+      requireNonNull(expression);
+      requireNonNull(translation);
+
+      this.expression = expression;
+      this.translation = translation;
+    }
+
+    /**
+     * Generates a {@code String} representation of this object.
+     *
+     * @return a string representation of this object, not null
+     */
+    @Override
+    @NonNull
+    public String toString() {
+      return format("%s{expression=%s, translation=%s}", getClass().getSimpleName(), getExpression(),
+          getTranslation());
+    }
+
+    /**
+     * Checks if this object is equal to another one.
+     *
+     * @param other the object to check, null returns false
+     * @return true if this is equal to the other object, false otherwise
+     */
+    @Override
+    public boolean equals(@Nullable Object other) {
+      if (this == other)
+        return true;
+
+      if (other == null || !getClass().equals(other.getClass()))
+        return false;
+
+      ExpressionAlternative expressionAlternative = (ExpressionAlternative) other;
+
+      return Objects.equals(getExpression(), expressionAlternative.getExpression())
+          && Objects.equals(getTranslation(), expressionAlternative.getTranslation());
+    }
+
+    /**
+     * A hash code for this object.
+     *
+     * @return a suitable hash code
+     */
+    @Override
+    public int hashCode() {
+      return Objects.hash(getExpression(), getTranslation());
+    }
+
+    /**
+     * Gets the localization expression.
+     *
+     * @return the localization expression, not null
+     */
+    @NonNull
+    public String getExpression() {
+      return expression;
+    }
+
+    /**
+     * Gets the fragment translation selected when this expression matches.
+     *
+     * @return the fragment translation, not null
+     */
+    @NonNull
+    public String getTranslation() {
+      return translation;
     }
   }
 

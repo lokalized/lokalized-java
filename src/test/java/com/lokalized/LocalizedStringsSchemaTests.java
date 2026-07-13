@@ -135,6 +135,47 @@ public class LocalizedStringsSchemaTests {
   }
 
   @Test
+  public void schemaValidatesTemplatePlaceholders() throws IOException {
+    List<Error> validationMessages = loadSchema().validate("{\n" +
+        "  \"Search completed.\" : {\n" +
+        "    \"translation\" : \"Found {{resultSummary}} {{timing}}.\",\n" +
+        "    \"placeholders\" : {\n" +
+        "      \"resultSummary\" : {\n" +
+        "        \"translation\" : \"{{formattedResultCount}} results\",\n" +
+        "        \"alternatives\" : [\n" +
+        "          { \"resultCount == 0\" : \"no results\" },\n" +
+        "          { \"resultCount >= resultLimit\" : \"at least {{formattedResultLimit}} results\" }\n" +
+        "        ]\n" +
+        "      },\n" +
+        "      \"timing\" : { \"translation\" : \"in {{formattedDuration}}\" }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}", InputFormat.JSON);
+
+    assertTrue(validationMessages.isEmpty(), () -> validationMessageSummary(validationMessages));
+  }
+
+  @Test
+  public void schemaRejectsInvalidTemplatePlaceholderShapes() throws IOException {
+    String[] invalidCatalogs = {
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"alternatives\":[{\"count == 0\":\"none\"}]}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":null}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":null}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":[]}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":[{}]}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":[{\"a == 1\":\"one\",\"a == 2\":\"two\"}]}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":[{\"count == 0\":{\"translation\":\"none\"}}]}}}}",
+        "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"value\":\"count\",\"translations\":{\"CARDINALITY_OTHER\":\"items\"}}}}}"
+    };
+
+    Schema schema = loadSchema();
+    for (String invalidCatalog : invalidCatalogs) {
+      List<Error> validationMessages = schema.validate(invalidCatalog, InputFormat.JSON);
+      assertFalse(validationMessages.isEmpty(), invalidCatalog);
+    }
+  }
+
+  @Test
   public void schemaRejectsInvalidPlaceholderShape() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello\" : {\n" +

@@ -53,18 +53,44 @@
         }
       }
     },
-    "alternatives" : [  
-      {  
-        "heOrShe == GENDER_MASCULINE && groupSize <= 1" : {  
-          "translation" : "He was the best baseball player."
-        }
-      },
-      {  
-        "heOrShe == GENDER_FEMININE && groupSize <= 1" : {  
-          "translation" : "She was the best baseball player."
+    "alternatives" : [
+      {
+        "groupSize <= 1" : {
+          "translation" : "{{heOrShe}} was the best baseball player."
         }
       }
     ]
+  },
+  "Search completed." : {
+    "translation" : "Found {{resultSummary}} {{timing}}.",
+    "placeholders" : {
+      "resultSummary" : {
+        "translation" : "{{formattedResultCount}} {{resultNoun}}",
+        "alternatives" : [
+          {
+            "resultCount == 0" : "no results"
+          },
+          {
+            "resultCount >= resultLimit" : "at least {{formattedResultLimit}} results"
+          }
+        ]
+      },
+      "timing" : {
+        "translation" : "in {{formattedDuration}}",
+        "alternatives" : [
+          {
+            "elapsedMilliseconds < 1000" : "instantly"
+          }
+        ]
+      },
+      "resultNoun" : {
+        "value" : "resultCount",
+        "translations" : {
+          "CARDINALITY_ONE" : "result",
+          "CARDINALITY_OTHER" : "results"
+        }
+      }
+    }
   },
   "{{hisOrHer}} {{year}}th birthday party is next week." : {  
     "translation" : "{{hisOrHer}} {{year}}{{ordinal}} birthday party is next week.",

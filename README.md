@@ -359,12 +359,13 @@ Loading is bounded per resource and per load by [`LocalizedStringLoadingOptions`
 The default limit is 8 MiB for a `Path` or `InputStream`, 8,388,608 UTF-16 code units for a `Reader`, and 64 levels of
 JSON object/array nesting. A filesystem directory, discovered classpath package, or explicit classpath-resource mapping
 is additionally limited to 32 MiB total input and 256 catalogs. All loading operations, including single-resource
-`parse(...)` methods, accept at most 100,000 localized-string nodes and 1,000 warnings by default. The translation count
-includes top-level messages and every nested alternative, so alternatives cannot bypass the work budget. Overloads
+`parse(...)` methods, accept at most 100,000 translation nodes and 1,000 warnings by default. The node count includes
+top-level messages, whole-message alternatives, every placeholder definition, and every expression-selected fragment
+alternative, so conditional structures cannot bypass the work budget. Overloads
 accepting loading options may lower or raise these defaults; the loader's hard maximum nesting depth is 128. The total
 input-byte limit also applies to single-resource `Path` and `InputStream` parsing, while it cannot apply to a `Reader`
 because the original byte representation is unavailable. A single-resource parse consumes one catalog from its
-catalog-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected—use `{}`
+catalog-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected - use `{}`
 for an intentionally empty catalog.
 
 Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
@@ -382,7 +383,7 @@ LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
   .maximumReaderCharacters(4 * 1024 * 1024)
   .maximumTotalInputBytes(16L * 1024L * 1024L)
   .maximumCatalogs(100)
-  .maximumTranslations(25_000)
+  .maximumTranslationNodes(25_000)
   .maximumWarnings(500)
   .maximumJsonNestingDepth(32)
   .exhaustiveClasspathSearch(true) // Only for JARs that omit package directory entries
@@ -441,7 +442,8 @@ Catalog construction and translation evaluation use immutable [`TranslationRunti
 The defaults cap numbers and numeric literals at 1,024 digits of precision and absolute scale, explicitly visible
 decimal places at 1,024, compact exponents at 64, expressions at 2,048 characters / 256 tokens / 32 nested groups,
 generated placeholders at 32 levels, one interpolated result at 262,144 UTF-16 code units, and cumulative
-generated-fragment expansion at 1,048,576 UTF-16 code units per lookup. Applications may lower or raise the defaults with
+generated-fragment expansion at 1,048,576 UTF-16 code units per catalog-candidate attempt. Locale fallback starts a
+fresh generated-expansion budget for each candidate. Applications may lower or raise the defaults with
 [`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
 and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.Builder.html).
 Hard ceilings remain 4,096 for numeric precision, absolute scale, visible decimal places, and compact exponents;
@@ -477,24 +479,30 @@ resolution failures.
 
 Lokalized's strength is handling phrases that must be rewritten in different ways according to language rules. Suppose we introduce gender alongside plural forms.  In English, a noun's gender usually does not alter other components of a phrase.  But in Spanish it does.
 
-This English statement has 4 variants:
+This English statement has singular and plural variants for masculine, feminine, and common gender:
 
 * `He was one of the X best baseball players.`
 * `She was one of the X best baseball players.`
+* `This person was one of the X best baseball players.`
 * `He was the best baseball player.`
 * `She was the best baseball player.`
+* `This person was the best baseball player.`
 
-In Spanish, we have the same number of variants (in a language like Russian or Arabic there would be more!)
-But notice how the statements must change to match gender - `uno` becomes `una`, `jugadores` becomes `jugadoras`, etc.
+For the masculine and feminine Spanish cases, notice how several words must change to match gender - `uno` becomes
+`una`, `jugadores` becomes `jugadoras`, and so on. For common gender, the translation instead uses `persona` and a
+relative clause so agreement does not depend on the referent's gender. `Persona` is grammatically feminine regardless
+of whom it denotes, so `las personas` does not imply an all-female group.
 
 * `Fue uno de los X mejores jugadores de béisbol.`
 * `Fue una de las X mejores jugadoras de béisbol.`
+* `Esta persona estaba entre las X personas que mejor jugaban al béisbol.`
 * `Él era el mejor jugador de béisbol.`
 * `Ella era la mejor jugadora de béisbol.`
+* `Esta persona era quien mejor jugaba al béisbol.`
 
 ### English Translation File
 
-English is a little simpler than Spanish because gender only affects the `He` or `She` component of the sentence. 
+English is a little simpler than Spanish here because gender affects only the generated subject fragment.
 
 ```json
 {
@@ -505,21 +513,22 @@ English is a little simpler than Spanish because gender only affects the `He` or
         "value" : "heOrShe",
         "translations" : {
           "GENDER_MASCULINE" : "He",
-          "GENDER_FEMININE" : "She"
+          "GENDER_FEMININE" : "She",
+          "GENDER_COMMON" : "This person"
         }
       }
     },
     "alternatives" : [
       {
-        "heOrShe == GENDER_MASCULINE && groupSize <= 1" : "He was the best baseball player."        
-      },
-      {
-        "heOrShe == GENDER_FEMININE && groupSize <= 1" : "She was the best baseball player."        
+        "groupSize <= 1" : "{{heOrShe}} was the best baseball player."
       }
     ]
   }
 }
 ```
+
+The singular alternative inherits the root `heOrShe` definition. The selected branch can therefore reuse the same
+gender fragment instead of duplicating one whole-message alternative per gender.
 
 ### Spanish Translation File
 
@@ -553,6 +562,12 @@ Note that we define our own placeholders in `translation` and drive them off of 
       }
     },
     "alternatives" : [
+      {
+        "heOrShe == GENDER_COMMON && groupSize <= 1" : "Esta persona era quien mejor jugaba al béisbol."
+      },
+      {
+        "heOrShe == GENDER_COMMON" : "Esta persona estaba entre las {{groupSize}} personas que mejor jugaban al béisbol."
+      },
       {
         "heOrShe == GENDER_MASCULINE && groupSize <= 1" : "Él era el mejor jugador de béisbol."        
       },
@@ -596,6 +611,23 @@ message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball pl
 
 // Note that the correct feminine forms were applied
 assertEquals("Fue una de las 3 mejores jugadoras de béisbol.", message);
+
+// Spanish - common-gender wording uses persona instead of gendered jugador/jugadora forms
+message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  Map.of(
+    "heOrShe", Gender.COMMON,
+    "groupSize", 3
+  ));
+
+assertEquals("Esta persona estaba entre las 3 personas que mejor jugaban al béisbol.", message);
+
+message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball players.",
+  Map.of(
+    "heOrShe", Gender.COMMON,
+    "groupSize", 1
+  ));
+
+assertEquals("Esta persona era quien mejor jugaba al béisbol.", message);
 ```
 
 ### Recursive Alternatives
@@ -615,6 +647,9 @@ Note that this is just a snippet to illustrate functionality - the other portion
           },
           {
             "heOrShe == GENDER_FEMININE" : "Ella era la mejor jugadora de béisbol."
+          },
+          {
+            "heOrShe == GENDER_COMMON" : "Esta persona era quien mejor jugaba al béisbol."
           }
         ]
       }
@@ -1503,6 +1538,10 @@ a present alternatives-only key for which no condition matched
 and a translation that could not be evaluated or interpolated
 ([`RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE)).
 Only resolution failures carry a runtime cause.
+An evaluated expression-fragment predicate or selected-fragment interpolation failure is a resolution failure, so the
+default fallback policy stops; [`fallbackOnAnyFailure()`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html#fallbackOnAnyFailure())
+may continue to another locale. An expression-selected fragment always has a default `translation` and therefore
+cannot itself cause `NO_MATCHING_ALTERNATIVE`.
 
 The fail-soft handlers, [`returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) and [`logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)), also handle runtime resolution failures by returning the interpolated key. Use [`throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) or a custom handler that throws on [`TranslationFailureReason.RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE) in development and test environments if you want broken placeholder rules, expressions, or custom resolvers to surface immediately.
 
@@ -1667,11 +1706,12 @@ Placeholder names must start with a Unicode letter or underscore. Subsequent cha
 
 To render a literal placeholder instead of resolving it, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context. You can also write `\\}}` for a literal closing delimiter, or `\\\\{{name}}` when you need a literal backslash immediately before a live placeholder.
 
-You are free to add as many as you like to support your translation.
+Add as many as the translation needs, subject to the configured catalog translation-node limit.
 
 Placeholder values are initially specified by application code - they are the context that is passed in at string evaluation time.
 
-Your translation file may override passed-in placeholders if desired, but that is an uncommon use case.
+When a reachable generated definition has the same name as a caller value, the generated value wins during output
+interpolation. Prefer distinct input and generated-output names unless that override is intentional.
 
 For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Translation-file-defined placeholder fragments, such as plural word choices, are not isolated.
 
@@ -1712,7 +1752,14 @@ In the below example of an `en` strings file, the application code provides the 
 }
 ```
 
-Each `placeholders` object key is the name of the placeholder - `books`, in this example - and the value is an object with `value` and `translations`.
+Each `placeholders` object key is the name of a generated placeholder - `books`, in this example. A definition has one
+of three mutually exclusive shapes: `value` plus `translations`, cardinality `range` plus `translations`, or
+`translation` with optional expression-selected `alternatives`. The corresponding programmatic types are the closed
+[`LocalizedString.PlaceholderDefinition`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.PlaceholderDefinition.html)
+hierarchy, [`LocalizedString.LanguageFormTranslation`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.LanguageFormTranslation.html),
+[`LocalizedString.ExpressionTranslation`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.ExpressionTranslation.html),
+and its ordered [`LocalizedString.ExpressionAlternative`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.ExpressionAlternative.html)
+entries.
 
 * `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
@@ -1733,6 +1780,134 @@ and applications can opt up to the 1,048,576-code-unit hard ceiling with
 [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html). Application-supplied
 values remain opaque and are never reinterpreted as template syntax, even when a value contains text such as
 `{{name}}`.
+
+#### Expression-Selected Fragments
+
+Use a generated fragment with `translation` and ordered `alternatives` when a small, reusable portion of a message
+depends on an exact value, threshold, or compound business rule. `translation` is the required default. The first
+matching alternative wins; later expressions are not evaluated. Omitting `alternatives` creates a message-scoped
+constant or composed fragment, such as `"productName": { "translation": "Firefox" }`. Each alternative array element
+contains exactly one expression-to-string member; nested localized-string objects are not permitted there. Template
+members (`translation`, `alternatives`) cannot be mixed with language-form members (`value`, `range`, `translations`)
+in one placeholder definition.
+
+This example has three result-summary cases and an independent two-case timing axis. Factoring those decisions into
+two fragments avoids six coordinated whole-message alternatives:
+
+```json
+{
+  "Search completed." : {
+    "translation" : "Found {{resultSummary}} {{timing}}.",
+    "placeholders" : {
+      "resultSummary" : {
+        "translation" : "{{formattedResultCount}} {{resultNoun}}",
+        "alternatives" : [
+          {
+            "resultCount == 0" : "no results"
+          },
+          {
+            "resultCount >= resultLimit" : "at least {{formattedResultLimit}} results"
+          }
+        ]
+      },
+      "timing" : {
+        "translation" : "in {{formattedDuration}}",
+        "alternatives" : [
+          {
+            "elapsedMilliseconds < 1000" : "instantly"
+          }
+        ]
+      },
+      "resultNoun" : {
+        "value" : "resultCount",
+        "translations" : {
+          "CARDINALITY_ONE" : "result",
+          "CARDINALITY_OTHER" : "results"
+        }
+      }
+    }
+  }
+}
+```
+
+The same catalog produces all six combinations. Raw numeric values drive expressions and cardinality; separately
+formatted strings are used only for display:
+
+```java
+assertEquals("Found no results instantly.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(0), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(250), "formattedResultCount", "0",
+  "formattedResultLimit", "100", "formattedDuration", "0.25 seconds")));
+
+assertEquals("Found no results in 1.5 seconds.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(0), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(1_500), "formattedResultCount", "0",
+  "formattedResultLimit", "100", "formattedDuration", "1.5 seconds")));
+
+assertEquals("Found at least 100 results instantly.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(100), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(250), "formattedResultCount", "100",
+  "formattedResultLimit", "100", "formattedDuration", "0.25 seconds")));
+
+assertEquals("Found at least 100 results in 1.5 seconds.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(100), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(1_500), "formattedResultCount", "100",
+  "formattedResultLimit", "100", "formattedDuration", "1.5 seconds")));
+
+assertEquals("Found 2 results instantly.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(2), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(250), "formattedResultCount", "2",
+  "formattedResultLimit", "100", "formattedDuration", "0.25 seconds")));
+
+assertEquals("Found 2 results in 1.5 seconds.", strings.get("Search completed.", Map.of(
+  "resultCount", Long.valueOf(2), "resultLimit", Long.valueOf(100),
+  "elapsedMilliseconds", Long.valueOf(1_500), "formattedResultCount", "2",
+  "formattedResultLimit", "100", "formattedDuration", "1.5 seconds")));
+```
+
+Expression-fragment predicates and whole-message predicates both read the same immutable snapshot of caller input and
+use the locale of the catalog candidate being evaluated. Generated values never become predicate operands. Numeric
+ordering requires a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) or
+numeric [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html); a formatted string such as
+`"1,000"` is display text, not a numeric operand. More generally, expression [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html)
+and other [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html)
+operands are phonetic inputs: Lokalized resolves them through your
+[`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) for comparison with
+`PHONETIC_*` constants. They are not numeric values or general-purpose string literals. Missing, null, and incompatible
+operands are resolution failures, not implicit non-matches.
+
+Use language-form definitions for grammatical categories and expression fragments for exact, threshold, or compound
+rules. The distinction matters: `count == 1` is an exact numeric test, while `count == CARDINALITY_ONE` is a
+locale-sensitive grammatical classification. Russian classifies values such as 21 as `ONE`, while French and
+Brazilian Portuguese can classify 0 as `ONE`. Keep a whole-message alternative when a decision changes word order or
+agreement so broadly that a fragment boundary would be unsafe.
+
+#### Placeholder Scope and Inheritance
+
+Generated-placeholder definitions inherit down only the selected whole-message alternative path. Definitions from the
+root and every selected intermediate branch remain visible at the terminal translation. A nearer child definition
+replaces the complete same-named ancestor definition - language forms and expression alternatives are never merged - and
+unselected siblings are invisible. Effective precedence is `nearest selected child > selected ancestor > caller
+value` for output interpolation.
+
+Selection is completed before generated placeholders resolve, so an inherited parent fragment is late-bound to any
+dependency overridden by the selected child. Only definitions reachable from the selected template and selected
+fragment results are resolved; shadowed definitions, unselected fragment dependencies, and unused definitions consume
+no lookup-time expansion work.
+
+There is one deliberate exception to generated-over-caller output precedence: every language-form `value`,
+`range.start`, and `range.end` name always reads the raw caller input. A generated definition named `count` may supply
+the rendered `{{count}}`, while another definition with `"value": "count"` still classifies the caller's raw `count`.
+Use distinct input and output names, such as `count` and `countText`, to avoid surprising catalogs. A generated value
+cannot satisfy a missing selector input.
+
+Expression-selected and language-form fragments share recursive dependency expansion, cycle detection, depth and
+output limits, and bidi behavior. Translation-owned fragment text is not isolated; caller values interpolated inside
+it follow the configured [`BidiIsolation`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html) policy. A
+matched predicate whose fragment later fails does not fall through to a later predicate or the default. Predicate and
+fragment interpolation errors are [`RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE)
+events; because `translation` is mandatory, an expression-selected fragment cannot itself produce
+[`NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE).
 
 The placeholder structure is slightly different for cardinality ranges.  A `range` property is introduced and requires both a `start` and `end` value.  
 
@@ -1802,6 +1977,9 @@ Alternative evaluation follows these rules:
 * Within a matched branch, nested alternatives are evaluated before that branch's default `translation`
 * Once an expression matches, evaluation stays within that branch; an unmatched nested subtree does not fall through
   to a later sibling
+* Placeholder definitions declared by the root and each selected branch are inherited by descendants; the nearest
+  selected definition replaces a same-named ancestor definition as a complete unit
+* Predicates read only the immutable caller-input snapshot. Generated placeholder values do not become operands
 * If no expression matches and no default `translation` is present in any attempted candidate locale, failure handlers receive
   [`TranslationFailureReason.NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)
 
@@ -1882,7 +2060,8 @@ Built-in language-form constants are reserved in alternative expressions. A toke
 #### What Expressions Do Not Currently Support
 
 * The unary `!` operator
-* Explicit `null` operands (can be implicit, i.e. a `VARIABLE` value)
+* String literals, Boolean literals, or explicit `null` operands
+* Functions or expressions that return arbitrary values
 * A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
 
 ## Inspection

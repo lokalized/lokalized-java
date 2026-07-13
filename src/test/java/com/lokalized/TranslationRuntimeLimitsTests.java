@@ -22,6 +22,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -229,6 +230,52 @@ public class TranslationRuntimeLimitsTests {
 	}
 
 	@Test
+	public void stringsEagerlyCompileAllFragmentPredicatesAgainstLowerLimits() {
+		LocalizedString lengthLimited = localizedStringWithUnusedFragment("count == 1");
+		LocalizedString tokenLimited = localizedStringWithUnusedFragment("count == 1");
+		LocalizedString nestingLimited = localizedStringWithUnusedFragment("(count == 1)");
+
+		ExpressionEvaluationException lengthException = assertThrows(ExpressionEvaluationException.class,
+				() -> stringsWithLimits(lengthLimited,
+						TranslationRuntimeLimits.builder().maximumExpressionCharacters(5).build()));
+		assertTrue(lengthException.getMessage().contains("generated-fragment alternative 0"));
+		assertTrue(lengthException.getMessage().contains("placeholder 'unused'"));
+		assertTrue(lengthException.getMessage().contains("root key 'Unused fragment'"));
+		assertTrue(lengthException.getMessage().contains("locale 'en'"));
+		assertThrows(ExpressionEvaluationException.class, () -> stringsWithLimits(tokenLimited,
+				TranslationRuntimeLimits.builder().maximumExpressionTokens(2).build()));
+		assertThrows(ExpressionEvaluationException.class, () -> stringsWithLimits(nestingLimited,
+				TranslationRuntimeLimits.builder().maximumExpressionNestingDepth(0).build()));
+	}
+
+	@Test
+	public void stringsCompilationErrorsIdentifyWholeMessageAlternativePaths() {
+		LocalizedString localizedString = new LocalizedString.Builder("Whole-message limits")
+				.translation("default")
+				.alternatives(List.of(new LocalizedString.Builder("count == 1").translation("one").build()))
+				.build();
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> stringsWithLimits(localizedString, TranslationRuntimeLimits.builder()
+						.maximumExpressionCharacters(5).build()));
+		assertTrue(exception.getMessage().contains("whole-message alternative expression 'count == 1'"));
+		assertTrue(exception.getMessage().contains("root key 'Whole-message limits'"));
+	}
+
+	@Test
+	public void laterUnreachableFragmentPredicatesAreAlsoCompiledEagerly() {
+		LocalizedString localizedString = new LocalizedString.Builder("Unreachable later predicate")
+				.translation("Hello")
+				.placeholderDefinitions(Map.of("unused", new LocalizedString.ExpressionTranslation("default", java.util.List.of(
+						new LocalizedString.ExpressionAlternative("count == 1", "first"),
+						new LocalizedString.ExpressionAlternative("anotherCount == 2", "later")))))
+				.build();
+
+		assertThrows(ExpressionEvaluationException.class, () -> stringsWithLimits(localizedString,
+				TranslationRuntimeLimits.builder().maximumExpressionCharacters(12).build()));
+	}
+
+	@Test
 	public void stringsHonorsOutputLimit() {
 		LocalizedString localizedString = new LocalizedString.Builder("Greeting")
 				.translation("{{name}}")
@@ -271,7 +318,7 @@ public class TranslationRuntimeLimitsTests {
 						Cardinality.ONE, "item", Cardinality.OTHER, "items")));
 		LocalizedString localizedString = new LocalizedString.Builder("Items")
 				.translation("{{p0}}")
-				.languageFormTranslationsByPlaceholder(generatedPlaceholders)
+				.placeholderDefinitions(generatedPlaceholders)
 				.build();
 		Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
 				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, Set.of(localizedString)))
@@ -286,10 +333,48 @@ public class TranslationRuntimeLimitsTests {
 	}
 
 	@Test
+	public void expressionFragmentsShareGeneratedDepthOutputAndExpansionLimits() {
+		LocalizedString deep = new LocalizedString.Builder("Deep expression fragments")
+				.translation("{{p0}}")
+				.placeholderDefinitions(Map.of(
+						"p0", new LocalizedString.ExpressionTranslation("{{p1}}"),
+						"p1", new LocalizedString.ExpressionTranslation("{{p2}}"),
+						"p2", new LocalizedString.ExpressionTranslation("done")
+				))
+				.build();
+		IllegalStateException depthException = assertThrows(IllegalStateException.class,
+				() -> stringsWithLimits(deep, TranslationRuntimeLimits.builder()
+						.maximumGeneratedPlaceholderDepth(1).build()).get("Deep expression fragments"));
+		assertTrue(depthException.getMessage().contains("maximum depth of 1"));
+
+		LocalizedString output = new LocalizedString.Builder("Expression output")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("{{name}}")))
+				.build();
+		IllegalStateException outputException = assertThrows(IllegalStateException.class,
+				() -> stringsWithLimits(output, TranslationRuntimeLimits.builder()
+						.maximumInterpolatedOutputCharacters(4).build())
+						.get("Expression output", Map.of("name", "Alice")));
+		assertTrue(outputException.getMessage().contains("maximum of 4 characters"));
+
+		LocalizedString expansion = new LocalizedString.Builder("Expression expansion")
+				.translation("{{p0}}")
+				.placeholderDefinitions(Map.of(
+						"p0", new LocalizedString.ExpressionTranslation("{{p1}}{{p1}}"),
+						"p1", new LocalizedString.ExpressionTranslation("abc")
+				))
+				.build();
+		IllegalStateException expansionException = assertThrows(IllegalStateException.class,
+				() -> stringsWithLimits(expansion, TranslationRuntimeLimits.builder()
+						.maximumGeneratedExpansionCharacters(5).build()).get("Expression expansion"));
+		assertTrue(expansionException.getMessage().contains("cumulative limit"));
+	}
+
+	@Test
 	public void stringsHonorsNumericLimitsDuringPluralResolution() {
 		LocalizedString localizedString = new LocalizedString.Builder("Items")
 				.translation("{{noun}}")
-				.languageFormTranslationsByPlaceholder(Map.of("noun",
+				.placeholderDefinitions(Map.of("noun",
 						new LocalizedString.LanguageFormTranslation("count", Map.of(
 								Cardinality.ONE, "item", Cardinality.OTHER, "items"))))
 				.build();
@@ -314,5 +399,38 @@ public class TranslationRuntimeLimitsTests {
 				.build();
 		assertEquals("items", strings.get("Items", Map.of("count", compactOperands)),
 				"Expanded compact operands must be checked by their source number, not materialized precision");
+	}
+
+	@Test
+	public void fragmentNumericLimitFailuresIdentifyTheirPredicate() {
+		LocalizedString localizedString = new LocalizedString.Builder("Numeric predicate limits")
+				.translation("{{fragment}}")
+				.placeholderDefinitions(Map.of("fragment", new LocalizedString.ExpressionTranslation("other", List.of(
+						new LocalizedString.ExpressionAlternative("count == 1", "one")))))
+				.build();
+		Strings strings = stringsWithLimits(localizedString, TranslationRuntimeLimits.builder()
+				.maximumNumberPrecision(2)
+				.build());
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Numeric predicate limits", Map.of("count", new BigDecimal("123"))));
+		assertTrue(exception.getMessage().contains("generated-fragment expression 'count == 1'"));
+	}
+
+	private LocalizedString localizedStringWithUnusedFragment(String expression) {
+		return new LocalizedString.Builder("Unused fragment")
+				.translation("Hello")
+				.placeholderDefinitions(Map.of("unused", new LocalizedString.ExpressionTranslation("default",
+						java.util.List.of(new LocalizedString.ExpressionAlternative(expression, "selected")))))
+				.build();
+	}
+
+	private Strings stringsWithLimits(LocalizedString localizedString, TranslationRuntimeLimits runtimeLimits) {
+		return Strings.withFallbackLocale(Locale.ENGLISH)
+				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, Set.of(localizedString)))
+				.localeSupplier(matcher -> Locale.ENGLISH)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.runtimeLimits(runtimeLimits)
+				.build();
 	}
 }

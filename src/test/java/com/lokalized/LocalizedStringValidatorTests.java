@@ -16,10 +16,13 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.ExpressionAlternative;
+import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import org.junit.jupiter.api.Test;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -27,6 +30,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class LocalizedStringValidatorTests {
   private static final Locale ENGLISH = Locale.forLanguageTag("en");
@@ -44,7 +48,7 @@ public class LocalizedStringValidatorTests {
   public void expressionConstantIsReservedPlaceholderName() {
     LocalizedString localizedString = new LocalizedString.Builder("key")
         .translation("{{word}}")
-        .languageFormTranslationsByPlaceholder(Map.of(
+        .placeholderDefinitions(Map.of(
             "CARDINALITY_ONE", new LanguageFormTranslation("count", Map.of(Cardinality.ONE, "word"))))
         .build();
 
@@ -82,13 +86,115 @@ public class LocalizedStringValidatorTests {
   }
 
   @Test
+  public void validProgrammaticExpressionDefinitionsAreAccepted() {
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("Found {{resultSummary}} {{timing}}.")
+        .placeholderDefinitions(Map.of(
+            "resultSummary", new ExpressionTranslation("{{formattedResultCount}} results", List.of(
+                new ExpressionAlternative("resultCount == 0", "no results"),
+                new ExpressionAlternative("resultCount >= resultLimit", "at least {{formattedResultLimit}} results"))),
+            "timing", new ExpressionTranslation("in {{formattedDuration}}")))
+        .build();
+
+    assertDoesNotThrow(() -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+  }
+
+  @Test
+  public void invalidProgrammaticFragmentExpressionIsRejectedWithContext() {
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of(
+            "summary", new ExpressionTranslation("default", List.of(
+                new ExpressionAlternative("count ==", "invalid")))))
+        .build();
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+
+    assertTrue(exception.getMessage().contains("expression alternative 0"));
+    assertTrue(exception.getMessage().contains("generated placeholder 'summary'"));
+    assertTrue(exception.getMessage().contains("count =="));
+  }
+
+  @Test
+  public void unsafeNumericLiteralInFragmentIsRejectedDuringCatalogValidation() {
+    String expression = "count == 1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1);
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of(
+            "summary", new ExpressionTranslation("default", List.of(
+                new ExpressionAlternative(expression, "invalid")))))
+        .build();
+
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+  }
+
+  @Test
+  public void malformedExpressionDefaultTemplateIsRejected() {
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of(
+            "summary", new ExpressionTranslation("{{malformed placeholder}}")))
+        .build();
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+
+    assertTrue(exception.getMessage().contains("default translation for generated placeholder 'summary'"));
+  }
+
+  @Test
+  public void malformedExpressionAlternativeTemplateIsRejected() {
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of(
+            "summary", new ExpressionTranslation("default", List.of(
+                new ExpressionAlternative("count == 0", "{{malformed placeholder}}")))))
+        .build();
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+
+    assertTrue(exception.getMessage().contains("expression alternative 0"));
+    assertTrue(exception.getMessage().contains("generated placeholder 'summary'"));
+  }
+
+  @Test
+  public void reservedLanguageFormReferenceInExpressionFragmentIsRejected() {
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of(
+            "summary", new ExpressionTranslation("{{CARDINALITY_ONE}}")))
+        .build();
+
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+  }
+
+  @Test
+  public void nullExpressionAlternativeIsRejected() {
+    ExpressionTranslation expressionTranslation = new ExpressionTranslation(
+        "default", Collections.singletonList(null));
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("{{summary}}")
+        .placeholderDefinitions(Map.of("summary", expressionTranslation))
+        .build();
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
+
+    assertTrue(exception.getMessage().contains("null expression alternative at index 0"));
+  }
+
+  @Test
   public void mixedSimpleLanguageFormMapIsRejected() {
     Map<LanguageForm, String> translations = new LinkedHashMap<>();
     translations.put(Cardinality.ONE, "one");
     translations.put(Gender.MASCULINE, "masculine");
     LocalizedString localizedString = new LocalizedString.Builder("key")
         .translation("{{value}}")
-        .languageFormTranslationsByPlaceholder(Map.of(
+        .placeholderDefinitions(Map.of(
             "value", new LanguageFormTranslation("input", translations)))
         .build();
 
@@ -102,7 +208,7 @@ public class LocalizedStringValidatorTests {
         new LanguageFormTranslationRange("start", "end"), Map.of(Gender.MASCULINE, "value"));
     LocalizedString localizedString = new LocalizedString.Builder("key")
         .translation("{{result}}")
-        .languageFormTranslationsByPlaceholder(Map.of("result", translation))
+        .placeholderDefinitions(Map.of("result", translation))
         .build();
 
     assertThrows(IllegalArgumentException.class,
@@ -132,12 +238,21 @@ public class LocalizedStringValidatorTests {
 
   @Test
   public void memoizedAlternativeCannotBypassTheDepthLimitOnAnotherPath() {
+    LocalizedString sharedGrandchild = new LocalizedString.Builder("count == 1")
+        .translation("grandchild")
+        .build();
+    LocalizedString sharedChild = new LocalizedString.Builder("count == 1")
+        .translation("child")
+        .alternatives(List.of(sharedGrandchild))
+        .build();
     LocalizedString shared = new LocalizedString.Builder("count == 1")
         .translation("shared")
+        .alternatives(List.of(sharedChild))
         .build();
     LocalizedString deepPath = shared;
 
-    for (int depth = 0; depth < 128; ++depth)
+    // The shared root itself still enters at depth 127, but its grandchild would enter at depth 129.
+    for (int depth = 0; depth < 126; ++depth)
       deepPath = new LocalizedString.Builder("count == 1")
           .translation("value")
           .alternatives(List.of(deepPath))

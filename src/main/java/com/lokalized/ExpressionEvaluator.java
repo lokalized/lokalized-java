@@ -19,6 +19,7 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.util.ArrayDeque;
@@ -352,8 +353,50 @@ class ExpressionEvaluator {
     if (context == null)
       context = Collections.emptyMap();
 
+    return evaluateCompiledExpression(compile(expression), context, locale);
+  }
+
+  /**
+   * Compiles an expression into an immutable tree which may be evaluated repeatedly.
+   *
+   * @param expression expression source, not null
+   * @return the compiled expression, not null
+   * @throws ExpressionEvaluationException if the expression is invalid or exceeds configured limits
+   */
+  @NonNull
+  protected CompiledExpression compile(@NonNull String expression) {
+    requireNonNull(expression);
+
     List<@NonNull Token> tokens = parseAndValidateExpressionTokens(expression);
-    return evaluateReversePolishNotationTokens(tokens, context, locale);
+    return new CompiledExpression(expression, buildExpressionTreeFromReversePolishNotationTokens(tokens));
+  }
+
+  /**
+   * Evaluates a previously compiled expression.
+   *
+   * @param compiledExpression compiled expression, not null
+   * @param context caller-supplied expression context, not null
+   * @param locale locale used for locale-sensitive language forms, not null
+   * @return the expression result, not null
+   * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
+   */
+  @NonNull
+  protected Boolean evaluateCompiledExpression(@NonNull CompiledExpression compiledExpression,
+                                               @NonNull Map<@NonNull String, @Nullable Object> context,
+                                               @NonNull Locale locale) {
+    requireNonNull(compiledExpression);
+    requireNonNull(context);
+    requireNonNull(locale);
+
+    Token resultToken = evaluateExpressionNode(compiledExpression.getRoot(), context, locale);
+
+    if (resultToken == TRUE_RESULT_TOKEN)
+      return true;
+    if (resultToken == FALSE_RESULT_TOKEN)
+      return false;
+
+    throw new ExpressionEvaluationException(format("Unexpected final symbol encountered while evaluating '%s': '%s'",
+        compiledExpression.getExpression(), resultToken.getSymbol()));
   }
 
   @NonNull
@@ -445,38 +488,6 @@ class ExpressionEvaluator {
     }
 
     return Collections.unmodifiableList(outputTokens);
-  }
-
-  /**
-   * Given a list of tokens in RPN format, evaluate the expression they comprise against the given context
-   * and locale and return a true or false result.
-   * <p>
-   * RPN evaluation algorithm is outlined at
-   * <a href="http://en.wikipedia.org/wiki/Reverse_Polish_notation">http://en.wikipedia.org/wiki/Reverse_Polish_notation</a>.
-   *
-   * @param tokens  the RPN-format tokens to evaluate, not null
-   * @param context the context for the expression, not null
-   * @param locale  the locale to use for evaluation, not null
-   * @return the result of expression evaluation, not null
-   * @throws ExpressionEvaluationException if an error occurs while evaluating the expression
-   */
-  @NonNull
-  protected Boolean evaluateReversePolishNotationTokens(@NonNull List<@NonNull Token> tokens,
-                                                        @NonNull Map<@NonNull String, @Nullable Object> context,
-                                                        @NonNull Locale locale) {
-    requireNonNull(tokens);
-    requireNonNull(context);
-    requireNonNull(locale);
-
-    ExpressionNode root = buildExpressionTreeFromReversePolishNotationTokens(tokens);
-    Token resultToken = evaluateExpressionNode(root, context, locale);
-
-    if (resultToken == TRUE_RESULT_TOKEN)
-      return true;
-    if (resultToken == FALSE_RESULT_TOKEN)
-      return false;
-
-    throw new ExpressionEvaluationException(format("Unexpected final symbol encountered: '%s'", resultToken.getSymbol()));
   }
 
   @NonNull
@@ -593,6 +604,21 @@ class ExpressionEvaluator {
             "Unable to evaluate expression '%s %s %s'. Operand types %s and %s are unsupported",
             leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
             lhsOperandType.name(), rhsOperandType.name()));
+
+      Token characterSequenceOperand = null;
+
+      if (lhsOperandType == OperandType.NUMBER && isCallerSuppliedCharacterSequence(rightHandOperand, context))
+        characterSequenceOperand = rightHandOperand;
+      else if (rhsOperandType == OperandType.NUMBER && isCallerSuppliedCharacterSequence(leftHandOperand, context))
+        characterSequenceOperand = leftHandOperand;
+
+      if (characterSequenceOperand != null)
+        throw new ExpressionEvaluationException(format(
+            "Numeric comparison '%s %s %s' requires numeric operands supplied as %s or %s values, " +
+                "but placeholder '%s' resolved to %s",
+            leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
+            Number.class.getSimpleName(), PluralOperands.class.getSimpleName(), characterSequenceOperand.getSymbol(),
+            runtimeTypeName(characterSequenceOperand, context)));
 
       // Number (operators: any)
       if (lhsOperandType == OperandType.NUMBER && rhsOperandType == OperandType.NUMBER) {
@@ -832,8 +858,9 @@ class ExpressionEvaluator {
       }
 
       throw new ExpressionEvaluationException(format(
-          "Unable to evaluate expression '%s %s %s'. Operand types %s and %s are incompatible", leftHandOperand.getSymbol(),
-          operator.getSymbol(), rightHandOperand.getSymbol(), lhsOperandType.name(), rhsOperandType.name()));
+          "Unable to evaluate expression '%s %s %s'. Operand runtime types %s and %s are incompatible",
+          leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
+          runtimeTypeName(leftHandOperand, context), runtimeTypeName(rightHandOperand, context)));
     } else {
       throw new ExpressionEvaluationException(format("Expected operator but encountered '%s'", operator.getSymbol()));
     }
@@ -1117,6 +1144,69 @@ class ExpressionEvaluator {
     }
 
     return OperandType.UNKNOWN;
+  }
+
+  @NonNull
+  private String runtimeTypeName(@NonNull Token operand,
+                                 @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (operand.getTokenType() != TokenType.VARIABLE) {
+      switch (operandType(operand, context)) {
+        case NUMBER:
+          return Number.class.getSimpleName();
+        case BOOLEAN:
+          return Boolean.class.getSimpleName();
+        case GENDER:
+          return Gender.class.getSimpleName();
+        case GRAMMATICAL_CASE:
+          return GrammaticalCase.class.getSimpleName();
+        case DEFINITENESS:
+          return Definiteness.class.getSimpleName();
+        case CLASSIFIER:
+          return Classifier.class.getSimpleName();
+        case FORMALITY:
+          return Formality.class.getSimpleName();
+        case CLUSIVITY:
+          return Clusivity.class.getSimpleName();
+        case ANIMACY:
+          return Animacy.class.getSimpleName();
+        case CARDINALITY:
+          return Cardinality.class.getSimpleName();
+        case ORDINALITY:
+          return Ordinality.class.getSimpleName();
+        case PHONETIC:
+          return Phonetic.class.getSimpleName();
+        case UNKNOWN:
+        default:
+          return operand.getTokenType().name();
+      }
+    }
+
+    Object value = context.get(operand.getSymbol());
+
+    if (value instanceof Optional)
+      value = ((Optional<?>) value).orElse(null);
+
+    return value == null ? "null" : value.getClass().getSimpleName();
+  }
+
+  private static boolean isCallerSuppliedCharacterSequence(
+      @NonNull Token operand,
+      @NonNull Map<@NonNull String, @Nullable Object> context) {
+    requireNonNull(operand);
+    requireNonNull(context);
+
+    if (operand.getTokenType() != TokenType.VARIABLE)
+      return false;
+
+    Object value = context.get(operand.getSymbol());
+
+    if (value instanceof Optional)
+      value = ((Optional<?>) value).orElse(null);
+
+    return value instanceof CharSequence;
   }
 
   /**
@@ -1850,6 +1940,33 @@ class ExpressionEvaluator {
     }
   }
 
+  /**
+   * Immutable compiled representation of an expression.
+   */
+  @Immutable
+  protected static final class CompiledExpression {
+    @NonNull
+    private final String expression;
+    @NonNull
+    private final ExpressionNode root;
+
+    private CompiledExpression(@NonNull String expression, @NonNull ExpressionNode root) {
+      this.expression = requireNonNull(expression);
+      this.root = requireNonNull(root);
+    }
+
+    @NonNull
+    protected String getExpression() {
+      return expression;
+    }
+
+    @NonNull
+    private ExpressionNode getRoot() {
+      return root;
+    }
+  }
+
+  @Immutable
   protected static final class ExpressionNode {
     @NonNull
     private final Token token;

@@ -30,6 +30,13 @@ import static java.util.Objects.requireNonNull;
  * catalogs are attempted, while the failure handler controls the final response after fallback stops or all candidates
  * are exhausted.
  * <p>
+ * A failure while evaluating a reachable {@link LocalizedString.ExpressionAlternative expression-fragment predicate}
+ * or interpolating its selected/default fragment is a {@link TranslationFailureReason#RESOLUTION_FAILURE}. The safe
+ * default {@link #fallbackOnMissingTranslationOrNoMatchingAlternative()} stops at that failure;
+ * {@link #fallbackOnAnyFailure()} may continue to another locale candidate. Expression-selected generated fragments
+ * always have a default translation, so their selection cannot itself produce
+ * {@link TranslationFailureReason#NO_MATCHING_ALTERNATIVE}.
+ * <p>
  * Implementations may be invoked concurrently and must be thread-safe when shared by a {@link Strings} instance.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
@@ -50,7 +57,10 @@ public interface TranslationFallbackPolicy {
 															@Nullable Throwable cause);
 
 	/**
-	 * Falls back for missing translations and unmatched alternatives, but surfaces corrupt translation resolution.
+	 * Falls back for missing translations and unmatched whole-message alternatives, but stops on resolution failures.
+	 * <p>
+	 * This is the recommended safe default. It stops, for example, when an evaluated expression-fragment predicate is
+	 * invalid or its selected/default fragment cannot be interpolated.
 	 *
 	 * @return the recommended safe default policy, not null
 	 */
@@ -61,6 +71,10 @@ public interface TranslationFallbackPolicy {
 
 	/**
 	 * Falls back after every failed locale attempt, including runtime resolution failures.
+	 * <p>
+	 * This may continue to another locale after an evaluated expression-fragment predicate or selected/default fragment
+	 * fails. If no later locale resolves, the configured {@link TranslationFailureHandler} receives the resolution
+	 * failure.
 	 * <p>
 	 * This preserves Lokalized 2.x behavior.
 	 *

@@ -62,9 +62,15 @@
             },
             {
               "heOrShe == GENDER_FEMININE" : "Ella era la mejor jugadora de béisbol."
+            },
+            {
+              "heOrShe == GENDER_COMMON" : "Esta persona era quien mejor jugaba al béisbol."
             }
           ]
         }
+      },
+      {
+        "heOrShe == GENDER_COMMON" : "Esta persona estaba entre las {{groupSize}} personas que mejor jugaban al béisbol."
       }
     ]
   },

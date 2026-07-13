@@ -27,12 +27,19 @@ public enum TranslationFailureReason {
 	 */
 	MISSING_TRANSLATION,
 	/**
-	 * An attempted candidate locale contained the requested key, but none of its alternatives matched and no default translation
-	 * was provided.
+	 * An attempted candidate locale contained the requested key, but no whole-message alternative matched and no default
+	 * translation was provided.
+	 * <p>
+	 * A {@link LocalizedString.ExpressionTranslation} generated fragment cannot produce this reason: it always has a
+	 * required default translation when none of its ordered alternatives matches.
 	 */
 	NO_MATCHING_ALTERNATIVE,
 	/**
-	 * A candidate translation existed, but placeholder, expression, or language-form resolution failed.
+	 * A candidate translation existed, but placeholder, expression, interpolation, or language-form resolution failed.
+	 * <p>
+	 * This includes a failure while evaluating a reachable
+	 * {@link LocalizedString.ExpressionAlternative expression-fragment predicate} or interpolating its selected/default
+	 * fragment. A selected fragment's failure does not fall through to a later predicate or its default.
 	 */
 	RESOLUTION_FAILURE
 }

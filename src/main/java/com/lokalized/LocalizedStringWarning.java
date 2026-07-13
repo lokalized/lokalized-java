@@ -33,7 +33,7 @@ import static java.util.Objects.requireNonNull;
  * Describes a non-fatal validation problem detected while loading a localized strings file.
  * <p>
  * Instances are supplied to a {@link LocalizedStringWarningHandler}. Lokalized constructs these objects;
- * application code should normally only inspect them. A warning never aborts loading on its own — the configured
+ * application code should normally only inspect them. A warning never aborts loading on its own - the configured
  * handler decides what to do (log it, ignore it, collect it, or throw to fail the load).
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>

@@ -16,8 +16,11 @@
 
 package com.lokalized;
 
+import com.lokalized.LocalizedString.ExpressionAlternative;
+import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
+import com.lokalized.LocalizedString.PlaceholderDefinition;
 import com.lokalized.MinimalJson.Json;
 import com.lokalized.MinimalJson.JsonArray;
 import com.lokalized.MinimalJson.JsonObject;
@@ -73,6 +76,13 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Utility methods for loading localized strings files.
+ * <p>
+ * A generated placeholder may be language-form-driven ({@link LocalizedString.LanguageFormTranslation}; catalog
+ * members {@code value} or {@code range}, plus {@code translations}) or template-driven
+ * ({@link LocalizedString.ExpressionTranslation}; a required default {@code translation}, plus optional ordered
+ * expression {@code alternatives}). Template alternatives select string fragments only; the first matching
+ * expression wins and the required default is used when none match. Placeholder modes are mutually exclusive, and
+ * all expressions and fragment placeholder references are validated while loading.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -1604,7 +1614,7 @@ public final class LocalizedStringLoader {
 
     JsonObject outerJsonObject = outerJsonValue.asObject();
 
-    loadingSession.addTranslations(outerJsonObject.size(), canonicalPath);
+    loadingSession.addTranslationNodes(outerJsonObject.size(), canonicalPath);
 
     Set<String> keys = new HashSet<>();
 
@@ -1616,7 +1626,7 @@ public final class LocalizedStringLoader {
 
       JsonValue value = member.getValue();
       validateNoDuplicateObjectMembers(canonicalPath, value, jsonObjectMemberPath("$", key));
-      LocalizedString localizedString = parseLocalizedString(canonicalPath, key, value, null, loadingSession);
+      LocalizedString localizedString = parseLocalizedString(canonicalPath, key, key, key, value, loadingSession);
 
       try {
         LocalizedStringValidator.validate(locale, localizedString);
@@ -1661,10 +1671,15 @@ public final class LocalizedStringLoader {
     requireNonNull(localizedString);
     requireNonNull(warningHandler);
 
-    for (Map.Entry<@NonNull String, @NonNull LanguageFormTranslation> entry :
-        localizedString.getLanguageFormTranslationsByPlaceholder().entrySet()) {
+    for (Map.Entry<@NonNull String, @NonNull PlaceholderDefinition> entry :
+        localizedString.getPlaceholderDefinitions().entrySet()) {
       String placeholderKey = entry.getKey();
-      LanguageFormTranslation languageFormTranslation = entry.getValue();
+      PlaceholderDefinition placeholderDefinition = entry.getValue();
+
+      if (!(placeholderDefinition instanceof LanguageFormTranslation))
+        continue;
+
+      LanguageFormTranslation languageFormTranslation = (LanguageFormTranslation) placeholderDefinition;
 
       // Range-driven translations legitimately supply a subset of forms; do not check them.
       if (languageFormTranslation.getRange().isPresent())
@@ -1786,24 +1801,27 @@ public final class LocalizedStringLoader {
    * Operates recursively if alternatives are encountered.
    *
    * @param canonicalPath   the unique path to the file (or URL) being parsed, used for error reporting, not null
+   * @param rootKey         the root translation key, not null
    * @param key             the root translation key or nested alternative expression, not null
+   * @param declarationPath root key followed by the whole-message alternatives leading to this node, not null
    * @param jsonValue       the translation value, which may be a simple string or a complex object, not null
-   * @param expressionTokens pre-parsed tokens when this is an alternative, or null for a root translation
    * @param loadingSession  load-wide resource budget, not null
    * @return a localized string instance, not null
    * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
    */
   @NonNull
-  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String key,
+  private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String rootKey,
+                                                      @NonNull String key, @NonNull String declarationPath,
                                                       @NonNull JsonValue jsonValue,
-                                                      @Nullable List<@NonNull Token> expressionTokens,
                                                       @NonNull LoadingSession loadingSession) {
     requireNonNull(canonicalPath);
+    requireNonNull(rootKey);
     requireNonNull(key);
+    requireNonNull(declarationPath);
     requireNonNull(jsonValue);
     requireNonNull(loadingSession);
 
-    LocalizedString.Builder localizedStringBuilder = new LocalizedString.Builder(key).expressionTokens(expressionTokens);
+    LocalizedString.Builder localizedStringBuilder = new LocalizedString.Builder(key);
 
     if (jsonValue.isString()) {
       // Simple case - just a key and a value, no translation rules
@@ -1819,7 +1837,8 @@ public final class LocalizedStringLoader {
       if (translation == null)
         throw new LocalizedStringLoadingException(format("%s: a translation is required for key '%s'", canonicalPath, key));
 
-      validateTranslationPlaceholders(canonicalPath, key, translation, Collections.emptyMap());
+      validatePlaceholderReferences(canonicalPath, rootKey, translation,
+          descriptionAtDeclarationPath("translation", rootKey, declarationPath));
       return localizedStringBuilder.translation(translation).build();
     } else if (jsonValue.isObject()) {
       // More complex case, there can be placeholders and alternatives.
@@ -1875,7 +1894,7 @@ public final class LocalizedStringLoader {
         commentary = commentaryJsonValue.asString();
       }
 
-      Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder = new LinkedHashMap<>();
+      Map<@NonNull String, @NonNull PlaceholderDefinition> placeholderDefinitions = new LinkedHashMap<>();
 
       JsonValue placeholdersJsonValue = localizedStringObject.get("placeholders");
 
@@ -1888,6 +1907,7 @@ public final class LocalizedStringLoader {
         for (Member placeholderMember : placeholdersJsonObject) {
           String placeholderKey = placeholderMember.getName();
           JsonValue placeholderJsonValue = placeholderMember.getValue();
+          loadingSession.addTranslationNodes(1, canonicalPath);
 
           ensureValidPlaceholderName(canonicalPath, key, placeholderKey, "placeholder");
 
@@ -1895,8 +1915,9 @@ public final class LocalizedStringLoader {
             throw new LocalizedStringLoadingException(format("%s: the placeholder value must be an object. Key is '%s'", canonicalPath, key));
 
           JsonObject placeholderJsonObject = placeholderJsonValue.asObject();
-          LanguageFormTranslation languageFormTranslation = parseLanguageFormTranslation(canonicalPath, key, placeholderKey, placeholderJsonObject);
-          languageFormTranslationsByPlaceholder.put(placeholderKey, languageFormTranslation);
+          PlaceholderDefinition placeholderDefinition = parsePlaceholderDefinition(canonicalPath, rootKey,
+              placeholderKey, declarationPath, placeholderJsonObject, loadingSession);
+          placeholderDefinitions.put(placeholderKey, placeholderDefinition);
         }
       }
 
@@ -1915,6 +1936,8 @@ public final class LocalizedStringLoader {
               canonicalPath, key));
 
         for (JsonValue alternativeJsonValue : alternativesJsonArray) {
+          loadingSession.addTranslationNodes(1, canonicalPath);
+
           if (alternativeJsonValue == null || alternativeJsonValue.isNull())
             throw new LocalizedStringLoadingException(format("%s: alternative values cannot be null. Key is '%s'",
                 canonicalPath, key));
@@ -1936,10 +1959,10 @@ public final class LocalizedStringLoader {
           for (Member member : outerJsonObject) {
             String alternativeKey = member.getName();
             JsonValue alternativeValue = member.getValue();
-            loadingSession.addTranslations(1, canonicalPath);
-            List<@NonNull Token> alternativeTokens = parseExpressionTokens(canonicalPath, alternativeKey);
-            alternatives.add(parseLocalizedString(canonicalPath, alternativeKey, alternativeValue, alternativeTokens,
-                loadingSession));
+            validateWholeMessageAlternativeExpression(canonicalPath, rootKey, alternativeKey);
+            String alternativePath = boundedJsonPath(declarationPath, " -> alternative[", alternativeKey, "]");
+            alternatives.add(parseLocalizedString(canonicalPath, rootKey, alternativeKey, alternativePath,
+                alternativeValue, loadingSession));
           }
         }
       }
@@ -1949,11 +1972,12 @@ public final class LocalizedStringLoader {
             canonicalPath, key));
 
       if (translation != null)
-        validateTranslationPlaceholders(canonicalPath, key, translation, languageFormTranslationsByPlaceholder);
+        validatePlaceholderReferences(canonicalPath, rootKey, translation,
+            descriptionAtDeclarationPath("translation", rootKey, declarationPath));
 
       return localizedStringBuilder.translation(translation)
           .commentary(commentary)
-          .languageFormTranslationsByPlaceholder(languageFormTranslationsByPlaceholder)
+          .placeholderDefinitions(placeholderDefinitions)
           .alternatives(alternatives)
           .build();
     } else {
@@ -1962,31 +1986,21 @@ public final class LocalizedStringLoader {
     }
   }
 
-  private static void validateTranslationPlaceholders(@NonNull String canonicalPath,
-                                                      @NonNull String key,
-                                                      @NonNull String translation,
-                                                      @NonNull Map<@NonNull String, @NonNull LanguageFormTranslation> languageFormTranslationsByPlaceholder) {
-    requireNonNull(canonicalPath);
-    requireNonNull(key);
-    requireNonNull(translation);
-    requireNonNull(languageFormTranslationsByPlaceholder);
-
-    Set<@NonNull String> referencedPlaceholderNames =
-        validatePlaceholderReferences(canonicalPath, key, translation, "translation");
-
-    for (String placeholderName : languageFormTranslationsByPlaceholder.keySet())
-      if (!referencedPlaceholderNames.contains(placeholderName))
-        LOGGER.fine(format("%s: placeholder '%s' is declared for key '%s' but is not referenced by its translation",
-            canonicalPath, placeholderName, key));
+  @NonNull
+  private static String descriptionAtDeclarationPath(@NonNull String description, @NonNull String rootKey,
+                                                     @NonNull String declarationPath) {
+    requireNonNull(description);
+    requireNonNull(rootKey);
+    requireNonNull(declarationPath);
+    return rootKey.equals(declarationPath) ? description : format("%s declared at %s", description, declarationPath);
   }
 
-  @NonNull
-  private static Set<@NonNull String> validatePlaceholderReferences(@NonNull String canonicalPath,
-                                                                    @NonNull String key,
-                                                                    @NonNull String translation,
-                                                                    @NonNull String description) {
+  private static void validatePlaceholderReferences(@NonNull String canonicalPath,
+                                                    @NonNull String rootKey,
+                                                    @NonNull String translation,
+                                                    @NonNull String description) {
     requireNonNull(canonicalPath);
-    requireNonNull(key);
+    requireNonNull(rootKey);
     requireNonNull(translation);
     requireNonNull(description);
 
@@ -1996,59 +2010,231 @@ public final class LocalizedStringLoader {
       referencedPlaceholderNames = StringInterpolator.placeholderNamesIn(translation);
     } catch (IllegalArgumentException e) {
       throw new LocalizedStringLoadingException(format("%s: invalid placeholder reference in %s for key '%s': %s",
-          canonicalPath, description, key, e.getMessage()), e);
+          canonicalPath, description, rootKey, e.getMessage()), e);
     }
 
     for (String placeholderName : referencedPlaceholderNames)
-      ensureValidPlaceholderName(canonicalPath, key, placeholderName, description + " placeholder reference");
-
-    return referencedPlaceholderNames;
+      ensureValidPlaceholderName(canonicalPath, rootKey, placeholderName, description + " placeholder reference");
   }
 
-  @NonNull
-  private static List<@NonNull Token> parseExpressionTokens(@NonNull String canonicalPath, @NonNull String expression) {
+  private static void validateWholeMessageAlternativeExpression(@NonNull String canonicalPath,
+                                                                @NonNull String rootKey,
+                                                                @NonNull String expression) {
     requireNonNull(canonicalPath);
+    requireNonNull(rootKey);
     requireNonNull(expression);
 
     try {
-      return EXPRESSION_EVALUATOR.parseAndValidateExpressionTokens(expression);
+      EXPRESSION_EVALUATOR.parseAndValidateExpressionTokens(expression);
     } catch (ExpressionEvaluationException e) {
-      throw new LocalizedStringLoadingException(
-          format("%s: unable to parse alternative expression '%s': %s", canonicalPath, expression, e.getMessage()), e);
+      throw new LocalizedStringLoadingException(format(
+          "%s: unable to parse whole-message alternative expression '%s' for root key '%s': %s",
+          canonicalPath, expression, rootKey, e.getMessage()), e);
     }
   }
 
   @NonNull
-  private static LanguageFormTranslation parseLanguageFormTranslation(@NonNull String canonicalPath, @NonNull String key,
-                                                                      @NonNull String placeholderKey, @NonNull JsonObject placeholderJsonObject) {
+  private static PlaceholderDefinition parsePlaceholderDefinition(@NonNull String canonicalPath,
+                                                                  @NonNull String rootKey,
+                                                                  @NonNull String placeholderKey,
+                                                                  @NonNull String declarationPath,
+                                                                  @NonNull JsonObject placeholderJsonObject,
+                                                                  @NonNull LoadingSession loadingSession) {
     requireNonNull(canonicalPath);
-    requireNonNull(key);
+    requireNonNull(rootKey);
     requireNonNull(placeholderKey);
+    requireNonNull(declarationPath);
     requireNonNull(placeholderJsonObject);
+    requireNonNull(loadingSession);
+
+    validateNoUnexpectedObjectMembers(canonicalPath, rootKey, placeholderJsonObject,
+        format("placeholder '%s'", placeholderKey),
+        Set.of("value", "range", "translations", "translation", "alternatives"));
 
     JsonValue valueJsonValue = placeholderJsonObject.get("value");
     JsonValue rangeJsonValue = placeholderJsonObject.get("range");
     JsonValue translationsJsonValue = placeholderJsonObject.get("translations");
-    validateNoUnexpectedObjectMembers(canonicalPath, key, placeholderJsonObject,
-        format("placeholder '%s'", placeholderKey), Set.of("value", "range", "translations"));
-    rejectExplicitNullPlaceholderMode(canonicalPath, key, placeholderKey, "value", valueJsonValue);
-    rejectExplicitNullPlaceholderMode(canonicalPath, key, placeholderKey, "range", rangeJsonValue);
+    JsonValue translationJsonValue = placeholderJsonObject.get("translation");
+    JsonValue alternativesJsonValue = placeholderJsonObject.get("alternatives");
+
+    boolean hasLanguageFormMember = valueJsonValue != null || rangeJsonValue != null ||
+        translationsJsonValue != null;
+    boolean hasTemplateMember = translationJsonValue != null || alternativesJsonValue != null;
+
+    if (hasLanguageFormMember && hasTemplateMember)
+      throw new LocalizedStringLoadingException(format(
+          "%s: placeholder '%s' for root key '%s' mixes language-form members [value, range, translations] " +
+              "with template members [translation, alternatives]; placeholder modes are mutually exclusive",
+          canonicalPath, placeholderKey, rootKey));
+
+    if (!hasLanguageFormMember && !hasTemplateMember)
+      throw new LocalizedStringLoadingException(format(
+          "%s: placeholder '%s' for root key '%s' must define either a language-form translation " +
+              "or a template translation", canonicalPath, placeholderKey, rootKey));
+
+    if (hasTemplateMember)
+      return parseExpressionTranslation(canonicalPath, rootKey, placeholderKey, declarationPath, translationJsonValue,
+          alternativesJsonValue, loadingSession);
+
+    return parseLanguageFormTranslation(canonicalPath, rootKey, placeholderKey, declarationPath, valueJsonValue,
+        rangeJsonValue, translationsJsonValue);
+  }
+
+  @NonNull
+  private static LanguageFormTranslation parseLanguageFormTranslation(@NonNull String canonicalPath,
+                                                                      @NonNull String rootKey,
+                                                                      @NonNull String placeholderKey,
+                                                                      @NonNull String declarationPath,
+                                                                      @Nullable JsonValue valueJsonValue,
+                                                                      @Nullable JsonValue rangeJsonValue,
+                                                                      @Nullable JsonValue translationsJsonValue) {
+    requireNonNull(canonicalPath);
+    requireNonNull(rootKey);
+    requireNonNull(placeholderKey);
+    requireNonNull(declarationPath);
+
+    rejectExplicitNullPlaceholderMember(canonicalPath, rootKey, placeholderKey, "value", valueJsonValue);
+    rejectExplicitNullPlaceholderMember(canonicalPath, rootKey, placeholderKey, "range", rangeJsonValue);
+    rejectExplicitNullPlaceholderMember(canonicalPath, rootKey, placeholderKey, "translations", translationsJsonValue);
     boolean hasValue = valueJsonValue != null;
     boolean hasRangeValue = rangeJsonValue != null;
 
     if (!hasValue && !hasRangeValue)
       throw new LocalizedStringLoadingException(format("%s: a placeholder translation value or range is required. Key is '%s'",
-          canonicalPath, key));
+          canonicalPath, rootKey));
 
     if (hasValue && hasRangeValue)
-      throw new LocalizedStringLoadingException(format("%s: a placeholder translation cannot have both a value and a range. Key is '%s'", canonicalPath, key));
+      throw new LocalizedStringLoadingException(format(
+          "%s: a placeholder translation cannot have both a value and a range. Key is '%s'",
+          canonicalPath, rootKey));
 
-    return parseSingleAxisLanguageFormTranslation(canonicalPath, key, placeholderKey, valueJsonValue, rangeJsonValue, translationsJsonValue);
+    return parseSingleAxisLanguageFormTranslation(canonicalPath, rootKey, placeholderKey, declarationPath,
+        valueJsonValue, rangeJsonValue, translationsJsonValue);
   }
 
-  private static void rejectExplicitNullPlaceholderMode(@NonNull String canonicalPath, @NonNull String key,
-                                                        @NonNull String placeholderKey, @NonNull String memberName,
-                                                        @Nullable JsonValue memberValue) {
+  @NonNull
+  private static ExpressionTranslation parseExpressionTranslation(@NonNull String canonicalPath,
+                                                                  @NonNull String rootKey,
+                                                                  @NonNull String placeholderKey,
+                                                                  @NonNull String declarationPath,
+                                                                  @Nullable JsonValue translationJsonValue,
+                                                                  @Nullable JsonValue alternativesJsonValue,
+                                                                  @NonNull LoadingSession loadingSession) {
+    requireNonNull(canonicalPath);
+    requireNonNull(rootKey);
+    requireNonNull(placeholderKey);
+    requireNonNull(declarationPath);
+    requireNonNull(loadingSession);
+
+    if (translationJsonValue == null)
+      throw new LocalizedStringLoadingException(format(
+          "%s: a default template translation is required for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    if (translationJsonValue.isNull())
+      throw new LocalizedStringLoadingException(format(
+          "%s: default template translation may not be null for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    if (!translationJsonValue.isString())
+      throw new LocalizedStringLoadingException(format(
+          "%s: default template translation must be a string for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    String translation = translationJsonValue.asString();
+    validatePlaceholderReferences(canonicalPath, rootKey, translation,
+        descriptionAtDeclarationPath(format("default fragment for generated placeholder '%s'", placeholderKey),
+            rootKey, declarationPath));
+
+    if (alternativesJsonValue == null)
+      return new ExpressionTranslation(translation);
+
+    if (alternativesJsonValue.isNull())
+      throw new LocalizedStringLoadingException(format(
+          "%s: fragment alternatives may not be null for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    if (!alternativesJsonValue.isArray())
+      throw new LocalizedStringLoadingException(format(
+          "%s: fragment alternatives must be an array for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    JsonArray alternativesJsonArray = alternativesJsonValue.asArray();
+
+    if (alternativesJsonArray.isEmpty())
+      throw new LocalizedStringLoadingException(format(
+          "%s: fragment alternatives must contain at least one expression for placeholder '%s' in root key '%s'",
+          canonicalPath, placeholderKey, rootKey));
+
+    List<@NonNull ExpressionAlternative> alternatives = new ArrayList<>(alternativesJsonArray.size());
+    int alternativeIndex = 0;
+
+    for (JsonValue alternativeJsonValue : alternativesJsonArray) {
+      loadingSession.addTranslationNodes(1, canonicalPath);
+
+      if (alternativeJsonValue == null || alternativeJsonValue.isNull())
+        throw new LocalizedStringLoadingException(format(
+            "%s: fragment alternative %d may not be null for placeholder '%s' in root key '%s'",
+            canonicalPath, alternativeIndex, placeholderKey, rootKey));
+
+      if (!alternativeJsonValue.isObject())
+        throw new LocalizedStringLoadingException(format(
+            "%s: fragment alternative %d must be an object for placeholder '%s' in root key '%s'",
+            canonicalPath, alternativeIndex, placeholderKey, rootKey));
+
+      JsonObject alternativeJsonObject = alternativeJsonValue.asObject();
+
+      if (alternativeJsonObject.size() != 1)
+        throw new LocalizedStringLoadingException(format(
+            "%s: fragment alternative %d must contain exactly one expression so array order defines " +
+                "first-match precedence. Placeholder is '%s' in root key '%s'",
+            canonicalPath, alternativeIndex, placeholderKey, rootKey));
+
+      Member alternativeMember = alternativeJsonObject.iterator().next();
+      String expression = alternativeMember.getName();
+      JsonValue alternativeTranslationJsonValue = alternativeMember.getValue();
+
+      if (!alternativeTranslationJsonValue.isString())
+        throw new LocalizedStringLoadingException(format(
+            "%s: fragment alternative %d for expression '%s' must have a string result. " +
+                "Placeholder is '%s' in root key '%s'",
+            canonicalPath, alternativeIndex, expression, placeholderKey, rootKey));
+
+      String alternativeTranslation = alternativeTranslationJsonValue.asString();
+      validateFragmentAlternativeExpression(canonicalPath, rootKey, placeholderKey, alternativeIndex, expression);
+      validatePlaceholderReferences(canonicalPath, rootKey, alternativeTranslation,
+          descriptionAtDeclarationPath(
+              format("fragment alternative %d for expression '%s' and generated placeholder '%s'",
+                  alternativeIndex, expression, placeholderKey), rootKey, declarationPath));
+      alternatives.add(new ExpressionAlternative(expression, alternativeTranslation));
+      ++alternativeIndex;
+    }
+
+    return new ExpressionTranslation(translation, alternatives);
+  }
+
+  private static void validateFragmentAlternativeExpression(@NonNull String canonicalPath,
+                                                            @NonNull String rootKey,
+                                                            @NonNull String placeholderKey,
+                                                            int alternativeIndex,
+                                                            @NonNull String expression) {
+    requireNonNull(canonicalPath);
+    requireNonNull(rootKey);
+    requireNonNull(placeholderKey);
+    requireNonNull(expression);
+
+    try {
+      EXPRESSION_EVALUATOR.parseAndValidateExpressionTokens(expression);
+    } catch (ExpressionEvaluationException e) {
+      throw new LocalizedStringLoadingException(format(
+          "%s: unable to parse fragment alternative %d expression '%s' for placeholder '%s' in root key '%s': %s",
+          canonicalPath, alternativeIndex, expression, placeholderKey, rootKey, e.getMessage()), e);
+    }
+  }
+
+  private static void rejectExplicitNullPlaceholderMember(@NonNull String canonicalPath, @NonNull String key,
+                                                          @NonNull String placeholderKey, @NonNull String memberName,
+                                                          @Nullable JsonValue memberValue) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(placeholderKey);
@@ -2062,12 +2248,15 @@ public final class LocalizedStringLoader {
 
   @NonNull
   private static LanguageFormTranslation parseSingleAxisLanguageFormTranslation(@NonNull String canonicalPath, @NonNull String key,
-                                                                                @NonNull String placeholderKey, @Nullable JsonValue valueJsonValue,
+                                                                                @NonNull String placeholderKey,
+                                                                                @NonNull String declarationPath,
+                                                                                @Nullable JsonValue valueJsonValue,
                                                                                 @Nullable JsonValue rangeJsonValue,
                                                                                 @Nullable JsonValue translationsJsonValue) {
     requireNonNull(canonicalPath);
     requireNonNull(key);
     requireNonNull(placeholderKey);
+    requireNonNull(declarationPath);
 
     boolean hasValue = valueJsonValue != null && !valueJsonValue.isNull();
     boolean hasRangeValue = rangeJsonValue != null && !rangeJsonValue.isNull();
@@ -2136,7 +2325,9 @@ public final class LocalizedStringLoader {
         throw new LocalizedStringLoadingException(format("%s: the placeholder translation value must be a string. Key is '%s'", canonicalPath, key));
 
       String languageFormTranslation = languageFormTranslationJsonValue.asString();
-      validatePlaceholderReferences(canonicalPath, key, languageFormTranslation, "placeholder translation");
+      validatePlaceholderReferences(canonicalPath, key, languageFormTranslation,
+          descriptionAtDeclarationPath(format("placeholder translation for generated placeholder '%s'", placeholderKey),
+              key, declarationPath));
       translationsByLanguageForm.put(languageForm, languageFormTranslation);
     }
 
@@ -2365,7 +2556,7 @@ public final class LocalizedStringLoader {
     private final LocalizedStringWarningHandler warningHandler;
     private long inputBytes;
     private int catalogs;
-    private int translations;
+    private int translationNodes;
     private int warnings;
 
     private LoadingSession(@NonNull LocalizedStringLoadingOptions loadingOptions,
@@ -2403,17 +2594,17 @@ public final class LocalizedStringLoader {
       inputBytes += bytes;
     }
 
-    private void addTranslations(int translationCount, @NonNull String source) {
+    private void addTranslationNodes(int translationNodeCount, @NonNull String source) {
       requireNonNull(source);
 
-      int maximumTranslations = loadingOptions.getMaximumTranslations();
+      int maximumTranslationNodes = loadingOptions.getMaximumTranslationNodes();
 
-      if (translationCount < 0 || translations > maximumTranslations - translationCount)
+      if (translationNodeCount < 0 || translationNodes > maximumTranslationNodes - translationNodeCount)
         throw new LocalizedStringLoadingException(format(
-            "%s: localized strings load exceeds the aggregate maximum of %d translations", source,
-            maximumTranslations));
+            "%s: localized strings load exceeds the aggregate maximum of %d translation nodes", source,
+            maximumTranslationNodes));
 
-      translations += translationCount;
+      translationNodes += translationNodeCount;
     }
 
     @Override
