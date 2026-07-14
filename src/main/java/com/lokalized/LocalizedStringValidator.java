@@ -40,7 +40,7 @@ import static java.util.Objects.requireNonNull;
  * Validates the public {@link LocalizedString} object model independently of how it was constructed.
  *
  * <p>The JSON loader performs additional source-shape validation while parsing. This validator enforces the common
- * semantic invariants so programmatic catalogs and file-backed catalogs fail at construction time in the same places.
+ * semantic invariants so programmatically constructed and file-backed localized strings fail at construction time in the same places.
  */
 @ThreadSafe
 final class LocalizedStringValidator {

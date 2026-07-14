@@ -59,7 +59,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param message failure message, not null
 	 * @param key translation key, not null
 	 * @param placeholders caller placeholders, not null
-	 * @param lookupLocale the locale used to begin catalog fallback, not null
+	 * @param lookupLocale the locale used to begin locale fallback, not null
 	 */
 	public MissingTranslationException(@NonNull String message,
 																		 @NonNull String key,
@@ -75,7 +75,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param message          failure message, not null
 	 * @param key              translation key, not null
 	 * @param placeholders     caller placeholders, not null
-	 * @param lookupLocale     locale used to begin catalog fallback, not null
+	 * @param lookupLocale     locale used to begin locale fallback, not null
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
 	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
@@ -96,7 +96,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param message          failure message, not null
 	 * @param key              translation key, not null
 	 * @param placeholders     caller placeholders, not null
-	 * @param lookupLocale     locale used to begin catalog fallback, not null
+	 * @param lookupLocale     locale used to begin locale fallback, not null
 	 * @param localeMatchResult strict locale-negotiation diagnostics, or null when unavailable
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
@@ -158,7 +158,7 @@ public class MissingTranslationException extends RuntimeException {
 	}
 
 	/**
-	 * The locale used to begin per-key catalog fallback.
+	 * The locale used to begin per-key locale fallback.
 	 *
 	 * @return the locale, not null
 	 */

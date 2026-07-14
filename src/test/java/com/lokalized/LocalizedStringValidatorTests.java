@@ -71,7 +71,7 @@ public class LocalizedStringValidatorTests {
   }
 
   @Test
-  public void unsafeNumericLiteralIsRejectedDuringCatalogValidation() {
+  public void unsafeNumericLiteralIsRejectedDuringLocalizedStringsValidation() {
     LocalizedString alternative = new LocalizedString.Builder(
         "count == 1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1))
         .translation("invalid")
@@ -117,7 +117,7 @@ public class LocalizedStringValidatorTests {
   }
 
   @Test
-  public void unsafeNumericLiteralInFragmentIsRejectedDuringCatalogValidation() {
+  public void unsafeNumericLiteralInFragmentIsRejectedDuringLocalizedStringsValidation() {
     String expression = "count == 1e" + (PluralOperands.MAXIMUM_ABSOLUTE_NUMBER_SCALE + 1);
     LocalizedString localizedString = new LocalizedString.Builder("key")
         .translation("{{summary}}")

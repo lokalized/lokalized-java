@@ -28,9 +28,9 @@ import static java.lang.String.format;
 /**
  * Immutable safety limits for translation construction and evaluation.
  * <p>
- * The defaults are deliberately generous enough for normal catalogs while bounding work that is proportional to
- * untrusted catalog data or runtime values. Builders may customize a limit through the library's hard ceiling.
- * Catalog loaders validate expressions against hard ceilings because an application's runtime policy is not yet
+ * The defaults are deliberately generous enough for normal localized strings while bounding work that is proportional to
+ * untrusted localized strings data or runtime values. Builders may customize a limit through the library's hard ceiling.
+ * Localized strings loaders validate expressions against hard ceilings because an application's runtime policy is not yet
  * available; {@link Strings} construction then enforces its configured limits. A single instance is safe to share
  * between {@link Strings} instances and threads.
  * <p>
@@ -65,7 +65,7 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 256 * 1_024;
 	/**
 	 * Default cumulative expansion limit across both generated-placeholder kinds: 1,048,576 UTF-16 code units per
-	 * catalog-candidate attempt.
+	 * locale fallback attempt.
 	 */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 1_024 * 1_024;
 
@@ -89,7 +89,7 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 1_024 * 1_024;
 	/**
 	 * Hard ceiling for cumulative expansion across both generated-placeholder kinds: 8,388,608 UTF-16 code units per
-	 * catalog-candidate attempt.
+	 * locale fallback attempt.
 	 */
 	@NonNull public static final Integer MAXIMUM_GENERATED_EXPANSION_CHARACTERS = 8 * 1_024 * 1_024;
 
@@ -165,7 +165,7 @@ public final class TranslationRuntimeLimits {
 	@NonNull public Integer getMaximumInterpolatedOutputCharacters() { return maximumInterpolatedOutputCharacters; }
 	/**
 	 * @return maximum cumulative expansion across both generated-placeholder kinds in UTF-16 code units per
-	 * catalog-candidate attempt, not null
+	 * locale fallback attempt, not null
 	 */
 	@NonNull public Integer getMaximumGeneratedExpansionCharacters() { return maximumGeneratedExpansionCharacters; }
 
@@ -331,7 +331,7 @@ public final class TranslationRuntimeLimits {
 		}
 		/**
 		 * Sets the cumulative UTF-16 code-unit budget shared by language-form and expression-selected generated fragments
-		 * in one catalog-candidate attempt. Locale fallback starts a fresh budget for each candidate.
+		 * in one locale fallback attempt. Locale fallback starts a fresh budget for each candidate.
 		 *
 		 * @param value value from 0 through {@link #MAXIMUM_GENERATED_EXPANSION_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null

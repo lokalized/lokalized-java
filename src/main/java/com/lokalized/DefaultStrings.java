@@ -279,7 +279,7 @@ class DefaultStrings implements Strings {
 			Optional<@NonNull String> languageCode = LocaleUtils.normalizedLanguage(supportedLocale);
 
 			// Private-use and undetermined tags have no primary-language matching semantics. They can be selected exactly,
-			// but multiple such catalogs do not create the broad-language ambiguity that tiebreakers resolve.
+			// but multiple such localized strings sources do not create the broad-language ambiguity that tiebreakers resolve.
 			if (!languageCode.isPresent())
 				continue;
 
@@ -303,7 +303,7 @@ class DefaultStrings implements Strings {
 				// If there is exactly 1 locale for the language code, it's its own "identity" tiebreaker.
 				internalTiebreakerLocalesByLanguageCode.put(languageCode, new ArrayList<>(locales));
 			} else if (locales.size() > 1) {
-				// We need to provide tiebreakers if a locale has more than 1 strings file.
+				// We need to provide tiebreakers if a locale has more than 1 localized strings file.
 				@Nullable List<@NonNull Locale> providedTiebreakerLocales = internalTiebreakerLocalesByLanguageCode.get(languageCode);
 
 				if (providedTiebreakerLocales == null || providedTiebreakerLocales.size() == 0) {
@@ -575,14 +575,14 @@ class DefaultStrings implements Strings {
 		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
 		RuntimeException firstFallbackFailure = null;
 		boolean noMatchingAlternativeEncountered = false;
-		List<@NonNull CatalogCandidate> catalogCandidates = fallbackCatalogCandidates(locale);
-		List<@NonNull Locale> attemptedLocales = new ArrayList<>(catalogCandidates.size());
+		List<@NonNull LocaleFallbackCandidate> fallbackCandidates = localeFallbackCandidates(locale);
+		List<@NonNull Locale> attemptedLocales = new ArrayList<>(fallbackCandidates.size());
 
-		for (int candidateIndex = 0; candidateIndex < catalogCandidates.size(); ++candidateIndex) {
-			CatalogCandidate catalogCandidate = catalogCandidates.get(candidateIndex);
-			Locale candidateLocale = catalogCandidate.getLocale();
+		for (int candidateIndex = 0; candidateIndex < fallbackCandidates.size(); ++candidateIndex) {
+			LocaleFallbackCandidate fallbackCandidate = fallbackCandidates.get(candidateIndex);
+			Locale candidateLocale = fallbackCandidate.getLocale();
 			attemptedLocales.add(candidateLocale);
-			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = catalogCandidate.getLocalizedStrings();
+			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = fallbackCandidate.getLocalizedStrings();
 			TranslationFailureReason attemptFailureReason = TranslationFailureReason.MISSING_TRANSLATION;
 			@Nullable Throwable attemptCause = null;
 
@@ -616,7 +616,7 @@ class DefaultStrings implements Strings {
 				}
 			}
 
-			if (candidateIndex + 1 >= catalogCandidates.size())
+			if (candidateIndex + 1 >= fallbackCandidates.size())
 				break;
 
 			Boolean shouldTryNextLocale = requireNonNull(translationFallbackPolicy.shouldTryNextLocale(
@@ -1499,13 +1499,13 @@ class DefaultStrings implements Strings {
 
 			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
 
-			// An actual exact catalog must win over a different catalog with a canonically equivalent tag.
+			// An actual exact localized strings source must win over a different source with a canonically equivalent tag.
 			for (Locale locale : availableLocales)
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
 					return localeMatch(locale, languageRange, highestEffectiveWeight, LocaleMatchType.EXACT,
 							requestedLanguageRanges, consideredLocales);
 
-			// Private-use tags have no language semantics to broaden. They can select an exact catalog,
+			// Private-use tags have no language semantics to broaden. They can select an exact localized strings source,
 			// but must not be treated as an ordinary primary language such as "x".
 			if (privateUseRange)
 				continue;
@@ -1781,7 +1781,7 @@ class DefaultStrings implements Strings {
 	}
 
 	@NonNull
-	private List<@NonNull CatalogCandidate> fallbackCatalogCandidates(@NonNull Locale locale) {
+	private List<@NonNull LocaleFallbackCandidate> localeFallbackCandidates(@NonNull Locale locale) {
 		requireNonNull(locale);
 
 		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
@@ -1800,28 +1800,28 @@ class DefaultStrings implements Strings {
 				});
 		candidates.add(getFallbackLocale());
 
-		Map<@NonNull Locale, @NonNull CatalogCandidate> candidatesByAttemptedLocale = new LinkedHashMap<>();
+		Map<@NonNull Locale, @NonNull LocaleFallbackCandidate> candidatesByAttemptedLocale = new LinkedHashMap<>();
 
 		for (Locale candidate : candidates) {
-			@Nullable LocaleCatalog localeCatalog = localizedStringsFor(candidate);
-			Locale attemptedLocale = localeCatalog == null ? candidate : localeCatalog.getLocale();
+			@Nullable LocalizedStringsMatch localizedStringsMatch = localizedStringsFor(candidate);
+			Locale attemptedLocale = localizedStringsMatch == null ? candidate : localizedStringsMatch.getLocale();
 			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings =
-					localeCatalog == null ? null : localeCatalog.getLocalizedStrings();
+					localizedStringsMatch == null ? null : localizedStringsMatch.getLocalizedStrings();
 			candidatesByAttemptedLocale.putIfAbsent(attemptedLocale,
-					new CatalogCandidate(attemptedLocale, localizedStrings));
+					new LocaleFallbackCandidate(attemptedLocale, localizedStrings));
 		}
 
 		return new ArrayList<>(candidatesByAttemptedLocale.values());
 	}
 
 	@Nullable
-	private LocaleCatalog localizedStringsFor(@NonNull Locale locale) {
+	private LocalizedStringsMatch localizedStringsFor(@NonNull Locale locale) {
 		requireNonNull(locale);
 
 		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = getLocalizedStringsByKeyByLocale().get(locale);
 
 		if (localizedStrings != null)
-			return new LocaleCatalog(locale, localizedStrings);
+			return new LocalizedStringsMatch(locale, localizedStrings);
 
 		List<@NonNull Locale> equivalentLocales = getLocalizedStringsByKeyByLocale().keySet().stream()
 				.filter(candidate -> CldrLocaleData.equivalent(candidate, locale))
@@ -1830,7 +1830,7 @@ class DefaultStrings implements Strings {
 		Optional<@NonNull Locale> preferredLocale = preferredLocaleForRange(locale.toLanguageTag(), equivalentLocales);
 
 		if (preferredLocale.isPresent())
-			return new LocaleCatalog(preferredLocale.get(),
+			return new LocalizedStringsMatch(preferredLocale.get(),
 					requireNonNull(getLocalizedStringsByKeyByLocale().get(preferredLocale.get())));
 
 		return null;
@@ -2134,7 +2134,7 @@ class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Gets the safety limits used for catalog construction and translation evaluation.
+	 * Gets the safety limits used for localized strings construction and translation evaluation.
 	 *
 	 * @return runtime limits, not null
 	 */
@@ -2243,11 +2243,11 @@ class DefaultStrings implements Strings {
 		}
 	}
 
-	private static final class LocaleCatalog {
+	private static final class LocalizedStringsMatch {
 		@NonNull private final Locale locale;
 		@NonNull private final Map<@NonNull String, @NonNull LocalizedString> localizedStrings;
 
-		private LocaleCatalog(@NonNull Locale locale,
+		private LocalizedStringsMatch(@NonNull Locale locale,
 											@NonNull Map<@NonNull String, @NonNull LocalizedString> localizedStrings) {
 			this.locale = requireNonNull(locale);
 			this.localizedStrings = requireNonNull(localizedStrings);
@@ -2257,11 +2257,11 @@ class DefaultStrings implements Strings {
 		@NonNull private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
 	}
 
-	private static final class CatalogCandidate {
+	private static final class LocaleFallbackCandidate {
 		@NonNull private final Locale locale;
 		@Nullable private final Map<@NonNull String, @NonNull LocalizedString> localizedStrings;
 
-		private CatalogCandidate(@NonNull Locale locale,
+		private LocaleFallbackCandidate(@NonNull Locale locale,
 												 @Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings) {
 			this.locale = requireNonNull(locale);
 			this.localizedStrings = localizedStrings;

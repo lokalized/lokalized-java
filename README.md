@@ -122,7 +122,7 @@ Here is a Brazilian Portuguese (`pt-BR`) localized strings file which includes a
 ### 2. Create a Strings Instance
    
 ```java
-// Your fallback strings file, used in case no specific locale match is found.
+// Your fallback localized strings file, used in case no specific locale match is found.
 final Locale FALLBACK_LOCALE = Locale.forLanguageTag("pt-BR");
 
 // Creates a Strings instance which loads localized strings files from the given directory.
@@ -136,7 +136,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
     // "Smart" locale selection which queries the current web request for locale data.
     // MyWebContext is a class you might write yourself, perhaps using a ThreadLocal internally		
     Locale locale = MyWebContext.getHttpServletRequest().getLocale();
-    // Lokalized gives you a matcher, which knows the most appropriate translation file to use.
+    // Lokalized gives you a matcher, which knows the most appropriate localized strings file to use.
     // The matcher also supports language range sets, e.g. `Accept-Language` HTTP request header
     return matcher.bestMatchFor(locale);
   })
@@ -168,7 +168,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .build();
 ```
 
-Lokalized [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) instances are immutable and safe to share. If your application needs to reload strings files, rebuild a new instance and atomically swap the shared [`AtomicReference`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/concurrent/atomic/AtomicReference.html):
+Lokalized [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) instances are immutable and safe to share. If your application needs to reload localized strings files, rebuild a new instance and atomically swap the shared [`AtomicReference`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/concurrent/atomic/AtomicReference.html):
 
 ```java
 // Threadsafe reloading in your application via atomic swaps
@@ -258,13 +258,13 @@ String message = strings.get("You have {{formattedCount}} items.", Map.of(
 
 #### 4. Ensure Determinism via Tiebreakers
 
-Suppose you have two translation files for Portuguese - Brazilian (`pt-BR`) and European (`pt-PT`).
+Suppose you have two localized strings files for Portuguese - Brazilian (`pt-BR`) and European (`pt-PT`).
 
 A user who prefers only Angolan Portuguese (`pt-AO`) as defined by their `Accept-Language` HTTP request header then accesses your webapp.
 
 Lokalized needs to know how to consistently "break the tie" to provide the Angolan user with a `pt` translation.
 
-To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects that you have more than one translation file per ISO 639 language code.
+To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects that you have more than one localized strings file per ISO 639 language code.
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
@@ -309,9 +309,9 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 
 ### Locale Matching Behavior
 
-[`bestMatchFor(Locale)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.Locale)) and [`bestMatchFor(List<LanguageRange>)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) match requested locale preferences against the locales loaded from your strings files. Matching is deterministic and follows these broad rules:
+[`bestMatchFor(Locale)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.Locale)) and [`bestMatchFor(List<LanguageRange>)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) match requested locale preferences against the locales loaded from your localized strings files. Matching is deterministic and follows these broad rules:
 
-* An exact strings-file locale tag wins before a CLDR-canonical-equivalent tag; deprecated and legacy aliases are then considered
+* An exact locale tag from a localized strings file wins before a CLDR-canonical-equivalent tag; deprecated and legacy aliases are then considered
 * CLDR parent locales are considered before looser language-only matches. For example, `en-AU` can prefer a configured `en-001` file before `en`
 * Matching is script-aware when CLDR likely-subtag data can infer a script. For example, `zh-TW` can match `zh-Hant`, and `sr-Latn` is distinct from `sr-Cyrl`
 * The Norwegian macrolanguage tag `no` and Norwegian Bokmål tag `nb` bridge to each other as a compatibility fallback; exact files still win first
@@ -331,7 +331,7 @@ work. `bestMatchFor(...)` always returns a locale and uses the configured fallba
 
 ## Loading Localized Strings
 
-Most applications load strings files from the filesystem during development and from the classpath in packaged deployments using [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html).
+Most applications load localized strings files from the filesystem during development and from the classpath in packaged deployments using [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html).
 
 ```java
 Strings filesystemStrings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -352,44 +352,44 @@ publish resources into the same package. [`loadFromClasspath(String)`](https://j
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
 Classpath package names must be nonempty slash-relative paths and may not contain empty interior, `.` or `..` segments.
 One or more trailing slashes are ignored; leading slashes and traversal remain invalid.
-The valid BCP 47 tag `und` represents Java's `Locale.ROOT`, so a root catalog is named `und.json`; tags such as
+The valid BCP 47 tag `und` represents Java's `Locale.ROOT`, so a root localized strings file is named `und.json`; tags such as
 `und-Latn.json` are also supported.
 
 Loading is bounded per resource and per load by [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html).
 The default limit is 8 MiB for a `Path` or `InputStream`, 8,388,608 UTF-16 code units for a `Reader`, and 64 levels of
 JSON object/array nesting. A filesystem directory, discovered classpath package, or explicit classpath-resource mapping
-is additionally limited to 32 MiB total input and 256 catalogs. All loading operations, including single-resource
+is additionally limited to 32 MiB total input and 256 localized strings files. All loading operations, including single-resource
 `parse(...)` methods, accept at most 100,000 translation nodes and 1,000 warnings by default. The node count includes
 top-level messages, whole-message alternatives, every placeholder definition, and every expression-selected fragment
 alternative, so conditional structures cannot bypass the work budget. Overloads
 accepting loading options may lower or raise these defaults; the loader's hard maximum nesting depth is 128. The total
 input-byte limit also applies to single-resource `Path` and `InputStream` parsing, while it cannot apply to a `Reader`
-because the original byte representation is unavailable. A single-resource parse consumes one catalog from its
-catalog-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only catalogs are rejected - use `{}`
-for an intentionally empty catalog.
+because the original byte representation is unavailable. A single-resource parse consumes one localized strings file
+from its file-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only localized strings files are
+rejected - use `{}` for an intentionally empty localized strings file.
 
 Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
 Some JAR creation tools omit directory entries, which makes their packages invisible to ordinary discovery. Enable
 [`exhaustiveClasspathSearch(true)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.Builder.html#exhaustiveClasspathSearch(java.lang.Boolean))
 only when you need to support such a JAR; this inspects every filesystem and JAR root
-visible to the classloader, including filesystem JARs referenced through manifest `Class-Path` entries. Multi-release
-JAR catalogs use the entry selected for the running Java version. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
+visible to the classloader, including filesystem JARs referenced through manifest `Class-Path` entries. Localized strings
+files in multi-release JARs use the entry selected for the running Java version. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
 with a warning so an unrelated dependency cannot abort application startup. Filesystem loading remains strict and rejects
-the same filename, which catches mistakes in a catalog directory owned by the application.
+the same filename, which catches mistakes in a localized strings directory owned by the application.
 
 ```java
 LocalizedStringLoadingOptions limits = LocalizedStringLoadingOptions.builder()
   .maximumInputBytes(4 * 1024 * 1024)
   .maximumReaderCharacters(4 * 1024 * 1024)
   .maximumTotalInputBytes(16L * 1024L * 1024L)
-  .maximumCatalogs(100)
+  .maximumLocalizedStringsFiles(100)
   .maximumTranslationNodes(25_000)
   .maximumWarnings(500)
   .maximumJsonNestingDepth(32)
   .exhaustiveClasspathSearch(true) // Only for JARs that omit package directory entries
   .build();
 
-Map<Locale, Set<LocalizedString>> catalogs =
+Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
   LocalizedStringLoader.loadFromClasspath("strings", limits);
 ```
 
@@ -400,7 +400,7 @@ to map locales to exact resource paths in those environments; this path uses
 `ClassLoader.getResourceAsStream(...)` and performs no package discovery:
 
 ```java
-Map<Locale, Set<LocalizedString>> catalogs = LocalizedStringLoader.loadFromClasspathResources(
+Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspathResources(
   pluginClassLoader,
   Map.of(
     Locale.ROOT, "myapp/strings/und.json",
@@ -438,11 +438,11 @@ using the preference you supplied.
 
 ## Runtime Safety Limits
 
-Catalog construction and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
+Localized strings compilation and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
 The defaults cap numbers and numeric literals at 1,024 digits of precision and absolute scale, explicitly visible
 decimal places at 1,024, compact exponents at 64, expressions at 2,048 characters / 256 tokens / 32 nested groups,
 generated placeholders at 32 levels, one interpolated result at 262,144 UTF-16 code units, and cumulative
-generated-fragment expansion at 1,048,576 UTF-16 code units per catalog-candidate attempt. Locale fallback starts a
+generated-fragment expansion at 1,048,576 UTF-16 code units per locale fallback attempt. Locale fallback starts a
 fresh generated-expansion budget for each candidate. Applications may lower or raise the defaults with
 [`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
 and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.Builder.html).
@@ -470,8 +470,9 @@ Apply the limits to a provider with
 It can also be supplied directly through
 [`PluralOperands.Builder.runtimeLimits(...)`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.Builder.html#runtimeLimits(com.lokalized.TranslationRuntimeLimits)).
 The loader validates expressions and numeric literals against hard ceilings because it does not yet know which runtime
-policy an application will select. `Strings` construction then compiles the catalog and enforces its configured limits,
-so a catalog may load successfully but be rejected by `Strings` under the defaults. This preserves an explicit opt-up
+policy an application will select. `Strings` construction then compiles the loaded localized strings and enforces its
+configured limits, so a localized strings file may load successfully but be rejected by `Strings` under the defaults.
+This preserves an explicit opt-up
 path without allowing work above the hard ceilings. Violations caused by lookup values or generated expansion are
 resolution failures.
 
@@ -500,7 +501,7 @@ of whom it denotes, so `las personas` does not imply an all-female group.
 * `Ella era la mejor jugadora de béisbol.`
 * `Esta persona era quien mejor jugaba al béisbol.`
 
-### English Translation File
+### English Localized Strings File
 
 English is a little simpler than Spanish here because gender affects only the generated subject fragment.
 
@@ -530,7 +531,7 @@ English is a little simpler than Spanish here because gender affects only the ge
 The singular alternative inherits the root `heOrShe` definition. The selected branch can therefore reuse the same
 gender fragment instead of duplicating one whole-message alternative per gender.
 
-### Spanish Translation File
+### Spanish Localized Strings File
 
 Note that we define our own placeholders in `translation` and drive them off of the `heOrShe` value to support gender-based word changes.
 
@@ -664,7 +665,7 @@ When expressing a range of values (`1-3 meters`, `2.5-3.5 hours`), the cardinali
   
 In English we don't think about this - all ranges are of the form [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - but many other languages have range-specific forms.
 
-### French Translation File
+### French Localized Strings File
 
 French ranges can be either [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) or  [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER).
 
@@ -688,7 +689,7 @@ French ranges can be either [`CARDINALITY_ONE`](https://javadoc.lokalized.com/co
 }
 ```
 
-### English Translation File
+### English Localized Strings File
 
 All English range forms evaluate to [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) so the file can be kept simple.
 
@@ -731,7 +732,7 @@ Many languages have special forms called _ordinals_ to express a "ranking" in a 
 
 Let's look at an example related to birthdays.
 
-### English Translation File
+### English Localized Strings File
 
 CLDR defines four ordinal categories for English.
 
@@ -761,7 +762,7 @@ CLDR defines four ordinal categories for English.
 }
 ```
 
-### Spanish Translation File
+### Spanish Localized Strings File
 
 CLDR assigns Spanish only `ORDINALITY_OTHER`, so ordinal category selection does not vary by number. Spanish still has ordinal expressions; this example uses application-specific birthday wording instead of an ordinal-suffix map.
 
@@ -1497,7 +1498,7 @@ The normal Maven build compiles the generator as test code and performs a byte-f
 
 ## Translation Failure Handling
 
-Locale fallback and final failure handling are separate decisions. After each unsuccessful catalog attempt,
+Locale fallback and final failure handling are separate decisions. After each unsuccessful locale attempt,
 [`TranslationFallbackPolicy`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html) decides whether
 to try the next candidate. Only after fallback stops or candidates are exhausted does Lokalized ask the configured
 [`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html) what to return
@@ -1590,8 +1591,8 @@ TranslationResult result = strings.getResult(
 
 String message = result.getTranslation();
 Locale lookupLocale = result.getLookupLocale();
-Optional<Locale> resolvedCatalog = result.getResolvedLocale();
-List<Locale> attemptedCatalogs = result.getAttemptedLocales();
+Optional<Locale> resolvedLocale = result.getResolvedLocale();
+List<Locale> attemptedLocales = result.getAttemptedLocales();
 Boolean usedFallback = result.isFallback();
 Optional<LocaleMatchResult> localeMatch = result.getLocaleMatchResult();
 ```
@@ -1632,13 +1633,13 @@ remains appropriate when an application only needs the selected locale.
 
 ### Structure
 
-* Each strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW` (an optional `.json` suffix like `en.json` is also accepted; do not provide both for the same locale)
-* A blank or BOM-only file is invalid; use `{}` for an intentionally empty catalog
+* Each localized strings file must be UTF-8 encoded and named according to the appropriate IETF BCP 47 language tag, such as `en` or `zh-TW` (an optional `.json` suffix like `en.json` is also accepted; do not provide both for the same locale)
+* A blank or BOM-only file is invalid; use `{}` for an intentionally empty localized strings file
 * The file must contain a single toplevel JSON object
 * The object's keys are the translation keys, e.g. `"I read {{bookCount}} books."`
 * The value for a translation key can be a string (simple cases) or an object (complex cases)
 
-With formalities out of the way, let's examine an example UK English (`en-GB`) strings file, which contains a single translation.  We can use the string form shorthand to concisely express our intent:
+With formalities out of the way, let's examine an example UK English (`en-GB`) localized strings file, which contains a single translation.  We can use the string form shorthand to concisely express our intent:
 
 ```json
 {
@@ -1662,7 +1663,7 @@ All 4 are optional, with the stipulation that you must provide either a `transla
 
 ### JSON Schema
 
-A JSON Schema for Lokalized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
+A JSON Schema for localized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
 
 The schema validates file structure, placeholder shapes, known language-form names, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits `CARDINALITY_MANY`). Values that resolve to a missing form surface during resolution according to the configured failure handler.
 
@@ -1706,14 +1707,14 @@ Placeholder names must start with a Unicode letter or underscore. Subsequent cha
 
 To render a literal placeholder instead of resolving it, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context. You can also write `\\}}` for a literal closing delimiter, or `\\\\{{name}}` when you need a literal backslash immediately before a live placeholder.
 
-Add as many as the translation needs, subject to the configured catalog translation-node limit.
+Add as many as the translation needs, subject to the configured translation-node limit for localized strings files.
 
 Placeholder values are initially specified by application code - they are the context that is passed in at string evaluation time.
 
 When a reachable generated definition has the same name as a caller value, the generated value wins during output
 interpolation. Prefer distinct input and generated-output names unless that override is intentional.
 
-For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Translation-file-defined placeholder fragments, such as plural word choices, are not isolated.
+For right-to-left resolved locales, Lokalized wraps application-supplied placeholder values with Unicode First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069) by default. This prevents left-to-right values such as product codes, user names, and numbers from reordering nearby punctuation in Arabic, Hebrew, and other RTL translations. Placeholder fragments defined by the localized strings file, such as plural word choices, are not isolated.
 
 Suppose the Arabic translation for `Shipment` is `تم تجهيز {{code}}`. By default, the caller-supplied `code` value is isolated:
 
@@ -1733,7 +1734,7 @@ String message = strings.get("Shipment", Map.of("code", "ACME-42"), options);
 assertEquals("تم تجهيز ACME-42", message);
 ```
 
-In the below example of an `en` strings file, the application code provides the `bookCount` value and the translation file introduces a `books` value to aid final translation.
+In the below example of an `en` localized strings file, the application code provides the `bookCount` value and the localized strings file introduces a `books` value to aid final translation.
 
 ```json
 {
@@ -1772,9 +1773,9 @@ You may not mix language forms in the same `translations` object.  For example, 
 
 Placeholder rules are strict: if your application supplies or resolves a language-form value that is not present in `translations`, the lookup is treated as a resolution failure and your configured `TranslationFailureHandler` decides what happens.
 
-Lokalized evaluates only translation-file-defined placeholders that are reachable from the selected translation.
+Lokalized evaluates only placeholders defined by the localized strings file that are reachable from the selected translation.
 A selected language-form value may itself reference application-supplied placeholders or other
-translation-file-defined placeholders; those fragments are expanded recursively. Cycles, excessive nesting, and
+placeholders defined by the localized strings file; those fragments are expanded recursively. Cycles, excessive nesting, and
 interpolated output above the configured limit fail resolution clearly. The default is 262,144 UTF-16 code units,
 and applications can opt up to the 1,048,576-code-unit hard ceiling with
 [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html). Application-supplied
@@ -1830,7 +1831,7 @@ two fragments avoids six coordinated whole-message alternatives:
 }
 ```
 
-The same catalog produces all six combinations. Raw numeric values drive expressions and cardinality; separately
+The same localized strings file produces all six combinations. Raw numeric values drive expressions and cardinality; separately
 formatted strings are used only for display:
 
 ```java
@@ -1866,7 +1867,7 @@ assertEquals("Found 2 results in 1.5 seconds.", strings.get("Search completed.",
 ```
 
 Expression-fragment predicates and whole-message predicates both read the same immutable snapshot of caller input and
-use the locale of the catalog candidate being evaluated. Generated values never become predicate operands. Numeric
+use the locale of the localized strings file for the candidate locale. Generated values never become predicate operands. Numeric
 ordering requires a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) or
 numeric [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html); a formatted string such as
 `"1,000"` is display text, not a numeric operand. More generally, expression [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html)
@@ -1898,7 +1899,7 @@ no lookup-time expansion work.
 There is one deliberate exception to generated-over-caller output precedence: every language-form `value`,
 `range.start`, and `range.end` name always reads the raw caller input. A generated definition named `count` may supply
 the rendered `{{count}}`, while another definition with `"value": "count"` still classifies the caller's raw `count`.
-Use distinct input and output names, such as `count` and `countText`, to avoid surprising catalogs. A generated value
+Use distinct input and output names, such as `count` and `countText`, to avoid surprising localized strings behavior. A generated value
 cannot satisfy a missing selector input.
 
 Expression-selected and language-form fragments share recursive dependency expansion, cycle detection, depth and
@@ -1950,7 +1951,7 @@ Numeric literals and expressions are parsed and checked against hard ceilings wh
 literals use the same precision and absolute-scale limits as
 [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), so an exponent cannot defer
 unbounded decimal materialization until lookup time. The configured runtime policy is applied when `Strings` compiles
-the catalog. Expressions are limited to 2,048 source characters, 256 tokens, and 32 nested groups by default. `Strings`
+the localized strings. Expressions are limited to 2,048 source characters, 256 tokens, and 32 nested groups by default. `Strings`
 applications may configure these with
 [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html), up to hard
 ceilings of 4,096 characters, 512 tokens, and 64 nested groups.
@@ -2102,7 +2103,7 @@ For example: `"I read {{bookCount}} books."`
 
 * Context is lost; the same text on one screen might have a completely different meaning on another
 * Not suited for large amounts of text, like a software licensing agreement
-* Small changes to text require updating every strings file since keys are not "constant"
+* Small changes to text require updating every localized strings file since keys are not "constant"
 
 ### Contextual Keys
 
@@ -2177,7 +2178,7 @@ Use the standard JDK formatters for dates, times, numbers, percentages, and curr
 
 ## Language Reference
 
-Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbooks that show translation-file structure and Java lookup calls for that language's plural and ordinal categories. When verified day-phrase wording is unavailable, the page labels the gap and renders a neutral, translator-owned structural skeleton instead of guessing the language's word order. Locales with multiple ordinal categories also receive a runnable ordinal cookbook when CLDR supplies a complete set of localized minimal-pair patterns; incomplete source coverage is labeled rather than filled with guessed copy. The page identifies the exact Java [`Locale`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html) construction (either `Locale.ROOT` or [`Locale.forLanguageTag(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html#forLanguageTag(java.lang.String))), the catalog filename accepted by [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html), inherited rule sources, and the formatting-data provenance.
+Each language reference page includes CLDR 48.2 cardinality, cardinality range, and ordinality data, plus generated cookbooks that show localized strings file structure and Java lookup calls for that language's plural and ordinal categories. When verified day-phrase wording is unavailable, the page labels the gap and renders a neutral, translator-owned structural skeleton instead of guessing the language's word order. Locales with multiple ordinal categories also receive a runnable ordinal cookbook when CLDR supplies a complete set of localized minimal-pair patterns; incomplete source coverage is labeled rather than filled with guessed copy. The page identifies the exact Java [`Locale`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html) construction (either `Locale.ROOT` or [`Locale.forLanguageTag(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.html#forLanguageTag(java.lang.String))), the localized strings filename accepted by [`LocalizedStringLoader`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html), inherited rule sources, and the formatting-data provenance.
 
 The reference includes every canonical CLDR plural-rule locale and a curated set of widely used region- and script-qualified application profiles. These profiles make inherited behavior explicit without suggesting that every valid IETF BCP 47 tag needs a separate page.
 

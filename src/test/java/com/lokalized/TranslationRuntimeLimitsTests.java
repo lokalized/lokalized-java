@@ -168,9 +168,9 @@ public class TranslationRuntimeLimitsTests {
 		char[] padding = new char[TranslationRuntimeLimits.DEFAULT_MAXIMUM_EXPRESSION_CHARACTERS];
 		Arrays.fill(padding, ' ');
 		String expression = "count == 1" + new String(padding);
-		String catalog = "{\"root\":{\"translation\":\"fallback\",\"alternatives\":[{\"" + expression +
+		String localizedStringsFile = "{\"root\":{\"translation\":\"fallback\",\"alternatives\":[{\"" + expression +
 				"\":\"one\"}]}}";
-		Set<LocalizedString> localizedStrings = LocalizedStringLoader.parse(new StringReader(catalog), Locale.ENGLISH,
+		Set<LocalizedString> localizedStrings = LocalizedStringLoader.parse(new StringReader(localizedStringsFile), Locale.ENGLISH,
 				"opt-up-expression", LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults());
 
 		assertThrows(ExpressionEvaluationException.class, () -> Strings.withFallbackLocale(Locale.ENGLISH)

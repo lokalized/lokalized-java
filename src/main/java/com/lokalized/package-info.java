@@ -17,7 +17,7 @@
 /**
  * Lokalized facilitates natural-sounding software translations.
  * <p>
- * Catalog messages are represented by {@link com.lokalized.LocalizedString}. A message may declare
+ * Localized messages are represented by {@link com.lokalized.LocalizedString}. A message may declare
  * {@link com.lokalized.LocalizedString.LanguageFormTranslation language-form generated fragments} or
  * {@link com.lokalized.LocalizedString.ExpressionTranslation expression-selected generated fragments}. An
  * expression-selected fragment uses its first matching alternative and otherwise its required default translation.

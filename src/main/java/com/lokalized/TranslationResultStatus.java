@@ -23,7 +23,7 @@ package com.lokalized;
  * @since 3.0.0
  */
 public enum TranslationResultStatus {
-	/** A catalog translation resolved successfully. */
+	/** A localized string resolved successfully. */
 	TRANSLATED,
 	/** The failure handler requested the interpolated lookup key. */
 	RETURNED_KEY,

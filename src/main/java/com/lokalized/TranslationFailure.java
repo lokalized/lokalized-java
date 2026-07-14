@@ -42,7 +42,7 @@ public interface TranslationFailure {
 	String getKey();
 
 	/**
-	 * Gets the locale used to begin per-key catalog fallback after any language-range negotiation.
+	 * Gets the locale used to begin per-key locale fallback after any language-range negotiation.
 	 *
 	 * @return the lookup locale, not null
 	 */

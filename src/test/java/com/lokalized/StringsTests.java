@@ -62,7 +62,7 @@ public class StringsTests {
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
 					.localeSupplier((matcher) -> matcher.bestMatchFor(Locale.forLanguageTag("en-US")))
 					.build();
-		}, "Should not be able to construct a Strings instance with a fallback locale that doesn't have a corresponding strings file");
+		}, "Should not be able to construct a Strings instance with a fallback locale that doesn't have a corresponding localized strings file");
 
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -223,7 +223,7 @@ public class StringsTests {
 	}
 
 	@Test
-	public void exactPrivateUseCatalogsCanBeSelectedConsistentlyWithoutLanguageTiebreakers() {
+	public void exactPrivateUseLocalizedStringsFilesCanBeSelectedConsistentlyWithoutLanguageTiebreakers() {
 		Locale english = Locale.ENGLISH;
 		Locale acmeLocale = Locale.forLanguageTag("x-acme");
 		Locale betaLocale = Locale.forLanguageTag("x-beta");
@@ -2057,7 +2057,7 @@ public class StringsTests {
 	}
 
 	@Test
-	public void translationResultReportsTheActualCanonicalAliasCatalog() {
+	public void translationResultReportsTheActualCanonicalAliasLocalizedStringsFile() {
 		Locale romanian = Locale.forLanguageTag("ro");
 		Locale moldovan = Locale.forLanguageTag("mo");
 		Strings strings = Strings.withFallbackLocale(moldovan)

@@ -27,7 +27,7 @@ import static java.util.Objects.requireNonNull;
  * Decides whether a failed locale attempt should continue to the next locale candidate.
  * <p>
  * This policy is intentionally separate from {@link TranslationFailureHandler}: fallback policy controls which
- * catalogs are attempted, while the failure handler controls the final response after fallback stops or all candidates
+ * locale candidates are attempted, while the failure handler controls the final response after fallback stops or all candidates
  * are exhausted.
  * <p>
  * A failure while evaluating a reachable {@link LocalizedString.ExpressionAlternative expression-fragment predicate}
@@ -48,7 +48,7 @@ public interface TranslationFallbackPolicy {
 	 * Determines whether resolution should continue with the next locale candidate.
 	 *
 	 * @param reason          reason the current locale attempt failed, not null
-	 * @param attemptedLocale locale whose catalog was attempted, not null
+	 * @param attemptedLocale locale whose localized strings were attempted, not null
 	 * @param cause           runtime cause for {@link TranslationFailureReason#RESOLUTION_FAILURE}, otherwise null
 	 * @return whether to try the next candidate, not null
 	 */

@@ -62,8 +62,8 @@ public final class TranslationResult {
 	 *
 	 * @param key translation key, not null
 	 * @param translation returned string, not null
-	 * @param lookupLocale locale used to begin per-key catalog fallback, not null
-	 * @param resolvedLocale successfully resolved catalog locale, or null for a failure-handler response
+	 * @param lookupLocale locale used to begin per-key locale fallback, not null
+	 * @param resolvedLocale successfully resolved locale, or null for a failure-handler response
 	 * @param attemptedLocales ordered locales actually attempted, not null
 	 * @param status result status, not null
 	 * @param failureReason final failure reason for a handler response, otherwise null
@@ -84,9 +84,9 @@ public final class TranslationResult {
 	 *
 	 * @param key translation key, not null
 	 * @param translation returned string, not null
-	 * @param lookupLocale locale used to begin per-key catalog fallback, not null
+	 * @param lookupLocale locale used to begin per-key locale fallback, not null
 	 * @param localeMatchResult strict locale-negotiation result, or null when unavailable
-	 * @param resolvedLocale successfully resolved catalog locale, or null for a failure-handler response
+	 * @param resolvedLocale successfully resolved locale, or null for a failure-handler response
 	 * @param attemptedLocales ordered locales actually attempted, not null
 	 * @param status result status, not null
 	 * @param failureReason final failure reason for a handler response, otherwise null
@@ -144,7 +144,7 @@ public final class TranslationResult {
 		return translation;
 	}
 
-	/** @return locale used to begin per-key catalog fallback after any negotiation, not null */
+	/** @return locale used to begin per-key locale fallback after any negotiation, not null */
 	@NonNull
 	public Locale getLookupLocale() {
 		return lookupLocale;
@@ -156,7 +156,7 @@ public final class TranslationResult {
 		return Optional.ofNullable(localeMatchResult);
 	}
 
-	/** @return catalog locale that resolved successfully, or empty for a failure response, not null */
+	/** @return locale that resolved successfully, or empty for a failure response, not null */
 	@NonNull
 	public Optional<@NonNull Locale> getResolvedLocale() {
 		return Optional.ofNullable(resolvedLocale);

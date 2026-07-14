@@ -31,11 +31,11 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The UTF-16 code-unit
  * limit applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized. The
- * catalog, translation-node, and warning limits apply to every load, including single-resource {@code parse(...)}
+ * localized strings file-count, translation-node, and warning limits apply to every load, including single-resource {@code parse(...)}
  * operations. The aggregate byte limit also applies to path and input-stream parsing; it cannot apply to a
  * {@link java.io.Reader} because the original byte representation is unavailable.
  * The translation-node limit bounds parsed model structure; the byte and character limits separately bound the
- * catalog text containing that structure.
+ * localized strings file text containing that structure.
  * <p>
  * Exhaustive classpath searching is disabled by default because it inspects every filesystem and JAR root visible to
  * a classloader. Enable it only when localized strings are packaged in a JAR that omits directory entries and ordinary
@@ -64,9 +64,9 @@ public final class LocalizedStringLoadingOptions {
 	/** Default maximum total read by one load: 33,554,432 bytes (32 MiB). */
 	@NonNull
 	public static final Long DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES = 32L * 1024L * 1024L;
-	/** Default maximum number of catalogs accepted by one load: 256. */
+	/** Default maximum number of localized strings files accepted by one load: 256. */
 	@NonNull
-	public static final Integer DEFAULT_MAXIMUM_CATALOGS = 256;
+	public static final Integer DEFAULT_MAXIMUM_LOCALIZED_STRINGS_FILES = 256;
 	/**
 	 * Default maximum translation nodes accepted by one load: 100,000. Translation nodes comprise root entries,
 	 * whole-message alternatives, placeholder definitions, and expression-fragment alternatives.
@@ -85,7 +85,7 @@ public final class LocalizedStringLoadingOptions {
 	private final int maximumJsonNestingDepth;
 	private final boolean exhaustiveClasspathSearch;
 	private final long maximumTotalInputBytes;
-	private final int maximumCatalogs;
+	private final int maximumLocalizedStringsFiles;
 	private final int maximumTranslationNodes;
 	private final int maximumWarnings;
 
@@ -95,7 +95,7 @@ public final class LocalizedStringLoadingOptions {
 			int maximumJsonNestingDepth,
 			boolean exhaustiveClasspathSearch,
 			long maximumTotalInputBytes,
-			int maximumCatalogs,
+			int maximumLocalizedStringsFiles,
 			int maximumTranslationNodes,
 			int maximumWarnings) {
 		this.maximumInputBytes = maximumInputBytes;
@@ -103,7 +103,7 @@ public final class LocalizedStringLoadingOptions {
 		this.maximumJsonNestingDepth = maximumJsonNestingDepth;
 		this.exhaustiveClasspathSearch = exhaustiveClasspathSearch;
 		this.maximumTotalInputBytes = maximumTotalInputBytes;
-		this.maximumCatalogs = maximumCatalogs;
+		this.maximumLocalizedStringsFiles = maximumLocalizedStringsFiles;
 		this.maximumTranslationNodes = maximumTranslationNodes;
 		this.maximumWarnings = maximumWarnings;
 	}
@@ -137,7 +137,7 @@ public final class LocalizedStringLoadingOptions {
 				.maximumJsonNestingDepth(maximumJsonNestingDepth)
 				.exhaustiveClasspathSearch(exhaustiveClasspathSearch)
 				.maximumTotalInputBytes(maximumTotalInputBytes)
-				.maximumCatalogs(maximumCatalogs)
+				.maximumLocalizedStringsFiles(maximumLocalizedStringsFiles)
 				.maximumTranslationNodes(maximumTranslationNodes)
 				.maximumWarnings(maximumWarnings);
 	}
@@ -182,10 +182,10 @@ public final class LocalizedStringLoadingOptions {
 		return maximumTotalInputBytes;
 	}
 
-	/** @return the maximum catalogs accepted by one load, not null */
+	/** @return the maximum localized strings files accepted by one load, not null */
 	@NonNull
-	public Integer getMaximumCatalogs() {
-		return maximumCatalogs;
+	public Integer getMaximumLocalizedStringsFiles() {
+		return maximumLocalizedStringsFiles;
 	}
 
 	/**
@@ -217,7 +217,7 @@ public final class LocalizedStringLoadingOptions {
 				&& maximumJsonNestingDepth == that.maximumJsonNestingDepth
 				&& exhaustiveClasspathSearch == that.exhaustiveClasspathSearch
 				&& maximumTotalInputBytes == that.maximumTotalInputBytes
-				&& maximumCatalogs == that.maximumCatalogs
+				&& maximumLocalizedStringsFiles == that.maximumLocalizedStringsFiles
 				&& maximumTranslationNodes == that.maximumTranslationNodes
 				&& maximumWarnings == that.maximumWarnings;
 	}
@@ -225,17 +225,18 @@ public final class LocalizedStringLoadingOptions {
 	@Override
 	public int hashCode() {
 		return Objects.hash(maximumInputBytes, maximumReaderCharacters, maximumJsonNestingDepth,
-				exhaustiveClasspathSearch, maximumTotalInputBytes, maximumCatalogs, maximumTranslationNodes, maximumWarnings);
+				exhaustiveClasspathSearch, maximumTotalInputBytes, maximumLocalizedStringsFiles, maximumTranslationNodes,
+				maximumWarnings);
 	}
 
 	@Override
 	@NonNull
 	public String toString() {
 		return format("%s{maximumInputBytes=%d, maximumReaderCharacters=%d, maximumJsonNestingDepth=%d, " +
-				"exhaustiveClasspathSearch=%s, maximumTotalInputBytes=%d, maximumCatalogs=%d, " +
+				"exhaustiveClasspathSearch=%s, maximumTotalInputBytes=%d, maximumLocalizedStringsFiles=%d, " +
 				"maximumTranslationNodes=%d, maximumWarnings=%d}", getClass().getSimpleName(), maximumInputBytes,
 				maximumReaderCharacters, maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes,
-				maximumCatalogs, maximumTranslationNodes, maximumWarnings);
+				maximumLocalizedStringsFiles, maximumTranslationNodes, maximumWarnings);
 	}
 
 	/** Builder for {@link LocalizedStringLoadingOptions}. */
@@ -246,7 +247,7 @@ public final class LocalizedStringLoadingOptions {
 		private int maximumJsonNestingDepth = DEFAULT_MAXIMUM_JSON_NESTING_DEPTH;
 		private boolean exhaustiveClasspathSearch = DEFAULT_EXHAUSTIVE_CLASSPATH_SEARCH;
 		private long maximumTotalInputBytes = DEFAULT_MAXIMUM_TOTAL_INPUT_BYTES;
-		private int maximumCatalogs = DEFAULT_MAXIMUM_CATALOGS;
+		private int maximumLocalizedStringsFiles = DEFAULT_MAXIMUM_LOCALIZED_STRINGS_FILES;
 		private int maximumTranslationNodes = DEFAULT_MAXIMUM_TRANSLATION_NODES;
 		private int maximumWarnings = DEFAULT_MAXIMUM_WARNINGS;
 
@@ -334,17 +335,17 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
-		 * Sets the maximum catalogs accepted by one load.
+		 * Sets the maximum localized strings files accepted by one load.
 		 *
-		 * @param maximumCatalogs positive catalog limit, not null
+		 * @param maximumLocalizedStringsFiles positive localized strings file limit, not null
 		 * @return this builder, not null
 		 */
 		@NonNull
-		public Builder maximumCatalogs(@NonNull Integer maximumCatalogs) {
-			if (requireNonNull(maximumCatalogs) <= 0)
-				throw new IllegalArgumentException("maximumCatalogs must be positive");
+		public Builder maximumLocalizedStringsFiles(@NonNull Integer maximumLocalizedStringsFiles) {
+			if (requireNonNull(maximumLocalizedStringsFiles) <= 0)
+				throw new IllegalArgumentException("maximumLocalizedStringsFiles must be positive");
 
-			this.maximumCatalogs = maximumCatalogs;
+			this.maximumLocalizedStringsFiles = maximumLocalizedStringsFiles;
 			return this;
 		}
 
@@ -383,7 +384,8 @@ public final class LocalizedStringLoadingOptions {
 		@NonNull
 		public LocalizedStringLoadingOptions build() {
 			return new LocalizedStringLoadingOptions(maximumInputBytes, maximumReaderCharacters,
-					maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes, maximumCatalogs,
+					maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes,
+					maximumLocalizedStringsFiles,
 					maximumTranslationNodes, maximumWarnings);
 		}
 	}

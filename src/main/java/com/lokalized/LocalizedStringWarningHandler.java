@@ -86,7 +86,7 @@ public interface LocalizedStringWarningHandler {
 	/**
 	 * Returns a handler that turns every warning into a fatal {@link LocalizedStringLoadingException}, aborting the load.
 	 * <p>
-	 * This is useful for build-time or test-time strictness where an incomplete translation file should fail fast.
+	 * This is useful for build-time or test-time strictness where an incomplete localized strings file should fail fast.
 	 *
 	 * @return the handler, not null
 	 */

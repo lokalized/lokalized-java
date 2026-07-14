@@ -157,7 +157,7 @@ public class LocalizedStringsSchemaTests {
 
   @Test
   public void schemaRejectsInvalidTemplatePlaceholderShapes() throws IOException {
-    String[] invalidCatalogs = {
+    String[] invalidLocalizedStringsFiles = {
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"alternatives\":[{\"count == 0\":\"none\"}]}}}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":null}}}}",
         "{\"key\":{\"translation\":\"{{p}}\",\"placeholders\":{\"p\":{\"translation\":\"default\",\"alternatives\":null}}}}",
@@ -169,9 +169,9 @@ public class LocalizedStringsSchemaTests {
     };
 
     Schema schema = loadSchema();
-    for (String invalidCatalog : invalidCatalogs) {
-      List<Error> validationMessages = schema.validate(invalidCatalog, InputFormat.JSON);
-      assertFalse(validationMessages.isEmpty(), invalidCatalog);
+    for (String invalidLocalizedStringsFile : invalidLocalizedStringsFiles) {
+      List<Error> validationMessages = schema.validate(invalidLocalizedStringsFile, InputFormat.JSON);
+      assertFalse(validationMessages.isEmpty(), invalidLocalizedStringsFile);
     }
   }
 

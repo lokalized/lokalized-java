@@ -68,7 +68,7 @@ public final class LocalizedStringWarning {
 		 */
 		INCOMPLETE_ORDINALITY_TRANSLATIONS,
 		/**
-		 * A JSON resource in a classpath catalog package is not named with a valid IETF BCP 47 locale tag.
+		 * A JSON resource in a classpath localized strings package is not named with a valid IETF BCP 47 locale tag.
 		 */
 		INVALID_CLASSPATH_LOCALE_FILENAME
 	}
@@ -145,7 +145,7 @@ public final class LocalizedStringWarning {
 	}
 
 	/**
-	 * Gets the locale the file was being loaded for, when the warning applies to a parsed locale catalog.
+	 * Gets the locale the file was being loaded for, when the warning applies to a parsed localized strings file.
 	 *
 	 * @return the locale, if applicable, not null
 	 */

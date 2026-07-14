@@ -77,7 +77,7 @@ import static java.util.Objects.requireNonNull;
 /**
  * Utility methods for loading localized strings files.
  * <p>
- * A generated placeholder may be language-form-driven ({@link LocalizedString.LanguageFormTranslation}; catalog
+ * A generated placeholder may be language-form-driven ({@link LocalizedString.LanguageFormTranslation}; localized strings file
  * members {@code value} or {@code range}, plus {@code translations}) or template-driven
  * ({@link LocalizedString.ExpressionTranslation}; a required default {@code translation}, plus optional ordered
  * expression {@code alternatives}). Template alternatives select string fragments only; the first matching
@@ -187,7 +187,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified package on the classpath.
+   * Loads all localized strings files present in the specified package on the classpath.
    * <p>
    * Filenames must correspond to the IETF BCP 47 language tag format, optionally suffixed with {@code .json}.
    * <p>
@@ -214,11 +214,12 @@ public final class LocalizedStringLoader {
    * By default, discovery uses {@link ClassLoader#getResources(String)} and does not inspect unrelated classpath roots.
    * Use a {@link LocalizedStringLoadingOptions} overload with exhaustive classpath search enabled only for JARs that
    * omit package directory entries. A classpath {@code .json} resource whose filename is not a locale tag is ignored
-   * with a warning; explicitly loaded filesystem catalog directories retain strict filename validation.
+   * with a warning; explicitly loaded filesystem directories containing localized strings files retain strict filename
+   * validation.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
@@ -226,7 +227,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a classpath package using the specified loading and discovery options.
+   * Loads localized strings files from a classpath package using the specified loading and discovery options.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
@@ -239,12 +240,12 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified package, routing validation warnings to the given handler.
+   * Loads all localized strings files present in the specified package, routing validation warnings to the given handler.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage,
@@ -253,7 +254,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a classpath package with validation-warning, loading, and discovery policies.
+   * Loads localized strings files from a classpath package with validation-warning, loading, and discovery policies.
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
@@ -272,7 +273,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified package using the specified classloader.
+   * Loads all localized strings files present in the specified package using the specified classloader.
    * <p>
    * This is useful for containers, plugin systems, test harnesses, and other environments where the
    * desired localized string resources are not visible to Lokalized's own defining classloader.
@@ -280,7 +281,7 @@ public final class LocalizedStringLoader {
    * @param classLoader classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
@@ -290,7 +291,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files using the specified classloader and loading/discovery options.
+   * Loads localized strings files using the specified classloader and loading/discovery options.
    *
    * @param classLoader      classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
@@ -305,14 +306,14 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified package using the specified classloader, routing
+   * Loads all localized strings files present in the specified package using the specified classloader, routing
    * validation warnings to the given handler.
    *
    * @param classLoader      classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
@@ -322,7 +323,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files using the specified classloader, validation-warning policy, and loading/discovery
+   * Loads localized strings files using the specified classloader, validation-warning policy, and loading/discovery
    * options.
    *
    * @param classLoader      classloader to search, not null
@@ -773,7 +774,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified directory.
+   * Loads all localized strings files present in the specified directory.
    * <p>
    * Filenames must correspond to the IETF BCP 47 language tag format, optionally suffixed with {@code .json}.
    * <p>
@@ -788,9 +789,9 @@ public final class LocalizedStringLoader {
    * <p>
    * Note: this implementation only scans the specified directory, it does not descend into child directories.
    *
-   * @param directory directory in which to search for localized string files, not null
+   * @param directory directory in which to search for localized strings files, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
@@ -798,7 +799,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a directory using the specified resource limits.
+   * Loads localized strings files from a directory using the specified resource limits.
    *
    * @param directory      directory in which to search, not null
    * @param loadingOptions resource limits to apply, not null
@@ -811,12 +812,12 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads all localized string files present in the specified directory, routing validation warnings to the given handler.
+   * Loads all localized strings files present in the specified directory, routing validation warnings to the given handler.
    *
-   * @param directory      directory in which to search for localized string files, not null
+   * @param directory      directory in which to search for localized strings files, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory,
@@ -825,7 +826,7 @@ public final class LocalizedStringLoader {
   }
 
   /**
-   * Loads localized string files from a directory with validation-warning and resource-limit policies.
+   * Loads localized strings files from a directory with validation-warning and resource-limit policies.
    *
    * @param directory      directory in which to search, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
@@ -957,17 +958,17 @@ public final class LocalizedStringLoader {
     requireNonNull(loadingOptions);
 
     LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
-    loadingSession.beginCatalog(source);
+    loadingSession.beginLocalizedStringsFile(source);
     String contents = readCharacters(reader, source, loadingOptions);
     return parseLocalizedStrings(source, contents, locale, loadingSession);
   }
 
   /**
-   * Loads all localized string files present in the specified directory.
+   * Loads all localized strings files present in the specified directory.
    *
-   * @param directory directory in which to search for localized string files, not null
+   * @param directory directory in which to search for localized strings files, not null
    * @return per-locale sets of localized strings, not null
-   * @throws LocalizedStringLoadingException if an error occurs while loading localized string files
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
   private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromDirectory(@NonNull Path directory,
@@ -1429,7 +1430,7 @@ public final class LocalizedStringLoader {
    * @param path the path to parse, not null
    * @param locale the locale represented by the file, not null
    * @return the set of localized strings contained in the file, not null
-   * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
+   * @throws LocalizedStringLoadingException if an error occurs while parsing the localized strings file
    */
   @NonNull
   private static Set<@NonNull LocalizedString> parseLocalizedStringsFile(@NonNull Path path, @NonNull Locale locale,
@@ -1471,7 +1472,7 @@ public final class LocalizedStringLoader {
     requireNonNull(source);
     requireNonNull(loadingSession);
 
-    loadingSession.beginCatalog(source);
+    loadingSession.beginLocalizedStringsFile(source);
     String contents = readStrictUtf8(inputStream, source, loadingSession.getLoadingOptions(), loadingSession);
     return parseLocalizedStrings(source, contents, locale, loadingSession);
   }
@@ -1594,7 +1595,7 @@ public final class LocalizedStringLoader {
 
     if (isJsonWhitespaceOnly(localizedStringsFileContents))
       throw new LocalizedStringLoadingException(format(
-          "%s: a localized strings file may not be blank; use an empty JSON object ({}) for an empty catalog", canonicalPath));
+          "%s: a localized strings file may not be blank; use an empty JSON object ({}) for an empty file", canonicalPath));
 
     validateJsonNestingDepth(canonicalPath, localizedStringsFileContents,
         loadingOptions.getMaximumJsonNestingDepth());
@@ -1807,7 +1808,7 @@ public final class LocalizedStringLoader {
    * @param jsonValue       the translation value, which may be a simple string or a complex object, not null
    * @param loadingSession  load-wide resource budget, not null
    * @return a localized string instance, not null
-   * @throws LocalizedStringLoadingException if an error occurs while parsing the localized string file
+   * @throws LocalizedStringLoadingException if an error occurs while parsing the localized strings file
    */
   @NonNull
   private static LocalizedString parseLocalizedString(@NonNull String canonicalPath, @NonNull String rootKey,
@@ -2555,7 +2556,7 @@ public final class LocalizedStringLoader {
     @NonNull
     private final LocalizedStringWarningHandler warningHandler;
     private long inputBytes;
-    private int catalogs;
+    private int localizedStringsFiles;
     private int translationNodes;
     private int warnings;
 
@@ -2570,15 +2571,15 @@ public final class LocalizedStringLoader {
       return loadingOptions;
     }
 
-    private void beginCatalog(@NonNull String source) {
+    private void beginLocalizedStringsFile(@NonNull String source) {
       requireNonNull(source);
 
-      if (catalogs >= loadingOptions.getMaximumCatalogs())
+      if (localizedStringsFiles >= loadingOptions.getMaximumLocalizedStringsFiles())
         throw new LocalizedStringLoadingException(format(
-            "%s: localized strings load exceeds the aggregate maximum of %d catalogs", source,
-            loadingOptions.getMaximumCatalogs()));
+            "%s: localized strings load exceeds the aggregate localized strings file limit of %d", source,
+            loadingOptions.getMaximumLocalizedStringsFiles()));
 
-      ++catalogs;
+      ++localizedStringsFiles;
     }
 
     private void addInputBytes(int bytes, @NonNull String source) {

@@ -28,7 +28,7 @@ import static java.util.Objects.requireNonNull;
  * Contract for matching an input {@link Locale} or {@link List}{@code <}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
  * <p>
  * Lokalized's implementation prefers exact and CLDR-canonical matches, then CLDR parent-locale fallback,
- * then script-aware likely-subtag matches. If multiple supported strings files still share the same language,
+ * then script-aware likely-subtag matches. If multiple supported localized strings files still share the same language,
  * configured tiebreakers determine which locale wins. Unmatched, root, and undetermined requests resolve to the
  * configured fallback locale when using {@code bestMatchFor(...)}. The strict {@code matchFor(...)} methods represent
  * the same state as an unmatched {@link LocaleMatchResult} instead of manufacturing a match.

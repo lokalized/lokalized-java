@@ -352,7 +352,7 @@ public interface Strings extends LocaleMatcher {
 		}
 
 		/**
-		 * Applies safety limits to catalog construction and translation evaluation.
+		 * Applies safety limits to localized strings construction and translation evaluation.
 		 * <p>
 		 * Expression limits apply to both whole-message alternatives and
 		 * {@link LocalizedString.ExpressionAlternative expression-fragment alternatives}. Generated-placeholder depth and
