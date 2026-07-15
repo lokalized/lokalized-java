@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
 
 /**
  * Describes a failed localized string lookup.
@@ -33,6 +36,27 @@ import java.util.Optional;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 public interface TranslationFailure {
+	/**
+	 * Gets a concise description of this failure suitable for application logging.
+	 * <p>
+	 * The message includes the key, lookup locale, failure reason, and attempted locale tags. It does not inspect or
+	 * include placeholder values or the runtime cause's message because either may contain sensitive data. The key is
+	 * included verbatim and may itself contain placeholder names such as {@code {{name}}}.
+	 *
+	 * @return the redacted failure message, not null
+	 * @since 3.0.0
+	 */
+	@NonNull
+	default String getMessage() {
+		return format("Unable to resolve translation key '%s' for locale '%s'. Reason: %s. Attempted locales: [%s]",
+				getKey(),
+				getLookupLocale().toLanguageTag(),
+				getReason(),
+				getAttemptedLocales().stream()
+						.map(Locale::toLanguageTag)
+						.collect(Collectors.joining(", ")));
+	}
+
 	/**
 	 * Gets the translation key that could not be resolved.
 	 *
@@ -70,8 +94,8 @@ public interface TranslationFailure {
 	/**
 	 * Gets the placeholders supplied by the caller.
 	 * <p>
-	 * The returned map is an unmodifiable shallow copy. Placeholder values may contain sensitive data; built-in
-	 * handlers do not log placeholder values.
+	 * The returned map is an unmodifiable shallow copy. Placeholder values may contain sensitive data;
+	 * {@link #getMessage()} deliberately excludes them.
 	 *
 	 * @return the supplied placeholders, not null
 	 */

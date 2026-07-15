@@ -68,6 +68,10 @@ All notable changes to Lokalized will be documented in this file.
 - The default locale-fallback policy no longer hides runtime resolution failures by trying later locales. It continues
   for missing translations and unmatched alternatives; use `TranslationFallbackPolicy.fallbackOnAnyFailure()` to
   preserve the legacy behavior.
+- Removed logging-specific `LocalizedStringWarningHandler.log(...)` and
+  `TranslationFailureHandler.logAndReturnKey(...)` factories. Lokalized does not own or configure a logging backend;
+  applications receive structured warning and failure callbacks instead. `TranslationFailureHandler.returnKey(...)`
+  accepts a `Consumer<? super TranslationFailure>` for observing failures while preserving fail-soft behavior.
 - `MissingTranslationException.getLocale()` was replaced by `getLookupLocale()` and optional
   `getLocaleMatchResult()` diagnostics.
 - Added diagnostic methods to `Strings` and `LocaleMatcher`; custom implementations must implement the full
@@ -84,8 +88,11 @@ All notable changes to Lokalized will be documented in this file.
   one-argument classpath loader prefer the thread context classloader when available.
 - Added `LocalizedStringWarning`, `LocalizedStringWarningHandler`, and warning-aware loader overloads for
   incomplete CLDR cardinality/ordinality maps and invalid classpath locale filenames. Warning locale, key, and
-  placeholder context is optional when a problem applies to a resource as a whole. Warnings log at `WARNING` by
-  default; callers can ignore, collect, or promote them to `LocalizedStringLoadingException`.
+  placeholder context is optional when a problem applies to a resource as a whole. Warnings are silently ignored by
+  default; callers can collect, forward, or promote them to `LocalizedStringLoadingException`.
+- Added a redacted `TranslationFailure.getMessage()` containing the key, lookup locale, reason, and attempted locales.
+  It omits caller placeholder values and runtime-cause messages; the cause remains separately available via
+  `getCause()`.
 - Added `LocalizedStringLoadingOptions` for bounded input size, JSON nesting depth, and opt-in exhaustive classpath-root
   searching for JARs that omit directory entries. Ordinary classloader resource discovery remains the safe default.
 - Added CLDR 48.2-backed cardinality, ordinality, cardinality-range, locale-alias, likely-subtag,
@@ -117,7 +124,7 @@ All notable changes to Lokalized will be documented in this file.
 ### Behavior Changes
 
 - Missing translations and runtime resolution failures are routed through `TranslationFailureHandler`.
-  The default handler returns the key with caller-supplied placeholders interpolated.
+  The default handler silently returns the key with caller-supplied placeholders interpolated.
 - Locale matching now uses full CLDR aliases, including compound aliases and context-sensitive
   multi-territory replacements, parent locales, likely subtags, and script-aware matching.
 - Plural-rule lookup now canonicalizes the complete locale tag before selecting cardinality, ordinality, and range
@@ -182,7 +189,8 @@ All notable changes to Lokalized will be documented in this file.
 ### Migration Notes
 
 - Replace legacy failure handling configuration with `Strings.Builder.translationFailureHandler(...)`.
-  `TranslationFailureHandler.returnKey()` preserves the default soft-fail behavior, while
+  `TranslationFailureHandler.returnKey()` preserves the silent default soft-fail behavior,
+  `returnKey(Consumer<? super TranslationFailure>)` also reports structured events to an application observer, and
   `TranslationFailureHandler.throwException()` provides fail-fast behavior.
 - Replace direct construction or references to `DefaultStrings` with `Strings.withFallbackLocale(...).build()`.
 - Update custom `Strings` implementations with the three new inspection methods.
@@ -242,8 +250,9 @@ All notable changes to Lokalized will be documented in this file.
   or underscore, then use Unicode letters, Unicode digits, underscores, or hyphens.
 - Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in
   some locales.
-- Incomplete CLDR cardinality or ordinality maps now log warnings during loading by default. Supply
-  `LocalizedStringWarningHandler.ignore()` to retain silent loading or `throwException()` for build-time strictness.
+- Incomplete CLDR cardinality or ordinality maps now produce structured loading warnings, which are silently ignored by
+  default. Pass a warning-handler lambda to collect or forward them, or use
+  `LocalizedStringWarningHandler.throwException()` for build-time strictness.
 - Right-to-left locale output may now include Unicode FSI/PDI controls around caller-supplied placeholder
   values. Use `BidiIsolation.NONE` only for sinks that cannot accept bidi controls.
 

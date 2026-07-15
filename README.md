@@ -154,17 +154,15 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .build();
 ```
 
-You can also provide your own handler:
+To keep the default fail-soft result while observing structured failures, attach a consumer to `returnKey(...)`:
 
 ```java
 // Custom telemetry for failures
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
   .localeSupplier((matcher) -> matcher.bestMatchFor(FALLBACK_LOCALE))
-  .translationFailureHandler((failure) -> {
-    exampleMetrics.increment("lokalized.translation.failure");
-    return TranslationFailureResponse.returnString("Translation unavailable");
-  })
+  .translationFailureHandler(TranslationFailureHandler.returnKey(failure ->
+    exampleMetrics.increment("lokalized.translation." + failure.getReason())))
   .build();
 ```
 
@@ -1505,7 +1503,7 @@ to try the next candidate. Only after fallback stops or candidates are exhausted
 or throw. The default policy falls back for missing translations and unmatched alternatives, but stops on runtime
 resolution failures so a corrupt translation cannot be silently hidden by a different locale. The default handler is
 [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()),
-which returns the lookup key with caller-supplied placeholders interpolated into it.
+which silently returns the lookup key with caller-supplied placeholders interpolated into it.
 
 ```java
 Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
@@ -1517,9 +1515,9 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 
 Built-in handler factories are:
 
-* [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - returns the key with supplied placeholders interpolated
+* [`TranslationFailureHandler.returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) - silently returns the key with supplied placeholders interpolated
+* [`TranslationFailureHandler.returnKey(Consumer<? super TranslationFailure>)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey(java.util.function.Consumer)) - sends the structured failure to the supplied observer, then returns the interpolated key
 * [`TranslationFailureHandler.throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) - throws [`MissingTranslationException`](https://javadoc.lokalized.com/com/lokalized/MissingTranslationException.html) for missing translations and rethrows runtime resolution failures
-* [`TranslationFailureHandler.logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)) - logs the failure without placeholder values, then returns the interpolated key
 
 Built-in fallback policies are:
 
@@ -1544,7 +1542,7 @@ default fallback policy stops; [`fallbackOnAnyFailure()`](https://javadoc.lokali
 may continue to another locale. An expression-selected fragment always has a default `translation` and therefore
 cannot itself cause `NO_MATCHING_ALTERNATIVE`.
 
-The fail-soft handlers, [`returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) and [`logAndReturnKey(logger)`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#logAndReturnKey(java.util.logging.Logger)), also handle runtime resolution failures by returning the interpolated key. Use [`throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) or a custom handler that throws on [`TranslationFailureReason.RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE) in development and test environments if you want broken placeholder rules, expressions, or custom resolvers to surface immediately.
+Both [`returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) variants also handle runtime resolution failures by returning the interpolated key. Use [`throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) or a custom handler that throws on [`TranslationFailureReason.RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE) in development and test environments if you want broken placeholder rules, expressions, or custom resolvers to surface immediately.
 
 Custom handlers inspect a [`TranslationFailure`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html) and return a [`TranslationFailureResponse`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureResponse.html). For example, you might fail softly for missing translations but throw for resolution failures, which usually indicate a broken placeholder, expression, or language-form rule:
 
@@ -1568,8 +1566,11 @@ Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 [`getAttemptedLocales()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getAttemptedLocales()),
 caller-supplied placeholders,
 [`getReason()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getReason()), and optional
-[`getCause()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getCause()). Placeholder values can
-contain user data, so avoid logging
+[`getCause()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getCause()). Its
+[`getMessage()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getMessage()) is a redacted,
+human-readable summary containing only the key, lookup locale, reason, and attempted locales. It omits caller-supplied
+placeholder values and runtime-cause messages; inspect `getCause()` separately when your application intends to expose
+that detail. Placeholder values can contain user data, so avoid recording
 [`failure.getPlaceholders()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailure.html#getPlaceholders())
 unless your application has explicitly approved that.
 
@@ -1670,21 +1671,20 @@ The schema validates file structure, placeholder shapes, known language-form nam
 Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each `LocalizedStringLoader.load*` method accepts as an optional argument:
 
 ```java
-// Default: log each warning at WARNING level.
+// Default: load successfully and emit no warning callbacks.
 Map<Locale, Set<LocalizedString>> strings = LocalizedStringLoader.loadFromClasspath("strings");
 
-// Collect warnings for inspection or your own logging framework.
+// Receive structured warnings directly.
 List<LocalizedStringWarning> warnings = new ArrayList<>();
-LocalizedStringLoader.loadFromClasspath("strings", warnings::add);
+LocalizedStringLoader.loadFromClasspath("strings", warning -> {
+  warnings.add(warning);
+});
 
 // Fail fast: treat any incomplete file as a load error (useful in tests/CI).
 LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.throwException());
-
-// Suppress entirely.
-LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.ignore());
 ```
 
-Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, optional `getLocale()`, optional `getKey()`, optional `getPlaceholder()`, and `getMissingLanguageForms()`) alongside a human-readable `getMessage()`. Resource-level warnings such as an invalid classpath locale filename omit locale, key, and placeholder context.
+Warnings are silently ignored when no handler is supplied. Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, optional `getLocale()`, optional `getKey()`, optional `getPlaceholder()`, and `getMissingLanguageForms()`) alongside a human-readable `getMessage()`. Resource-level warnings such as an invalid classpath locale filename omit locale, key, and placeholder context.
 
 ### Commentary
 
@@ -2432,43 +2432,6 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 | [Yiddish (יידיש)](https://lokalized.com/languages/yi) | `yi` |
 | [Yoruba (Èdè Yorùbá)](https://lokalized.com/languages/yo) | `yo` |
 | [Zulu (isiZulu)](https://lokalized.com/languages/zu) | `zu` |
-
-## java.util.logging
-
-Lokalized uses ```java.util.logging``` internally.  The usual way to hook into this is with [SLF4J](http://slf4j.org), which can funnel all the different logging mechanisms in your app through a single one, normally [Logback](http://logback.qos.ch).  Your Maven configuration might look like this:
-
-```xml
-<dependency>
-  <groupId>ch.qos.logback</groupId>
-  <artifactId>logback-classic</artifactId>
-  <version>1.1.9</version>
-</dependency>
-<dependency>
-  <groupId>org.slf4j</groupId>
-  <artifactId>jul-to-slf4j</artifactId>
-  <version>1.7.22</version>
-</dependency>
-```
-
-You might have code like this which runs at startup:
-
-```java
-// Bridge all java.util.logging to SLF4J
-java.util.logging.Logger rootLogger = java.util.logging.LogManager.getLogManager().getLogger("");
-for (Handler handler : rootLogger.getHandlers())
-  rootLogger.removeHandler(handler);
-
-SLF4JBridgeHandler.install();
-```
-
-Don't forget to uninstall the bridge at shutdown time:
-
-```java
-// Sometime later
-SLF4JBridgeHandler.uninstall();
-```
-
-Note: ```SLF4JBridgeHandler``` can impact performance.  You can mitigate that with Logback's ```LevelChangePropagator``` configuration option [as described here](http://logback.qos.ch/manual/configuration.html#LevelChangePropagator).
 
 ## About
 

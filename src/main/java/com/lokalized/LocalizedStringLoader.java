@@ -65,7 +65,6 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipException;
@@ -92,8 +91,6 @@ public final class LocalizedStringLoader {
   @NonNull
   private static final Map<@NonNull String, @NonNull LanguageForm> SUPPORTED_LANGUAGE_FORMS_BY_NAME;
   @NonNull
-  private static final Logger LOGGER;
-  @NonNull
   private static final ExpressionEvaluator EXPRESSION_EVALUATOR;
   @NonNull
   private static final Pattern LANGUAGE_TAG_PATTERN;
@@ -102,7 +99,6 @@ public final class LocalizedStringLoader {
   private static final char UTF_8_BOM;
 
   static {
-    LOGGER = Logger.getLogger(LoggerType.LOCALIZED_STRING_LOADER.getLoggerName());
     EXPRESSION_EVALUATOR = new ExpressionEvaluator(null, null, TranslationRuntimeLimits.hardCeilings());
 
     Set<@NonNull LanguageForm> supportedLanguageForms = new LinkedHashSet<>();
@@ -223,7 +219,7 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage) {
-    return loadFromClasspath(classpathPackage, LocalizedStringWarningHandler.log(), LocalizedStringLoadingOptions.defaults());
+    return loadFromClasspath(classpathPackage, LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults());
   }
 
   /**
@@ -236,7 +232,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
       @NonNull String classpathPackage, @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return loadFromClasspath(classpathPackage, LocalizedStringWarningHandler.log(), loadingOptions);
+    return loadFromClasspath(classpathPackage, LocalizedStringWarningHandler.ignore(), loadingOptions);
   }
 
   /**
@@ -286,7 +282,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
                                                                                                @NonNull String classpathPackage) {
-    return loadFromClasspath(classLoader, classpathPackage, LocalizedStringWarningHandler.log(),
+    return loadFromClasspath(classLoader, classpathPackage, LocalizedStringWarningHandler.ignore(),
         LocalizedStringLoadingOptions.defaults());
   }
 
@@ -302,7 +298,7 @@ public final class LocalizedStringLoader {
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
       @NonNull ClassLoader classLoader, @NonNull String classpathPackage,
       @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return loadFromClasspath(classLoader, classpathPackage, LocalizedStringWarningHandler.log(), loadingOptions);
+    return loadFromClasspath(classLoader, classpathPackage, LocalizedStringWarningHandler.ignore(), loadingOptions);
   }
 
   /**
@@ -491,7 +487,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
       @NonNull ClassLoader classLoader, @NonNull Map<@NonNull Locale, @NonNull String> resourcePathByLocale) {
-    return loadFromClasspathResources(classLoader, resourcePathByLocale, LocalizedStringWarningHandler.log(),
+    return loadFromClasspathResources(classLoader, resourcePathByLocale, LocalizedStringWarningHandler.ignore(),
         LocalizedStringLoadingOptions.defaults());
   }
 
@@ -507,7 +503,7 @@ public final class LocalizedStringLoader {
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
       @NonNull ClassLoader classLoader, @NonNull Map<@NonNull Locale, @NonNull String> resourcePathByLocale,
       @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return loadFromClasspathResources(classLoader, resourcePathByLocale, LocalizedStringWarningHandler.log(),
+    return loadFromClasspathResources(classLoader, resourcePathByLocale, LocalizedStringWarningHandler.ignore(),
         loadingOptions);
   }
 
@@ -795,7 +791,7 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory) {
-    return loadFromFilesystem(directory, LocalizedStringWarningHandler.log(), LocalizedStringLoadingOptions.defaults());
+    return loadFromFilesystem(directory, LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults());
   }
 
   /**
@@ -808,7 +804,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(
       @NonNull Path directory, @NonNull LocalizedStringLoadingOptions loadingOptions) {
-    return loadFromFilesystem(directory, LocalizedStringWarningHandler.log(), loadingOptions);
+    return loadFromFilesystem(directory, LocalizedStringWarningHandler.ignore(), loadingOptions);
   }
 
   /**
@@ -853,7 +849,7 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Path path, @NonNull Locale locale) {
-    return parse(path, locale, LocalizedStringWarningHandler.log(), LocalizedStringLoadingOptions.defaults());
+    return parse(path, locale, LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults());
   }
 
   /**
@@ -889,7 +885,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull InputStream inputStream, @NonNull Locale locale,
                                                     @NonNull String source) {
-    return parse(inputStream, locale, source, LocalizedStringWarningHandler.log(),
+    return parse(inputStream, locale, source, LocalizedStringWarningHandler.ignore(),
         LocalizedStringLoadingOptions.defaults());
   }
 
@@ -931,7 +927,7 @@ public final class LocalizedStringLoader {
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Reader reader, @NonNull Locale locale,
                                                     @NonNull String source) {
-    return parse(reader, locale, source, LocalizedStringWarningHandler.log(), LocalizedStringLoadingOptions.defaults());
+    return parse(reader, locale, source, LocalizedStringWarningHandler.ignore(), LocalizedStringLoadingOptions.defaults());
   }
 
   /**
@@ -998,15 +994,12 @@ public final class LocalizedStringLoader {
 
         String fileName = fileNamePath.toString();
 
-        if (isHiddenFileName(fileName)) {
-          LOGGER.fine(format("File '%s' is hidden, skipping...", fileName));
+        if (isHiddenFileName(fileName))
           continue;
-        }
 
         String languageTag = languageTagForFileName(fileName);
 
         if (languageTag != null) {
-          LOGGER.fine(format("Loading localized strings file '%s'...", fileName));
           Locale locale = Locale.forLanguageTag(languageTag);
 
           if (localizedStringsByLocale.containsKey(locale))
@@ -1014,8 +1007,6 @@ public final class LocalizedStringLoader {
                 locale.toLanguageTag(), file));
 
           localizedStringsByLocale.put(locale, parseLocalizedStringsFile(file, locale, loadingSession));
-        } else {
-          LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
       }
     } catch (DirectoryIteratorException e) {
@@ -1056,16 +1047,13 @@ public final class LocalizedStringLoader {
 
         String fileName = fileNamePath.toString();
 
-        if (isHiddenFileName(fileName)) {
-          LOGGER.fine(format("File '%s' is hidden, skipping...", fileName));
+        if (isHiddenFileName(fileName))
           continue;
-        }
 
         String canonicalPath = canonicalPathForPath(file);
         String languageTag = languageTagForClasspathFileName(fileName, canonicalPath, loadingSession);
 
         if (languageTag != null) {
-          LOGGER.fine(format("Loading localized strings file '%s'...", fileName));
           Locale locale = Locale.forLanguageTag(languageTag);
           String existingOrigin = originByLocale.get(locale);
 
@@ -1076,8 +1064,6 @@ public final class LocalizedStringLoader {
           localizedStringsByLocale.put(locale, sourceLocalizedStrings(
               parseLocalizedStringsFile(file, locale, loadingSession), canonicalPath));
           originByLocale.put(locale, canonicalPath);
-        } else {
-          LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", fileName));
         }
       }
     } catch (DirectoryIteratorException e) {
@@ -1157,20 +1143,15 @@ public final class LocalizedStringLoader {
       JarEntry entry = entryByRelativeName.getValue();
       String entryName = entry.getName();
 
-      if (isHiddenFileName(relativeName)) {
-        LOGGER.fine(format("File '%s' is hidden, skipping...", relativeName));
+      if (isHiddenFileName(relativeName))
         continue;
-      }
 
       String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
       String languageTag = languageTagForClasspathFileName(relativeName, canonicalPath, loadingSession);
 
-      if (languageTag == null) {
-        LOGGER.fine(format("File '%s' does not correspond to a known language tag, skipping...", relativeName));
+      if (languageTag == null)
         continue;
-      }
 
-      LOGGER.fine(format("Loading localized strings file '%s' from %s...", relativeName, jarFile.getName()));
       Locale locale = Locale.forLanguageTag(languageTag);
       String existingOrigin = originByLocale.get(locale);
 
@@ -1301,11 +1282,8 @@ public final class LocalizedStringLoader {
         SourceLocalizedString existing = localizedStringsByKey.get(key);
 
         if (existing != null) {
-          if (existing.getLocalizedString().equals(localizedString)) {
-            LOGGER.fine(format("Ignoring equivalent localized string key '%s' for locale '%s' found in both '%s' and '%s'",
-                key, locale.toLanguageTag(), existing.getOrigin(), sourceLocalizedString.getOrigin()));
+          if (existing.getLocalizedString().equals(localizedString))
             continue;
-          }
 
           throw new LocalizedStringLoadingException(format("Duplicate localized string key '%s' found for locale '%s' while merging classpath resources. " +
                   "Conflicting resources are '%s' and '%s'", key, locale.toLanguageTag(), existing.getOrigin(), sourceLocalizedString.getOrigin()));

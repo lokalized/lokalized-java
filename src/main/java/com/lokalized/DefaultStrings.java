@@ -45,7 +45,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -101,8 +100,6 @@ class DefaultStrings implements Strings {
 	private final PhoneticResolver phoneticResolver;
 	@NonNull
 	private final BidiIsolation bidiIsolation;
-	@NonNull
-	private final Logger logger;
 
 	/**
 	 * Cache of localized strings by key by locale.
@@ -225,8 +222,6 @@ class DefaultStrings implements Strings {
 		if ((localeSupplier == null) == (localeMatchSupplier == null))
 			throw new IllegalArgumentException(format("You must specify exactly one of 'localeSupplier' or 'localeMatchSupplier' when creating a %s instance",
 					DefaultStrings.class.getSimpleName()));
-
-		this.logger = Logger.getLogger(LoggerType.STRINGS.getLoggerName());
 
 		Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>> suppliedLocalizedStringsByLocale = localizedStringSupplier.get();
 
@@ -600,18 +595,12 @@ class DefaultStrings implements Strings {
 
 						attemptFailureReason = TranslationFailureReason.NO_MATCHING_ALTERNATIVE;
 						noMatchingAlternativeEncountered = true;
-						logger.finer(format(
-								"No alternative produced a translation and no default translation was provided for key '%s' and locale '%s'",
-								key, candidateLocale.toLanguageTag()));
 					} catch (RuntimeException e) {
 						attemptFailureReason = TranslationFailureReason.RESOLUTION_FAILURE;
 						attemptCause = e;
 
 						if (firstFallbackFailure == null)
 							firstFallbackFailure = e;
-
-						logger.finer(format("Unable to resolve key '%s' for locale '%s'. Cause: %s",
-								key, candidateLocale.toLanguageTag(), e.getMessage()));
 					}
 				}
 			}
@@ -627,11 +616,6 @@ class DefaultStrings implements Strings {
 		}
 
 		String message = format("No match for '%s' was found for locale '%s'.", key, locale.toLanguageTag());
-		logger.finer(message);
-
-		if (firstFallbackFailure != null)
-			logger.finer(format("%s Invoking translation failure handler after resolution failure: %s", message, firstFallbackFailure.getMessage()));
-
 		TranslationFailureReason failureReason = firstFallbackFailure != null
 				? TranslationFailureReason.RESOLUTION_FAILURE
 				: noMatchingAlternativeEncountered
@@ -697,8 +681,6 @@ class DefaultStrings implements Strings {
 		// First, see if any alternatives match by evaluating them
 		for (LocalizedString alternative : localizedString.getAlternatives()) {
 			if (alternativeMatches(alternative, immutableContext, locale)) {
-				logger.finer(format("An alternative match for '%s' was found for key '%s'", alternative.getKey(), key));
-
 				// If we have a matching alternative, recurse into it
 				// Alternatives are ordered first-match rules. Once a condition matches, only that branch may resolve;
 				// an unmatched nested subtree must not fall through to a later sibling.
@@ -1302,7 +1284,6 @@ class DefaultStrings implements Strings {
 			return getStringInterpolator().interpolate(key, interpolationContext,
 					getRuntimeLimits().getMaximumInterpolatedOutputCharacters());
 		} catch (RuntimeException e) {
-			logger.finer(format("Unable to interpolate failure key '%s'; returning the raw key. Cause: %s", key, e.getMessage()));
 			return key;
 		}
 	}

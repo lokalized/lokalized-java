@@ -18,10 +18,8 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
-import java.util.logging.Logger;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -72,6 +70,30 @@ public interface TranslationFailureHandler {
 	}
 
 	/**
+	 * Notifies an observer about each failed lookup and then returns the lookup key itself after interpolating supplied
+	 * placeholders into it.
+	 * <p>
+	 * Use {@link TranslationFailure#getMessage()} when the observer needs a message suitable for logging without
+	 * exposing placeholder values. The observer may be invoked concurrently when the returned handler is shared by a
+	 * {@link Strings} instance and must therefore be thread-safe. An exception thrown by the observer propagates to the
+	 * caller.
+	 *
+	 * @param observer observer to notify before returning the key, not null
+	 * @return the handler, not null
+	 * @since 3.0.0
+	 */
+	@NonNull
+	static TranslationFailureHandler returnKey(@NonNull Consumer<? super @NonNull TranslationFailure> observer) {
+		requireNonNull(observer);
+
+		return (translationFailure) -> {
+			requireNonNull(translationFailure);
+			observer.accept(translationFailure);
+			return TranslationFailureResponse.returnKey();
+		};
+	}
+
+	/**
 	 * Throws an exception for failed lookups.
 	 * <p>
 	 * A runtime cause supplied for {@link TranslationFailureReason#RESOLUTION_FAILURE} is rethrown. Other failure reasons
@@ -84,37 +106,6 @@ public interface TranslationFailureHandler {
 		return (translationFailure) -> {
 			requireNonNull(translationFailure);
 			return TranslationFailureResponse.throwException();
-		};
-	}
-
-	/**
-	 * Logs the failed lookup at warning level and then returns the lookup key itself.
-	 * <p>
-	 * Placeholder values are not logged.
-	 * <p>
-	 * Unmatched whole-message alternatives and runtime resolution failures are handled the same way as missing
-	 * translations after logging. This includes failures in evaluated expression-fragment predicates and
-	 * selected/default fragments. Use {@link #throwException()} or a custom handler that throws for
-	 * {@link TranslationFailureReason#RESOLUTION_FAILURE} to surface broken generated-placeholder rules, expressions,
-	 * interpolation, or custom resolvers.
-	 *
-	 * @param logger logger to use, not null
-	 * @return the handler, not null
-	 */
-	@NonNull
-	static TranslationFailureHandler logAndReturnKey(@NonNull Logger logger) {
-		requireNonNull(logger);
-
-		return (translationFailure) -> {
-			requireNonNull(translationFailure);
-			logger.warning(format("Unable to resolve translation key '%s' for locale '%s'. Reason: %s. Attempted locales: [%s]",
-					translationFailure.getKey(),
-					translationFailure.getLookupLocale().toLanguageTag(),
-					translationFailure.getReason(),
-					translationFailure.getAttemptedLocales().stream()
-							.map(locale -> locale.toLanguageTag())
-							.collect(Collectors.joining(", "))));
-			return TranslationFailureResponse.returnKey();
 		};
 	}
 }

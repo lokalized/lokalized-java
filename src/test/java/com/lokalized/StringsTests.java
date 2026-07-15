@@ -16,7 +16,6 @@
 
 package com.lokalized;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -36,10 +35,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.logging.Level;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -50,11 +50,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @ThreadSafe
 public class StringsTests {
-	@BeforeAll
-	public static void configureLogging() {
-		LoggingUtils.setRootLoggerLevel(Level.WARNING);
-	}
-
 	@Test
 	public void configurationVerificationTest() {
 		assertThrows(IllegalArgumentException.class, () -> {
@@ -1361,6 +1356,48 @@ public class StringsTests {
 		assertEquals(Map.of("name", "Ada"), translationFailure.getPlaceholders());
 		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, translationFailure.getReason());
 		assertTrue(!translationFailure.getCause().isPresent());
+	}
+
+	@Test
+	public void returnKeyConsumerObservesFailureOnceAndInterpolatesKey() {
+		AtomicInteger invocationCount = new AtomicInteger();
+		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(new LocalizedString.Builder("Hello").translation("Hello").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en-US"))
+				.translationFailureHandler(TranslationFailureHandler.returnKey((translationFailure) -> {
+					invocationCount.incrementAndGet();
+					translationFailureHolder.set(translationFailure);
+				}))
+				.build();
+
+		assertEquals("Missing Ada", strings.get("Missing {{name}}", Map.of("name", "Ada")));
+		assertEquals(1, invocationCount.get());
+		assertEquals("Missing {{name}}", translationFailureHolder.get().getKey());
+		assertEquals(TranslationFailureReason.MISSING_TRANSLATION, translationFailureHolder.get().getReason());
+	}
+
+	@Test
+	public void returnKeyRejectsNullConsumer() {
+		assertThrows(NullPointerException.class, () -> TranslationFailureHandler.returnKey(null));
+	}
+
+	@Test
+	public void returnKeyConsumerExceptionPropagates() {
+		IllegalStateException consumerException = new IllegalStateException("consumer failed");
+		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
+				.localizedStringSupplier(() -> Map.of(
+						Locale.forLanguageTag("en"), Set.of(new LocalizedString.Builder("Hello").translation("Hello").build())
+				))
+				.localeSupplier((matcher) -> Locale.forLanguageTag("en"))
+				.translationFailureHandler(TranslationFailureHandler.returnKey((translationFailure) -> {
+					throw consumerException;
+				}))
+				.build();
+
+		assertSame(consumerException, assertThrows(IllegalStateException.class, () -> strings.get("Missing")));
 	}
 
 	@Test

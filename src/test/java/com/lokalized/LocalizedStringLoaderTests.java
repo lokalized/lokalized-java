@@ -147,7 +147,13 @@ public class LocalizedStringLoaderTests {
     Files.write(tempDirectory.resolve("ru"), incompleteRussian.getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("en"), completeEnglish.getBytes(StandardCharsets.UTF_8));
 
-    // Capture warnings via the validation warning-handler hook.
+    // The default is intentionally silent: warnings remain non-fatal unless the application supplies a handler.
+    Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> silentlyLoaded =
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory);
+    assertTrue(silentlyLoaded.containsKey(Locale.forLanguageTag("ru")),
+        "The default warning policy should silently retain files with non-fatal warnings");
+
+    // An explicit lambda receives warnings via the validation warning-handler hook.
     List<@NonNull LocalizedStringWarning> warnings = new ArrayList<>();
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale =
         LocalizedStringLoader.loadFromFilesystem(tempDirectory, warnings::add);
