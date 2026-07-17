@@ -38,6 +38,7 @@ import static java.util.Objects.requireNonNull;
  * Handlers shared by a {@link Strings} instance may be invoked concurrently and must be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @FunctionalInterface
 public interface TranslationFailureHandler {

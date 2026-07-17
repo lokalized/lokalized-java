@@ -103,25 +103,39 @@ public final class LocaleMatchResult {
 		this.consideredLocales = Collections.unmodifiableList(consideredLocaleCopy);
 	}
 
-	/** @return language ranges supplied for negotiation in caller order, not null */
+	/**
+	 * Gets the language ranges supplied for negotiation in caller order.
+	 *
+	 * @return language ranges supplied for negotiation in caller order, not null
+	 */
 	@NonNull
 	public List<@NonNull LanguageRange> getRequestedLanguageRanges() {
 		return requestedLanguageRanges;
 	}
 
-	/** @return selected supported locale, or empty when no locale was acceptable, not null */
+	/**
+	 * Gets the selected supported locale.
+	 *
+	 * @return selected supported locale, or empty when no locale was acceptable, not null
+	 */
 	@NonNull
 	public Optional<@NonNull Locale> getLocale() {
 		return Optional.ofNullable(locale);
 	}
 
-	/** @return preference range associated with the selection, or empty for no match, not null */
+	/**
+	 * Gets the preference range associated with the selection.
+	 *
+	 * @return preference range associated with the selection, or empty for no match, not null
+	 */
 	@NonNull
 	public Optional<@NonNull LanguageRange> getLanguageRange() {
 		return Optional.ofNullable(languageRange);
 	}
 
 	/**
+	 * Gets the selected locale's effective preference weight after specific-range overrides.
+	 *
 	 * @return selected locale's effective preference weight after specific-range overrides, or empty for no match,
 	 * not null
 	 */
@@ -130,25 +144,41 @@ public final class LocaleMatchResult {
 		return Optional.ofNullable(effectiveWeight);
 	}
 
-	/** @return relationship used for the selection, or {@link LocaleMatchType#NONE}, not null */
+	/**
+	 * Gets the relationship used for the selection.
+	 *
+	 * @return relationship used for the selection, or {@link LocaleMatchType#NONE}, not null
+	 */
 	@NonNull
 	public LocaleMatchType getMatchType() {
 		return matchType;
 	}
 
-	/** @return configured fallback that {@link LocaleMatcher#bestMatchFor(List)} would use for no match, not null */
+	/**
+	 * Gets the configured fallback that {@link LocaleMatcher#bestMatchFor(List)} would use for no match.
+	 *
+	 * @return configured fallback that {@link LocaleMatcher#bestMatchFor(List)} would use for no match, not null
+	 */
 	@NonNull
 	public Locale getFallbackLocale() {
 		return fallbackLocale;
 	}
 
-	/** @return ordered supported locales considered by negotiation, not null */
+	/**
+	 * Gets the ordered supported locales considered by negotiation.
+	 *
+	 * @return ordered supported locales considered by negotiation, not null
+	 */
 	@NonNull
 	public List<@NonNull Locale> getConsideredLocales() {
 		return consideredLocales;
 	}
 
-	/** @return whether negotiation selected an acceptable supported locale, not null */
+	/**
+	 * Reports whether negotiation selected an acceptable supported locale.
+	 *
+	 * @return whether negotiation selected an acceptable supported locale, not null
+	 */
 	@NonNull
 	public Boolean isMatch() {
 		return locale != null;

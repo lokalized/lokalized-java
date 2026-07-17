@@ -171,7 +171,7 @@ class StringInterpolator {
       if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName)) {
         if (strict)
           throw new IllegalArgumentException(format("Malformed placeholder '%s%s%s'. Placeholder names must start with a Unicode letter or underscore " +
-              "and contain only Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens",
+              "and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens",
               PLACEHOLDER_START, placeholderName, PLACEHOLDER_END));
 
         appendChecked(stringBuilder, string, placeholderStart,
@@ -191,7 +191,19 @@ class StringInterpolator {
         appendChecked(stringBuilder, placeholderName, maximumOutputCharacters);
         appendChecked(stringBuilder, PLACEHOLDER_END, maximumOutputCharacters);
       } else {
-        appendChecked(stringBuilder, String.valueOf(value), maximumOutputCharacters);
+        int maximumReplacementCharacters = maximumOutputCharacters == 0
+            ? -1
+            : maximumOutputCharacters - stringBuilder.length();
+        CharSequence replacementValue;
+
+        if (value instanceof BoundedReplacementValue)
+          replacementValue = ((BoundedReplacementValue) value).render(maximumReplacementCharacters);
+        else if (value instanceof CharSequence)
+          replacementValue = (CharSequence) value;
+        else
+          replacementValue = String.valueOf(value);
+
+        appendChecked(stringBuilder, replacementValue, maximumOutputCharacters);
       }
 
       index = placeholderEnd + PLACEHOLDER_END.length();
@@ -251,6 +263,16 @@ class StringInterpolator {
     requireNonNull(string);
     requireNonNull(prefix);
     return index >= 0 && string.startsWith(prefix, index);
+  }
+
+  /**
+   * Produces a replacement value while honoring the number of characters still available to the interpolator.
+   * A negative maximum means that the caller did not configure an output limit.
+   */
+  @FunctionalInterface
+  interface BoundedReplacementValue {
+    @NonNull
+    CharSequence render(int maximumCharacters);
   }
 
   static final class InterpolationResult {

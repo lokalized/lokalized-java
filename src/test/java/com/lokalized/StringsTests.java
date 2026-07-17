@@ -784,6 +784,35 @@ public class StringsTests {
 	}
 
 	@Test
+	public void generatedPhoneticInputIsBoundedBeforeMaterialization() {
+		LocalizedString localizedString = new LocalizedString.Builder("Phonetic input")
+				.translation("{{article}}")
+				.placeholderDefinitions(Map.of(
+						"article", new LocalizedString.LanguageFormTranslation("term", Map.of(
+								Phonetic.VOWEL, "an",
+								Phonetic.CONSONANT, "a"))))
+				.build();
+		Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
+				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, List.of(localizedString)))
+				.localeSupplier((matcher) -> Locale.ENGLISH)
+				.phoneticResolver((term, locale) -> {
+					throw new AssertionError("Oversized phonetic input must not reach the resolver");
+				})
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.runtimeLimits(TranslationRuntimeLimits.builder()
+						.maximumInterpolatedOutputCharacters(4)
+						.build())
+				.build();
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> strings.get("Phonetic input", Map.of(
+						"term", new UnmaterializableCharSequence(1_000_000))));
+
+		assertTrue(exception.getMessage().contains("Phonetic input"));
+		assertTrue(exception.getMessage().contains("maximum of 4 characters"));
+	}
+
+	@Test
 	public void optionalPlaceholderValuesAreUnwrapped() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -1160,6 +1189,68 @@ public class StringsTests {
 		assertThrows(IllegalArgumentException.class,
 				() -> buildStrings(localizedString),
 				"Expected malformed programmatic translation placeholders to fail while building Strings");
+	}
+
+	@Test
+	public void overDepthProgrammaticAlternativesFailBeforeStructuralHashing() {
+		LocalizedString nested = new LocalizedString.Builder("count == 1")
+				.translation("done")
+				.build();
+
+		for (int depth = 0; depth < 5_000; ++depth)
+			nested = new LocalizedString.Builder("count == 1")
+					.alternatives(List.of(nested))
+					.build();
+
+		LocalizedString root = new LocalizedString.Builder("Deep alternatives")
+				.alternatives(List.of(nested))
+				.build();
+		Locale english = Locale.ENGLISH;
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> Strings.withFallbackLocale(english)
+						.localizedStringSupplier(() -> Map.of(english, List.of(root)))
+						.localeSupplier((matcher) -> english)
+						.build());
+
+		assertTrue(exception.getMessage().contains("Alternative nesting exceeds the maximum depth of 128"));
+	}
+
+	@Test
+	public void validSharedAlternativeDagDoesNotRequireStructuralHashing() {
+		LocalizedString shared = new LocalizedString.Builder("count == 1")
+				.translation("selected")
+				.build();
+
+		for (int depth = 0; depth < 120; ++depth)
+			shared = new LocalizedString.Builder("count == 1")
+					.translation("selected")
+					.alternatives(List.of(shared, shared))
+					.build();
+
+		LocalizedString root = new LocalizedString.Builder("Shared DAG")
+				.translation("default")
+				.alternatives(List.of(shared))
+				.build();
+		Strings strings = buildStrings(root);
+
+		assertEquals("default", strings.get("Shared DAG", Map.of("count", 0)));
+		assertEquals(List.of(root), new ArrayList<>(
+				((DefaultStrings) strings).getLocalizedStringsByLocale().get(Locale.ENGLISH)));
+	}
+
+	@Test
+	public void equalProgrammaticRootsStillFailAsDuplicateKeys() {
+		LocalizedString first = new LocalizedString.Builder("Duplicate").translation("same").build();
+		LocalizedString second = new LocalizedString.Builder("Duplicate").translation("same").build();
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> Strings.withFallbackLocale(Locale.ENGLISH)
+						.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, List.of(first, second)))
+						.localeSupplier((matcher) -> Locale.ENGLISH)
+						.build());
+
+		assertTrue(exception.getMessage().contains("Duplicate localized string key 'Duplicate'"));
 	}
 
 	@Test
@@ -2905,6 +2996,42 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bidiIsolationRejectsOversizedCallerValuesBeforeScanningOrMaterializing() {
+		Locale arabic = Locale.forLanguageTag("ar");
+		LocalizedString localizedString = new LocalizedString.Builder("Bounded")
+				.translation("{{value}}")
+				.build();
+		Strings strings = Strings.withFallbackLocale(arabic)
+				.localizedStringSupplier(() -> Map.of(arabic, Set.of(localizedString)))
+				.localeSupplier((matcher) -> arabic)
+				.translationFailureHandler(TranslationFailureHandler.throwException())
+				.runtimeLimits(TranslationRuntimeLimits.builder()
+						.maximumInterpolatedOutputCharacters(4)
+						.build())
+				.build();
+		CharSequence oversized = new UnmaterializableCharSequence(1_000_000);
+
+		IllegalStateException exception = assertThrows(IllegalStateException.class,
+				() -> strings.get("Bounded", Map.of("value", oversized)));
+		assertTrue(exception.getMessage().contains("maximum of 4 characters"));
+	}
+
+	@Test
+	public void failureKeyReturnsRawKeyWithoutScanningOversizedBidiValues() {
+		Locale arabic = Locale.forLanguageTag("ar");
+		Strings strings = Strings.withFallbackLocale(arabic)
+				.localizedStringSupplier(() -> Map.of(arabic, Collections.emptySet()))
+				.localeSupplier((matcher) -> arabic)
+				.runtimeLimits(TranslationRuntimeLimits.builder()
+						.maximumInterpolatedOutputCharacters(4)
+						.build())
+				.build();
+		CharSequence oversized = new UnmaterializableCharSequence(1_000_000);
+
+		assertEquals("{{value}}", strings.get("{{value}}", Map.of("value", oversized)));
+	}
+
+	@Test
 	public void inspectionApiReportsSupportedLocalesKeysAndMissingKeys() {
 		Locale en = Locale.forLanguageTag("en");
 		Locale enGb = Locale.forLanguageTag("en-GB");
@@ -2995,6 +3122,34 @@ public class StringsTests {
 		@Override
 		public String toString() {
 			throw new UnsupportedOperationException("toString failed");
+		}
+	}
+
+	private static final class UnmaterializableCharSequence implements CharSequence {
+		private final int length;
+
+		private UnmaterializableCharSequence(int length) {
+			this.length = length;
+		}
+
+		@Override
+		public int length() {
+			return length;
+		}
+
+		@Override
+		public char charAt(int index) {
+			throw new AssertionError("Oversized input must be rejected before scanning");
+		}
+
+		@Override
+		public CharSequence subSequence(int start, int end) {
+			throw new AssertionError("Oversized input must be rejected before slicing");
+		}
+
+		@Override
+		public String toString() {
+			throw new AssertionError("Oversized input must be rejected before materialization");
 		}
 	}
 }

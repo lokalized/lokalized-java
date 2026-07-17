@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
  * Languages with more specialized case inventories can map to the closest matching value.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 2.1.0
  */
 public enum GrammaticalCase implements LanguageForm {
   /**

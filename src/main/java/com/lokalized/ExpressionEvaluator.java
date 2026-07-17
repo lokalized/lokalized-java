@@ -68,6 +68,9 @@ import static java.util.Objects.requireNonNull;
  * BOOLEAN_OPERATOR = "&&" | "||" ;
  * COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
  * </pre>
+ * Caller-supplied {@link CharSequence} variable values are phonetic inputs, not string literals. They may be compared
+ * with an explicit {@code PHONETIC_*} constant or {@link Phonetic} value, but two raw character sequences cannot be
+ * compared for textual equality.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -605,11 +608,24 @@ class ExpressionEvaluator {
             leftHandOperand.getSymbol(), operator.getSymbol(), rightHandOperand.getSymbol(),
             lhsOperandType.name(), rhsOperandType.name()));
 
+      boolean lhsIsCallerSuppliedCharacterSequence = isCallerSuppliedCharacterSequence(leftHandOperand, context);
+      boolean rhsIsCallerSuppliedCharacterSequence = isCallerSuppliedCharacterSequence(rightHandOperand, context);
+
+      if ((operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          && lhsOperandType == OperandType.PHONETIC && rhsOperandType == OperandType.PHONETIC
+          && lhsIsCallerSuppliedCharacterSequence && rhsIsCallerSuppliedCharacterSequence)
+        throw new ExpressionEvaluationException(format(
+            "Raw CharSequence placeholders '%s' and '%s' cannot be compared with '%s': " +
+                "expressions do not support textual equality. Compare phonetic input with a PHONETIC_* constant " +
+                "or an explicit %s value instead",
+            leftHandOperand.getSymbol(), rightHandOperand.getSymbol(), operator.getSymbol(),
+            Phonetic.class.getSimpleName()));
+
       Token characterSequenceOperand = null;
 
-      if (lhsOperandType == OperandType.NUMBER && isCallerSuppliedCharacterSequence(rightHandOperand, context))
+      if (lhsOperandType == OperandType.NUMBER && rhsIsCallerSuppliedCharacterSequence)
         characterSequenceOperand = rightHandOperand;
-      else if (rhsOperandType == OperandType.NUMBER && isCallerSuppliedCharacterSequence(leftHandOperand, context))
+      else if (rhsOperandType == OperandType.NUMBER && lhsIsCallerSuppliedCharacterSequence)
         characterSequenceOperand = leftHandOperand;
 
       if (characterSequenceOperand != null)
@@ -1231,11 +1247,16 @@ class ExpressionEvaluator {
       if (value instanceof Optional)
         value = ((Optional<?>) value).orElse(null);
 
-      if (value instanceof PluralOperands)
-        return validatePluralOperands((PluralOperands) value, operand.getSymbol()).getNumber();
-      if (value instanceof Number)
-        return PluralOperands.validateNumericValue(NumberUtils.toBigDecimal((Number) value),
-            format("Numeric value '%s'", operand.getSymbol()), runtimeLimits);
+      try {
+        if (value instanceof PluralOperands)
+          return validatePluralOperands((PluralOperands) value, operand.getSymbol()).getNumber();
+        if (value instanceof Number)
+          return PluralOperands.validateNumericValue(NumberUtils.toBigDecimal((Number) value),
+              format("Numeric value '%s'", operand.getSymbol()), runtimeLimits);
+      } catch (IllegalArgumentException e) {
+        throw new ExpressionEvaluationException(format(
+            "Unable to extract numeric value from '%s': %s", operand.getSymbol(), e.getMessage()), e);
+      }
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract numeric value from '%s'", operand.getSymbol()));
@@ -1542,7 +1563,7 @@ class ExpressionEvaluator {
       return Cardinality.getCardinalitiesByName().get(LocalizedStringUtils.cardinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Cardinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context)), locale);
+      return Cardinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context), operand.getSymbol()), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1555,7 +1576,7 @@ class ExpressionEvaluator {
       if (value instanceof PluralOperands)
         return Cardinality.forOperands(validatePluralOperands((PluralOperands) value, operand.getSymbol()), locale);
       if (value instanceof Number)
-        return Cardinality.forOperands(pluralOperandsFor((Number) value), locale);
+        return Cardinality.forOperands(pluralOperandsFor((Number) value, operand.getSymbol()), locale);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
@@ -1583,7 +1604,7 @@ class ExpressionEvaluator {
       return Ordinality.getOrdinalitiesByName().get(LocalizedStringUtils.ordinalityNameForLocalizedStringName(operand.getSymbol()));
 
     if (operand.getTokenType() == TokenType.NUMBER)
-      return Ordinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context)), locale);
+      return Ordinality.forOperands(pluralOperandsFor(bigDecimalFromOperand(operand, context), operand.getSymbol()), locale);
 
     if (operand.getTokenType() == TokenType.VARIABLE) {
       Object value = context.get(operand.getSymbol());
@@ -1596,7 +1617,7 @@ class ExpressionEvaluator {
       if (value instanceof PluralOperands)
         return Ordinality.forOperands(validatePluralOperands((PluralOperands) value, operand.getSymbol()), locale);
       if (value instanceof Number)
-        return Ordinality.forOperands(pluralOperandsFor((Number) value), locale);
+        return Ordinality.forOperands(pluralOperandsFor((Number) value, operand.getSymbol()), locale);
     }
 
     throw new ExpressionEvaluationException(format("Unable to extract %s value from '%s'",
@@ -1604,9 +1625,15 @@ class ExpressionEvaluator {
   }
 
   @NonNull
-  private PluralOperands pluralOperandsFor(@NonNull Number number) {
+  private PluralOperands pluralOperandsFor(@NonNull Number number, @NonNull String description) {
     requireNonNull(number);
-    return PluralOperands.forNumber(number).runtimeLimits(runtimeLimits).build();
+    requireNonNull(description);
+
+    try {
+      return PluralOperands.forNumber(number).runtimeLimits(runtimeLimits).build();
+    } catch (IllegalArgumentException e) {
+      throw numericOperandFailure(description, e);
+    }
   }
 
   @NonNull
@@ -1614,19 +1641,32 @@ class ExpressionEvaluator {
     requireNonNull(operands);
     requireNonNull(description);
 
-    PluralOperands.validateNumericValue(operands.sourceNumber(),
-        format("Plural operands value '%s'", description), runtimeLimits);
+    try {
+      PluralOperands.validateNumericValue(operands.sourceNumber(),
+          format("Plural operands value '%s'", description), runtimeLimits);
 
-    if (operands.getCompactExponent() > runtimeLimits.getMaximumCompactExponent())
-      throw new IllegalArgumentException(format("Plural operands compact exponent %d exceeds the maximum of %d",
-          operands.getCompactExponent(), runtimeLimits.getMaximumCompactExponent()));
+      if (operands.getCompactExponent() > runtimeLimits.getMaximumCompactExponent())
+        throw new IllegalArgumentException(format("Plural operands compact exponent %d exceeds the maximum of %d",
+            operands.getCompactExponent(), runtimeLimits.getMaximumCompactExponent()));
 
-    if (operands.explicitVisibleDecimalPlaces().isPresent() &&
-        operands.explicitVisibleDecimalPlaces().get() > runtimeLimits.getMaximumVisibleDecimalPlaces())
-      throw new IllegalArgumentException(format("Plural operands visible decimal places %s exceeds the maximum of %d",
-          operands.explicitVisibleDecimalPlaces().get(), runtimeLimits.getMaximumVisibleDecimalPlaces()));
+      if (operands.explicitVisibleDecimalPlaces().isPresent() &&
+          operands.explicitVisibleDecimalPlaces().get() > runtimeLimits.getMaximumVisibleDecimalPlaces())
+        throw new IllegalArgumentException(format("Plural operands visible decimal places %s exceeds the maximum of %d",
+            operands.explicitVisibleDecimalPlaces().get(), runtimeLimits.getMaximumVisibleDecimalPlaces()));
 
-    return operands;
+      return operands;
+    } catch (IllegalArgumentException e) {
+      throw numericOperandFailure(description, e);
+    }
+  }
+
+  @NonNull
+  private static ExpressionEvaluationException numericOperandFailure(@NonNull String description,
+                                                                      @NonNull IllegalArgumentException cause) {
+    requireNonNull(description);
+    requireNonNull(cause);
+    return new ExpressionEvaluationException(format(
+        "Unable to extract numeric value from '%s': %s", description, cause.getMessage()), cause);
   }
 
   /**
@@ -1670,7 +1710,17 @@ class ExpressionEvaluator {
           throw new ExpressionEvaluationException(format("No %s was provided to resolve placeholder '%s'",
               PhoneticResolver.class.getSimpleName(), operand.getSymbol()));
 
-        Phonetic phonetic = phoneticResolver.resolve(value.toString(), locale);
+        String term;
+
+        try {
+          term = CharSequenceUtils.toString((CharSequence) value,
+              runtimeLimits.getMaximumInterpolatedOutputCharacters(),
+              format("Phonetic input for placeholder '%s'", operand.getSymbol()));
+        } catch (IllegalArgumentException e) {
+          throw new ExpressionEvaluationException(e.getMessage(), e);
+        }
+
+        Phonetic phonetic = phoneticResolver.resolve(term, locale);
 
         if (phonetic == null)
           throw new ExpressionEvaluationException(format("%s returned null for placeholder '%s'",

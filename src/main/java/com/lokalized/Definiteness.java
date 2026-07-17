@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
  * Definiteness forms.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 2.1.0
  */
 public enum Definiteness implements LanguageForm {
   /**

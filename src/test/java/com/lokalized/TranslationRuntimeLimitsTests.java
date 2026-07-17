@@ -412,7 +412,7 @@ public class TranslationRuntimeLimitsTests {
 				.maximumNumberPrecision(2)
 				.build());
 
-		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
 				() -> strings.get("Numeric predicate limits", Map.of("count", new BigDecimal("123"))));
 		assertTrue(exception.getMessage().contains("generated-fragment expression 'count == 1'"));
 	}

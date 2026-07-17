@@ -27,6 +27,7 @@ import static java.util.Objects.requireNonNull;
  * Response returned by a {@link TranslationFailureHandler}.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @ThreadSafe
 public final class TranslationFailureResponse {

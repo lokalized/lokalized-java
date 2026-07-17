@@ -20,6 +20,7 @@ package com.lokalized;
  * Controls whether Lokalized wraps caller-supplied placeholder values with Unicode bidirectional isolate controls.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 public enum BidiIsolation {
   /**

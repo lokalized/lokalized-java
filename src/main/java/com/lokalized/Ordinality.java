@@ -36,19 +36,11 @@ import static java.util.Objects.requireNonNull;
  * See the <a href="http://cldr.unicode.org/index/cldr-spec/plural-rules">Unicode Common Locale Data Repository</a>
  * and its <a href="https://www.unicode.org/cldr/charts/48/supplemental/language_plural_rules.html">Language Plural Rules</a> for details.
  * <p>
- * Per the CLDR:
- * <blockquote>
- * These categories are only mnemonics -- the names don't necessarily imply the exact contents of the category.
- * For example, for both English and French the number 1 has the category one (singular).
- * <p>
- * In English, every other number has a plural form, and is given the category other.
- * French is similar, except that the number 0 also has the category one and not other or zero, because the form of
- * units qualified by 0 is also singular.
- * <p>
- * This is worth emphasizing: A common mistake is to think that "one" is only for only the number 1.
- * Instead, "one" is a category for any number that behaves like 1. So in some languages, for example,
- * one → numbers that end in "1" (like 1, 21, 151) but that don't end in 11 (like "11, 111, 10311).
- * </blockquote>
+ * CLDR category names are mnemonics whose membership is locale-specific; they do not imply cardinal singular or plural
+ * meaning. For English ordinals, values ending in 1, 2, or 3 normally select {@link #ONE}, {@link #TWO}, or
+ * {@link #FEW}, except for values ending in 11, 12, or 13; remaining values select {@link #OTHER}. French ordinals use
+ * {@link #ONE} for 1 and {@link #OTHER} for other values. Applications should always use the generated locale rules
+ * rather than inferring ordinal categories from their names.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -102,6 +94,8 @@ public enum Ordinality implements LanguageForm {
    * Gets an appropriate plural ordinality for the given number and locale.
    * <p>
    * Negative numbers are evaluated using their absolute value.
+   * Supported {@link Number} implementations and their conversion semantics are documented by
+   * {@link PluralOperands#forNumber(Number)}.
    * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
    * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
    * {@link #forOperands(PluralOperands, Locale)}.
@@ -113,7 +107,8 @@ public enum Ordinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
-   * @throws IllegalArgumentException if the number exceeds the safety limits documented by {@link PluralOperands}
+   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
+   *                                  number exceeds the safety limits documented by {@link PluralOperands}
    */
   @NonNull
   public static Ordinality forNumber(@NonNull Number number, @NonNull Locale locale) {
@@ -136,6 +131,7 @@ public enum Ordinality implements LanguageForm {
    * @param locale   the locale that drives pluralization, not null
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @since 3.0.0
    */
   @NonNull
   public static Ordinality forOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
@@ -188,6 +184,7 @@ public enum Ordinality implements LanguageForm {
    * The set's values are sorted by natural string ordering.
    *
    * @return the directly represented BCP 47 locale tags supported for ordinality operations, not null
+   * @since 3.0.0
    */
   @NonNull
   public static SortedSet<@NonNull String> getSupportedLocaleTags() {

@@ -37,6 +37,7 @@ import static java.util.Objects.requireNonNull;
  * These options override the defaults configured on a {@link Strings} instance for a single lookup.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @ThreadSafe
 public final class TranslationOptions {
@@ -267,6 +268,8 @@ public final class TranslationOptions {
 	 * <p>
 	 * Locale and language-range overrides are mutually exclusive. If both setters are used, the last non-null setter wins
 	 * and clears the earlier override.
+	 *
+	 * @since 3.0.0
 	 */
 	@NotThreadSafe
 	public static final class Builder {
@@ -347,7 +350,12 @@ public final class TranslationOptions {
 			return this;
 		}
 
-		/** Applies a locale-fallback policy override for this lookup. */
+		/**
+		 * Applies a locale-fallback policy override for this lookup.
+		 *
+		 * @param translationFallbackPolicy locale-fallback policy, may be null
+		 * @return this builder, not null
+		 */
 		@NonNull
 		public Builder translationFallbackPolicy(@Nullable TranslationFallbackPolicy translationFallbackPolicy) {
 			this.translationFallbackPolicy = translationFallbackPolicy;

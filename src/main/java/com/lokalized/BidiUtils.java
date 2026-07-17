@@ -22,6 +22,7 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -64,28 +65,95 @@ final class BidiUtils {
 
   @NonNull
   static String isolate(@NonNull String value) {
-    requireNonNull(value);
-
-    if (value.length() == 0 || isIsolated(value))
-      return value;
-
-    String balancedValue = balanceEmbeddedIsolates(value);
-    return new StringBuilder(balancedValue.length() + 2)
-        .append(FIRST_STRONG_ISOLATE)
-        .append(balancedValue)
-        .append(POP_DIRECTIONAL_ISOLATE)
-        .toString();
+    return isolate(value, -1);
   }
 
-  private static boolean isIsolated(@NonNull String value) {
+  static StringInterpolator.@NonNull BoundedReplacementValue isolatedValue(@NonNull Object value,
+                                                                             int maximumOutputCharacters) {
     requireNonNull(value);
 
-    if (value.length() < 2 || !isIsolateInitiator(value.charAt(0)))
+    if (maximumOutputCharacters <= 0)
+      throw new IllegalArgumentException("maximumOutputCharacters must be positive");
+
+    return new BoundedIsolatedValue(value, maximumOutputCharacters);
+  }
+
+  @NonNull
+  static String isolate(@NonNull CharSequence value, int maximumCharacters) {
+    return isolate(value, maximumCharacters, maximumCharacters);
+  }
+
+  @NonNull
+  private static String isolate(@NonNull CharSequence value, int maximumCharacters,
+                                int reportedMaximumCharacters) {
+    requireNonNull(value);
+
+    if (maximumCharacters < -1)
+      throw new IllegalArgumentException("maximumCharacters must be non-negative or -1 for no limit");
+
+    int valueLength = value.length();
+
+    // Reject before scanning or materializing an oversized CharSequence. Although balancing could discard stray pop
+    // markers, processing an arbitrarily large value to discover that fact would defeat the runtime work limit.
+    if (maximumCharacters >= 0 && valueLength > maximumCharacters)
+      throw outputLimitExceeded(reportedMaximumCharacters);
+
+    if (valueLength == 0)
+      return "";
+
+    if (isIsolated(value, valueLength)) {
+      if (value instanceof String)
+        return (String) value;
+
+      // Materialize through the bounded CharSequence contract instead of invoking application-defined toString().
+      StringBuilder isolatedValue = new StringBuilder(valueLength);
+
+      for (int i = 0; i < valueLength; ++i)
+        appendChecked(isolatedValue, value.charAt(i), maximumCharacters, reportedMaximumCharacters);
+
+      return isolatedValue.toString();
+    }
+
+    int initialCapacity = maximumCharacters < 0
+        ? valueLength
+        : Math.min(valueLength, maximumCharacters);
+    StringBuilder stringBuilder = new StringBuilder(initialCapacity);
+    int isolateDepth = 0;
+
+    appendChecked(stringBuilder, FIRST_STRONG_ISOLATE, maximumCharacters, reportedMaximumCharacters);
+
+    for (int i = 0; i < valueLength; ++i) {
+      char character = value.charAt(i);
+
+      if (isIsolateInitiator(character)) {
+        ++isolateDepth;
+        appendChecked(stringBuilder, character, maximumCharacters, reportedMaximumCharacters);
+      } else if (character == POP_DIRECTIONAL_ISOLATE) {
+        if (isolateDepth > 0) {
+          --isolateDepth;
+          appendChecked(stringBuilder, character, maximumCharacters, reportedMaximumCharacters);
+        }
+      } else {
+        appendChecked(stringBuilder, character, maximumCharacters, reportedMaximumCharacters);
+      }
+    }
+
+    for (int i = 0; i < isolateDepth; ++i)
+      appendChecked(stringBuilder, POP_DIRECTIONAL_ISOLATE, maximumCharacters, reportedMaximumCharacters);
+
+    appendChecked(stringBuilder, POP_DIRECTIONAL_ISOLATE, maximumCharacters, reportedMaximumCharacters);
+    return stringBuilder.toString();
+  }
+
+  private static boolean isIsolated(@NonNull CharSequence value, int valueLength) {
+    requireNonNull(value);
+
+    if (valueLength < 2 || !isIsolateInitiator(value.charAt(0)))
       return false;
 
     int isolateDepth = 0;
 
-    for (int i = 0; i < value.length(); ++i) {
+    for (int i = 0; i < valueLength; ++i) {
       char character = value.charAt(i);
 
       if (isIsolateInitiator(character)) {
@@ -96,7 +164,7 @@ final class BidiUtils {
         if (isolateDepth < 0)
           return false;
 
-        if (isolateDepth == 0 && i < value.length() - 1)
+        if (isolateDepth == 0 && i < valueLength - 1)
           return false;
       }
     }
@@ -104,36 +172,52 @@ final class BidiUtils {
     return isolateDepth == 0;
   }
 
+  private static void appendChecked(@NonNull StringBuilder target, char value, int maximumCharacters,
+                                    int reportedMaximumCharacters) {
+    requireNonNull(target);
+
+    if (maximumCharacters >= 0 && target.length() >= maximumCharacters)
+      throw outputLimitExceeded(reportedMaximumCharacters);
+
+    target.append(value);
+  }
+
   @NonNull
-  private static String balanceEmbeddedIsolates(@NonNull String value) {
-    requireNonNull(value);
-
-    StringBuilder stringBuilder = new StringBuilder(value.length());
-    int isolateDepth = 0;
-
-    for (int i = 0; i < value.length(); ++i) {
-      char character = value.charAt(i);
-
-      if (isIsolateInitiator(character)) {
-        ++isolateDepth;
-        stringBuilder.append(character);
-      } else if (character == POP_DIRECTIONAL_ISOLATE) {
-        if (isolateDepth > 0) {
-          --isolateDepth;
-          stringBuilder.append(character);
-        }
-      } else {
-        stringBuilder.append(character);
-      }
-    }
-
-    for (int i = 0; i < isolateDepth; ++i)
-      stringBuilder.append(POP_DIRECTIONAL_ISOLATE);
-
-    return stringBuilder.toString();
+  private static IllegalStateException outputLimitExceeded(int maximumCharacters) {
+    return new IllegalStateException(format(
+        "Interpolated output exceeds the maximum of %d characters", maximumCharacters));
   }
 
   private static boolean isIsolateInitiator(char character) {
     return character == LEFT_TO_RIGHT_ISOLATE || character == RIGHT_TO_LEFT_ISOLATE || character == FIRST_STRONG_ISOLATE;
+  }
+
+  private static final class BoundedIsolatedValue implements StringInterpolator.BoundedReplacementValue {
+    @NonNull
+    private final Object value;
+    private final int maximumOutputCharacters;
+    private String renderedValue;
+
+    private BoundedIsolatedValue(@NonNull Object value, int maximumOutputCharacters) {
+      this.value = requireNonNull(value);
+      this.maximumOutputCharacters = maximumOutputCharacters;
+    }
+
+    @Override
+    @NonNull
+    public synchronized CharSequence render(int maximumCharacters) {
+      if (renderedValue != null) {
+        if (maximumCharacters >= 0 && renderedValue.length() > maximumCharacters)
+          throw outputLimitExceeded(maximumOutputCharacters);
+
+        return renderedValue;
+      }
+
+      CharSequence characterSequence = value instanceof CharSequence
+          ? (CharSequence) value
+          : String.valueOf(value);
+      renderedValue = isolate(characterSequence, maximumCharacters, maximumOutputCharacters);
+      return renderedValue;
+    }
   }
 }

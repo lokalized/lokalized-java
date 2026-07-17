@@ -27,12 +27,14 @@ import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.AbstractSet;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -228,16 +230,36 @@ class DefaultStrings implements Strings {
 		if (suppliedLocalizedStringsByLocale == null)
 			suppliedLocalizedStringsByLocale = Collections.emptyMap();
 
-		// Defensive copy of iterator to unmodifiable set
-		Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = suppliedLocalizedStringsByLocale.entrySet().stream()
-				.collect(Collectors.toMap(
-						entry -> entry.getKey(),
-						entry -> {
-							Set<@NonNull LocalizedString> localizedStrings = new LinkedHashSet<>();
-							entry.getValue().forEach(localizedStrings::add);
-							return Collections.unmodifiableSet(localizedStrings);
-						}
-				));
+		// Preserve insertion order without structurally hashing LocalizedString graphs. A deep graph can overflow while
+		// hashing, and a shared DAG can make recursive hashing exponentially expensive even when its depth is valid.
+		Map<@NonNull Locale, @NonNull List<@NonNull LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+
+		for (Entry<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>> entry :
+				suppliedLocalizedStringsByLocale.entrySet()) {
+			Locale locale = entry.getKey();
+
+			if (locale == null)
+				throw new IllegalArgumentException("Null locale encountered in supplied localized strings");
+
+			Iterable<@NonNull LocalizedString> suppliedLocalizedStrings = entry.getValue();
+
+			if (suppliedLocalizedStrings == null)
+				throw new IllegalArgumentException(format(
+						"Null localized strings iterable encountered for locale '%s'", locale.toLanguageTag()));
+
+			List<@NonNull LocalizedString> validatedLocalizedStrings = new ArrayList<>();
+
+			for (LocalizedString localizedString : suppliedLocalizedStrings) {
+				if (localizedString == null)
+					throw new IllegalArgumentException(format(
+							"Null localized string encountered for locale '%s'", locale.toLanguageTag()));
+
+				validateLocalizedString(locale, localizedString);
+				validatedLocalizedStrings.add(localizedString);
+			}
+
+			localizedStringsByLocale.put(locale, Collections.unmodifiableList(validatedLocalizedStrings));
+		}
 
 		List<@NonNull Locale> equivalentFallbackLocales = localizedStringsByLocale.keySet().stream()
 				.filter(locale -> CldrLocaleData.equivalent(locale, fallbackLocale))
@@ -251,8 +273,6 @@ class DefaultStrings implements Strings {
 							.map(locale -> locale.toLanguageTag())
 							.sorted()
 							.collect(Collectors.joining(", "))));
-
-		this.localizedStringsByLocale = Collections.unmodifiableMap(localizedStringsByLocale);
 
 		// Make our own mapping of tiebreakers based on the provided mapping.
 		// First, defensive copy, then add to the map as needed below.
@@ -382,34 +402,37 @@ class DefaultStrings implements Strings {
 
 		Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull LocalizedString>> localizedStringsByKeyByLocale =
 				new HashMap<>(localizedStringsByLocale.size());
+		Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> inspectedLocalizedStringsByLocale =
+				new LinkedHashMap<>();
 		Map<@NonNull LocalizedString, @NonNull CompiledExpression> compiledExpressionsByAlternative =
 				new IdentityHashMap<>();
 		Map<@NonNull ExpressionAlternative, @NonNull CompiledExpression> compiledExpressionsByFragmentAlternative =
 				new IdentityHashMap<>();
 		Set<@NonNull LocalizedString> compiledLocalizedStrings = Collections.newSetFromMap(new IdentityHashMap<>());
 
-		for (Entry<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
+		for (Entry<@NonNull Locale, @NonNull List<@NonNull LocalizedString>> entry : localizedStringsByLocale.entrySet()) {
 			Locale locale = entry.getKey();
 			Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey = new LinkedHashMap<>();
 
 			for (LocalizedString localizedString : entry.getValue()) {
-				if (localizedString == null)
-					throw new IllegalArgumentException(format("Null localized string encountered for locale '%s'", locale.toLanguageTag()));
-
-				validateLocalizedString(locale, localizedString);
 				String key = localizedString.getKey();
-				compileExpressions(localizedString, locale, key, key, compiledExpressionsByAlternative,
-						compiledExpressionsByFragmentAlternative, compiledLocalizedStrings);
-
 				LocalizedString existing = localizedStringsByKey.putIfAbsent(key, localizedString);
 
 				if (existing != null)
 					throw new IllegalArgumentException(format("Duplicate localized string key '%s' encountered for locale '%s'", key, locale.toLanguageTag()));
+
+				compileExpressions(localizedString, locale, key, key, compiledExpressionsByAlternative,
+						compiledExpressionsByFragmentAlternative, compiledLocalizedStrings);
 			}
 
-			localizedStringsByKeyByLocale.put(locale, Collections.unmodifiableMap(localizedStringsByKey));
+			Map<@NonNull String, @NonNull LocalizedString> immutableLocalizedStringsByKey =
+					Collections.unmodifiableMap(localizedStringsByKey);
+			localizedStringsByKeyByLocale.put(locale, immutableLocalizedStringsByKey);
+			inspectedLocalizedStringsByLocale.put(locale,
+					Collections.unmodifiableSet(new LocalizedStringSet(immutableLocalizedStringsByKey)));
 		}
 
+		this.localizedStringsByLocale = Collections.unmodifiableMap(inspectedLocalizedStringsByLocale);
 		this.localizedStringsByKeyByLocale = Collections.unmodifiableMap(localizedStringsByKeyByLocale);
 		this.compiledExpressionsByAlternative = Collections.unmodifiableMap(compiledExpressionsByAlternative);
 		this.compiledExpressionsByFragmentAlternative =
@@ -1037,7 +1060,11 @@ class DefaultStrings implements Strings {
 						phonetic = (Phonetic) value;
 					} else if (value instanceof CharSequence) {
 						PhoneticResolver resolver = getPhoneticResolver();
-						phonetic = resolver.resolve(value.toString(), locale);
+						String term = CharSequenceUtils.toString((CharSequence) value,
+								getRuntimeLimits().getMaximumInterpolatedOutputCharacters(),
+								format("Phonetic input for placeholder '%s' in key '%s'",
+										languageFormTranslation.getValue().get(), key));
+						phonetic = resolver.resolve(term, locale);
 
 						if (phonetic == null)
 							throw new IllegalArgumentException(format("%s returned null for placeholder '%s' in key '%s'",
@@ -1238,7 +1265,8 @@ class DefaultStrings implements Strings {
 				Object value = unwrapOptional(immutableContext.get(placeholderName));
 
 				if (value != null && shouldApplyBidiIsolation(locale, bidiIsolation))
-					value = BidiUtils.isolate(value.toString());
+					value = BidiUtils.isolatedValue(value,
+							getRuntimeLimits().getMaximumInterpolatedOutputCharacters());
 
 				interpolationContext.put(placeholderName, value);
 			}
@@ -1276,7 +1304,8 @@ class DefaultStrings implements Strings {
 				Object value = unwrapOptional(immutableContext.get(placeholderName));
 
 				if (value != null && shouldApplyBidiIsolation(locale, bidiIsolation))
-					value = BidiUtils.isolate(value.toString());
+					value = BidiUtils.isolatedValue(value,
+							getRuntimeLimits().getMaximumInterpolatedOutputCharacters());
 
 				interpolationContext.put(placeholderName, value);
 			}
@@ -2250,6 +2279,41 @@ class DefaultStrings implements Strings {
 
 		@NonNull private Locale getLocale() { return locale; }
 		@Nullable private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
+	}
+
+	/**
+	 * Insertion-ordered set view backed by the already key-validated localized-string map.
+	 * Construction and iteration never invoke structural {@link LocalizedString#hashCode()}.
+	 */
+	@Immutable
+	private static final class LocalizedStringSet extends AbstractSet<@NonNull LocalizedString> {
+		@NonNull private final Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey;
+
+		private LocalizedStringSet(
+				@NonNull Map<@NonNull String, @NonNull LocalizedString> localizedStringsByKey) {
+			this.localizedStringsByKey = requireNonNull(localizedStringsByKey);
+		}
+
+		@Override
+		@NonNull
+		public Iterator<@NonNull LocalizedString> iterator() {
+			return localizedStringsByKey.values().iterator();
+		}
+
+		@Override
+		public int size() {
+			return localizedStringsByKey.size();
+		}
+
+		@Override
+		public boolean contains(@Nullable Object value) {
+			if (!(value instanceof LocalizedString))
+				return false;
+
+			LocalizedString localizedString = (LocalizedString) value;
+			LocalizedString candidate = localizedStringsByKey.get(localizedString.getKey());
+			return localizedString.equals(candidate);
+		}
 	}
 
 	private void throwExceptionFor(@NonNull TranslationFailure translationFailure, @NonNull String message) {

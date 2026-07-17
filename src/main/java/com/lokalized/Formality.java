@@ -32,6 +32,8 @@ import java.util.stream.Collectors;
 public enum Formality implements LanguageForm {
   /**
    * Casual register.
+   *
+   * @since 2.1.0
    */
   CASUAL,
   /**
@@ -44,6 +46,8 @@ public enum Formality implements LanguageForm {
   FORMAL,
   /**
    * Humble register.
+   *
+   * @since 2.1.0
    */
   HUMBLE,
   /**

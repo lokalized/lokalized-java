@@ -110,6 +110,8 @@ public enum Cardinality implements LanguageForm {
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
    * <p>
    * If you do not provide a {@link BigDecimal} and wish to manually specify the number of visible decimals, use {@link #forNumber(Number, Integer, Locale)} instead.
+   * Supported {@link Number} implementations and their conversion semantics are documented by
+   * {@link PluralOperands#forNumber(Number)}.
    * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
    * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
    * {@link #forOperands(PluralOperands, Locale)}.
@@ -121,7 +123,8 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
-   * @throws IllegalArgumentException if the number exceeds the safety limits documented by {@link PluralOperands}
+   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
+   *                                  number exceeds the safety limits documented by {@link PluralOperands}
    */
   @NonNull
   public static Cardinality forNumber(@NonNull Number number, @NonNull Locale locale) {
@@ -140,6 +143,8 @@ public enum Cardinality implements LanguageForm {
    * Note that if trailing zeroes are important, e.g. {@code 1.00} instead of {@code 1}, you must either specify a {@link BigDecimal} with appropriate
    * scale or supply a non-null {@code visibleDecimalPlaces} value.
    * Reducing the number's scale does not round implicitly; callers must supply an already-rounded value.
+   * Supported {@link Number} implementations and their conversion semantics are documented by
+   * {@link PluralOperands#forNumber(Number)}.
    * This convenience method uses {@link TranslationRuntimeLimits#defaults()}. To apply different limits, construct
    * {@link PluralOperands} with {@link PluralOperands.Builder#runtimeLimits(TranslationRuntimeLimits)} and call
    * {@link #forOperands(PluralOperands, Locale)}.
@@ -153,7 +158,8 @@ public enum Cardinality implements LanguageForm {
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    * @throws ArithmeticException if the requested visible decimal places would require rounding
-   * @throws IllegalArgumentException if the number or visible decimal places exceeds the safety limits documented by
+   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
+   *                                  number or visible decimal places exceeds the safety limits documented by
    *                                  {@link PluralOperands}
    */
   @NonNull
@@ -177,6 +183,7 @@ public enum Cardinality implements LanguageForm {
    * @param locale   the locale that drives pluralization, not null
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @since 3.0.0
    */
   @NonNull
   public static Cardinality forOperands(@NonNull PluralOperands operands, @NonNull Locale locale) {
@@ -271,6 +278,7 @@ public enum Cardinality implements LanguageForm {
    * The set's values are sorted by natural string ordering.
    *
    * @return the BCP 47 locale tags represented directly in the generated CLDR cardinality-rule data, not null
+   * @since 3.0.0
    */
   @NonNull
   public static SortedSet<@NonNull String> getSupportedLocaleTags() {

@@ -33,6 +33,7 @@ import static java.util.Objects.requireNonNull;
  */
 @NotThreadSafe
 public class UnsupportedLocaleException extends RuntimeException {
+  /** The unsupported locale that triggered this exception. */
   @NonNull
   private final Locale locale;
 

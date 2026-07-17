@@ -141,7 +141,6 @@
                     <charset>UTF-8</charset>
                     <additionalOptions>
                         <additionalOption>-XDignore.symbol.file</additionalOption>
-                        <additionalOption>-Xdoclint:-html</additionalOption>
                     </additionalOptions>
                     <linksource>true</linksource>
                     <legacyMode>true</legacyMode>

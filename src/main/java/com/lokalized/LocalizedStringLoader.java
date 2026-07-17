@@ -228,6 +228,7 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
@@ -242,6 +243,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull String classpathPackage,
@@ -256,6 +258,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
@@ -278,6 +281,7 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
@@ -293,6 +297,7 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
@@ -310,6 +315,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(@NonNull ClassLoader classLoader,
@@ -327,6 +333,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspath(
@@ -426,6 +433,7 @@ public final class LocalizedStringLoader {
    *
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -439,6 +447,7 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -453,6 +462,7 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -468,6 +478,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -483,6 +494,7 @@ public final class LocalizedStringLoader {
    * @param classLoader classloader from which to open resources, not null
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -498,6 +510,7 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -514,6 +527,7 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -531,6 +545,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromClasspathResources(
@@ -800,6 +815,7 @@ public final class LocalizedStringLoader {
    * @param directory      directory in which to search, not null
    * @param loadingOptions resource limits to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(
@@ -814,6 +830,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(@NonNull Path directory,
@@ -828,6 +845,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @since 3.0.0
    */
   @NonNull
   public static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> loadFromFilesystem(
@@ -846,6 +864,7 @@ public final class LocalizedStringLoader {
    * @param locale locale represented by the file, not null
    * @return localized strings contained in the file, not null
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Path path, @NonNull Locale locale) {
@@ -861,6 +880,7 @@ public final class LocalizedStringLoader {
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the file, not null
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Path path, @NonNull Locale locale,
@@ -881,6 +901,7 @@ public final class LocalizedStringLoader {
    * @param source      human-readable source identifier used in diagnostics, not null
    * @return localized strings contained in the resource, not null
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull InputStream inputStream, @NonNull Locale locale,
@@ -900,6 +921,7 @@ public final class LocalizedStringLoader {
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the resource, not null
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull InputStream inputStream, @NonNull Locale locale,
@@ -923,6 +945,7 @@ public final class LocalizedStringLoader {
    * @param source human-readable source identifier used in diagnostics, not null
    * @return localized strings contained in the resource, not null
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Reader reader, @NonNull Locale locale,
@@ -941,6 +964,7 @@ public final class LocalizedStringLoader {
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the resource, not null
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
+   * @since 3.0.0
    */
   @NonNull
   public static Set<@NonNull LocalizedString> parse(@NonNull Reader reader, @NonNull Locale locale,
@@ -2362,7 +2386,7 @@ public final class LocalizedStringLoader {
 
     if (!LocalizedStringUtils.isValidLocalizedStringIdentifier(placeholderName))
       throw new LocalizedStringLoadingException(format("%s: invalid %s '%s'. Placeholder names must start with a Unicode letter or underscore " +
-          "and contain only Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens. Key is '%s'",
+          "and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is '%s'",
           canonicalPath, description, placeholderName, key));
 
     if (SUPPORTED_LANGUAGE_FORMS_BY_NAME.containsKey(placeholderName))

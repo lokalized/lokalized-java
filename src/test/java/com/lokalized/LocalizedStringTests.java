@@ -181,6 +181,34 @@ public class LocalizedStringTests {
   }
 
   @Test
+  public void localizedStringEqualityAndHashingAreIterativeForDeepGraphs() {
+    LocalizedString first = new LocalizedString.Builder("count == 1").translation("leaf").build();
+    LocalizedString second = new LocalizedString.Builder("count == 1").translation("leaf").build();
+
+    for (int depth = 0; depth < 5_000; ++depth) {
+      first = new LocalizedString.Builder("count == 1").alternatives(List.of(first)).build();
+      second = new LocalizedString.Builder("count == 1").alternatives(List.of(second)).build();
+    }
+
+    assertEquals(first, second);
+    assertEquals(first.hashCode(), second.hashCode());
+  }
+
+  @Test
+  public void localizedStringHashingMemoizesSharedAlternativeDags() {
+    LocalizedString first = new LocalizedString.Builder("count == 1").translation("leaf").build();
+    LocalizedString second = new LocalizedString.Builder("count == 1").translation("leaf").build();
+
+    for (int depth = 0; depth < 120; ++depth) {
+      first = new LocalizedString.Builder("count == 1").alternatives(List.of(first, first)).build();
+      second = new LocalizedString.Builder("count == 1").alternatives(List.of(second, second)).build();
+    }
+
+    assertEquals(first, second);
+    assertEquals(first.hashCode(), second.hashCode());
+  }
+
+  @Test
   public void expressionValueTypesRejectInvalidConstructorArguments() {
     assertThrows(NullPointerException.class, () -> new ExpressionTranslation(null));
     assertThrows(NullPointerException.class, () -> new ExpressionTranslation("default", null));

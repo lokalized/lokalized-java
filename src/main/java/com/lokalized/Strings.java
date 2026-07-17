@@ -69,6 +69,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param key     the localization key, not null
 	 * @param options per-invocation options, not null
 	 * @return a localized string for the key, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	String get(@NonNull String key, @NonNull TranslationOptions options);
@@ -94,6 +95,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param placeholders the placeholders to insert into the string, may be null
 	 * @param options      per-invocation options, not null
 	 * @return a localized string for the key, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	String get(@NonNull String key,
@@ -105,6 +107,7 @@ public interface Strings extends LocaleMatcher {
 	 *
 	 * @param key localization key, not null
 	 * @return translation result, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	default TranslationResult getResult(@NonNull String key) {
@@ -117,6 +120,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param key     localization key, not null
 	 * @param options per-invocation options, not null
 	 * @return translation result, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	default TranslationResult getResult(@NonNull String key, @NonNull TranslationOptions options) {
@@ -129,6 +133,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param key          localization key, not null
 	 * @param placeholders caller-supplied placeholders, may be null
 	 * @return translation result, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	default TranslationResult getResult(@NonNull String key,
@@ -150,6 +155,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param placeholders caller-supplied placeholders, may be null
 	 * @param options      per-invocation options, not null
 	 * @return translation result, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	TranslationResult getResult(@NonNull String key,
@@ -160,6 +166,7 @@ public interface Strings extends LocaleMatcher {
 	 * Gets the locales for which localized strings were supplied.
 	 *
 	 * @return the supported locales, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	Set<@NonNull Locale> getSupportedLocales();
@@ -170,6 +177,7 @@ public interface Strings extends LocaleMatcher {
 	 * @param locale locale to inspect, not null
 	 * @return the localized string keys for the locale, not null
 	 * @throws IllegalArgumentException if the locale is not supported
+	 * @since 3.0.0
 	 */
 	@NonNull
 	Set<@NonNull String> getKeysForLocale(@NonNull Locale locale);
@@ -181,13 +189,13 @@ public interface Strings extends LocaleMatcher {
 	 * @param targetLocale locale whose keys are compared against the source set, not null
 	 * @return keys present in {@code sourceLocale} and missing from {@code targetLocale}, not null
 	 * @throws IllegalArgumentException if either locale is not supported
+	 * @since 3.0.0
 	 */
 	@NonNull
 	Set<@NonNull String> getMissingKeys(@NonNull Locale sourceLocale, @NonNull Locale targetLocale);
 
 	/**
 	 * Vends a {@link Strings} instance builder for the specified fallback locale.
-	 * <p>
 	 * <pre>{@code
 	 * Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 	 *     .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -209,6 +217,7 @@ public interface Strings extends LocaleMatcher {
 	 * This class is intended for use by a single thread.
 	 *
 	 * @author <a href="https://revetkn.com">Mark Allen</a>
+	 * @since 3.0.0
 	 */
 	@NotThreadSafe
 	class Builder {
@@ -357,7 +366,8 @@ public interface Strings extends LocaleMatcher {
 		 * Expression limits apply to both whole-message alternatives and
 		 * {@link LocalizedString.ExpressionAlternative expression-fragment alternatives}. Generated-placeholder depth and
 		 * expansion limits are shared by {@link LocalizedString.LanguageFormTranslation language-form} and
-		 * {@link LocalizedString.ExpressionTranslation expression-selected} fragments.
+		 * {@link LocalizedString.ExpressionTranslation expression-selected} fragments. The interpolated-output limit also
+		 * bounds caller-supplied {@link CharSequence} values materialized for phonetic resolution.
 		 *
 		 * @param runtimeLimits runtime limits, may be null to use the library defaults
 		 * @return this builder, not null
@@ -388,6 +398,8 @@ public interface Strings extends LocaleMatcher {
 		 * Constructs a {@link Strings} instance.
 		 *
 		 * @return a {@link Strings} instance, not null
+		 * @throws IllegalArgumentException if supplied localized strings are invalid, including an alternative graph nested
+		 *                                  more than 128 levels deep
 		 */
 		@NonNull
 		public Strings build() {

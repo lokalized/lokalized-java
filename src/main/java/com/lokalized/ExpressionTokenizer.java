@@ -35,6 +35,8 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Breaks an expression into its {@link Token} components.
+ * ASCII space, horizontal tab, carriage return, line feed, and form feed characters are ignored between tokens.
+ * Other whitespace and separator characters are rejected.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -49,11 +51,7 @@ class ExpressionTokenizer {
   @NonNull
   private static final String WHITESPACE_GROUP_NAME = "WHITESPACE";
   @NonNull
-  private static final String WHITESPACE_GROUP_PATTERN = "\\p{Space}";
-  @NonNull
-  private static final String ERROR_GROUP_NAME = "ERROR";
-  @NonNull
-  private static final String ERROR_GROUP_PATTERN = ".+";
+  private static final String WHITESPACE_GROUP_PATTERN = "[ \\t\\r\\n\\f]";
 
   static {
     // Performs double-duty: keyset maintains insertion order so the regexes are always attempted in correct order.
@@ -146,8 +144,6 @@ class ExpressionTokenizer {
       tokenPatterns.append(format("|(?<%s>%s)", GROUP_NAMES_BY_TOKEN_TYPE.get(entry.getKey()),
           entry.getValue()));
 
-    tokenPatterns.append(format("|(?<%s>%s)", ERROR_GROUP_NAME, ERROR_GROUP_PATTERN));
-
     // Compile and cache pattern for performance
     TOKEN_PATTERN = Pattern.compile(tokenPatterns.toString());
   }
@@ -164,8 +160,14 @@ class ExpressionTokenizer {
 
     List<@NonNull Token> tokens = new ArrayList<>();
     Matcher matcher = TOKEN_PATTERN.matcher(expression);
+    int position = 0;
 
-    while (matcher.find()) {
+    while (position < expression.length()) {
+      matcher.region(position, expression.length());
+
+      if (!matcher.lookingAt())
+        throw unexpectedContent(expression, position);
+
       for (TokenType tokenType : PATTERNS_BY_TOKEN_TYPE.keySet()) {
         String group = matcher.group(GROUP_NAMES_BY_TOKEN_TYPE.get(tokenType));
 
@@ -173,24 +175,26 @@ class ExpressionTokenizer {
           tokens.add(tokenFor(tokenType, group));
       }
 
-      if (matcher.group(WHITESPACE_GROUP_NAME) != null)
-        continue;
-
-      if (matcher.group(ERROR_GROUP_NAME) != null) {
-        String errorGroup = matcher.group(ERROR_GROUP_NAME);
-
-        String errorMessage =
-            format("Unexpected content '%s' encountered while evaluating expression '%s'.", errorGroup, expression);
-
-        // Special message for common error of using "=" instead of "==" for equality checks
-        if (errorGroup.startsWith("="))
-          errorMessage = format("%s Did you mean '=%s'?", errorMessage, errorGroup);
-
-        throw new ExpressionEvaluationException(errorMessage);
-      }
+      position = matcher.end();
     }
 
     return tokens;
+  }
+
+  @NonNull
+  private static ExpressionEvaluationException unexpectedContent(@NonNull String expression, int position) {
+    requireNonNull(expression);
+
+    int codePoint = expression.codePointAt(position);
+    String errorMessage = format(
+        "Unexpected code point U+%04X at index %d while evaluating expression '%s'.",
+        codePoint, position, expression);
+
+    // Special message for the common error of using "=" instead of "==" for equality checks.
+    if (codePoint == '=')
+      errorMessage = format("%s Did you mean '=='?", errorMessage);
+
+    return new ExpressionEvaluationException(errorMessage);
   }
 
   @NonNull

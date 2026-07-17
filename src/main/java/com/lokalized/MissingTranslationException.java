@@ -40,16 +40,22 @@ import static java.util.Objects.requireNonNull;
  */
 @NotThreadSafe
 public class MissingTranslationException extends RuntimeException {
+	/** Translation key that could not be resolved. */
 	@NonNull
 	private final String key;
+	/** Locale used to begin per-key locale fallback. */
 	@NonNull
 	private final Locale lookupLocale;
+	/** Locale-negotiation diagnostics, when available. */
 	@NonNull
 	private final Optional<@NonNull LocaleMatchResult> localeMatchResult;
+	/** Caller-supplied placeholders for the failed translation attempt. */
 	@NonNull
 	private final Map<@NonNull String, @Nullable Object> placeholders;
+	/** Final reason that the translation attempt failed. */
 	@NonNull
 	private final TranslationFailureReason reason;
+	/** Ordered locales attempted before the failure. */
 	@NonNull
 	private final List<@NonNull Locale> attemptedLocales;
 
@@ -80,6 +86,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param attemptedLocales ordered locales attempted, not null
 	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
 	 *                                  duplicates
+	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
 																 @NonNull String key,
@@ -102,6 +109,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param attemptedLocales ordered locales attempted, not null
 	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
 	 *                                  duplicates
+	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
 																	 @NonNull String key,
@@ -161,25 +169,41 @@ public class MissingTranslationException extends RuntimeException {
 	 * The locale used to begin per-key locale fallback.
 	 *
 	 * @return the locale, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	public Locale getLookupLocale() {
 		return this.lookupLocale;
 	}
 
-	/** @return strict locale-negotiation diagnostics when available, otherwise empty, not null */
+	/**
+	 * Gets strict locale-negotiation diagnostics when available.
+	 *
+	 * @return strict locale-negotiation diagnostics when available, otherwise empty, not null
+	 * @since 3.0.0
+	 */
 	@NonNull
 	public Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
 		return localeMatchResult;
 	}
 
-	/** @return final failure reason, not null */
+	/**
+	 * Gets the final failure reason.
+	 *
+	 * @return final failure reason, not null
+	 * @since 3.0.0
+	 */
 	@NonNull
 	public TranslationFailureReason getReason() {
 		return reason;
 	}
 
-	/** @return ordered locales attempted before failure, not null */
+	/**
+	 * Gets the ordered locales attempted before failure.
+	 *
+	 * @return ordered locales attempted before failure, not null
+	 * @since 3.0.0
+	 */
 	@NonNull
 	public List<@NonNull Locale> getAttemptedLocales() {
 		return attemptedLocales;

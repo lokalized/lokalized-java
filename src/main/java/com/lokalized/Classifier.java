@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
  * systems while remaining small enough to be practical in application code.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 2.1.0
  */
 public enum Classifier implements LanguageForm {
   /**

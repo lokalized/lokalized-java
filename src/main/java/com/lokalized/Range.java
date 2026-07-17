@@ -54,6 +54,7 @@ import static java.util.Objects.requireNonNull;
  * <li>{@code Range.emptyInfiniteRange()}</li>
  * </ul>
  *
+ * @param <T> the type of values contained in the range
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @Immutable
@@ -226,6 +227,7 @@ public final class Range<T> implements Iterable<@NonNull T> {
    * Gets whether this range is infinite.
    *
    * @return whether this range's pattern repeats indefinitely, not null
+   * @since 3.0.0
    */
   @NonNull
   public Boolean isInfinite() {

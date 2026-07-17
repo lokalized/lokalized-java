@@ -45,13 +45,15 @@ public class StringInterpolatorTests {
   @Test
   public void unicodePlaceholderNames() {
     StringInterpolator interpolator = new StringInterpolator();
-    String result = interpolator.interpolate("Bonjour {{caféCount}} et {{количество2}} et {{नाम}}", Map.of(
+    String result = interpolator.interpolate(
+        "Bonjour {{caféCount}} et {{количество2}} et {{नाम}} et {{a\u20DD\u216B\u00B2}}", Map.of(
         "caféCount", 1,
         "количество2", 2,
-        "नाम", 3
+        "नाम", 3,
+        "a\u20DD\u216B\u00B2", 4
     ));
 
-    assertEquals("Bonjour 1 et 2 et 3", result);
+    assertEquals("Bonjour 1 et 2 et 3 et 4", result);
   }
 
   @Test
@@ -71,6 +73,16 @@ public class StringInterpolatorTests {
     assertEquals("Hi Ada", interpolator.interpolate("Hi {{name}}", Map.of("name", "Ada"), 6));
     assertThrows(IllegalStateException.class,
         () -> interpolator.interpolate("Hi {{name}}", Map.of("name", "Ada"), 5));
+  }
+
+  @Test
+  public void boundedInterpolationChecksCharSequenceLengthBeforeMaterialization() {
+    StringInterpolator interpolator = new StringInterpolator();
+    CharSequence oversized = new UnmaterializableCharSequence(1_000_000);
+
+    IllegalStateException exception = assertThrows(IllegalStateException.class,
+        () -> interpolator.interpolate("{{value}}", Map.of("value", oversized), 4));
+    assertEquals("Interpolated output exceeds the maximum of 4 characters", exception.getMessage());
   }
 
   @Test
@@ -158,5 +170,33 @@ public class StringInterpolatorTests {
     assertThrows(IllegalArgumentException.class,
         () -> interpolator.interpolateStrictly("Hi {{ name }}", Map.of()),
         "Expected placeholder names with spaces to be rejected");
+  }
+
+  private static final class UnmaterializableCharSequence implements CharSequence {
+    private final int length;
+
+    private UnmaterializableCharSequence(int length) {
+      this.length = length;
+    }
+
+    @Override
+    public int length() {
+      return length;
+    }
+
+    @Override
+    public char charAt(int index) {
+      throw new AssertionError("Oversized input must be rejected before scanning");
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+      throw new AssertionError("Oversized input must be rejected before slicing");
+    }
+
+    @Override
+    public String toString() {
+      throw new AssertionError("Oversized input must be rejected before materialization");
+    }
   }
 }

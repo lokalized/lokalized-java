@@ -132,43 +132,71 @@ public final class TranslationResult {
 			throw new IllegalArgumentException("A failure result must carry a cause if and only if its reason is RESOLUTION_FAILURE");
 	}
 
-	/** @return translation key, not null */
+	/**
+	 * Gets the translation key.
+	 *
+	 * @return translation key, not null
+	 */
 	@NonNull
 	public String getKey() {
 		return key;
 	}
 
-	/** @return returned translation, key, or handler-supplied string, not null */
+	/**
+	 * Gets the returned translation, key, or handler-supplied string.
+	 *
+	 * @return returned translation, key, or handler-supplied string, not null
+	 */
 	@NonNull
 	public String getTranslation() {
 		return translation;
 	}
 
-	/** @return locale used to begin per-key locale fallback after any negotiation, not null */
+	/**
+	 * Gets the locale used to begin per-key locale fallback after any negotiation.
+	 *
+	 * @return locale used to begin per-key locale fallback after any negotiation, not null
+	 */
 	@NonNull
 	public Locale getLookupLocale() {
 		return lookupLocale;
 	}
 
-	/** @return strict locale-negotiation diagnostics when available, otherwise empty, not null */
+	/**
+	 * Gets strict locale-negotiation diagnostics when available.
+	 *
+	 * @return strict locale-negotiation diagnostics when available, otherwise empty, not null
+	 */
 	@NonNull
 	public Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
 		return Optional.ofNullable(localeMatchResult);
 	}
 
-	/** @return locale that resolved successfully, or empty for a failure response, not null */
+	/**
+	 * Gets the locale that resolved successfully.
+	 *
+	 * @return locale that resolved successfully, or empty for a failure response, not null
+	 */
 	@NonNull
 	public Optional<@NonNull Locale> getResolvedLocale() {
 		return Optional.ofNullable(resolvedLocale);
 	}
 
-	/** @return ordered locales actually attempted, not null */
+	/**
+	 * Gets the ordered locales actually attempted.
+	 *
+	 * @return ordered locales actually attempted, not null
+	 */
 	@NonNull
 	public List<@NonNull Locale> getAttemptedLocales() {
 		return attemptedLocales;
 	}
 
-	/** @return how the returned string was produced, not null */
+	/**
+	 * Gets how the returned string was produced.
+	 *
+	 * @return how the returned string was produced, not null
+	 */
 	@NonNull
 	public TranslationResultStatus getStatus() {
 		return status;
@@ -189,6 +217,8 @@ public final class TranslationResult {
 	}
 
 	/**
+	 * Gets the first runtime resolution cause for a failed lookup.
+	 *
 	 * @return first runtime resolution cause for a failed lookup, including an evaluated expression-fragment or
 	 * selected/default fragment failure, otherwise empty, not null
 	 */
@@ -198,6 +228,8 @@ public final class TranslationResult {
 	}
 
 	/**
+	 * Reports whether negotiation or per-key resolution used a fallback.
+	 *
 	 * @return whether negotiation used the configured fallback or per-key resolution used a non-equivalent locale,
 	 * not null
 	 */

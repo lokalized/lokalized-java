@@ -450,6 +450,7 @@ final class MinimalJson {
   @SuppressWarnings("serial") // use default serial UID
   public static class JsonArray extends JsonValue implements Iterable<@NonNull JsonValue> {
 
+    /** Values stored in this array, in insertion order. */
     private final List<@NonNull JsonValue> values;
 
     /**
@@ -1259,7 +1260,9 @@ final class MinimalJson {
   @SuppressWarnings("serial") // use default serial UID
   public static class JsonObject extends JsonValue implements Iterable<@NonNull JsonObject.Member> {
 
+    /** Member names, in insertion order. */
     private final List<@NonNull String> names;
+    /** Member values, in insertion order and corresponding to {@link #names}. */
     private final List<@NonNull JsonValue> values;
     private transient HashIndexTable table;
 
@@ -1926,6 +1929,13 @@ final class MinimalJson {
       return names.lastIndexOf(name);
     }
 
+    /**
+     * Restores the transient member-name index after deserialization.
+     *
+     * @param inputStream serialized input, not null
+     * @throws IOException if the serialized input cannot be read
+     * @throws ClassNotFoundException if a serialized class cannot be resolved
+     */
     private synchronized void readObject(ObjectInputStream inputStream)
         throws IOException, ClassNotFoundException {
       inputStream.defaultReadObject();
@@ -3192,6 +3202,7 @@ final class MinimalJson {
   @SuppressWarnings("serial") // use default serial UID
   public static class ParseException extends RuntimeException {
 
+    /** Location at which parsing failed. */
     private final Location location;
 
     ParseException(String message, Location location) {

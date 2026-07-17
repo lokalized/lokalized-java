@@ -22,12 +22,20 @@ package com.lokalized;
  * @since 3.0.0
  */
 public enum LocaleMatchType {
+	/** No acceptable supported locale was found. */
 	NONE,
+	/** The requested and supported locale tags matched exactly. */
 	EXACT,
+	/** The requested and supported locale tags matched after canonicalization. */
 	CANONICAL,
+	/** The supported locale matched through a CLDR parent-locale fallback. */
 	CLDR_FALLBACK,
+	/** The requested and supported locales matched after likely-subtag expansion. */
 	LIKELY_SUBTAG,
+	/** The supported locale matched an RFC 4647 extended language range. */
 	EXTENDED_RANGE,
+	/** The requested and supported locales matched by primary language. */
 	PRIMARY_LANGUAGE,
+	/** The supported locale was selected by an acceptable wildcard range. */
 	WILDCARD
 }

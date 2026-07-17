@@ -34,6 +34,7 @@ import static java.lang.String.format;
  * code should normally only inspect them.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 public interface TranslationFailure {
 	/**

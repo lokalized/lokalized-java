@@ -20,6 +20,7 @@ package com.lokalized;
  * Reasons a localized string lookup can fail.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 public enum TranslationFailureReason {
 	/**

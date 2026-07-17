@@ -21,9 +21,16 @@ import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.Immutable;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAccumulator;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAccumulator;
+import java.util.concurrent.atomic.LongAdder;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -34,11 +41,21 @@ import static java.util.Objects.requireNonNull;
  * Most applications should use {@link Cardinality#forNumber(Number, java.util.Locale)} or
  * {@link Ordinality#forNumber(Number, java.util.Locale)}. Use this type when the displayed number has details that
  * are not fully represented by the Java {@link Number}, such as an explicitly visible decimal count or a compact-decimal exponent.
+ * <p>
+ * Supported number implementations are {@link BigDecimal}, {@link BigInteger}, the boxed JDK numeric types
+ * ({@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float}, and {@link Double}), and the JDK atomic
+ * numeric types ({@link AtomicInteger}, {@link AtomicLong}, {@link LongAdder}, {@link DoubleAdder},
+ * {@link LongAccumulator}, and {@link DoubleAccumulator}). Atomic values are sampled once when {@link Builder#build()}
+ * executes. Integral values are converted exactly. {@code Float} and {@code Double} values use their canonical decimal
+ * representation rather than the exact binary floating-point value. Non-finite floating-point values and unlisted
+ * {@code Number} implementations are rejected; callers with another numeric representation should convert it to a
+ * {@code BigDecimal} explicitly.
  * Builders use {@link TranslationRuntimeLimits#defaults()} unless
  * {@link Builder#runtimeLimits(TranslationRuntimeLimits)} supplies different limits. This is also how callers opt up
  * from the defaults to the hard ceilings exposed below.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @Immutable
 public final class PluralOperands {
@@ -158,6 +175,7 @@ public final class PluralOperands {
    * Creates a builder for CLDR plural operands backed by the given number.
    * <p>
    * Negative numbers are evaluated using their absolute value.
+   * The supported {@link Number} implementations and their conversion semantics are documented by this class.
    *
    * @param number the number that drives pluralization, not null
    * @return a plural-operands builder, not null
@@ -281,6 +299,8 @@ public final class PluralOperands {
 
   /**
    * Builder for {@link PluralOperands}.
+   *
+   * @since 3.0.0
    */
   public static final class Builder {
     @NonNull
@@ -321,7 +341,9 @@ public final class PluralOperands {
     /**
      * Specifies the compact-decimal exponent used by the CLDR {@code c} and {@code e} operands.
      * <p>
-     * For example, a compact display such as {@code 1M} may be evaluated with a compact exponent of {@code 6}.
+     * The number supplied to this builder is the displayed mantissa, not the expanded value. For example, a compact
+     * display such as {@code 1M} is represented by the number {@code 1} and a compact exponent of {@code 6}, not by the
+     * number {@code 1000000} and an exponent of {@code 6}.
      * The active {@link TranslationRuntimeLimits} determine the accepted maximum; the library default is
      * {@link TranslationRuntimeLimits#DEFAULT_MAXIMUM_COMPACT_EXPONENT} and the hard ceiling is
      * {@link #MAXIMUM_COMPACT_EXPONENT}.
@@ -354,8 +376,9 @@ public final class PluralOperands {
      *
      * @return immutable plural operands, not null
      * @throws ArithmeticException if the requested visible decimal places would require rounding
-     * @throws IllegalArgumentException if the number, visible decimal places, or compact exponent exceeds a supported
-     *                                  safety limit
+     * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
+     *                                  number, visible decimal places, or compact exponent exceeds a supported safety
+     *                                  limit
      */
     @NonNull
     public PluralOperands build() {

@@ -128,7 +128,11 @@ public final class LocalizedStringLoadingOptions {
 		return new Builder();
 	}
 
-	/** @return a builder initialized from this instance, not null */
+	/**
+	 * Creates a builder initialized from this instance.
+	 *
+	 * @return a builder initialized from this instance, not null
+	 */
 	@NonNull
 	public Builder toBuilder() {
 		return builder()
@@ -142,19 +146,31 @@ public final class LocalizedStringLoadingOptions {
 				.maximumWarnings(maximumWarnings);
 	}
 
-	/** @return the maximum bytes accepted from a path or input stream */
+	/**
+	 * Gets the maximum bytes accepted from a path or input stream.
+	 *
+	 * @return the maximum bytes accepted from a path or input stream
+	 */
 	@NonNull
 	public Integer getMaximumInputBytes() {
 		return maximumInputBytes;
 	}
 
-	/** @return the maximum UTF-16 code units accepted from a reader */
+	/**
+	 * Gets the maximum UTF-16 code units accepted from a reader.
+	 *
+	 * @return the maximum UTF-16 code units accepted from a reader
+	 */
 	@NonNull
 	public Integer getMaximumReaderCharacters() {
 		return maximumReaderCharacters;
 	}
 
-	/** @return the maximum JSON object/array nesting depth */
+	/**
+	 * Gets the maximum JSON object/array nesting depth.
+	 *
+	 * @return the maximum JSON object/array nesting depth
+	 */
 	@NonNull
 	public Integer getMaximumJsonNestingDepth() {
 		return maximumJsonNestingDepth;
@@ -182,7 +198,11 @@ public final class LocalizedStringLoadingOptions {
 		return maximumTotalInputBytes;
 	}
 
-	/** @return the maximum localized strings files accepted by one load, not null */
+	/**
+	 * Gets the maximum localized strings files accepted by one load.
+	 *
+	 * @return the maximum localized strings files accepted by one load, not null
+	 */
 	@NonNull
 	public Integer getMaximumLocalizedStringsFiles() {
 		return maximumLocalizedStringsFiles;
@@ -199,7 +219,11 @@ public final class LocalizedStringLoadingOptions {
 		return maximumTranslationNodes;
 	}
 
-	/** @return the maximum warnings emitted by one load, not null */
+	/**
+	 * Gets the maximum warnings emitted by one load.
+	 *
+	 * @return the maximum warnings emitted by one load, not null
+	 */
 	@NonNull
 	public Integer getMaximumWarnings() {
 		return maximumWarnings;
@@ -239,7 +263,11 @@ public final class LocalizedStringLoadingOptions {
 				maximumLocalizedStringsFiles, maximumTranslationNodes, maximumWarnings);
 	}
 
-	/** Builder for {@link LocalizedStringLoadingOptions}. */
+	/**
+	 * Builder for {@link LocalizedStringLoadingOptions}.
+	 *
+	 * @since 3.0.0
+	 */
 	@NotThreadSafe
 	public static final class Builder {
 		private int maximumInputBytes = DEFAULT_MAXIMUM_INPUT_BYTES;
@@ -380,7 +408,11 @@ public final class LocalizedStringLoadingOptions {
 			return this;
 		}
 
-		/** @return immutable loading options, not null */
+		/**
+		 * Builds immutable loading options.
+		 *
+		 * @return immutable loading options, not null
+		 */
 		@NonNull
 		public LocalizedStringLoadingOptions build() {
 			return new LocalizedStringLoadingOptions(maximumInputBytes, maximumReaderCharacters,

@@ -25,6 +25,7 @@ import java.math.BigInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link PluralOperands}.
@@ -51,6 +52,23 @@ public class PluralOperandsTests {
     assertEquals(new BigDecimal("1"), operands.w());
     assertEquals(new BigDecimal("50"), operands.f());
     assertEquals(new BigDecimal("5"), operands.t());
+  }
+
+  @Test
+  public void unsupportedNumberImplementationsFailThroughThePublicBuilderWithGuidance() {
+    Number unsupportedNumber = new Number() {
+      @Override public int intValue() { return 1; }
+      @Override public long longValue() { return 1L; }
+      @Override public float floatValue() { return 1.0F; }
+      @Override public double doubleValue() { return 1.0; }
+      @Override public String toString() { throw new AssertionError("toString() must not be called"); }
+    };
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> PluralOperands.forNumber(unsupportedNumber).build());
+
+    assertTrue(exception.getMessage().contains("Unsupported Number implementation"));
+    assertTrue(exception.getMessage().contains("BigDecimal"));
   }
 
   @Test

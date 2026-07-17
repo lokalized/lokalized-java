@@ -37,6 +37,7 @@ import static java.util.Objects.requireNonNull;
  * handler decides what to do (log it, ignore it, collect it, or throw to fail the load).
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @ThreadSafe
 public final class LocalizedStringWarning {
@@ -57,6 +58,8 @@ public final class LocalizedStringWarning {
 
 	/**
 	 * The kind of problem a {@link LocalizedStringWarning} represents.
+	 *
+	 * @since 3.0.0
 	 */
 	public enum Type {
 		/**

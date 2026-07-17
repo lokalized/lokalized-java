@@ -439,14 +439,15 @@ using the preference you supplied.
 Localized strings compilation and translation evaluation use immutable [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html).
 The defaults cap numbers and numeric literals at 1,024 digits of precision and absolute scale, explicitly visible
 decimal places at 1,024, compact exponents at 64, expressions at 2,048 characters / 256 tokens / 32 nested groups,
-generated placeholders at 32 levels, one interpolated result at 262,144 UTF-16 code units, and cumulative
-generated-fragment expansion at 1,048,576 UTF-16 code units per locale fallback attempt. Locale fallback starts a
+generated placeholders at 32 levels, one interpolated result or phonetic input at 262,144 UTF-16 code units, and
+cumulative generated-fragment expansion at 1,048,576 UTF-16 code units per locale fallback attempt. Locale fallback starts a
 fresh generated-expansion budget for each candidate. Applications may lower or raise the defaults with
 [`TranslationRuntimeLimits.builder()`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html#builder())
 and [`TranslationRuntimeLimits.Builder`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.Builder.html).
 Hard ceilings remain 4,096 for numeric precision, absolute scale, visible decimal places, and compact exponents;
 4,096 characters / 512 tokens / 64 nested groups for expressions; 64 levels for generated placeholders; 1,048,576
-UTF-16 code units for one interpolated result; and 8,388,608 UTF-16 code units for cumulative generated expansion.
+UTF-16 code units for one interpolated result or phonetic input; and 8,388,608 UTF-16 code units for cumulative
+generated expansion.
 
 ```java
 TranslationRuntimeLimits runtimeLimits = TranslationRuntimeLimits.builder()
@@ -1245,6 +1246,12 @@ cardinality = Cardinality.forOperands(operands, Locale.forLanguageTag("fr"));
 assertEquals(Cardinality.MANY, cardinality);
 ```
 
+Here, `2` is the displayed mantissa and the compact exponent `6` carries the magnitude (for example, a display such
+as `2M`). Lokalized accepts `BigDecimal`, `BigInteger`, the boxed integral and floating-point JDK types, and the JDK
+atomic/adder/accumulator numeric types documented by `PluralOperands`. Unknown `Number` implementations are rejected;
+convert an application-specific number to `BigDecimal` explicitly so precision is never guessed through
+`doubleValue()` or an arbitrary `toString()` representation.
+
 `visibleDecimalPlaces(...)` may add trailing zeroes, but it never rounds a number implicitly. If reducing the
 scale would discard a nonzero digit, `build()` throws `ArithmeticException`; round the displayed value explicitly
 before constructing its operands so plural selection and presentation cannot silently disagree.
@@ -1703,7 +1710,9 @@ This free-form field is used to supply context for the translator, such as how a
 
 A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PLACEHOLDER_NAME_HERE}}`.
 
-Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters, Unicode digits, Unicode combining marks, underscores, or hyphens. Whitespace inside mustaches is not allowed, so write `{{bookCount}}`, not `{{ bookCount }}`.
+Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters,
+Unicode numbers, Unicode combining marks, underscores, or hyphens. Whitespace inside mustaches is not allowed, so
+write `{{bookCount}}`, not `{{ bookCount }}`.
 
 To render a literal placeholder instead of resolving it, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context. You can also write `\\}}` for a literal closing delimiter, or `\\\\{{name}}` when you need a literal backslash immediately before a live placeholder.
 
@@ -1762,7 +1771,7 @@ hierarchy, [`LocalizedString.LanguageFormTranslation`](https://javadoc.lokalized
 and its ordered [`LocalizedString.ExpressionAlternative`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.ExpressionAlternative.html)
 entries.
 
-* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`String`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/String.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints.
+* `value` is the placeholder value to examine. It may be a [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html), [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html), [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html), [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html), [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html), [`GrammaticalCase`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html), [`Definiteness`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html), [`Classifier`](https://javadoc.lokalized.com/com/lokalized/Classifier.html), [`Formality`](https://javadoc.lokalized.com/com/lokalized/Formality.html), [`Clusivity`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html), [`Animacy`](https://javadoc.lokalized.com/com/lokalized/Animacy.html), [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html), or [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html) type. Lokalized converts [`Number`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/Number.html) and [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) instances to the appropriate [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) or [`Ordinality`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html) according to the language's rules, accepts pre-resolved `Cardinality` and `Ordinality` values directly, and converts [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html) instances to [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) using your [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) with the current locale. The same cardinality input forms are accepted for range endpoints.
 * `translations` is a set of language rules against which to evaluate `value` and provide a translation
 
 Here, the value of `bookCount` is evaluated against the specified cardinality rules and the result is placed into `books`.  For example, if application code passes in `1` for `bookCount`, this matches [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) and `book` is the value of the `books` placeholder.  If application code passes in a different value, [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) is matched and `books` is used. 
@@ -1874,7 +1883,8 @@ numeric [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOpe
 and other [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html)
 operands are phonetic inputs: Lokalized resolves them through your
 [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) for comparison with
-`PHONETIC_*` constants. They are not numeric values or general-purpose string literals. Missing, null, and incompatible
+`PHONETIC_*` constants or explicit `Phonetic` values. They are not numeric values or general-purpose string literals,
+and two raw `CharSequence` placeholders cannot be compared for textual equality. Missing, null, and incompatible
 operands are resolution failures, not implicit non-matches.
 
 Use language-form definitions for grammatical categories and expression fragments for exact, threshold, or compound
@@ -2046,10 +2056,19 @@ PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
          | "PHONETIC_STRESSED_A"
          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" 
          | "PHONETIC_OTHER" ;
-VARIABLE = ( Unicode letter | "_" ) { Unicode letter | Unicode digit | "_" | "-" } ;
+NUMBER = [ SIGN ], ( DIGITS, [ ".", { DIGIT } ] | ".", DIGITS ), [ EXPONENT ] ;
+EXPONENT = ( "e" | "E" ), [ SIGN ], DIGITS ;
+SIGN = "+" | "-" ;
+DIGITS = DIGIT, { DIGIT } ;
+DIGIT = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+VARIABLE = ( Unicode letter | "_" )
+           { Unicode letter | Unicode number | Unicode combining mark | "_" | "-" } ;
 BOOLEAN_OPERATOR = "&&" | "||" ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
+
+Expressions ignore ASCII space, horizontal tab, carriage return, line feed, and form feed between tokens. Other
+Unicode whitespace and separator characters are rejected rather than silently skipped.
 
 Built-in language-form constants are reserved in alternative expressions. A token like `CARDINALITY_ONE`, `GENDER_MASCULINE`, `CASE_DATIVE`, `DEFINITENESS_DEFINITE`, `CLASSIFIER_PERSON`, `FORMALITY_FORMAL`, `CLUSIVITY_INCLUSIVE`, `ANIMACY_ANIMATE`, or `PHONETIC_VOWEL` is parsed as a constant, not as a placeholder variable. Placeholder names may not use built-in constant names.
 
@@ -2062,6 +2081,7 @@ Built-in language-form constants are reserved in alternative expressions. A toke
 
 * The unary `!` operator
 * String literals, Boolean literals, or explicit `null` operands
+* Textual equality between two raw `CharSequence` placeholder values; compare phonetic input with `PHONETIC_*`
 * Functions or expressions that return arbitrary values
 * A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
 

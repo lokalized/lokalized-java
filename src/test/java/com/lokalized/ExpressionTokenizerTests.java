@@ -23,6 +23,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Exercises {@link ExpressionTokenizer}.
@@ -381,5 +383,65 @@ public class ExpressionTokenizerTests {
     expectedTokens.add(new Token(TokenType.VARIABLE, "количество2"));
 
     assertEquals(expectedTokens, tokens);
+  }
+
+  @Test
+  public void explicitAsciiWhitespaceIsAcceptedEverywhere() {
+    String[] supportedWhitespace = {" ", "\t", "\r", "\n", "\f"};
+    List<Token> expectedTokens = List.of(
+        new Token(TokenType.VARIABLE, "value"),
+        new Token(TokenType.EQUAL_TO),
+        new Token(TokenType.NUMBER, "1"));
+
+    for (String whitespace : supportedWhitespace) {
+      List<Token> tokens = new ExpressionTokenizer().extractTokens(
+          whitespace + "value" + whitespace + "==" + whitespace + "1" + whitespace);
+
+      assertEquals(expectedTokens, tokens, () -> formatCodePoint(whitespace) + " should be accepted as whitespace");
+    }
+  }
+
+  @Test
+  public void unsupportedCharactersAreRejectedAtBeginningMiddleAndEnd() {
+    String[] unsupportedCharacters = {
+        "\u0085", // NEXT LINE
+        "\u2028", // LINE SEPARATOR
+        "\u2029", // PARAGRAPH SEPARATOR
+        "\u00A0", // NO-BREAK SPACE
+        "\u0000", // NULL
+        new String(Character.toChars(0x1F600)), // GRINNING FACE
+        "@"
+    };
+
+    for (String unsupportedCharacter : unsupportedCharacters) {
+      assertUnsupportedCharacter(unsupportedCharacter + "value == 1", 0, unsupportedCharacter);
+      assertUnsupportedCharacter("value" + unsupportedCharacter + " == 1", "value".length(), unsupportedCharacter);
+      assertUnsupportedCharacter("value == 1" + unsupportedCharacter, "value == 1".length(), unsupportedCharacter);
+    }
+  }
+
+  @Test
+  public void singleEqualsDiagnosticReportsItsExactLocation() {
+    ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+        () -> new ExpressionTokenizer().extractTokens("value = 1"));
+
+    assertTrue(exception.getMessage().contains("U+003D"));
+    assertTrue(exception.getMessage().contains("index 6"));
+    assertTrue(exception.getMessage().contains("Did you mean '=='?"));
+  }
+
+  private static void assertUnsupportedCharacter(String expression, int expectedIndex, String unsupportedCharacter) {
+    ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+        () -> new ExpressionTokenizer().extractTokens(expression));
+    String codePoint = formatCodePoint(unsupportedCharacter);
+
+    assertTrue(exception.getMessage().contains(codePoint),
+        () -> "Expected diagnostic to contain " + codePoint + ", but was: " + exception.getMessage());
+    assertTrue(exception.getMessage().contains("index " + expectedIndex),
+        () -> "Expected diagnostic to contain index " + expectedIndex + ", but was: " + exception.getMessage());
+  }
+
+  private static String formatCodePoint(String value) {
+    return String.format("U+%04X", value.codePointAt(0));
   }
 }

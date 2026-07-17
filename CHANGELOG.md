@@ -44,6 +44,8 @@ All notable changes to Lokalized will be documented in this file.
   `ArithmeticException` unless the supplied number is already rounded to that scale.
 - Programmatic sets of `LocalizedString` values now receive the same semantic validation as file-backed localized
   strings when `Strings` is built, so invalid expressions, form maps, and generated fragments fail earlier.
+- Programmatic localized-string iterables now reject every duplicate translation key, including structurally equal
+  roots that the previous defensive `Set` conversion silently collapsed.
 - Removed the unused selector-driven placeholder format (`selectors`, rule-array `translations`, and `when`) and its
   public `LanguageFormType`, `LanguageFormSelector`, and `LanguageFormTranslationRule` APIs. Use ordered
   `alternatives` for multi-axis decisions owned by the localized strings file, or select a purpose-specific translation
@@ -65,6 +67,11 @@ All notable changes to Lokalized will be documented in this file.
   before phonetic resolution. With fail-fast `Strings`, this may now surface `ExpressionEvaluationException` rather
   than the default `PhoneticResolver`'s `IllegalStateException`; ordered numeric comparisons already surfaced
   `ExpressionEvaluationException`. Pass a `Number` or numeric `PluralOperands` for numeric predicates.
+- Exact `==`/`!=` predicates between two caller-supplied raw `CharSequence` values are rejected because the expression
+  language has no textual equality. Compare phonetic input with a `PHONETIC_*` constant or explicit `Phonetic` value.
+- Unknown `Number` implementations are no longer parsed through their unconstrained `toString()` representations.
+  Numeric APIs accept the documented JDK boxed, big-number, atomic, adder, and accumulator types; convert custom
+  numeric types to `BigDecimal` explicitly.
 - The default locale-fallback policy no longer hides runtime resolution failures by trying later locales. It continues
   for missing translations and unmatched alternatives; use `TranslationFallbackPolicy.fallbackOnAnyFailure()` to
   preserve the legacy behavior.
@@ -155,6 +162,11 @@ All notable changes to Lokalized will be documented in this file.
   `TranslationFailureReason.NO_MATCHING_ALTERNATIVE` without a synthetic expression-evaluation cause.
 - Failure-key interpolation uses the configured output limit, 262,144 UTF-16 code units by default; if interpolation
   would exceed the cap, the raw key is returned.
+- Caller-supplied `CharSequence` placeholder values are length-checked against the remaining interpolation capacity
+  before materialization. The same configured limit bounds phonetic inputs before conversion to `String`. Bidi
+  balancing is performed directly into a bounded result; oversized failure-key values return the raw key without
+  scanning or copying the complete input. Lokalized cannot bound application code inside an arbitrary
+  non-`CharSequence` object's `toString()` implementation.
 - `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched locale
   preferences resolve to the configured fallback locale.
 - Language-range matching accepts at most 32 parsed preferences per call. `Locale.LanguageRange.parse(...)` may expand
@@ -168,6 +180,12 @@ All notable changes to Lokalized will be documented in this file.
   is 1,048,576 UTF-16 code units, with an 8,388,608-code-unit hard ceiling.
 - Numeric literals and plural operands are validated before materialization, so compact exponents and decimal scales
   cannot create unbounded work.
+- Expression tokenization is contiguous: only ASCII space, tab, carriage return, line feed, and form feed are ignored,
+  and every other unsupported code point is rejected with its source index instead of being skipped.
+- Programmatic localized-string graphs are validated before structural hashing, so excessive alternative nesting
+  produces the controlled 128-level validation error instead of `StackOverflowError` during `Strings` construction.
+- `LocalizedString.equals()` and `hashCode()` now traverse alternative graphs iteratively and memoize shared nodes, so
+  direct value comparisons and hashing do not overflow on deep graphs or expand shared DAG work exponentially.
 - Canonical-alias lookup records and evaluates against the locale of the loaded localized strings, deduplicates
   equivalent locale attempts, and keeps inspection APIs strict to exact members of `getSupportedLocales()`.
 - Classpath loading honors runtime-selected multi-release JAR entries, expands filesystem manifest `Class-Path` roots
@@ -223,6 +241,12 @@ All notable changes to Lokalized will be documented in this file.
   `localeSupplier(matcher -> matcher.bestMatchFor(ranges))` when `TranslationResult` and failure diagnostics must retain
   the original language ranges.
 - Round values explicitly before reducing `PluralOperands.visibleDecimalPlaces(...)`; implicit flooring has been removed.
+- Convert application-specific `Number` implementations to `BigDecimal` before passing them to Lokalized. The library
+  no longer treats an arbitrary `Number.toString()` result as a decimal representation.
+- Replace comparisons between two raw `CharSequence` placeholders with application-side textual selection or an
+  explicit comparison between phonetic input and a `PHONETIC_*`/`Phonetic` value.
+- Keep alternative expressions to the documented ASCII whitespace set. NEL, Unicode line/paragraph separators,
+  no-break space, and other unsupported separators are now rejected at their exact source position.
 - Expect invalid programmatic localized strings to fail during `Strings.build()` under the shared semantic validator.
 - Review localized strings files under the stricter loader validation before release. Duplicate nested JSON members,
   malformed placeholders, whitespace-padded mustaches, reserved language-form placeholder names, invalid
@@ -247,7 +271,7 @@ All notable changes to Lokalized will be documented in this file.
   entries. Classpath `.json` resources whose filenames are not valid locale tags are warning-and-skip, but remain fatal
   in explicitly loaded filesystem directories containing localized strings files.
 - Placeholder and alternative-expression identifiers now follow the same rule: start with a Unicode letter
-  or underscore, then use Unicode letters, Unicode digits, underscores, or hyphens.
+  or underscore, then use Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens.
 - Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in
   some locales.
 - Incomplete CLDR cardinality or ordinality maps now produce structured loading warnings, which are silently ignored by

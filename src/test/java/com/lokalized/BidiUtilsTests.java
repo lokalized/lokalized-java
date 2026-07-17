@@ -22,10 +22,12 @@ import javax.annotation.concurrent.ThreadSafe;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -80,5 +82,115 @@ public class BidiUtilsTests {
   public void isolateBalancesMalformedEmbeddedIsolatesWhenWrapping() {
     assertEquals("\u2068\u2068ACME-42\u2069\u2069", BidiUtils.isolate("\u2068ACME-42"));
     assertEquals("\u2068ACME-42\u2069", BidiUtils.isolate("ACME-42\u2069"));
+  }
+
+  @Test
+  public void boundedIsolationRejectsValuesBeforeScanningPastTheLimit() {
+    assertEquals("\u2068A\u2069", BidiUtils.isolate("A", 3));
+    assertEquals("\u2068A\u2069", BidiUtils.isolate("\u2068A\u2069", 3));
+    assertEquals("\u2068A\u2069", BidiUtils.isolate(
+        new AlreadyIsolatedCharSequence("\u2068A\u2069"), 3));
+    assertThrows(IllegalStateException.class, () -> BidiUtils.isolate("AB", 3));
+
+    CharSequence oversized = new UnmaterializableCharSequence(1_000_000);
+    IllegalStateException exception = assertThrows(IllegalStateException.class,
+        () -> BidiUtils.isolate(oversized, 4));
+    assertTrue(exception.getMessage().contains("maximum of 4 characters"));
+  }
+
+  @Test
+  public void boundedIsolationIsRenderedOnceForRepeatedPlaceholders() {
+    CountingCharSequence value = new CountingCharSequence("A\u2069\u2069\u2069");
+    StringInterpolator interpolator = new StringInterpolator();
+
+    assertEquals("\u2068A\u2069-\u2068A\u2069", interpolator.interpolate(
+        "{{value}}-{{value}}", Map.of("value", BidiUtils.isolatedValue(value, 32)), 32));
+    assertEquals(value.length() + 1, value.getCharacterAccessCount(),
+        "Repeated placeholders must reuse the bounded bidi rendering");
+  }
+
+  private static final class CountingCharSequence implements CharSequence {
+    private final String value;
+    private int characterAccessCount;
+
+    private CountingCharSequence(String value) {
+      this.value = value;
+    }
+
+    private int getCharacterAccessCount() {
+      return characterAccessCount;
+    }
+
+    @Override
+    public int length() {
+      return value.length();
+    }
+
+    @Override
+    public char charAt(int index) {
+      characterAccessCount++;
+      return value.charAt(index);
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+      return value.subSequence(start, end);
+    }
+  }
+
+  private static final class AlreadyIsolatedCharSequence implements CharSequence {
+    private final String value;
+
+    private AlreadyIsolatedCharSequence(String value) {
+      this.value = value;
+    }
+
+    @Override
+    public int length() {
+      return value.length();
+    }
+
+    @Override
+    public char charAt(int index) {
+      return value.charAt(index);
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+      return value.subSequence(start, end);
+    }
+
+    @Override
+    public String toString() {
+      throw new AssertionError("Bidi isolation must use the bounded CharSequence contract");
+    }
+  }
+
+  private static final class UnmaterializableCharSequence implements CharSequence {
+    private final int length;
+
+    private UnmaterializableCharSequence(int length) {
+      this.length = length;
+    }
+
+    @Override
+    public int length() {
+      return length;
+    }
+
+    @Override
+    public char charAt(int index) {
+      throw new AssertionError("Oversized input must be rejected before scanning");
+    }
+
+    @Override
+    public CharSequence subSequence(int start, int end) {
+      throw new AssertionError("Oversized input must be rejected before slicing");
+    }
+
+    @Override
+    public String toString() {
+      throw new AssertionError("Oversized input must be rejected before materialization");
+    }
   }
 }

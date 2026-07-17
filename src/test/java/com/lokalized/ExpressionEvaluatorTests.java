@@ -24,9 +24,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
 /**
  * Exercises {@link ExpressionEvaluator}.
  *
@@ -98,6 +100,33 @@ public class ExpressionEvaluatorTests {
 		assertTrue(expressionEvaluator.evaluate("1. == 1", LOCALE), "Trailing decimal comparison failed");
 		assertTrue(expressionEvaluator.evaluate("+1 == 1", LOCALE), "Signed integer comparison failed");
 		assertTrue(expressionEvaluator.evaluate("1e3 == 1000", LOCALE), "Exponent comparison failed");
+	}
+
+	@Test
+	public void unsupportedNumberImplementationsFailAsExpressionErrors() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		Number unsupported = new Number() {
+			@Override public int intValue() { return 1; }
+			@Override public long longValue() { return 1; }
+			@Override public float floatValue() { return 1; }
+			@Override public double doubleValue() { return 1; }
+		};
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("value == 1", Map.of("value", unsupported), LOCALE));
+
+		assertTrue(exception.getMessage().contains("Unsupported Number implementation"));
+		assertTrue(exception.getMessage().contains("BigDecimal"));
+		assertTrue(exception.getCause() instanceof IllegalArgumentException);
+
+		for (String languageForm : List.of("CARDINALITY_ONE", "ORDINALITY_ONE")) {
+			ExpressionEvaluationException languageFormException = assertThrows(ExpressionEvaluationException.class,
+					() -> expressionEvaluator.evaluate("value == " + languageForm,
+							Map.of("value", unsupported), LOCALE));
+
+			assertTrue(languageFormException.getMessage().contains("Unsupported Number implementation"));
+			assertTrue(languageFormException.getCause() instanceof IllegalArgumentException);
+		}
 	}
 
 	@Test
@@ -337,6 +366,69 @@ public class ExpressionEvaluatorTests {
 		assertTrue(new ExpressionEvaluator().evaluate("term == PHONETIC_VOWEL", Map.of(
 				"term", Phonetic.VOWEL
 		), LOCALE), "Explicit phonetic values should be comparable without a resolver");
+	}
+
+	@Test
+	public void rawCharacterSequenceEqualityIsRejectedBeforePhoneticResolution() {
+		int[] resolverInvocationCount = {0};
+		PhoneticResolver phoneticResolver = (term, locale) -> {
+			resolverInvocationCount[0]++;
+			return Phonetic.CONSONANT;
+		};
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
+		Map<String, Object> context = Map.of("left", "cat", "right", new StringBuilder("dog"));
+
+		for (String operator : List.of("==", "!=")) {
+			ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+					() -> expressionEvaluator.evaluate("left " + operator + " right", context, LOCALE));
+
+			assertTrue(exception.getMessage().contains("textual equality"));
+			assertTrue(exception.getMessage().contains("PHONETIC_*"));
+			assertTrue(exception.getMessage().contains(Phonetic.class.getSimpleName()));
+		}
+
+		assertTrue(resolverInvocationCount[0] == 0,
+				"Raw character-sequence equality should fail before invoking the phonetic resolver");
+	}
+
+	@Test
+	public void explicitPhoneticComparisonsRemainSupported() {
+		PhoneticResolver phoneticResolver = (term, locale) -> Phonetic.CONSONANT;
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
+
+		assertTrue(expressionEvaluator.evaluate("PHONETIC_CONSONANT == term", Map.of("term", "cat"), LOCALE),
+				"A reversed phonetic-constant comparison should remain supported");
+		assertTrue(expressionEvaluator.evaluate("term == expected", Map.of(
+				"term", "cat",
+				"expected", Phonetic.CONSONANT
+		), LOCALE), "A raw character sequence should remain comparable with an explicit Phonetic value");
+		assertTrue(expressionEvaluator.evaluate("left == right", Map.of(
+				"left", Phonetic.VOWEL,
+				"right", Phonetic.VOWEL
+		), LOCALE), "Two explicit Phonetic values should remain comparable");
+		assertTrue(expressionEvaluator.evaluate("left != right", Map.of(
+				"left", Phonetic.VOWEL,
+				"right", Phonetic.CONSONANT
+		), LOCALE), "Distinct explicit Phonetic values should remain comparable");
+	}
+
+	@Test
+	public void oversizedPhoneticInputIsRejectedBeforeMaterialization() {
+		int[] resolverInvocationCount = {0};
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, (term, locale) -> {
+			resolverInvocationCount[0]++;
+			return Phonetic.CONSONANT;
+		}, TranslationRuntimeLimits.builder().maximumInterpolatedOutputCharacters(4).build());
+		CharSequence oversized = new UnmaterializableCharSequence(1_000_000);
+
+		ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+				() -> expressionEvaluator.evaluate("term == PHONETIC_CONSONANT",
+						Map.of("term", oversized), LOCALE));
+
+		assertTrue(exception.getMessage().contains("Phonetic input"));
+		assertTrue(exception.getMessage().contains("maximum of 4 characters"));
+		assertTrue(exception.getCause() instanceof IllegalArgumentException);
+		assertEquals(0, resolverInvocationCount[0]);
 	}
 
 	@Test
@@ -602,5 +694,24 @@ public class ExpressionEvaluatorTests {
 			expression.append(')');
 
 		return expression.toString();
+	}
+
+	private static final class UnmaterializableCharSequence implements CharSequence {
+		private final int length;
+
+		private UnmaterializableCharSequence(int length) {
+			this.length = length;
+		}
+
+		@Override public int length() { return length; }
+		@Override public char charAt(int index) {
+			throw new AssertionError("Oversized phonetic input must be rejected before scanning");
+		}
+		@Override public CharSequence subSequence(int start, int end) {
+			throw new AssertionError("Oversized phonetic input must be rejected before slicing");
+		}
+		@Override public String toString() {
+			throw new AssertionError("Oversized phonetic input must be rejected before materialization");
+		}
 	}
 }

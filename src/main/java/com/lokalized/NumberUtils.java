@@ -22,6 +22,12 @@ import org.jspecify.annotations.Nullable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.DoubleAccumulator;
+import java.util.concurrent.atomic.DoubleAdder;
+import java.util.concurrent.atomic.LongAccumulator;
+import java.util.concurrent.atomic.LongAdder;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -137,9 +143,16 @@ class NumberUtils {
 
   /**
    * Provides a {@code BigDecimal} representation of the given number.
+   * <p>
+   * Supported implementations are {@link BigDecimal}, {@link BigInteger}, {@link Byte}, {@link Short},
+   * {@link Integer}, {@link Long}, {@link Float}, {@link Double}, {@link AtomicInteger}, {@link AtomicLong},
+   * {@link LongAdder}, {@link DoubleAdder}, {@link LongAccumulator}, and {@link DoubleAccumulator}. Floating-point
+   * values use the canonical decimal representation supplied by {@link Float#toString(float)} or
+   * {@link Double#toString(double)}; arbitrary {@link Number#toString()} representations are never parsed.
    *
    * @param number the number to represent as a {@code BigDecimal}, not null
    * @return a {@code BigDecimal} representation of the given number, not null
+   * @throws IllegalArgumentException if the number is non-finite or its implementation is unsupported
    */
   @NonNull
   static BigDecimal toBigDecimal(@NonNull Number number) {
@@ -151,11 +164,36 @@ class NumberUtils {
     if (number instanceof BigInteger)
       return new BigDecimal((BigInteger) number);
 
-    if ((number instanceof Double && (((Double) number).isNaN() || ((Double) number).isInfinite())) ||
-        (number instanceof Float && (((Float) number).isNaN() || ((Float) number).isInfinite())))
+    if (number instanceof Byte || number instanceof Short || number instanceof Integer || number instanceof Long ||
+        number instanceof AtomicInteger || number instanceof AtomicLong || number instanceof LongAdder ||
+        number instanceof LongAccumulator)
+      return BigDecimal.valueOf(number.longValue()).stripTrailingZeros();
+
+    if (number instanceof Float)
+      return decimalForFloat(number.floatValue());
+
+    if (number instanceof Double || number instanceof DoubleAdder || number instanceof DoubleAccumulator)
+      return decimalForDouble(number.doubleValue());
+
+    throw new IllegalArgumentException(format(
+        "Unsupported Number implementation '%s'; provide a BigDecimal or another documented supported JDK Number type",
+        number.getClass().getName()));
+  }
+
+  @NonNull
+  private static BigDecimal decimalForFloat(float number) {
+    if (Float.isNaN(number) || Float.isInfinite(number))
       throw new IllegalArgumentException(format("Number must be finite, but was %s", number));
 
-    return new BigDecimal(number.toString()).stripTrailingZeros();
+    return new BigDecimal(Float.toString(number)).stripTrailingZeros();
+  }
+
+  @NonNull
+  private static BigDecimal decimalForDouble(double number) {
+    if (Double.isNaN(number) || Double.isInfinite(number))
+      throw new IllegalArgumentException(format("Number must be finite, but was %s", number));
+
+    return new BigDecimal(Double.toString(number)).stripTrailingZeros();
   }
 
   /**

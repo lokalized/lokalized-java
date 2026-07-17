@@ -34,6 +34,13 @@ import static java.lang.String.format;
  * available; {@link Strings} construction then enforces its configured limits. A single instance is safe to share
  * between {@link Strings} instances and threads.
  * <p>
+ * Caller-supplied {@link CharSequence} values are length-checked before Lokalized scans, copies, bidi-isolates, or
+ * materializes them for phonetic resolution. The interpolated-output limit also bounds one phonetic input. For other
+ * placeholder object types, Lokalized must invoke application-defined {@link Object#toString()} code before it can
+ * measure the result; these limits bound Lokalized's subsequent work but cannot bound work performed inside that
+ * application method. Use a pre-bounded {@code String} or {@code CharSequence} when runtime values originate from
+ * untrusted input.
+ * <p>
  * Expression source, token, and nesting limits apply equally to whole-message alternative predicates and
  * {@link LocalizedString.ExpressionAlternative expression-fragment predicates}. Generated-placeholder depth and
  * cumulative expansion limits are shared by {@link LocalizedString.LanguageFormTranslation language-form fragments}
@@ -61,7 +68,7 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer DEFAULT_MAXIMUM_EXPRESSION_NESTING_DEPTH = 32;
 	/** Default limit for nested generated placeholders across both definition kinds: 32. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 32;
-	/** Default limit for one interpolated message or generated fragment: 262,144 UTF-16 code units. */
+	/** Default limit for one interpolated message, generated fragment, or phonetic input: 262,144 UTF-16 code units. */
 	@NonNull public static final Integer DEFAULT_MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 256 * 1_024;
 	/**
 	 * Default cumulative expansion limit across both generated-placeholder kinds: 1,048,576 UTF-16 code units per
@@ -85,7 +92,7 @@ public final class TranslationRuntimeLimits {
 	@NonNull public static final Integer MAXIMUM_EXPRESSION_NESTING_DEPTH = 64;
 	/** Hard ceiling for nested generated placeholders across both definition kinds: 64. */
 	@NonNull public static final Integer MAXIMUM_GENERATED_PLACEHOLDER_DEPTH = 64;
-	/** Hard ceiling for one interpolated message or generated fragment: 1,048,576 UTF-16 code units. */
+	/** Hard ceiling for one interpolated message, generated fragment, or phonetic input: 1,048,576 UTF-16 code units. */
 	@NonNull public static final Integer MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS = 1_024 * 1_024;
 	/**
 	 * Hard ceiling for cumulative expansion across both generated-placeholder kinds: 8,388,608 UTF-16 code units per
@@ -133,37 +140,92 @@ public final class TranslationRuntimeLimits {
 		this.maximumGeneratedExpansionCharacters = builder.maximumGeneratedExpansionCharacters;
 	}
 
-	/** @return the library-default limits, not null */
+	/**
+	 * Gets the library-default limits.
+	 *
+	 * @return the library-default limits, not null
+	 */
 	@NonNull public static TranslationRuntimeLimits defaults() { return DEFAULTS; }
 
-	/** @return the library hard ceilings, not null */
+	/**
+	 * Gets the library hard ceilings.
+	 *
+	 * @return the library hard ceilings, not null
+	 */
 	@NonNull static TranslationRuntimeLimits hardCeilings() { return HARD_CEILINGS; }
 
-	/** @return a builder initialized to the library defaults, not null */
+	/**
+	 * Creates a builder initialized to the library defaults.
+	 *
+	 * @return a builder initialized to the library defaults, not null
+	 */
 	@NonNull public static Builder builder() { return new Builder(); }
 
-	/** @return a builder initialized from this instance, not null */
+	/**
+	 * Creates a builder initialized from this instance.
+	 *
+	 * @return a builder initialized from this instance, not null
+	 */
 	@NonNull public Builder toBuilder() { return new Builder(this); }
 
-	/** @return maximum decimal precision, not null */
+	/**
+	 * Gets the maximum decimal precision.
+	 *
+	 * @return maximum decimal precision, not null
+	 */
 	@NonNull public Integer getMaximumNumberPrecision() { return maximumNumberPrecision; }
-	/** @return maximum absolute decimal scale, not null */
+	/**
+	 * Gets the maximum absolute decimal scale.
+	 *
+	 * @return maximum absolute decimal scale, not null
+	 */
 	@NonNull public Integer getMaximumAbsoluteNumberScale() { return maximumAbsoluteNumberScale; }
-	/** @return maximum explicitly visible decimal places, not null */
+	/**
+	 * Gets the maximum number of explicitly visible decimal places.
+	 *
+	 * @return maximum explicitly visible decimal places, not null
+	 */
 	@NonNull public Integer getMaximumVisibleDecimalPlaces() { return maximumVisibleDecimalPlaces; }
-	/** @return maximum compact-decimal exponent, not null */
+	/**
+	 * Gets the maximum compact-decimal exponent.
+	 *
+	 * @return maximum compact-decimal exponent, not null
+	 */
 	@NonNull public Integer getMaximumCompactExponent() { return maximumCompactExponent; }
-	/** @return maximum characters in one whole-message or generated-fragment expression, not null */
+	/**
+	 * Gets the maximum characters in one whole-message or generated-fragment expression.
+	 *
+	 * @return maximum characters in one whole-message or generated-fragment expression, not null
+	 */
 	@NonNull public Integer getMaximumExpressionCharacters() { return maximumExpressionCharacters; }
-	/** @return maximum tokens in one whole-message or generated-fragment expression, not null */
+	/**
+	 * Gets the maximum tokens in one whole-message or generated-fragment expression.
+	 *
+	 * @return maximum tokens in one whole-message or generated-fragment expression, not null
+	 */
 	@NonNull public Integer getMaximumExpressionTokens() { return maximumExpressionTokens; }
-	/** @return maximum nested groups in one whole-message or generated-fragment expression, not null */
+	/**
+	 * Gets the maximum nested groups in one whole-message or generated-fragment expression.
+	 *
+	 * @return maximum nested groups in one whole-message or generated-fragment expression, not null
+	 */
 	@NonNull public Integer getMaximumExpressionNestingDepth() { return maximumExpressionNestingDepth; }
-	/** @return maximum generated-placeholder nesting depth across both definition kinds, not null */
+	/**
+	 * Gets the maximum generated-placeholder nesting depth across both definition kinds.
+	 *
+	 * @return maximum generated-placeholder nesting depth across both definition kinds, not null
+	 */
 	@NonNull public Integer getMaximumGeneratedPlaceholderDepth() { return maximumGeneratedPlaceholderDepth; }
-	/** @return maximum UTF-16 code units in one interpolated message or generated fragment, not null */
+	/**
+	 * Gets the maximum UTF-16 code units in one interpolated message, generated fragment, or caller-supplied phonetic
+	 * input.
+	 *
+	 * @return maximum UTF-16 code units in one interpolated message, generated fragment, or phonetic input, not null
+	 */
 	@NonNull public Integer getMaximumInterpolatedOutputCharacters() { return maximumInterpolatedOutputCharacters; }
 	/**
+	 * Gets the maximum cumulative expansion across both generated-placeholder kinds per locale fallback attempt.
+	 *
 	 * @return maximum cumulative expansion across both generated-placeholder kinds in UTF-16 code units per
 	 * locale fallback attempt, not null
 	 */
@@ -210,7 +272,11 @@ public final class TranslationRuntimeLimits {
 				maximumGeneratedExpansionCharacters);
 	}
 
-	/** Builder for {@link TranslationRuntimeLimits}. */
+	/**
+	 * Builder for {@link TranslationRuntimeLimits}.
+	 *
+	 * @since 3.0.0
+	 */
 	@NotThreadSafe
 	public static final class Builder {
 		@NonNull private Integer maximumNumberPrecision = DEFAULT_MAXIMUM_NUMBER_PRECISION;
@@ -320,7 +386,8 @@ public final class TranslationRuntimeLimits {
 			return this;
 		}
 		/**
-		 * Sets the maximum UTF-16 code-unit count for one interpolated message or generated fragment.
+		 * Sets the maximum UTF-16 code-unit count for one interpolated message, generated fragment, or caller-supplied
+		 * phonetic input.
 		 *
 		 * @param value value from 1 through {@link #MAXIMUM_INTERPOLATED_OUTPUT_CHARACTERS}, or null to restore the default
 		 * @return this builder, not null

@@ -21,8 +21,11 @@ import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -129,12 +132,48 @@ public final class LocalizedString {
       return false;
 
     LocalizedString localizedString = (LocalizedString) other;
+    Deque<LocalizedStringPair> pending = new ArrayDeque<>();
+    IdentityHashMap<LocalizedString, IdentityHashMap<LocalizedString, Boolean>> compared = new IdentityHashMap<>();
+    pending.push(new LocalizedStringPair(this, localizedString));
 
-    return Objects.equals(getKey(), localizedString.getKey())
-        && Objects.equals(getTranslation(), localizedString.getTranslation())
-        && Objects.equals(getCommentary(), localizedString.getCommentary())
-        && Objects.equals(getPlaceholderDefinitions(), localizedString.getPlaceholderDefinitions())
-        && Objects.equals(getAlternatives(), localizedString.getAlternatives());
+    while (!pending.isEmpty()) {
+      LocalizedStringPair pair = pending.pop();
+      LocalizedString left = pair.left;
+      LocalizedString right = pair.right;
+
+      if (left == right)
+        continue;
+
+      IdentityHashMap<LocalizedString, Boolean> comparedRights = compared.get(left);
+      if (comparedRights == null) {
+        comparedRights = new IdentityHashMap<>();
+        compared.put(left, comparedRights);
+      } else if (comparedRights.containsKey(right)) {
+        continue;
+      }
+      comparedRights.put(right, Boolean.TRUE);
+
+      if (!Objects.equals(left.key, right.key)
+          || !Objects.equals(left.translation, right.translation)
+          || !Objects.equals(left.commentary, right.commentary)
+          || !Objects.equals(left.placeholderDefinitions, right.placeholderDefinitions)
+          || left.alternatives.size() != right.alternatives.size())
+        return false;
+
+      for (int index = 0; index < left.alternatives.size(); ++index) {
+        LocalizedString leftAlternative = left.alternatives.get(index);
+        LocalizedString rightAlternative = right.alternatives.get(index);
+
+        if (leftAlternative == rightAlternative)
+          continue;
+        if (leftAlternative == null || rightAlternative == null)
+          return false;
+
+        pending.push(new LocalizedStringPair(leftAlternative, rightAlternative));
+      }
+    }
+
+    return true;
   }
 
   /**
@@ -144,8 +183,65 @@ public final class LocalizedString {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(getKey(), getTranslation(), getCommentary(), getPlaceholderDefinitions(),
-        getAlternatives());
+    IdentityHashMap<LocalizedString, Integer> computedHashes = new IdentityHashMap<>();
+    IdentityHashMap<LocalizedString, Boolean> active = new IdentityHashMap<>();
+    Deque<LocalizedStringHashFrame> pending = new ArrayDeque<>();
+    active.put(this, Boolean.TRUE);
+    pending.push(new LocalizedStringHashFrame(this));
+
+    while (!pending.isEmpty()) {
+      LocalizedStringHashFrame frame = pending.peek();
+
+      if (frame.nextAlternativeIndex < frame.localizedString.alternatives.size()) {
+        LocalizedString alternative = frame.localizedString.alternatives.get(frame.nextAlternativeIndex++);
+
+        if (alternative == null)
+          continue;
+        if (computedHashes.containsKey(alternative))
+          continue;
+        if (active.containsKey(alternative))
+          throw new IllegalStateException("Localized string alternative graph contains an identity cycle");
+
+        active.put(alternative, Boolean.TRUE);
+        pending.push(new LocalizedStringHashFrame(alternative));
+        continue;
+      }
+
+      int alternativesHash = 1;
+      for (LocalizedString alternative : frame.localizedString.alternatives)
+        alternativesHash = 31 * alternativesHash + (alternative == null ? 0 : computedHashes.get(alternative));
+
+      int hash = 1;
+      hash = 31 * hash + Objects.hashCode(frame.localizedString.key);
+      hash = 31 * hash + Objects.hashCode(frame.localizedString.translation);
+      hash = 31 * hash + Objects.hashCode(frame.localizedString.commentary);
+      hash = 31 * hash + Objects.hashCode(frame.localizedString.placeholderDefinitions);
+      hash = 31 * hash + alternativesHash;
+      computedHashes.put(frame.localizedString, hash);
+      active.remove(frame.localizedString);
+      pending.pop();
+    }
+
+    return computedHashes.get(this);
+  }
+
+  private static final class LocalizedStringPair {
+    @NonNull private final LocalizedString left;
+    @NonNull private final LocalizedString right;
+
+    private LocalizedStringPair(@NonNull LocalizedString left, @NonNull LocalizedString right) {
+      this.left = requireNonNull(left);
+      this.right = requireNonNull(right);
+    }
+  }
+
+  private static final class LocalizedStringHashFrame {
+    @NonNull private final LocalizedString localizedString;
+    private int nextAlternativeIndex;
+
+    private LocalizedStringHashFrame(@NonNull LocalizedString localizedString) {
+      this.localizedString = requireNonNull(localizedString);
+    }
   }
 
   /**
@@ -319,6 +415,11 @@ public final class LocalizedString {
    * <p>
    * Translations can be keyed either on a single value or a range of values (start and end) in the case of cardinality
    * ranges.
+   * Runtime values may be an explicit matching {@link LanguageForm}; cardinality and ordinality additionally accept
+   * {@link PluralOperands} and the supported {@link Number} implementations documented by
+   * {@link PluralOperands#forNumber(Number)}. Phonetic maps accept {@link CharSequence} values, which are bounded by
+   * {@link TranslationRuntimeLimits#getMaximumInterpolatedOutputCharacters()} before conversion and delegation to the
+   * configured {@link PhoneticResolver}.
    *
    * @author <a href="https://revetkn.com">Mark Allen</a>
    */

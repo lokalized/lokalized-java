@@ -52,6 +52,7 @@ public interface LocaleMatcher {
 	 *
 	 * @param locale requested locale, not null
 	 * @return diagnostic match result, not null
+	 * @since 3.0.0
 	 */
 	@NonNull
 	default LocaleMatchResult matchFor(@NonNull Locale locale) {
@@ -65,6 +66,7 @@ public interface LocaleMatcher {
 	 * @param languageRanges requested language ranges, not null
 	 * @return diagnostic match result, not null
 	 * @throws IllegalArgumentException if more than {@link #MAXIMUM_LANGUAGE_RANGES} language ranges are supplied
+	 * @since 3.0.0
 	 */
 	@NonNull
 	LocaleMatchResult matchFor(@NonNull List<@NonNull LanguageRange> languageRanges);

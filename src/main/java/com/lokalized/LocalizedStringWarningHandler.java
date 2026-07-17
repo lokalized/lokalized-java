@@ -28,6 +28,7 @@ import static java.util.Objects.requireNonNull;
  * collect them, forward them to your logging framework, increment a metric, and so on.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
+ * @since 3.0.0
  */
 @FunctionalInterface
 public interface LocalizedStringWarningHandler {
