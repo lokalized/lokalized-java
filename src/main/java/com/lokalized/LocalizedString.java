@@ -31,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
@@ -45,6 +44,11 @@ import static java.util.Objects.requireNonNull;
  */
 @Immutable
 public final class LocalizedString {
+  private static final int MAXIMUM_DIAGNOSTIC_NODES = 256;
+  private static final int MAXIMUM_DIAGNOSTIC_CHARACTERS = 16 * 1024;
+  @NonNull
+  private static final String DIAGNOSTIC_TRUNCATION_MARKER = "<truncated>";
+
   @NonNull
   private final String key;
   @Nullable
@@ -78,12 +82,26 @@ public final class LocalizedString {
       this.placeholderDefinitions = Collections.emptyMap();
     } else {
       Map<@NonNull String, @NonNull PlaceholderDefinition> placeholderDefinitionsCopy = new LinkedHashMap<>();
-      placeholderDefinitionsCopy.putAll(placeholderDefinitions);
+
+      for (Map.Entry<@NonNull String, ? extends @NonNull PlaceholderDefinition> entry
+          : placeholderDefinitions.entrySet())
+        placeholderDefinitionsCopy.put(
+            requireNonNull(entry.getKey(), "placeholderDefinitions must not contain a null key"),
+            requireNonNull(entry.getValue(), "placeholderDefinitions must not contain a null value"));
+
       this.placeholderDefinitions = Collections.unmodifiableMap(placeholderDefinitionsCopy);
     }
 
-    // Defensive copy to unmodifiable list
-    this.alternatives = alternatives == null ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(alternatives));
+    if (alternatives == null) {
+      this.alternatives = Collections.emptyList();
+    } else {
+      List<@NonNull LocalizedString> alternativesCopy = new ArrayList<>(alternatives.size());
+
+      for (LocalizedString alternative : alternatives)
+        alternativesCopy.add(requireNonNull(alternative, "alternatives must not contain null elements"));
+
+      this.alternatives = Collections.unmodifiableList(alternativesCopy);
+    }
 
     if (translation == null && this.alternatives.isEmpty())
       throw new IllegalArgumentException(format("You must provide either a translation or at least one alternative expression. " +
@@ -91,30 +109,17 @@ public final class LocalizedString {
   }
 
   /**
-   * Generates a {@code String} representation of this object.
+   * Generates a bounded diagnostic {@code String} representation of this object.
+   * <p>
+   * Deep, shared, cyclic, or oversized values may be abbreviated with reference, cycle, or truncation markers.
    *
    * @return a string representation of this object, not null
    */
   @Override
   @NonNull
   public String toString() {
-    List<@NonNull String> components = new ArrayList<>(5);
-
-    components.add(format("key=%s", getKey()));
-
-    if (getTranslation().isPresent())
-      components.add(format("translation=%s", getTranslation().get()));
-
-    if (getCommentary().isPresent())
-      components.add(format("commentary=%s", getCommentary().get()));
-
-    if (getPlaceholderDefinitions().size() > 0)
-      components.add(format("placeholderDefinitions=%s", getPlaceholderDefinitions()));
-
-    if (getAlternatives().size() > 0)
-      components.add(format("alternatives=%s", getAlternatives()));
-
-    return format("%s{%s}", getClass().getSimpleName(), components.stream().collect(Collectors.joining(", ")));
+    DiagnosticRenderer renderer = new DiagnosticRenderer();
+    return renderer.render(this);
   }
 
   /**
@@ -241,6 +246,271 @@ public final class LocalizedString {
 
     private LocalizedStringHashFrame(@NonNull LocalizedString localizedString) {
       this.localizedString = requireNonNull(localizedString);
+    }
+  }
+
+  @NotThreadSafe
+  private static final class DiagnosticRenderer {
+    @NonNull private final BoundedDiagnosticOutput output = new BoundedDiagnosticOutput();
+    @NonNull private final IdentityHashMap<@NonNull LocalizedString, @NonNull DiagnosticNodeState> states = new IdentityHashMap<>();
+    @NonNull private final Deque<@NonNull LocalizedStringDiagnosticFrame> pending = new ArrayDeque<>();
+
+    @NonNull
+    private String render(@NonNull LocalizedString localizedString) {
+      DiagnosticNodeState rootState = new DiagnosticNodeState(1);
+      states.put(localizedString, rootState);
+      pending.push(new LocalizedStringDiagnosticFrame(localizedString, rootState));
+
+      while (!pending.isEmpty() && !output.isTruncated()) {
+        LocalizedStringDiagnosticFrame frame = pending.peek();
+
+        if (!frame.headerRendered) {
+          renderHeader(frame.localizedString);
+          frame.headerRendered = true;
+        }
+
+        if (output.isTruncated())
+          break;
+
+        if (frame.nextAlternativeIndex < frame.localizedString.alternatives.size()) {
+          if (frame.nextAlternativeIndex > 0)
+            output.append(", ");
+
+          @Nullable LocalizedString alternative = frame.localizedString.alternatives.get(frame.nextAlternativeIndex++);
+
+          if (alternative == null) {
+            output.append("null");
+            continue;
+          }
+
+          @Nullable DiagnosticNodeState existingState = states.get(alternative);
+
+          if (existingState != null) {
+            output.append(existingState.active ? "<cycle#" : "<ref#");
+            output.append(Integer.toString(existingState.identifier));
+            output.append(">");
+            continue;
+          }
+
+          if (states.size() >= MAXIMUM_DIAGNOSTIC_NODES) {
+            output.truncate();
+            break;
+          }
+
+          DiagnosticNodeState alternativeState = new DiagnosticNodeState(states.size() + 1);
+          states.put(alternative, alternativeState);
+          pending.push(new LocalizedStringDiagnosticFrame(alternative, alternativeState));
+          continue;
+        }
+
+        if (!frame.localizedString.alternatives.isEmpty())
+          output.append("]");
+        output.append("}");
+        frame.state.active = false;
+        pending.pop();
+      }
+
+      return output.toString();
+    }
+
+    private void renderHeader(@NonNull LocalizedString localizedString) {
+      output.append("LocalizedString{key=");
+      output.append(localizedString.key);
+
+      if (localizedString.translation != null) {
+        output.append(", translation=");
+        output.append(localizedString.translation);
+      }
+
+      if (localizedString.commentary != null) {
+        output.append(", commentary=");
+        output.append(localizedString.commentary);
+      }
+
+      if (!localizedString.placeholderDefinitions.isEmpty()) {
+        output.append(", placeholderDefinitions=");
+        renderPlaceholderDefinitions(localizedString.placeholderDefinitions);
+      }
+
+      if (!localizedString.alternatives.isEmpty())
+        output.append(", alternatives=[");
+    }
+
+    private void renderPlaceholderDefinitions(
+        @NonNull Map<@NonNull String, @NonNull PlaceholderDefinition> placeholderDefinitions) {
+      output.append("{");
+      int index = 0;
+
+      for (Map.Entry<@NonNull String, @NonNull PlaceholderDefinition> entry : placeholderDefinitions.entrySet()) {
+        if (index++ > 0)
+          output.append(", ");
+        output.append(entry.getKey());
+        output.append("=");
+        renderPlaceholderDefinition(entry.getValue());
+
+        if (output.isTruncated())
+          return;
+      }
+
+      output.append("}");
+    }
+
+    private void renderPlaceholderDefinition(@Nullable PlaceholderDefinition placeholderDefinition) {
+      if (placeholderDefinition == null) {
+        output.append("null");
+      } else if (placeholderDefinition instanceof LanguageFormTranslation) {
+        renderLanguageFormTranslation((LanguageFormTranslation) placeholderDefinition);
+      } else if (placeholderDefinition instanceof ExpressionTranslation) {
+        renderExpressionTranslation((ExpressionTranslation) placeholderDefinition);
+      } else {
+        output.append("<unknown-placeholder-definition>");
+      }
+    }
+
+    private void renderLanguageFormTranslation(@NonNull LanguageFormTranslation languageFormTranslation) {
+      output.append("LanguageFormTranslation{");
+
+      if (languageFormTranslation.range != null) {
+        output.append("range=LanguageFormTranslationRange{start=");
+        output.append(languageFormTranslation.range.start);
+        output.append(", end=");
+        output.append(languageFormTranslation.range.end);
+        output.append("}");
+      } else {
+        output.append("value=");
+        output.append(languageFormTranslation.value);
+      }
+
+      output.append(", translationsByLanguageForm={");
+      int index = 0;
+
+      for (Map.Entry<@NonNull LanguageForm, @NonNull String> entry
+          : languageFormTranslation.translationsByLanguageForm.entrySet()) {
+        if (index++ > 0)
+          output.append(", ");
+        renderLanguageForm(entry.getKey());
+        output.append("=");
+        output.append(entry.getValue());
+
+        if (output.isTruncated())
+          return;
+      }
+
+      output.append("}}");
+    }
+
+    private void renderLanguageForm(@Nullable LanguageForm languageForm) {
+      if (languageForm == null) {
+        output.append("null");
+      } else if (languageForm instanceof Enum<?>) {
+        output.append(((Enum<?>) languageForm).name());
+      } else {
+        output.append("<unsupported-language-form>");
+      }
+    }
+
+    private void renderExpressionTranslation(@NonNull ExpressionTranslation expressionTranslation) {
+      output.append("ExpressionTranslation{translation=");
+      output.append(expressionTranslation.translation);
+      output.append(", alternatives=[");
+
+      for (int index = 0; index < expressionTranslation.alternatives.size(); ++index) {
+        if (index > 0)
+          output.append(", ");
+
+        @Nullable ExpressionAlternative alternative = expressionTranslation.alternatives.get(index);
+
+        if (alternative == null) {
+          output.append("null");
+        } else {
+          output.append("ExpressionAlternative{expression=");
+          output.append(alternative.expression);
+          output.append(", translation=");
+          output.append(alternative.translation);
+          output.append("}");
+        }
+
+        if (output.isTruncated())
+          return;
+      }
+
+      output.append("]}");
+    }
+  }
+
+  @NotThreadSafe
+  private static final class DiagnosticNodeState {
+    private final int identifier;
+    private boolean active = true;
+
+    private DiagnosticNodeState(int identifier) {
+      this.identifier = identifier;
+    }
+  }
+
+  @NotThreadSafe
+  private static final class LocalizedStringDiagnosticFrame {
+    @NonNull private final LocalizedString localizedString;
+    @NonNull private final DiagnosticNodeState state;
+    private boolean headerRendered;
+    private int nextAlternativeIndex;
+
+    private LocalizedStringDiagnosticFrame(@NonNull LocalizedString localizedString,
+                                           @NonNull DiagnosticNodeState state) {
+      this.localizedString = requireNonNull(localizedString);
+      this.state = requireNonNull(state);
+    }
+  }
+
+  @NotThreadSafe
+  private static final class BoundedDiagnosticOutput {
+    @NonNull private final StringBuilder stringBuilder = new StringBuilder();
+    private boolean truncated;
+
+    private void append(@Nullable String value) {
+      if (truncated)
+        return;
+
+      String renderedValue = value == null ? "null" : value;
+      int availableCharacters = MAXIMUM_DIAGNOSTIC_CHARACTERS - stringBuilder.length();
+
+      if (renderedValue.length() <= availableCharacters) {
+        stringBuilder.append(renderedValue);
+        return;
+      }
+
+      if (availableCharacters > 0)
+        stringBuilder.append(renderedValue, 0, availableCharacters);
+      truncate();
+    }
+
+    private void truncate() {
+      if (truncated)
+        return;
+
+      int markerStart = MAXIMUM_DIAGNOSTIC_CHARACTERS - DIAGNOSTIC_TRUNCATION_MARKER.length();
+
+      if (stringBuilder.length() > markerStart) {
+        int safeMarkerStart = markerStart;
+
+        if (safeMarkerStart > 0 && Character.isHighSurrogate(stringBuilder.charAt(safeMarkerStart - 1))
+            && Character.isLowSurrogate(stringBuilder.charAt(safeMarkerStart)))
+          --safeMarkerStart;
+
+        stringBuilder.setLength(safeMarkerStart);
+      }
+      stringBuilder.append(DIAGNOSTIC_TRUNCATION_MARKER);
+      truncated = true;
+    }
+
+    private boolean isTruncated() {
+      return truncated;
+    }
+
+    @Override
+    @NonNull
+    public String toString() {
+      return stringBuilder.toString();
     }
   }
 
@@ -387,6 +657,7 @@ public final class LocalizedString {
      * Constructs an instance of {@link LocalizedString}.
      *
      * @return an instance of {@link LocalizedString}, not null
+     * @throws NullPointerException if a configured collection contains a null key, value, or element
      */
     @NonNull
     public LocalizedString build() {
@@ -437,6 +708,7 @@ public final class LocalizedString {
      *
      * @param value                      the placeholder value to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
+     * @throws NullPointerException if the map contains a null key or value
      */
     public LanguageFormTranslation(@NonNull String value, @NonNull Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm) {
       requireNonNull(value);
@@ -444,7 +716,7 @@ public final class LocalizedString {
 
       this.value = value;
       this.range = null;
-      this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+      this.translationsByLanguageForm = immutableTranslationsByLanguageForm(translationsByLanguageForm);
     }
 
     /**
@@ -452,6 +724,7 @@ public final class LocalizedString {
      *
      * @param range                      the placeholder range to compare against for translation, not null
      * @param translationsByLanguageForm the possible translations keyed by language form, not null
+     * @throws NullPointerException if the map contains a null key or value
      */
     public LanguageFormTranslation(@NonNull LanguageFormTranslationRange range, @NonNull Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm) {
       requireNonNull(range);
@@ -459,7 +732,20 @@ public final class LocalizedString {
 
       this.value = null;
       this.range = range;
-      this.translationsByLanguageForm = Collections.unmodifiableMap(new LinkedHashMap<>(translationsByLanguageForm));
+      this.translationsByLanguageForm = immutableTranslationsByLanguageForm(translationsByLanguageForm);
+    }
+
+    @NonNull
+    private static Map<@NonNull LanguageForm, @NonNull String> immutableTranslationsByLanguageForm(
+        @NonNull Map<@NonNull LanguageForm, @NonNull String> translationsByLanguageForm) {
+      Map<@NonNull LanguageForm, @NonNull String> copy = new LinkedHashMap<>();
+
+      for (Map.Entry<@NonNull LanguageForm, @NonNull String> entry : translationsByLanguageForm.entrySet())
+        copy.put(
+            requireNonNull(entry.getKey(), "translationsByLanguageForm must not contain a null key"),
+            requireNonNull(entry.getValue(), "translationsByLanguageForm must not contain a null value"));
+
+      return Collections.unmodifiableMap(copy);
     }
 
     /**
@@ -571,6 +857,7 @@ public final class LocalizedString {
      *
      * @param translation  the default fragment translation, not null
      * @param alternatives the ordered expression-driven alternatives, not null or empty
+     * @throws NullPointerException if {@code alternatives} contains a null element
      */
     public ExpressionTranslation(@NonNull String translation,
                                  @NonNull List<@NonNull ExpressionAlternative> alternatives) {
@@ -581,7 +868,12 @@ public final class LocalizedString {
         throw new IllegalArgumentException("alternatives must not be empty; use ExpressionTranslation(String) for a translation-only fragment");
 
       this.translation = translation;
-      this.alternatives = Collections.unmodifiableList(new ArrayList<>(alternatives));
+      List<@NonNull ExpressionAlternative> alternativesCopy = new ArrayList<>(alternatives.size());
+
+      for (ExpressionAlternative alternative : alternatives)
+        alternativesCopy.add(requireNonNull(alternative, "alternatives must not contain null elements"));
+
+      this.alternatives = Collections.unmodifiableList(alternativesCopy);
     }
 
     /**

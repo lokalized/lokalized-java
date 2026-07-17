@@ -148,4 +148,15 @@ public class CardinalityTests {
         Cardinality.forRange(Cardinality.OTHER, Cardinality.ONE, Locale.forLanguageTag("fa")),
         "Expected missing range pairs to follow UTS #35's default-to-end rule");
   }
+
+  @Test
+  public void unlistedEnglishOneToOneRangeDefaultsToOne() {
+    Locale english = Locale.forLanguageTag("en");
+
+    assertFalse(CldrPluralRules.cardinalityRangesForLocale(english)
+        .containsKey(CardinalityRange.of(Cardinality.ONE, Cardinality.ONE)),
+        "Expected ONE-to-ONE to remain absent from the explicit English CLDR range table");
+    assertEquals(Cardinality.ONE, Cardinality.forRange(Cardinality.ONE, Cardinality.ONE, english),
+        "Expected an unlisted English ONE-to-ONE range to use the end-category fallback");
+  }
 }

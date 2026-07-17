@@ -392,6 +392,29 @@ public class ExpressionEvaluatorTests {
 	}
 
 	@Test
+	public void rawCharacterSequenceOrderingIsRejectedBeforePhoneticResolution() {
+		int[] resolverInvocationCount = {0};
+		PhoneticResolver phoneticResolver = (term, locale) -> {
+			resolverInvocationCount[0]++;
+			return Phonetic.CONSONANT;
+		};
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);
+		Map<String, Object> context = Map.of("left", "cat", "right", new StringBuilder("dog"));
+
+		for (String operator : List.of("<", "<=", ">", ">=")) {
+			ExpressionEvaluationException exception = assertThrows(ExpressionEvaluationException.class,
+					() -> expressionEvaluator.evaluate("left " + operator + " right", context, LOCALE));
+
+			assertTrue(exception.getMessage().contains("textual ordering"));
+			assertTrue(exception.getMessage().contains("numeric operands"));
+			assertTrue(exception.getMessage().contains("PHONETIC_*"));
+		}
+
+		assertEquals(0, resolverInvocationCount[0],
+				"Raw character-sequence ordering should fail before invoking the phonetic resolver");
+	}
+
+	@Test
 	public void explicitPhoneticComparisonsRemainSupported() {
 		PhoneticResolver phoneticResolver = (term, locale) -> Phonetic.CONSONANT;
 		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator(null, phoneticResolver);

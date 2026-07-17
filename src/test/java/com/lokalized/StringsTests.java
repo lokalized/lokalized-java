@@ -1416,6 +1416,33 @@ public class StringsTests {
 	}
 
 	@Test
+	public void bidiIsolationAlwaysProtectsCallerValuesInLtrTranslationsAndGeneratedFragments() {
+		Locale english = Locale.ENGLISH;
+		LocalizedString localizedString = new LocalizedString.Builder("Direction")
+				.translation("{{arabic}},{{detail}}")
+				.placeholderDefinitions(Map.of(
+						"detail", new LocalizedString.ExpressionTranslation("{{hebrew}}!")
+				))
+				.build();
+		Map<String, Object> context = Map.of("arabic", "مرحبا", "hebrew", "שלום");
+		Map<BidiIsolation, String> expectedByMode = Map.of(
+				BidiIsolation.NONE, "مرحبا,שלום!",
+				BidiIsolation.RTL_LOCALES, "مرحبا,שלום!",
+				BidiIsolation.ALWAYS, "\u2068مرحبا\u2069,\u2068שלום\u2069!"
+		);
+
+		for (BidiIsolation mode : BidiIsolation.values()) {
+			Strings strings = Strings.withFallbackLocale(english)
+					.localizedStringSupplier(() -> Map.of(english, Set.of(localizedString)))
+					.localeSupplier(matcher -> english)
+					.bidiIsolation(mode)
+					.build();
+
+			assertEquals(expectedByMode.get(mode), strings.get("Direction", context));
+		}
+	}
+
+	@Test
 	public void translationFailureHandlerReceivesMissingTranslation() {
 		AtomicReference<TranslationFailure> translationFailureHolder = new AtomicReference<>();
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))

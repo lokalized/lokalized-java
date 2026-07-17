@@ -17,7 +17,9 @@
 package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Reader;
@@ -2066,6 +2068,7 @@ final class MinimalJson {
   /**
    * A streaming parser for JSON text. The parser reports all events to a given handler.
    */
+  @NotThreadSafe
   public static class JsonParser {
 
     private static final int MAX_NESTING_LEVEL = 1000;
@@ -2080,6 +2083,7 @@ final class MinimalJson {
     private int fill;
     private int line;
     private int lineOffset;
+    private boolean previousCharacterWasCarriageReturn;
     private int current;
     private StringBuilder captureBuffer;
     private int captureStart;
@@ -2172,6 +2176,7 @@ final class MinimalJson {
       fill = 0;
       line = 1;
       lineOffset = 0;
+      previousCharacterWasCarriageReturn = false;
       current = 0;
       captureBuffer = null;
       captureStart = -1;
@@ -2329,47 +2334,58 @@ final class MinimalJson {
       handler.endString(readStringInternal());
     }
 
+    @NonNull
     private String readStringInternal() throws IOException {
       read();
       startCapture();
+      @Nullable Location pendingHighSurrogateLocation = null;
       while (current != '"') {
         if (current == '\\') {
+          @NonNull Location escapedCharacterLocation = getLocation();
           pauseCapture();
-          readEscape();
+          char escapedCharacter = readEscape();
+          pendingHighSurrogateLocation = validateStringCharacter(escapedCharacter, escapedCharacterLocation,
+              pendingHighSurrogateLocation);
+          captureBuffer.append(escapedCharacter);
           startCapture();
         } else if (current < 0x20) {
           throw expected("valid string character");
         } else {
+          pendingHighSurrogateLocation = validateStringCharacter((char) current, getLocation(),
+              pendingHighSurrogateLocation);
           read();
         }
       }
+      if (pendingHighSurrogateLocation != null)
+        throw new ParseException("Unpaired high surrogate in string", pendingHighSurrogateLocation);
       String string = endCapture();
       read();
       return string;
     }
 
-    private void readEscape() throws IOException {
+    private char readEscape() throws IOException {
       read();
+      char escapedCharacter;
       switch (current) {
         case '"':
         case '/':
         case '\\':
-          captureBuffer.append((char) current);
+          escapedCharacter = (char) current;
           break;
         case 'b':
-          captureBuffer.append('\b');
+          escapedCharacter = '\b';
           break;
         case 'f':
-          captureBuffer.append('\f');
+          escapedCharacter = '\f';
           break;
         case 'n':
-          captureBuffer.append('\n');
+          escapedCharacter = '\n';
           break;
         case 'r':
-          captureBuffer.append('\r');
+          escapedCharacter = '\r';
           break;
         case 't':
-          captureBuffer.append('\t');
+          escapedCharacter = '\t';
           break;
         case 'u':
           char[] hexChars = new char[4];
@@ -2380,12 +2396,26 @@ final class MinimalJson {
             }
             hexChars[i] = (char) current;
           }
-          captureBuffer.append((char) Integer.parseInt(new String(hexChars), 16));
+          escapedCharacter = (char) Integer.parseInt(new String(hexChars), 16);
           break;
         default:
           throw expected("valid escape sequence");
       }
       read();
+      return escapedCharacter;
+    }
+
+    @Nullable
+    private Location validateStringCharacter(char character, @NonNull Location characterLocation,
+                                             @Nullable Location pendingHighSurrogateLocation) {
+      if (pendingHighSurrogateLocation != null) {
+        if (Character.isLowSurrogate(character))
+          return null;
+        throw new ParseException("Unpaired high surrogate in string", pendingHighSurrogateLocation);
+      }
+      if (Character.isLowSurrogate(character))
+        throw new ParseException("Unpaired low surrogate in string", characterLocation);
+      return Character.isHighSurrogate(character) ? characterLocation : null;
     }
 
     private void readNumber() throws IOException {
@@ -2464,16 +2494,29 @@ final class MinimalJson {
         fill = reader.read(buffer, 0, buffer.length);
         index = 0;
         if (fill == -1) {
+          updateLineState(bufferOffset);
           current = -1;
           index++;
           return;
         }
       }
-      if (current == '\n') {
-        line++;
-        lineOffset = bufferOffset + index;
-      }
+      updateLineState(bufferOffset + index);
       current = buffer[index++];
+    }
+
+    private void updateLineState(int nextCharacterOffset) {
+      if (current == '\r') {
+        line++;
+        lineOffset = nextCharacterOffset;
+        previousCharacterWasCarriageReturn = true;
+      } else if (current == '\n') {
+        if (!previousCharacterWasCarriageReturn)
+          line++;
+        lineOffset = nextCharacterOffset;
+        previousCharacterWasCarriageReturn = false;
+      } else {
+        previousCharacterWasCarriageReturn = false;
+      }
     }
 
     private void startCapture() {
@@ -2502,6 +2545,7 @@ final class MinimalJson {
       return new String(buffer, start, end - start);
     }
 
+    @NonNull
     Location getLocation() {
       int offset = bufferOffset + index - 1;
       int column = offset - lineOffset + 1;

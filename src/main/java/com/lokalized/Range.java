@@ -19,7 +19,7 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
-import javax.annotation.concurrent.Immutable;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -33,7 +33,7 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Represents an immutable, ordered range of values.
+ * Represents a structurally immutable, ordered range of values.
  * <p>
  * This class is not designed to hold large or "infinite" ranges; it is not stream-based.
  * Instead, you might supply a small representative range of values and specify the range is "infinite"
@@ -43,6 +43,11 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * A range is {@link Iterable}, but deliberately does not implement {@link Collection}: mutation is not part of its
  * contract. Use {@link #getValues()} when list operations are needed.
+ * <p>
+ * The range copies its input collection and never mutates or exposes its internal list, but it does not copy the
+ * elements themselves. Mutable elements can therefore change this object's observed equality, hash code, and string
+ * representation. Elements should be immutable or otherwise safely shared when a range is used concurrently or as a
+ * map key or set member.
  * <p>
  * Ranges are constructed via static methods.
  * <p>
@@ -57,7 +62,7 @@ import static java.util.Objects.requireNonNull;
  * @param <T> the type of values contained in the range
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
-@Immutable
+@NotThreadSafe
 public final class Range<T> implements Iterable<@NonNull T> {
   @NonNull
   private static final Range<?> EMPTY_FINITE_RANGE = new Range<>(Collections.emptyList(), false);

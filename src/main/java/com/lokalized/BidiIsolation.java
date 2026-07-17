@@ -28,6 +28,13 @@ public enum BidiIsolation {
    */
   NONE,
   /**
+   * In every resolved locale, wrap caller-supplied placeholder values with
+   * First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069).
+   * <p>
+   * This protects right-to-left values embedded in left-to-right translations as well as the inverse case.
+   */
+  ALWAYS,
+  /**
    * In right-to-left resolved locales, wrap caller-supplied placeholder values with
    * First Strong Isolate (U+2068) and Pop Directional Isolate (U+2069).
    */

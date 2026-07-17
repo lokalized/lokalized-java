@@ -28,11 +28,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
 import java.util.TreeMap;
 
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * CLDR conformance checks backed by generated data from pinned CLDR XML.
@@ -103,9 +106,32 @@ public class CldrConformanceTests {
 
   @Test
   public void cardinalityRangesMatchPinnedCldr48_2() {
-    for (GeneratedCldrConformanceData.CardinalityRangeRule rule : GeneratedCldrConformanceData.cardinalityRangeRules())
-      for (String localeTag : valuesIn(rule.getLocales()))
+    Map<String, SortedMap<CardinalityRange, Cardinality>> expectedRangesByLocale = new TreeMap<>();
+
+    for (GeneratedCldrConformanceData.CardinalityRangeRule rule : GeneratedCldrConformanceData.cardinalityRangeRules()) {
+      for (String localeTag : valuesIn(rule.getLocales())) {
+        expectedRangesByLocale.computeIfAbsent(localeTag, ignored -> new TreeMap<>())
+            .put(CardinalityRange.of(rule.getStart(), rule.getEnd()), rule.getExpected());
         assertRange(localeTag, rule.getStart(), rule.getEnd(), rule.getExpected());
+      }
+    }
+
+    for (Map.Entry<String, SortedMap<CardinalityRange, Cardinality>> entry : expectedRangesByLocale.entrySet()) {
+      Locale locale = Locale.forLanguageTag(entry.getKey());
+      SortedMap<CardinalityRange, Cardinality> firstLookup = CldrPluralRules.cardinalityRangesForLocale(locale);
+
+      assertEquals(entry.getValue(), firstLookup,
+          format("Mismatched compiled CLDR %s range table for locale %s",
+              GeneratedCldrConformanceData.CLDR_VERSION, entry.getKey()));
+      assertSame(firstLookup, CldrPluralRules.cardinalityRangesForLocale(locale),
+          format("Expected the compiled CLDR range table for locale %s to be cached", entry.getKey()));
+    }
+
+    SortedMap<CardinalityRange, Cardinality> arabicRanges =
+        CldrPluralRules.cardinalityRangesForLocale(Locale.forLanguageTag("ar"));
+    assertThrows(UnsupportedOperationException.class,
+        () -> arabicRanges.put(CardinalityRange.of(Cardinality.ONE, Cardinality.ONE), Cardinality.ONE),
+        "Expected cached CLDR range tables to remain immutable");
   }
 
   @Test

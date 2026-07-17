@@ -19,6 +19,7 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -446,18 +447,25 @@ final class CldrPluralRules {
     }
   }
 
+  @Immutable
   static final class LocaleRanges {
     @NonNull
     private final String locale;
     @NonNull
-    private final RangeRule @NonNull [] rangeRules;
+    private final SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange;
 
     LocaleRanges(@NonNull String locale, @NonNull RangeRule @NonNull [] rangeRules) {
       requireNonNull(locale);
       requireNonNull(rangeRules);
 
       this.locale = locale;
-      this.rangeRules = Arrays.copyOf(rangeRules, rangeRules.length);
+      SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange = new TreeMap<>();
+
+      for (RangeRule rangeRule : rangeRules)
+        cardinalitiesByRange.put(CardinalityRange.of(cardinalityForCount(rangeRule.getStart()), cardinalityForCount(rangeRule.getEnd())),
+            cardinalityForCount(rangeRule.getResult()));
+
+      this.cardinalitiesByRange = Collections.unmodifiableSortedMap(cardinalitiesByRange);
     }
 
     @NonNull
@@ -467,13 +475,7 @@ final class CldrPluralRules {
 
     @NonNull
     SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange() {
-      SortedMap<@NonNull CardinalityRange, @NonNull Cardinality> cardinalitiesByRange = new TreeMap<>();
-
-      for (RangeRule rangeRule : rangeRules)
-        cardinalitiesByRange.put(CardinalityRange.of(cardinalityForCount(rangeRule.getStart()), cardinalityForCount(rangeRule.getEnd())),
-            cardinalityForCount(rangeRule.getResult()));
-
-      return Collections.unmodifiableSortedMap(cardinalitiesByRange);
+      return cardinalitiesByRange;
     }
   }
 

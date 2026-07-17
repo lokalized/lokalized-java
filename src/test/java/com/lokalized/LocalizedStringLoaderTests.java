@@ -36,6 +36,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -52,6 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,6 +73,9 @@ public class LocalizedStringLoaderTests {
 		LocalizedStringLoadingOptions lowerTranslationNodeLimit = defaults.toBuilder()
 				.maximumTranslationNodes(99_999)
 				.build();
+		LocalizedStringLoadingOptions lowerDiscoveryLimit = defaults.toBuilder()
+				.maximumDiscoveryEntries(99_999)
+				.build();
 
 		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES);
 		assertEquals(Integer.valueOf(8_388_608), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS);
@@ -80,6 +86,8 @@ public class LocalizedStringLoaderTests {
 		assertEquals(Integer.valueOf(256), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_LOCALIZED_STRINGS_FILES);
 		assertEquals(Integer.valueOf(100_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATION_NODES);
 		assertEquals(Integer.valueOf(1_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS);
+		assertEquals(Integer.valueOf(100_000), LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_DISCOVERY_ENTRIES);
+		assertEquals(Integer.valueOf(1_000_000), LocalizedStringLoadingOptions.MAXIMUM_DISCOVERY_ENTRIES);
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_INPUT_BYTES, defaults.getMaximumInputBytes());
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_READER_CHARACTERS,
 				defaults.getMaximumReaderCharacters());
@@ -92,12 +100,16 @@ public class LocalizedStringLoaderTests {
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_TRANSLATION_NODES,
 				defaults.getMaximumTranslationNodes());
 		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_WARNINGS, defaults.getMaximumWarnings());
+		assertEquals(LocalizedStringLoadingOptions.DEFAULT_MAXIMUM_DISCOVERY_ENTRIES,
+				defaults.getMaximumDiscoveryEntries());
 		assertEquals(defaults, copy);
 		assertEquals(defaults.hashCode(), copy.hashCode());
 		assertNotEquals(defaults, lower);
 		assertNotEquals(defaults, lowerTranslationNodeLimit);
+		assertNotEquals(defaults, lowerDiscoveryLimit);
 		assertTrue(lower.toString().contains("maximumLocalizedStringsFiles=10"));
 		assertTrue(defaults.toString().contains("maximumTranslationNodes=100000"));
+		assertTrue(defaults.toString().contains("maximumDiscoveryEntries=100000"));
 	}
   @Test
   public void testClasspathLoading() {
@@ -385,27 +397,47 @@ public class LocalizedStringLoaderTests {
   @Test
   public void testSingleResourceParseEnforcesByteCharacterAndNestingLimits() {
     String localizedStringsFile = "{\"hello\":\"world\"}";
-    LocalizedStringLoadingOptions byteLimited = LocalizedStringLoadingOptions.builder()
-        .maximumInputBytes(localizedStringsFile.getBytes(StandardCharsets.UTF_8).length - 1)
+    byte[] localizedStringsFileBytes = localizedStringsFile.getBytes(StandardCharsets.UTF_8);
+    LocalizedStringLoadingOptions exactByteLimit = LocalizedStringLoadingOptions.builder()
+        .maximumInputBytes(localizedStringsFileBytes.length)
         .build();
-    LocalizedStringLoadingOptions characterLimited = LocalizedStringLoadingOptions.builder()
+    LocalizedStringLoadingOptions oneOverByteLimit = LocalizedStringLoadingOptions.builder()
+        .maximumInputBytes(localizedStringsFileBytes.length - 1)
+        .build();
+    LocalizedStringLoadingOptions exactCharacterLimit = LocalizedStringLoadingOptions.builder()
+        .maximumReaderCharacters(localizedStringsFile.length())
+        .build();
+    LocalizedStringLoadingOptions oneOverCharacterLimit = LocalizedStringLoadingOptions.builder()
         .maximumReaderCharacters(localizedStringsFile.length() - 1)
         .build();
-    LocalizedStringLoadingOptions nestingLimited = LocalizedStringLoadingOptions.builder()
+    String nestedLocalizedStringsFile = "{\"hello\":{\"translation\":\"world\"}}";
+    LocalizedStringLoadingOptions exactNestingLimit = LocalizedStringLoadingOptions.builder()
+        .maximumJsonNestingDepth(2)
+        .build();
+    LocalizedStringLoadingOptions oneOverNestingLimit = LocalizedStringLoadingOptions.builder()
         .maximumJsonNestingDepth(1)
         .build();
 
+    assertEquals(1, LocalizedStringLoader.parse(new ByteArrayInputStream(localizedStringsFileBytes),
+        Locale.ENGLISH, "exact-byte-limit", LocalizedStringWarningHandler.ignore(), exactByteLimit).size());
+    assertEquals(1, LocalizedStringLoader.parse(new StringReader(localizedStringsFile), Locale.ENGLISH,
+        "exact-character-limit", LocalizedStringWarningHandler.ignore(), exactCharacterLimit).size());
+    assertEquals(1, LocalizedStringLoader.parse(new StringReader(nestedLocalizedStringsFile), Locale.ENGLISH,
+        "exact-nesting-limit", LocalizedStringWarningHandler.ignore(), exactNestingLimit).size(),
+        "The root object counts as depth 1 and its localized-string object counts as depth 2");
+
     LocalizedStringLoadingException byteException = assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(
-            new ByteArrayInputStream(localizedStringsFile.getBytes(StandardCharsets.UTF_8)),
-            Locale.ENGLISH, "byte-limited", LocalizedStringWarningHandler.ignore(), byteLimited));
+            new ByteArrayInputStream(localizedStringsFileBytes),
+            Locale.ENGLISH, "one-over-byte-limit", LocalizedStringWarningHandler.ignore(), oneOverByteLimit));
     LocalizedStringLoadingException characterException = assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.parse(new StringReader(localizedStringsFile), Locale.ENGLISH,
-            "character-limited",
-            LocalizedStringWarningHandler.ignore(), characterLimited));
+            "one-over-character-limit",
+            LocalizedStringWarningHandler.ignore(), oneOverCharacterLimit));
     LocalizedStringLoadingException nestingException = assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.parse(new StringReader("{\"hello\":{\"translation\":\"world\"}}"),
-            Locale.ENGLISH, "nesting-limited", LocalizedStringWarningHandler.ignore(), nestingLimited));
+        () -> LocalizedStringLoader.parse(new StringReader(nestedLocalizedStringsFile),
+            Locale.ENGLISH, "one-over-nesting-limit", LocalizedStringWarningHandler.ignore(),
+            oneOverNestingLimit));
 
     assertTrue(byteException.getMessage().contains("maximum size"));
     assertTrue(characterException.getMessage().contains("maximum size"));
@@ -436,6 +468,63 @@ public class LocalizedStringLoaderTests {
         () -> LocalizedStringLoadingOptions.builder().maximumTranslationNodes(-1));
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoadingOptions.builder().maximumWarnings(-1));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumDiscoveryEntries(0));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoadingOptions.builder().maximumDiscoveryEntries(
+            LocalizedStringLoadingOptions.MAXIMUM_DISCOVERY_ENTRIES + 1));
+  }
+
+  @Test
+  public void testFilesystemDiscoveryBudgetCountsEveryDirectChildAndAcceptsExactLimit() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-discovery-budget");
+    tempDirectory.toFile().deleteOnExit();
+    Files.write(tempDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+    Files.write(tempDirectory.resolve("notes.txt"), "not localized strings".getBytes(StandardCharsets.UTF_8));
+    LocalizedStringLoadingOptions exactLimit = LocalizedStringLoadingOptions.builder()
+        .maximumDiscoveryEntries(2)
+        .build();
+    LocalizedStringLoadingOptions oneBelowLimit = LocalizedStringLoadingOptions.builder()
+        .maximumDiscoveryEntries(1)
+        .build();
+
+    assertEquals(Set.of(Locale.ENGLISH),
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, exactLimit).keySet());
+    assertTrue(assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, oneBelowLimit)).getMessage()
+        .contains("aggregate maximum of 1 discovery entries"));
+  }
+
+  @Test
+  public void testInputStreamThatReturnsZeroFromBulkReadStillMakesProgress() {
+    byte[] localizedStringsFile = "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8);
+    InputStream zeroReturningInputStream = new InputStream() {
+      private int offset;
+      private boolean returnZero = true;
+
+      @Override
+      public int read() {
+        return offset == localizedStringsFile.length ? -1 : localizedStringsFile[offset++] & 0xFF;
+      }
+
+      @Override
+      public int read(byte[] buffer, int bufferOffset, int length) {
+        if (returnZero) {
+          returnZero = false;
+          return 0;
+        }
+
+        if (offset == localizedStringsFile.length)
+          return -1;
+
+        int bytesToRead = Math.min(length, localizedStringsFile.length - offset);
+        System.arraycopy(localizedStringsFile, offset, buffer, bufferOffset, bytesToRead);
+        offset += bytesToRead;
+        return bytesToRead;
+      }
+    };
+
+    assertEquals(1, LocalizedStringLoader.parse(zeroReturningInputStream, Locale.ENGLISH, "zero-read").size());
   }
 
   @Test
@@ -450,19 +539,25 @@ public class LocalizedStringLoaderTests {
     LocalizedStringLoadingOptions localizedStringsFilesLimited = LocalizedStringLoadingOptions.builder()
         .maximumLocalizedStringsFiles(1)
         .build();
-    LocalizedStringLoadingOptions byteLimited = LocalizedStringLoadingOptions.builder()
-        .maximumTotalInputBytes((long) englishLocalizedStringsFile.getBytes(StandardCharsets.UTF_8).length +
-            frenchLocalizedStringsFile.getBytes(StandardCharsets.UTF_8).length - 1L)
+    long totalInputBytes = (long) englishLocalizedStringsFile.getBytes(StandardCharsets.UTF_8).length +
+        frenchLocalizedStringsFile.getBytes(StandardCharsets.UTF_8).length;
+    LocalizedStringLoadingOptions exactAggregateByteLimit = LocalizedStringLoadingOptions.builder()
+        .maximumTotalInputBytes(totalInputBytes)
+        .build();
+    LocalizedStringLoadingOptions oneOverAggregateByteLimit = LocalizedStringLoadingOptions.builder()
+        .maximumTotalInputBytes(totalInputBytes - 1L)
         .build();
     LocalizedStringLoadingOptions translationNodeLimited = LocalizedStringLoadingOptions.builder()
         .maximumTranslationNodes(1)
         .build();
 
+    assertEquals(Set.of(Locale.ENGLISH, Locale.FRENCH),
+        LocalizedStringLoader.loadFromFilesystem(tempDirectory, exactAggregateByteLimit).keySet());
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, localizedStringsFilesLimited)).getMessage()
         .contains("aggregate localized strings file limit of 1"));
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
-        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, byteLimited)).getMessage()
+        () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, oneOverAggregateByteLimit)).getMessage()
         .contains("aggregate maximum"));
     assertTrue(assertThrows(LocalizedStringLoadingException.class,
         () -> LocalizedStringLoader.loadFromFilesystem(tempDirectory, translationNodeLimited)).getMessage()
@@ -1487,8 +1582,8 @@ public class LocalizedStringLoaderTests {
     manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH,
         localizedStringsFilesJar.getFileName().toString());
 
-    try (JarOutputStream ignored = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
-      // Manifest-only application JAR.
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
+      jarOutputStream.flush(); // Manifest-only application JAR.
     }
 
     try (URLClassLoader classLoader = new URLClassLoader(new URL[]{applicationJar.toUri().toURL()}, null)) {
@@ -1549,6 +1644,116 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testExplicitClasspathResourceMappingRejectsMalformedLocaleBeforeTagCollision() {
+    ClassLoader unopenedClassLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        throw new AssertionError("Malformed locale mappings must be rejected before resources are opened");
+      }
+    };
+    Locale malformedUndeterminedLocale = new Locale("x");
+    Map<Locale, String> resourcePathByLocale = Map.of(
+        Locale.ROOT, "localized-strings/root.json",
+        malformedUndeterminedLocale, "localized-strings/malformed.json");
+
+    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.loadFromClasspathResources(unopenedClassLoader, resourcePathByLocale));
+
+    assertEquals("und", Locale.ROOT.toLanguageTag());
+    assertEquals("und", malformedUndeterminedLocale.toLanguageTag());
+    assertTrue(exception.getMessage().contains("Locale key 'x'"));
+  }
+
+  @Test
+  public void testExplicitClasspathResourceMappingRejectsDuplicateRenderedLanguageTags() {
+    ClassLoader unopenedClassLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        throw new AssertionError("Duplicate locale mappings must be rejected before resources are opened");
+      }
+    };
+    Locale explicitUndeterminedLocale = new Locale("und");
+    Map<Locale, String> resourcePathByLocale = Map.of(
+        Locale.ROOT, "localized-strings/root.json",
+        explicitUndeterminedLocale, "localized-strings/und.json");
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspathResources(unopenedClassLoader, resourcePathByLocale));
+
+    assertNotEquals(Locale.ROOT, explicitUndeterminedLocale);
+    assertEquals("und", Locale.ROOT.toLanguageTag());
+    assertEquals("und", explicitUndeterminedLocale.toLanguageTag());
+    assertTrue(exception.getMessage().contains("Duplicate localized strings resource mapping for locale 'und'"));
+    assertTrue(exception.getMessage().contains("localized-strings/root.json"));
+    assertTrue(exception.getMessage().contains("localized-strings/und.json"));
+  }
+
+  @Test
+  public void testExplicitClasspathResourceMappingPreservesLocaleKeysAndDistinctAliases() {
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        return new ByteArrayInputStream(("{\"" + resourcePath + "\":\"value\"}")
+            .getBytes(StandardCharsets.UTF_8));
+      }
+    };
+    Locale extendedLocale = new Locale.Builder()
+        .setLanguage("en")
+        .setScript("Latn")
+        .setRegion("US")
+        .setExtension('x', "lokalize")
+        .build();
+
+    Map<Locale, Set<LocalizedString>> extendedResult = LocalizedStringLoader.loadFromClasspathResources(classLoader,
+        Map.of(extendedLocale, "localized-strings/extended.json"));
+    Map<Locale, Set<LocalizedString>> aliasResult = LocalizedStringLoader.loadFromClasspathResources(classLoader,
+        Map.of(Locale.forLanguageTag("mo"), "localized-strings/mo.json",
+            Locale.forLanguageTag("ro"), "localized-strings/ro.json"));
+
+    assertSame(extendedLocale, extendedResult.keySet().iterator().next());
+    assertEquals(Set.of(Locale.forLanguageTag("mo"), Locale.forLanguageTag("ro")), aliasResult.keySet());
+  }
+
+  @Test
+  public void testExplodedClasspathFiltersNamesBeforeResolvingRealPaths() throws IOException {
+    Path classpathRoot = Files.createTempDirectory("lokalized-exploded-classpath");
+    classpathRoot.toFile().deleteOnExit();
+    Path stringsDirectory = Files.createDirectories(classpathRoot.resolve("strings"));
+    Files.write(stringsDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+    Files.createSymbolicLink(stringsDirectory.resolve("notes.txt"), stringsDirectory.resolve("missing-notes"));
+    Files.createSymbolicLink(stringsDirectory.resolve("template.json"), stringsDirectory.resolve("missing-template"));
+    List<LocalizedStringWarning> warnings = new ArrayList<>();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{classpathRoot.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(
+          classLoader, "strings", warnings::add, LocalizedStringLoadingOptions.defaults());
+
+      assertEquals(Set.of(Locale.ENGLISH), localizedStringsByLocale.keySet());
+      assertEquals(1, warnings.size());
+      assertEquals(LocalizedStringWarning.Type.INVALID_CLASSPATH_LOCALE_FILENAME, warnings.get(0).getType());
+      assertTrue(warnings.get(0).getSource().contains("template.json"));
+    }
+  }
+
+  @Test
+  public void testExplodedClasspathFailsSafelyForDanglingLocalizedStringsSymlink() throws IOException {
+    Path classpathRoot = Files.createTempDirectory("lokalized-dangling-classpath-resource");
+    classpathRoot.toFile().deleteOnExit();
+    Path stringsDirectory = Files.createDirectories(classpathRoot.resolve("strings"));
+    Path localizedStringsFile = stringsDirectory.resolve("en.json");
+    Files.createSymbolicLink(localizedStringsFile, stringsDirectory.resolve("missing-en.json"));
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{classpathRoot.toUri().toURL()}, null)) {
+      LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+      assertTrue(exception.getMessage().contains("Unable to determine canonical path"));
+      assertTrue(exception.getMessage().contains(localizedStringsFile.toString()));
+      assertNotNull(exception.getCause());
+    }
+  }
+
+  @Test
   public void testClasspathLoadingFromJarWithoutDirectoryEntryRequiresExhaustiveSearch() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings-no-directory-entry", ".jar");
     tempJar.toFile().deleteOnExit();
@@ -1568,6 +1773,95 @@ public class LocalizedStringLoaderTests {
       assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
     }
   }
+
+  @Test
+  public void testOrdinaryJarDiscoveryBudgetCountsPhysicalEntriesAndPackageLocation() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-discovery-budget", ".jar");
+    tempJar.toFile().deleteOnExit();
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar))) {
+      writeJarEntry(jarOutputStream, "strings/", null);
+      writeJarEntry(jarOutputStream, "strings/en.json", "{\"hello\":\"world\"}");
+      writeJarEntry(jarOutputStream, "foreign/data.txt", "foreign");
+    }
+
+    LocalizedStringLoadingOptions exactLimit = LocalizedStringLoadingOptions.builder()
+        .maximumDiscoveryEntries(4)
+        .build();
+    LocalizedStringLoadingOptions oneBelowLimit = LocalizedStringLoadingOptions.builder()
+        .maximumDiscoveryEntries(3)
+        .build();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      assertEquals(Set.of(Locale.ENGLISH),
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", exactLimit).keySet());
+      assertTrue(assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", oneBelowLimit)).getMessage()
+          .contains("aggregate maximum of 3 discovery entries"));
+    }
+  }
+
+  @Test
+  public void testExhaustiveDiscoveryBudgetIncludesRootsManifestsAndJarEntries() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-exhaustive-discovery-budget");
+    tempDirectory.toFile().deleteOnExit();
+    Path localizedStringsJar = tempDirectory.resolve("localized-strings.jar");
+    Path applicationJar = tempDirectory.resolve("application.jar");
+    writeJarEntryWithoutDirectory(localizedStringsJar, "strings/en.json", "{\"hello\":\"world\"}");
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, localizedStringsJar.getFileName().toString());
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
+      jarOutputStream.flush(); // Manifest-only application JAR.
+    }
+
+    LocalizedStringLoadingOptions exactLimit = LocalizedStringLoadingOptions.builder()
+        .exhaustiveClasspathSearch(true)
+        .maximumDiscoveryEntries(4)
+        .build();
+    LocalizedStringLoadingOptions oneBelowLimit = exactLimit.toBuilder()
+        .maximumDiscoveryEntries(3)
+        .build();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{applicationJar.toUri().toURL()}, null)) {
+      assertEquals(Set.of(Locale.ENGLISH),
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", exactLimit).keySet());
+      assertTrue(assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", oneBelowLimit)).getMessage()
+          .contains("aggregate maximum of 3 discovery entries"));
+    }
+  }
+
+	@Test
+	public void testManifestDiscoveryBudgetStopsBeforeConvertingAnOverBudgetToken() throws IOException {
+		Path applicationJar = Files.createTempFile("lokalized-manifest-discovery-budget", ".jar");
+		applicationJar.toFile().deleteOnExit();
+		Manifest manifest = new Manifest();
+		manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+		manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, "https://example.invalid/first.jar %");
+
+		try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
+			jarOutputStream.flush();
+		}
+
+		LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+				.exhaustiveClasspathSearch(true)
+				.maximumDiscoveryEntries(2)
+				.build();
+
+		try (URLClassLoader classLoader = new URLClassLoader(new URL[]{applicationJar.toUri().toURL()}, null) {
+			@Override
+			public Enumeration<URL> getResources(String name) {
+				return Collections.emptyEnumeration();
+			}
+		}) {
+			LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+					() -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions));
+			assertTrue(exception.getMessage().contains("manifest Class-Path"));
+			assertTrue(exception.getMessage().contains("aggregate maximum of 2 discovery entries"));
+		}
+	}
 
   @Test
   public void testClasspathLoadingIgnoresForeignJsonDuringExhaustiveSearch() throws IOException {

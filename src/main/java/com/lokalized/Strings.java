@@ -400,6 +400,8 @@ public interface Strings extends LocaleMatcher {
 		 * @return a {@link Strings} instance, not null
 		 * @throws IllegalArgumentException if supplied localized strings are invalid, including an alternative graph nested
 		 *                                  more than 128 levels deep
+		 * @throws ExpressionEvaluationException if an expression cannot be compiled, including when it exceeds the
+		 *                                       configured runtime limits
 		 */
 		@NonNull
 		public Strings build() {

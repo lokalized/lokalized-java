@@ -29,6 +29,7 @@ import com.lokalized.MinimalJson.JsonValue;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.NotThreadSafe;
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -50,6 +51,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.IllformedLocaleException;
@@ -228,6 +230,7 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
   @NonNull
@@ -258,6 +261,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
   @NonNull
@@ -297,6 +301,7 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
   @NonNull
@@ -333,6 +338,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
   @NonNull
@@ -348,7 +354,7 @@ public final class LocalizedStringLoader {
     validateClasspathPackage(classpathPackage);
     LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
 
-    Enumeration<URL> urls;
+    Enumeration<@NonNull URL> urls;
 
     try {
       urls = classLoader.getResources(classpathPackage);
@@ -358,9 +364,11 @@ public final class LocalizedStringLoader {
 
     Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> mergedByLocale = createSourceLocaleKeyMap();
     Set<@NonNull String> processedLocations = new LinkedHashSet<>();
+    String packageDiscoverySource = format("classpath package '%s'", classpathPackage);
 
     while (urls.hasMoreElements()) {
       URL url = urls.nextElement();
+      loadingSession.discoverEntry(packageDiscoverySource);
 
       if (!processedLocations.add(classpathLocationIdentity(url, classpathPackage)))
         continue;
@@ -371,7 +379,7 @@ public final class LocalizedStringLoader {
     }
 
     if (loadingOptions.isExhaustiveClasspathSearchEnabled()) {
-      for (Path classpathRoot : classpathRootsFor(classLoader)) {
+      for (Path classpathRoot : classpathRootsFor(classLoader, loadingSession)) {
         if (Files.isDirectory(classpathRoot)) {
           Path packageDirectory = classpathRoot.resolve(classpathPackage);
 
@@ -433,6 +441,10 @@ public final class LocalizedStringLoader {
    *
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if the mapping or any mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -447,6 +459,10 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -462,6 +478,10 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -478,6 +498,10 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -494,6 +518,10 @@ public final class LocalizedStringLoader {
    * @param classLoader classloader from which to open resources, not null
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -510,6 +538,10 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -527,6 +559,10 @@ public final class LocalizedStringLoader {
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -545,6 +581,10 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply across the mapped resources, not null
    * @return per-locale sets of localized strings, not null
+   * @throws NullPointerException if any argument or mapping key or value is null
+   * @throws IllegalArgumentException if a locale key or resource path is invalid
+   * @throws LocalizedStringLoadingException if rendered locale tags collide, a resource cannot be loaded, parsed, or
+   * validated, or a configured loading limit is exceeded
    * @since 3.0.0
    */
   @NonNull
@@ -557,19 +597,31 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
 
-    Map<@NonNull Locale, @NonNull String> sortedResourcePathByLocale = createLocaleOriginMap();
+    List<Map.@NonNull Entry<@NonNull Locale, @NonNull String>> sortedResourcePathsByLocale = new ArrayList<>();
+    Map<@NonNull String, @NonNull String> resourcePathByLanguageTag = new LinkedHashMap<>();
 
     for (Map.Entry<@NonNull Locale, @NonNull String> resourcePathEntry : resourcePathByLocale.entrySet()) {
       Locale locale = requireNonNull(resourcePathEntry.getKey());
       String resourcePath = requireNonNull(resourcePathEntry.getValue());
+      validateExplicitLocale(locale);
       validateClasspathResourcePath(resourcePath);
-      sortedResourcePathByLocale.put(locale, resourcePath);
+      String languageTag = locale.toLanguageTag();
+      @Nullable String existingResourcePath = resourcePathByLanguageTag.putIfAbsent(languageTag, resourcePath);
+
+      if (existingResourcePath != null)
+        throw new LocalizedStringLoadingException(format(
+            "Duplicate localized strings resource mapping for locale '%s' found at '%s' and '%s'",
+            languageTag, existingResourcePath, resourcePath));
+
+      sortedResourcePathsByLocale.add(new java.util.AbstractMap.SimpleImmutableEntry<>(locale, resourcePath));
     }
+
+    sortedResourcePathsByLocale.sort(Comparator.comparing(entry -> entry.getKey().toLanguageTag()));
 
     LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
 
-    for (Map.Entry<@NonNull Locale, @NonNull String> resourcePathEntry : sortedResourcePathByLocale.entrySet()) {
+    for (Map.Entry<@NonNull Locale, @NonNull String> resourcePathEntry : sortedResourcePathsByLocale) {
       Locale locale = resourcePathEntry.getKey();
       String resourcePath = resourcePathEntry.getValue();
       String source = "classpath:" + resourcePath;
@@ -600,8 +652,10 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Set<@NonNull Path> classpathRootsFor(@NonNull ClassLoader classLoader) {
+  private static Set<@NonNull Path> classpathRootsFor(@NonNull ClassLoader classLoader,
+                                                       @NonNull LoadingSession loadingSession) {
     requireNonNull(classLoader);
+    requireNonNull(loadingSession);
 
     Set<@NonNull Path> classpathRoots = new LinkedHashSet<>();
     boolean delegatesToSystemClassLoader = false;
@@ -615,6 +669,8 @@ public final class LocalizedStringLoader {
         continue;
 
       for (URL url : ((URLClassLoader) current).getURLs()) {
+        loadingSession.discoverEntry("classpath roots");
+
         if (!"file".equals(url.getProtocol()))
           continue;
 
@@ -629,12 +685,24 @@ public final class LocalizedStringLoader {
     if (delegatesToSystemClassLoader) {
       String classpath = System.getProperty("java.class.path", "");
 
-      for (String entry : classpath.split(Pattern.quote(File.pathSeparator)))
-        if (!entry.isEmpty())
+      for (int entryStart = 0; entryStart <= classpath.length();) {
+        int separatorIndex = classpath.indexOf(File.pathSeparatorChar, entryStart);
+        int entryEnd = separatorIndex < 0 ? classpath.length() : separatorIndex;
+
+        if (entryEnd > entryStart) {
+          // Charge the candidate before allocating a token or asking Path to parse it.
+          loadingSession.discoverEntry("system classpath roots");
+          String entry = classpath.substring(entryStart, entryEnd);
           classpathRoots.add(Paths.get(entry).toAbsolutePath().normalize());
+        }
+
+        if (separatorIndex < 0)
+          break;
+        entryStart = separatorIndex + 1;
+      }
     }
 
-    addManifestClasspathRoots(classpathRoots);
+    addManifestClasspathRoots(classpathRoots, loadingSession);
 
     return Collections.unmodifiableSet(classpathRoots);
   }
@@ -643,8 +711,10 @@ public final class LocalizedStringLoader {
    * Expands the transitive {@code Class-Path} entries of classpath JAR manifests. {@link URLClassLoader#getURLs()}
    * reports only the URLs supplied to the loader, even though its resource lookup also follows these manifest links.
    */
-  private static void addManifestClasspathRoots(@NonNull Set<@NonNull Path> classpathRoots) {
+  private static void addManifestClasspathRoots(@NonNull Set<@NonNull Path> classpathRoots,
+                                                @NonNull LoadingSession loadingSession) {
     requireNonNull(classpathRoots);
+    requireNonNull(loadingSession);
 
     List<@NonNull Path> pendingRoots = new ArrayList<>(classpathRoots);
 
@@ -662,12 +732,28 @@ public final class LocalizedStringLoader {
 
         @Nullable String manifestClasspath = manifest.getMainAttributes().getValue(Attributes.Name.CLASS_PATH);
 
-        if (manifestClasspath == null || manifestClasspath.trim().isEmpty())
+        if (manifestClasspath == null)
           continue;
 
         URL manifestBase = classpathRoot.toUri().toURL();
+        String manifestDiscoverySource = format("manifest Class-Path for '%s'", classpathRoot);
 
-        for (String manifestEntry : manifestClasspath.trim().split("\\s+")) {
+        for (int entryStart = 0; entryStart < manifestClasspath.length();) {
+          while (entryStart < manifestClasspath.length()
+              && isManifestClasspathWhitespace(manifestClasspath.charAt(entryStart)))
+            ++entryStart;
+          if (entryStart >= manifestClasspath.length())
+            break;
+
+          int entryEnd = entryStart + 1;
+          while (entryEnd < manifestClasspath.length()
+              && !isManifestClasspathWhitespace(manifestClasspath.charAt(entryEnd)))
+            ++entryEnd;
+
+          // Charge the candidate before allocating a token or resolving its URL.
+          loadingSession.discoverEntry(manifestDiscoverySource);
+          String manifestEntry = manifestClasspath.substring(entryStart, entryEnd);
+          entryStart = entryEnd;
           URL resolvedEntry = new URL(manifestBase, manifestEntry);
 
           // Exhaustive discovery operates on filesystem roots. Non-file resources remain available through ordinary
@@ -687,6 +773,11 @@ public final class LocalizedStringLoader {
             "Unable to inspect manifest Class-Path for classpath root '%s'", classpathRoot), e);
       }
     }
+  }
+
+  private static boolean isManifestClasspathWhitespace(char character) {
+    return character == ' ' || character == '\t' || character == '\n' || character == '\u000B'
+        || character == '\f' || character == '\r';
   }
 
   @NonNull
@@ -1005,9 +1096,12 @@ public final class LocalizedStringLoader {
           directory));
 
     Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale = createLocaleMap();
+    String discoverySource = format("filesystem directory '%s'", directory);
 
     try (DirectoryStream<@NonNull Path> directoryStream = Files.newDirectoryStream(directory)) {
       for (Path file : directoryStream) {
+        loadingSession.discoverEntry(discoverySource);
+
         if (Files.isDirectory(file))
           continue;
 
@@ -1058,9 +1152,12 @@ public final class LocalizedStringLoader {
 
     Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = createSourceLocaleMap();
     Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
+    String discoverySource = format("classpath directory '%s'", directory);
 
     try (DirectoryStream<@NonNull Path> directoryStream = Files.newDirectoryStream(directory)) {
       for (Path file : directoryStream) {
+        loadingSession.discoverEntry(discoverySource);
+
         if (Files.isDirectory(file))
           continue;
 
@@ -1074,12 +1171,13 @@ public final class LocalizedStringLoader {
         if (isHiddenFileName(fileName))
           continue;
 
-        String canonicalPath = canonicalPathForPath(file);
-        String languageTag = languageTagForClasspathFileName(fileName, canonicalPath, loadingSession);
+        String unresolvedPath = file.toAbsolutePath().normalize().toString();
+        @Nullable String languageTag = languageTagForClasspathFileName(fileName, unresolvedPath, loadingSession);
 
         if (languageTag != null) {
+          String canonicalPath = canonicalPathForPath(file);
           Locale locale = Locale.forLanguageTag(languageTag);
-          String existingOrigin = originByLocale.get(locale);
+          @Nullable String existingOrigin = originByLocale.get(locale);
 
           if (existingOrigin != null)
             throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in '%s' and '%s'",
@@ -1160,7 +1258,7 @@ public final class LocalizedStringLoader {
     Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
     packagePath = normalizedJarPackagePath(packagePath) + "/";
     Map<@NonNull String, @NonNull JarEntry> entriesByRelativeName =
-        effectiveJarEntriesInPackage(jarFile, packagePath);
+        effectiveJarEntriesInPackage(jarFile, packagePath, loadingSession);
 
     for (Map.Entry<@NonNull String, @NonNull JarEntry> entryByRelativeName : entriesByRelativeName.entrySet()) {
       String relativeName = entryByRelativeName.getKey();
@@ -1171,13 +1269,13 @@ public final class LocalizedStringLoader {
         continue;
 
       String canonicalPath = format("jar:%s!/%s", jarFile.getName(), entryName);
-      String languageTag = languageTagForClasspathFileName(relativeName, canonicalPath, loadingSession);
+      @Nullable String languageTag = languageTagForClasspathFileName(relativeName, canonicalPath, loadingSession);
 
       if (languageTag == null)
         continue;
 
       Locale locale = Locale.forLanguageTag(languageTag);
-      String existingOrigin = originByLocale.get(locale);
+      @Nullable String existingOrigin = originByLocale.get(locale);
 
       if (existingOrigin != null)
         throw new LocalizedStringLoadingException(format("Duplicate localized strings file for locale '%s' found in '%s' and '%s'",
@@ -1200,18 +1298,21 @@ public final class LocalizedStringLoader {
    */
   @NonNull
   private static Map<@NonNull String, @NonNull JarEntry> effectiveJarEntriesInPackage(
-      @NonNull JarFile jarFile, @NonNull String packagePath) {
+      @NonNull JarFile jarFile, @NonNull String packagePath, @NonNull LoadingSession loadingSession) {
     requireNonNull(jarFile);
     requireNonNull(packagePath);
+    requireNonNull(loadingSession);
 
     Map<@NonNull String, @NonNull JarEntrySelection> selectionsByRelativeName = new TreeMap<>();
-    Enumeration<JarEntry> entries = jarFile.entries();
+    Enumeration<@NonNull JarEntry> entries = jarFile.entries();
     boolean multiRelease = jarFile.isMultiRelease();
     int runtimeMajorVersion = JarFile.runtimeVersion().major();
     String versionedPrefix = "META-INF/versions/";
+    String discoverySource = format("JAR '%s'", jarFile.getName());
 
     while (entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
+      loadingSession.discoverEntry(discoverySource);
 
       if (entry.isDirectory())
         continue;
@@ -1426,6 +1527,17 @@ public final class LocalizedStringLoader {
     }
   }
 
+  private static void validateExplicitLocale(@NonNull Locale locale) {
+    requireNonNull(locale);
+
+    try {
+      new Locale.Builder().setLocale(locale).build();
+    } catch (IllformedLocaleException e) {
+      throw new IllegalArgumentException(format(
+          "Locale key '%s' is not a well-formed IETF BCP 47 locale", locale), e);
+    }
+  }
+
   /**
    * Parses out a set of localized strings from the given path.
    *
@@ -1502,8 +1614,16 @@ public final class LocalizedStringLoader {
         if (bytesRead == -1)
           break;
 
-        if (bytesRead == 0)
+        if (bytesRead == 0) {
+          int nextByte = inputStream.read();
+
+          if (nextByte == -1)
+            break;
+
+          loadingSession.addInputBytes(1, source);
+          outputStream.write(nextByte);
           continue;
+        }
 
         loadingSession.addInputBytes(bytesRead, source);
 
@@ -2552,6 +2672,7 @@ public final class LocalizedStringLoader {
     return value.substring(0, 255) + '\u2026';
   }
 
+  @NotThreadSafe
   private static final class LoadingSession implements LocalizedStringWarningHandler {
     @NonNull
     private final LocalizedStringLoadingOptions loadingOptions;
@@ -2561,6 +2682,7 @@ public final class LocalizedStringLoader {
     private int localizedStringsFiles;
     private int translationNodes;
     private int warnings;
+    private int discoveryEntries;
 
     private LoadingSession(@NonNull LocalizedStringLoadingOptions loadingOptions,
                            @NonNull LocalizedStringWarningHandler warningHandler) {
@@ -2608,6 +2730,17 @@ public final class LocalizedStringLoader {
             maximumTranslationNodes));
 
       translationNodes += translationNodeCount;
+    }
+
+    private void discoverEntry(@NonNull String source) {
+      requireNonNull(source);
+
+      if (discoveryEntries >= loadingOptions.getMaximumDiscoveryEntries())
+        throw new LocalizedStringLoadingException(format(
+            "%s: localized strings load exceeds the aggregate maximum of %d discovery entries", source,
+            loadingOptions.getMaximumDiscoveryEntries()));
+
+      ++discoveryEntries;
     }
 
     @Override

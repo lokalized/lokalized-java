@@ -31,9 +31,12 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * The byte limit applies to {@link java.nio.file.Path} and {@link java.io.InputStream} inputs. The UTF-16 code-unit
  * limit applies to {@link java.io.Reader} inputs, whose original byte representation is not available to Lokalized. The
- * localized strings file-count, translation-node, and warning limits apply to every load, including single-resource {@code parse(...)}
- * operations. The aggregate byte limit also applies to path and input-stream parsing; it cannot apply to a
- * {@link java.io.Reader} because the original byte representation is unavailable.
+ * localized strings file-count, translation-node, and warning limits apply to every load, including single-resource
+ * {@code parse(...)} operations. The discovery-entry limit separately bounds resources, filesystem children, JAR
+ * entries, and classpath roots examined before candidate resources are parsed; it does not apply to explicit
+ * single-resource parsing or explicit locale-to-resource maps, which enumerate no candidates. The aggregate byte
+ * limit also applies to path and input-stream parsing; it cannot apply to a {@link java.io.Reader} because the original
+ * byte representation is unavailable.
  * The translation-node limit bounds parsed model structure; the byte and character limits separately bound the
  * localized strings file text containing that structure.
  * <p>
@@ -76,6 +79,12 @@ public final class LocalizedStringLoadingOptions {
 	/** Default maximum number of warnings emitted by one load: 1,000. */
 	@NonNull
 	public static final Integer DEFAULT_MAXIMUM_WARNINGS = 1_000;
+	/** Default maximum number of discovery entries examined by one filesystem or classpath load: 100,000. */
+	@NonNull
+	public static final Integer DEFAULT_MAXIMUM_DISCOVERY_ENTRIES = 100_000;
+	/** Highest configurable discovery-entry limit supported by the loader: 1,000,000. */
+	@NonNull
+	public static final Integer MAXIMUM_DISCOVERY_ENTRIES = 1_000_000;
 
 	@NonNull
 	private static final LocalizedStringLoadingOptions DEFAULTS = new Builder().build();
@@ -88,6 +97,7 @@ public final class LocalizedStringLoadingOptions {
 	private final int maximumLocalizedStringsFiles;
 	private final int maximumTranslationNodes;
 	private final int maximumWarnings;
+	private final int maximumDiscoveryEntries;
 
 	private LocalizedStringLoadingOptions(
 			int maximumInputBytes,
@@ -97,7 +107,8 @@ public final class LocalizedStringLoadingOptions {
 			long maximumTotalInputBytes,
 			int maximumLocalizedStringsFiles,
 			int maximumTranslationNodes,
-			int maximumWarnings) {
+			int maximumWarnings,
+			int maximumDiscoveryEntries) {
 		this.maximumInputBytes = maximumInputBytes;
 		this.maximumReaderCharacters = maximumReaderCharacters;
 		this.maximumJsonNestingDepth = maximumJsonNestingDepth;
@@ -106,6 +117,7 @@ public final class LocalizedStringLoadingOptions {
 		this.maximumLocalizedStringsFiles = maximumLocalizedStringsFiles;
 		this.maximumTranslationNodes = maximumTranslationNodes;
 		this.maximumWarnings = maximumWarnings;
+		this.maximumDiscoveryEntries = maximumDiscoveryEntries;
 	}
 
 	/**
@@ -143,7 +155,8 @@ public final class LocalizedStringLoadingOptions {
 				.maximumTotalInputBytes(maximumTotalInputBytes)
 				.maximumLocalizedStringsFiles(maximumLocalizedStringsFiles)
 				.maximumTranslationNodes(maximumTranslationNodes)
-				.maximumWarnings(maximumWarnings);
+				.maximumWarnings(maximumWarnings)
+				.maximumDiscoveryEntries(maximumDiscoveryEntries);
 	}
 
 	/**
@@ -229,6 +242,18 @@ public final class LocalizedStringLoadingOptions {
 		return maximumWarnings;
 	}
 
+	/**
+	 * Gets the maximum number of entries examined while discovering filesystem or classpath resources. Entries include
+	 * direct filesystem children, package-resource locations, physical JAR entries, classpath-root candidates, and
+	 * manifest {@code Class-Path} entries. This budget is independent of parsed-resource and input-size limits.
+	 *
+	 * @return the discovery-entry limit, not null
+	 */
+	@NonNull
+	public Integer getMaximumDiscoveryEntries() {
+		return maximumDiscoveryEntries;
+	}
+
 	@Override
 	public boolean equals(@Nullable Object object) {
 		if (this == object)
@@ -243,14 +268,15 @@ public final class LocalizedStringLoadingOptions {
 				&& maximumTotalInputBytes == that.maximumTotalInputBytes
 				&& maximumLocalizedStringsFiles == that.maximumLocalizedStringsFiles
 				&& maximumTranslationNodes == that.maximumTranslationNodes
-				&& maximumWarnings == that.maximumWarnings;
+				&& maximumWarnings == that.maximumWarnings
+				&& maximumDiscoveryEntries == that.maximumDiscoveryEntries;
 	}
 
 	@Override
 	public int hashCode() {
 		return Objects.hash(maximumInputBytes, maximumReaderCharacters, maximumJsonNestingDepth,
 				exhaustiveClasspathSearch, maximumTotalInputBytes, maximumLocalizedStringsFiles, maximumTranslationNodes,
-				maximumWarnings);
+				maximumWarnings, maximumDiscoveryEntries);
 	}
 
 	@Override
@@ -258,9 +284,10 @@ public final class LocalizedStringLoadingOptions {
 	public String toString() {
 		return format("%s{maximumInputBytes=%d, maximumReaderCharacters=%d, maximumJsonNestingDepth=%d, " +
 				"exhaustiveClasspathSearch=%s, maximumTotalInputBytes=%d, maximumLocalizedStringsFiles=%d, " +
-				"maximumTranslationNodes=%d, maximumWarnings=%d}", getClass().getSimpleName(), maximumInputBytes,
+				"maximumTranslationNodes=%d, maximumWarnings=%d, maximumDiscoveryEntries=%d}",
+				getClass().getSimpleName(), maximumInputBytes,
 				maximumReaderCharacters, maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes,
-				maximumLocalizedStringsFiles, maximumTranslationNodes, maximumWarnings);
+				maximumLocalizedStringsFiles, maximumTranslationNodes, maximumWarnings, maximumDiscoveryEntries);
 	}
 
 	/**
@@ -278,6 +305,7 @@ public final class LocalizedStringLoadingOptions {
 		private int maximumLocalizedStringsFiles = DEFAULT_MAXIMUM_LOCALIZED_STRINGS_FILES;
 		private int maximumTranslationNodes = DEFAULT_MAXIMUM_TRANSLATION_NODES;
 		private int maximumWarnings = DEFAULT_MAXIMUM_WARNINGS;
+		private int maximumDiscoveryEntries = DEFAULT_MAXIMUM_DISCOVERY_ENTRIES;
 
 		private Builder() {
 		}
@@ -409,6 +437,25 @@ public final class LocalizedStringLoadingOptions {
 		}
 
 		/**
+		 * Sets the maximum number of entries examined while discovering filesystem or classpath resources. This budget is
+		 * charged before filename and package filtering so irrelevant entries cannot cause unbounded discovery work.
+		 *
+		 * @param maximumDiscoveryEntries positive discovery-entry limit, at most
+		 *                                {@link #MAXIMUM_DISCOVERY_ENTRIES}
+		 * @return this builder, not null
+		 */
+		@NonNull
+		public Builder maximumDiscoveryEntries(@NonNull Integer maximumDiscoveryEntries) {
+			requireNonNull(maximumDiscoveryEntries);
+			if (maximumDiscoveryEntries <= 0 || maximumDiscoveryEntries > MAXIMUM_DISCOVERY_ENTRIES)
+				throw new IllegalArgumentException("maximumDiscoveryEntries must be between 1 and " +
+						MAXIMUM_DISCOVERY_ENTRIES);
+
+			this.maximumDiscoveryEntries = maximumDiscoveryEntries;
+			return this;
+		}
+
+		/**
 		 * Builds immutable loading options.
 		 *
 		 * @return immutable loading options, not null
@@ -418,7 +465,7 @@ public final class LocalizedStringLoadingOptions {
 			return new LocalizedStringLoadingOptions(maximumInputBytes, maximumReaderCharacters,
 					maximumJsonNestingDepth, exhaustiveClasspathSearch, maximumTotalInputBytes,
 					maximumLocalizedStringsFiles,
-					maximumTranslationNodes, maximumWarnings);
+					maximumTranslationNodes, maximumWarnings, maximumDiscoveryEntries);
 		}
 	}
 }

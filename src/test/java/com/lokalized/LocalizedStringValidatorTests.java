@@ -22,7 +22,6 @@ import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -173,18 +172,11 @@ public class LocalizedStringValidatorTests {
   }
 
   @Test
-  public void nullExpressionAlternativeIsRejected() {
-    ExpressionTranslation expressionTranslation = new ExpressionTranslation(
-        "default", Collections.singletonList(null));
-    LocalizedString localizedString = new LocalizedString.Builder("key")
-        .translation("{{summary}}")
-        .placeholderDefinitions(Map.of("summary", expressionTranslation))
-        .build();
+  public void nullExpressionAlternativeIsRejectedAtConstruction() {
+    NullPointerException exception = assertThrows(NullPointerException.class,
+        () -> new ExpressionTranslation("default", java.util.Collections.singletonList(null)));
 
-    IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-        () -> LocalizedStringValidator.validate(ENGLISH, localizedString));
-
-    assertTrue(exception.getMessage().contains("null expression alternative at index 0"));
+    assertTrue(exception.getMessage().contains("alternatives"));
   }
 
   @Test

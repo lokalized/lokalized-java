@@ -79,6 +79,8 @@ Lokalized has proudly powered production systems since 2017.
 
 If you don't use Maven, you can drop [lokalized-3.0.0-SNAPSHOT.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.0.0-SNAPSHOT/lokalized-3.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
 
+Upgrading an existing application? See the [2.1-to-3.0 Java migration guide](https://lokalized.com/upgrading/2.1-to-3.0/).
+
 ## Why Lokalized?
 
 * **As a developer**, it is unrealistic to embed per-locale translation rules in code for every text string
@@ -363,8 +365,10 @@ alternative, so conditional structures cannot bypass the work budget. Overloads
 accepting loading options may lower or raise these defaults; the loader's hard maximum nesting depth is 128. The total
 input-byte limit also applies to single-resource `Path` and `InputStream` parsing, while it cannot apply to a `Reader`
 because the original byte representation is unavailable. A single-resource parse consumes one localized strings file
-from its file-count budget. Input streams are decoded as strict UTF-8, and blank or BOM-only localized strings files are
-rejected - use `{}` for an intentionally empty localized strings file.
+from its file-count budget. Discovery-based filesystem and classpath loads examine at most 100,000 entries by default;
+this limit is configurable up to 1,000,000. Explicit locale-to-resource maps and single-resource parsing enumerate no
+candidates and do not consume the discovery budget. Input streams are decoded as strict UTF-8, and blank or BOM-only
+localized strings files are rejected - use `{}` for an intentionally empty localized strings file.
 
 Classpath loading normally uses the classloader's package-resource discovery and does not sweep every classpath root.
 Some JAR creation tools omit directory entries, which makes their packages invisible to ordinary discovery. Enable
@@ -662,7 +666,7 @@ Note that this is just a snippet to illustrate functionality - the other portion
 
 When expressing a range of values (`1-3 meters`, `2.5-3.5 hours`), the cardinality of the range is determined by applying per-language rules to its start and end cardinalities.
   
-In English we don't think about this - all ranges are of the form [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - but many other languages have range-specific forms.
+Every explicitly listed English CLDR range pair selects [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER), but unlisted pairs use Lokalized's end-category fallback. For example, [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) -> [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) is unlisted and therefore evaluates to [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE). Many other languages have additional range-specific forms.
 
 ### French Localized Strings File
 
@@ -690,12 +694,26 @@ French ranges can be either [`CARDINALITY_ONE`](https://javadoc.lokalized.com/co
 
 ### English Localized Strings File
 
-All English range forms evaluate to [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) so the file can be kept simple.
+English ranges with different endpoints use the explicit CLDR mappings and evaluate to [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER). Equal singular endpoints ([`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) -> [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE)) use the end-category fallback and evaluate to [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE), so a translation that must handle that case should provide both forms.
 
 
 ```json
 {
-  "The meeting will be {{minHours}}-{{maxHours}} hours long." : "The meeting will be {{minHours}}-{{maxHours}} hours long."
+  "The meeting will be {{minHours}}-{{maxHours}} hours long." : {
+    "translation" : "The meeting will be {{minHours}}-{{maxHours}} {{hours}} long.",
+    "placeholders" : {
+      "hours" : {
+        "range" : {
+          "start" : "minHours",
+          "end" : "maxHours"
+        },
+        "translations" : {
+          "CARDINALITY_ONE" : "hour",
+          "CARDINALITY_OTHER" : "hours"
+        }
+      }
+    }
+  }
 }
 ```
 
@@ -1743,6 +1761,10 @@ String message = strings.get("Shipment", Map.of("code", "ACME-42"), options);
 assertEquals("تم تجهيز ACME-42", message);
 ```
 
+The default [`BidiIsolation.RTL_LOCALES`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#RTL_LOCALES) policy isolates caller values only when the resolved translation locale is
+right-to-left. Use [`BidiIsolation.ALWAYS`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#ALWAYS) when caller-supplied right-to-left text can also appear inside left-to-right
+translations; already balanced isolate controls are preserved rather than nested again.
+
 In the below example of an `en` localized strings file, the application code provides the `bookCount` value and the localized strings file introduces a `books` value to aid final translation.
 
 ```json
@@ -2326,6 +2348,7 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 | [Korean (한국어)](https://lokalized.com/languages/ko) | `ko` |
 | [Koyraboro Senni (koyra-boro senn-i)](https://lokalized.com/languages/ses) | `ses` |
 | [Kurdish (کوردی)](https://lokalized.com/languages/ku) | `ku` |
+| [Ladin](https://lokalized.com/languages/lld) | `lld` |
 | [Lakota (Lakȟótiyapi)](https://lokalized.com/languages/lkt) | `lkt` |
 | [Langi (Kilaangi)](https://lokalized.com/languages/lag) | `lag` |
 | [Lao (ພາສາລາວ)](https://lokalized.com/languages/lo) | `lo` |
@@ -2333,7 +2356,6 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 | [Ligurian](https://lokalized.com/languages/lij) | `lij` |
 | [Lingala (Lingála)](https://lokalized.com/languages/ln) | `ln` |
 | [Lithuanian (Lietuvių)](https://lokalized.com/languages/lt) | `lt` |
-| [lld](https://lokalized.com/languages/lld) | `lld` |
 | [Lojban (la .lojban.)](https://lokalized.com/languages/jbo) | `jbo` |
 | [Lower Sorbian (Dolnoserbski)](https://lokalized.com/languages/dsb) | `dsb` |
 | [Lule Sami (julevsámegiella)](https://lokalized.com/languages/smj) | `smj` |
@@ -2381,7 +2403,6 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 | [Romanian (română)](https://lokalized.com/languages/ro) | `ro` |
 | [Romansh (rumàntsch)](https://lokalized.com/languages/rm) | `rm` |
 | [Rombo (Kirombo)](https://lokalized.com/languages/rof) | `rof` |
-| [Undetermined (CLDR root)](https://lokalized.com/languages/root) | `und` |
 | [Russian (русский)](https://lokalized.com/languages/ru) | `ru` |
 | [Rwa (West Chaga)](https://lokalized.com/languages/rwk) | `rwk` |
 | [Saho (ሳሆኛ)](https://lokalized.com/languages/ssy) | `ssy` |
@@ -2435,6 +2456,7 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 | [Tyap (Katab)](https://lokalized.com/languages/kcg) | `kcg` |
 | [Uighur (ئۇيغۇر تىلى)](https://lokalized.com/languages/ug) | `ug` |
 | [Ukrainian (українська)](https://lokalized.com/languages/uk) | `uk` |
+| [Undetermined (CLDR root)](https://lokalized.com/languages/root) | `und` |
 | [Upper Sorbian (hornjoserbšćina)](https://lokalized.com/languages/hsb) | `hsb` |
 | [Urdu (اُردُو)](https://lokalized.com/languages/ur) | `ur` |
 | [Uzbek (ўзбек тили)](https://lokalized.com/languages/uz) | `uz` |

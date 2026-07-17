@@ -177,6 +177,127 @@ public class LocaleMatcherTests {
         strings.bestMatchFor(LanguageRange.parse("en;q=1,en-*-US;q=0")));
   }
 
+	@Test
+	public void internalWildcardRangeUsesExtendedFiltering() {
+		Locale english = Locale.ENGLISH;
+		Locale traditionalChinese = Locale.forLanguageTag("zh-Hant-TW");
+		Strings strings = stringsForLocales(english, traditionalChinese);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("zh-*-TW")));
+
+		assertEquals(traditionalChinese, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
+	public void nonmatchingInternalWildcardContinuesToTheNextRange() {
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, britishEnglish);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en-*-US,*"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("*", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(LocaleMatchType.WILDCARD, result.getMatchType());
+	}
+
+	@Test
+	public void internalWildcardUsesLanguageTiebreakerAndReportsExtendedRange() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = localizedStringsFor(
+				french, americanEnglish, britishEnglish);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStringsByLocale)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(americanEnglish, britishEnglish)))
+				.build();
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("en-*")));
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
+	public void wildcardPrimaryExtendedRangePrefersSupportedFallback() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale americanFrench = Locale.forLanguageTag("fr-US");
+		Strings strings = stringsForLocales(americanFrench, americanEnglish);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("*-US")));
+
+		assertEquals(americanFrench, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
+	public void repeatedWildcardSubtagsCannotManufactureExclusionSpecificity() {
+		Locale french = Locale.FRENCH;
+		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+		Strings strings = stringsForLocales(french, posixEnglish);
+		List<LanguageRange> ranges = List.of(
+				new LanguageRange("en-US", 1.0),
+				new LanguageRange("en-*-*-US", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(ranges);
+
+		assertEquals(posixEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void repeatedWildcardCatchallCannotOutrankItsConcreteConstraint() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Strings strings = stringsForLocales(french, americanEnglish);
+		List<LanguageRange> ranges = List.of(
+				new LanguageRange("*-US", 1.0),
+				new LanguageRange("*-*-US", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(ranges);
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void trailingWildcardExcludesOnlyStructuralDescendants() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+		Strings strings = stringsForLocales(french, americanEnglish);
+		List<LanguageRange> ranges = List.of(
+				new LanguageRange("en-US", 1.0),
+				new LanguageRange("en-US-*", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(ranges);
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+
+		Strings descendantsOnly = stringsForLocales(french, posixEnglish);
+		assertFalse(descendantsOnly.matchFor(ranges).isMatch());
+		assertEquals(french, descendantsOnly.bestMatchFor(ranges));
+	}
+
+	@Test
+	public void repeatedTrailingWildcardsCannotManufactureSpecificity() {
+		Locale french = Locale.FRENCH;
+		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+		Strings strings = stringsForLocales(french, posixEnglish);
+		List<LanguageRange> ranges = List.of(
+				new LanguageRange("en-US-*", 1.0),
+				new LanguageRange("en-US-*-*", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(ranges);
+
+		assertEquals(posixEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+	}
+
   @Test
   public void moreSpecificLowerWeightOverridesBroaderWeightForThatLocale() {
     Locale americanEnglish = Locale.forLanguageTag("en-US");
@@ -185,6 +306,83 @@ public class LocaleMatcherTests {
 
     assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("en;q=1,en-US;q=0.5")));
   }
+
+	@Test
+	public void longNonmatchingZeroWeightRangeCannotAcquireExclusionAuthority() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Strings strings = englishStrings(americanEnglish, britishEnglish);
+		LanguageRange longNonmatchingRange = new LanguageRange(
+				rangeWithRepeatedSubtags("en-US", 1_000), 0.0);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("en"), longNonmatchingRange));
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void veryLongNonmatchingZeroWeightRangeCannotExcludeAnEntireLanguage() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, english);
+		LanguageRange longNonmatchingRange = new LanguageRange(
+				rangeWithRepeatedSubtags("en", 2_100), 0.0);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("en"), longNonmatchingRange));
+
+		assertEquals(english, result.getLocale().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void matchCategoryOutranksSubtagCountWhenCalculatingEffectiveWeight() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, americanEnglish);
+		LanguageRange longNonmatchingRange = new LanguageRange(
+				rangeWithRepeatedSubtags("en", 5_000), 1.0);
+		LanguageRange exactRange = new LanguageRange("en-US", 0.5);
+
+		LocaleMatchResult result = strings.matchFor(List.of(longNonmatchingRange, exactRange));
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void structuralDepthStillBreaksTiesWithinAMatchCategory() {
+		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, posixEnglish);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en;q=1,en-US;q=0.5"));
+
+		assertEquals(posixEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void undeterminedAvailableLocaleDoesNotMasqueradeAsEnglish() {
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, Locale.ROOT);
+
+		LocaleMatchResult englishResult = strings.matchFor(List.of(new LanguageRange("en")));
+		LocaleMatchResult weightedResult = strings.matchFor(LanguageRange.parse("en;q=1,fr;q=0.5"));
+
+		assertFalse(englishResult.isMatch());
+		assertEquals(LocaleMatchType.NONE, englishResult.getMatchType());
+		assertEquals(french, strings.bestMatchFor(List.of(new LanguageRange("en"))));
+		assertEquals(french, weightedResult.getLocale().orElseThrow(AssertionError::new));
+	}
+
+	@Test
+	public void wildcardCanStillSelectAnUndeterminedFallbackLocale() {
+		Strings strings = stringsForLocales(Locale.ROOT, Locale.FRENCH);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("*")));
+
+		assertEquals(Locale.ROOT, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.WILDCARD, result.getMatchType());
+	}
 
   @Test
   public void wildcardDoesNotRestoreExplicitlyExcludedFallback() {
@@ -318,6 +516,21 @@ public class LocaleMatcherTests {
 		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(excessiveLanguageRanges));
   }
 
+	@Test
+	public void parsedLegacyAliasesCountTowardTheLanguageRangeLimit() {
+		Locale english = Locale.ENGLISH;
+		Strings strings = stringsForLocales(english);
+		List<LanguageRange> expandedAtLimit = LanguageRange.parse(legacyHebrewRanges(16));
+		List<LanguageRange> expandedOverLimit = LanguageRange.parse(legacyHebrewRanges(17));
+
+		assertEquals(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES.intValue(), expandedAtLimit.size());
+		assertEquals(LocaleMatcher.MAXIMUM_LANGUAGE_RANGES + 2, expandedOverLimit.size());
+		assertFalse(strings.matchFor(expandedAtLimit).isMatch());
+		assertEquals(english, strings.bestMatchFor(expandedAtLimit));
+		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(expandedOverLimit));
+		assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(expandedOverLimit));
+	}
+
   private Strings englishStrings(Locale fallbackLocale, Locale otherLocale) {
     Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
     localizedStringsByLocale.put(fallbackLocale,
@@ -331,4 +544,47 @@ public class LocaleMatcherTests {
         .tiebreakerLocalesByLanguageCode(Map.of("en", List.of(fallbackLocale, otherLocale)))
         .build();
   }
+
+	private Strings stringsForLocales(Locale fallbackLocale, Locale... otherLocales) {
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = localizedStringsFor(fallbackLocale, otherLocales);
+		return Strings.withFallbackLocale(fallbackLocale)
+				.localizedStringSupplier(() -> localizedStringsByLocale)
+				.localeSupplier(matcher -> fallbackLocale)
+				.build();
+	}
+
+	private Map<Locale, Set<LocalizedString>> localizedStringsFor(Locale firstLocale, Locale... otherLocales) {
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+		localizedStringsByLocale.put(firstLocale, localizedStringsFor(firstLocale));
+
+		for (Locale locale : otherLocales)
+			localizedStringsByLocale.put(locale, localizedStringsFor(locale));
+
+		return localizedStringsByLocale;
+	}
+
+	private Set<LocalizedString> localizedStringsFor(Locale locale) {
+		return Set.of(new LocalizedString.Builder("hello").translation(locale.toLanguageTag()).build());
+	}
+
+	private String rangeWithRepeatedSubtags(String prefix, int subtagCount) {
+		StringBuilder range = new StringBuilder(prefix);
+
+		for (int index = 0; index < subtagCount; ++index)
+			range.append("-a");
+
+		return range.toString();
+	}
+
+	private String legacyHebrewRanges(int explicitRangeCount) {
+		StringBuilder ranges = new StringBuilder();
+
+		for (int index = 0; index < explicitRangeCount; ++index) {
+			if (index > 0)
+				ranges.append(',');
+			ranges.append("iw-x").append(index);
+		}
+
+		return ranges.toString();
+	}
 }

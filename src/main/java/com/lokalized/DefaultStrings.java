@@ -1324,6 +1324,8 @@ class DefaultStrings implements Strings {
 		switch (bidiIsolation) {
 			case NONE:
 				return false;
+			case ALWAYS:
+				return true;
 			case RTL_LOCALES:
 				return BidiUtils.localeUsesRightToLeftScript(locale);
 			default:
@@ -1520,6 +1522,24 @@ class DefaultStrings implements Strings {
 			if (privateUseRange)
 				continue;
 
+			// Internal wildcards have RFC 4647 structural semantics only. In particular, an extended range that has no
+			// structural candidates must not be broadened through canonical, CLDR, likely-subtag, or primary-language
+			// matching. Probe with maximum weight so structural matching remains independent of quality.
+			if (range.contains("*")) {
+				List<@NonNull Locale> filteredCandidates = structurallyFilteredLocales(range, availableLocales);
+
+				if (filteredCandidates.isEmpty())
+					continue;
+
+				String primary = normalizedLanguageCode(range.split("-")[0]);
+				Locale preferredLocale = "*".equals(primary)
+						? preferredLocaleForWildcard(filteredCandidates)
+						: preferredLocaleForRange(range, filteredCandidates).orElse(filteredCandidates.get(0));
+
+				return localeMatch(preferredLocale, languageRange, highestEffectiveWeight,
+						LocaleMatchType.EXTENDED_RANGE, requestedLanguageRanges, consideredLocales);
+			}
+
 			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
 			// so honor configured tiebreakers rather than returning the first lexicographic alias.
 			List<@NonNull Locale> canonicalMatches = availableLocales.stream()
@@ -1546,17 +1566,6 @@ class DefaultStrings implements Strings {
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
 			String primary = normalizedLanguageCode(range.split("-")[0]); // e.g. "pt"
 
-			if ("*".equals(primary)) {
-				List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), availableLocales,
-						Locale.FilteringMode.EXTENDED_FILTERING);
-
-				if (!filteredCandidates.isEmpty())
-					return localeMatch(filteredCandidates.get(0), languageRange, highestEffectiveWeight,
-							LocaleMatchType.EXTENDED_RANGE, requestedLanguageRanges, consideredLocales);
-
-				continue;
-			}
-
 			List<@NonNull Locale> candidates = availableLocales.stream()
 					.filter(locale -> LocaleUtils.normalizedLanguage(locale)
 							.map(language -> language.equalsIgnoreCase(primary))
@@ -1567,8 +1576,7 @@ class DefaultStrings implements Strings {
 			if (candidates.isEmpty())
 				continue; // try the next LanguageRange
 
-			List<Locale> filteredCandidates = Locale.filter(Collections.singletonList(languageRange), candidates,
-					Locale.FilteringMode.EXTENDED_FILTERING);
+			List<@NonNull Locale> filteredCandidates = structurallyFilteredLocales(range, candidates);
 
 			boolean extendedRangeMatched = !filteredCandidates.isEmpty();
 
@@ -1637,27 +1645,28 @@ class DefaultStrings implements Strings {
 	}
 
 	private double effectiveWeightFor(@NonNull Locale locale,
-															@NonNull List<@NonNull LanguageRange> languageRanges) {
+													@NonNull List<@NonNull LanguageRange> languageRanges) {
 		requireNonNull(locale);
 		requireNonNull(languageRanges);
 
-		int bestSpecificity = -1;
+		@Nullable LanguageRangeSpecificity bestSpecificity = null;
 		double effectiveWeight = -1.0;
 
 		for (LanguageRange languageRange : languageRanges) {
-			int specificity = languageRangeSpecificityFor(locale, languageRange);
+			@Nullable LanguageRangeSpecificity specificity = languageRangeSpecificityFor(locale, languageRange);
 
-			if (specificity < 0)
+			if (specificity == null)
 				continue;
 
 			// Negative ranges exclude syntactic or canonical matches, not locales that are merely related
 			// through Lokalized's CLDR parent/likely-subtag fallback heuristics. For example, en-US;q=0
 			// must not also exclude en-GB.
-			if (languageRange.getWeight() <= 0.0 && specificity < 8_000)
+			if (languageRange.getWeight() <= 0.0 && !specificity.isEligibleForExclusion())
 				continue;
 
-			if (specificity > bestSpecificity ||
-					(specificity == bestSpecificity && languageRange.getWeight() > effectiveWeight)) {
+			int comparison = bestSpecificity == null ? 1 : specificity.compareTo(bestSpecificity);
+
+			if (comparison > 0 || (comparison == 0 && languageRange.getWeight() > effectiveWeight)) {
 				bestSpecificity = specificity;
 				effectiveWeight = languageRange.getWeight();
 			}
@@ -1666,7 +1675,9 @@ class DefaultStrings implements Strings {
 		return effectiveWeight;
 	}
 
-	private int languageRangeSpecificityFor(@NonNull Locale locale, @NonNull LanguageRange languageRange) {
+	@Nullable
+	private LanguageRangeSpecificity languageRangeSpecificityFor(@NonNull Locale locale,
+																							@NonNull LanguageRange languageRange) {
 		requireNonNull(locale);
 		requireNonNull(languageRange);
 
@@ -1675,37 +1686,36 @@ class DefaultStrings implements Strings {
 		boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
 
 		if ("*".equals(range))
-			return 0;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.WILDCARD, 0, false, 0);
 
 		if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
-			return -1;
+			return null;
 
-		int subtagCount = range.split("-").length;
+		int structuralDepth = structuralConstraintCountFor(range);
 
 		if (localeTag.equalsIgnoreCase(range))
-			return 10_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.EXACT, structuralDepth, false, 0);
 
 		if (privateUseRange)
-			return -1;
+			return null;
 
 		// Locale.filter applies q=0 exclusions and therefore returns no matches when handed a singleton
 		// zero-weight range. Specificity needs a structural match probe independent of quality so that a
 		// negative range such as en-US;q=0 also excludes en-US-posix and en-US-u-nu-latn.
-		LanguageRange structuralLanguageRange = new LanguageRange(range, LanguageRange.MAX_WEIGHT);
-		List<Locale> directlyFiltered = Locale.filter(Collections.singletonList(structuralLanguageRange),
-				Collections.singletonList(locale), Locale.FilteringMode.EXTENDED_FILTERING);
+		List<@NonNull Locale> directlyFiltered = structurallyFilteredLocales(range, Collections.singletonList(locale));
 
 		if (!directlyFiltered.isEmpty())
-			return 8_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.DIRECT_STRUCTURAL, structuralDepth,
+					hasTrailingWildcard(range), 0);
 
 		if (range.contains("*"))
-			return -1;
+			return null;
 
 		String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
 		String canonicalLocaleTag = CldrLocaleData.canonicalLanguageTag(localeTag);
 
 		if (canonicalLocaleTag.equalsIgnoreCase(canonicalRange))
-			return 9_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, false, 0);
 
 		LanguageRange canonicalStructuralRange = new LanguageRange(canonicalRange, LanguageRange.MAX_WEIGHT);
 		Locale canonicalLocale = Locale.forLanguageTag(canonicalLocaleTag);
@@ -1713,29 +1723,67 @@ class DefaultStrings implements Strings {
 				Collections.singletonList(canonicalLocale), Locale.FilteringMode.EXTENDED_FILTERING);
 
 		if (!canonicallyFiltered.isEmpty())
-			return 9_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, false, 0);
 
 		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
 
 		for (int index = 0; index < fallbackLocales.size(); ++index)
 			if (CldrLocaleData.equivalent(locale, fallbackLocales.get(index)))
-				return 7_000 + subtagCount - Math.min(index, 999);
+				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CLDR_FALLBACK, structuralDepth, false,
+						index);
 
 		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(range);
-		Optional<String> availableLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(locale);
+		Optional<@NonNull String> availableLanguageScript = CldrLocaleData.hasUndeterminedLanguage(localeTag)
+				? Optional.empty()
+				: CldrLocaleData.languageScriptForLikelySubtag(locale);
 
 		if (requestedLanguageScript.isPresent() && availableLanguageScript.isPresent() &&
 				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get()))
-			return 6_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.LIKELY_SUBTAG, structuralDepth, false, 0);
 
 		String requestedPrimary = normalizedLanguageCode(range.split("-")[0]);
 		Optional<String> availablePrimary = LocaleUtils.normalizedLanguage(locale);
 
 		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary) &&
 				hasCompatibleLikelyScript(range, locale))
-			return 5_000 + subtagCount;
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.PRIMARY_LANGUAGE, structuralDepth, false, 0);
 
-		return -1;
+		return null;
+	}
+
+	private static int structuralConstraintCountFor(@NonNull String range) {
+		requireNonNull(range);
+		int constraintCount = 0;
+		int subtagStart = 0;
+
+		for (int index = 0; index <= range.length(); ++index) {
+			if (index < range.length() && range.charAt(index) != '-')
+				continue;
+
+			boolean wildcardSubtag = index - subtagStart == 1 && range.charAt(subtagStart) == '*';
+
+			if (!wildcardSubtag)
+				++constraintCount;
+
+			subtagStart = index + 1;
+		}
+
+		return constraintCount;
+	}
+
+	private static boolean hasTrailingWildcard(@NonNull String range) {
+		requireNonNull(range);
+		return range.endsWith("-*");
+	}
+
+	@NonNull
+	private static List<@NonNull Locale> structurallyFilteredLocales(@NonNull String range,
+																													 @NonNull List<@NonNull Locale> locales) {
+		requireNonNull(range);
+		requireNonNull(locales);
+		LanguageRange structuralLanguageRange = new LanguageRange(range, LanguageRange.MAX_WEIGHT);
+		return Locale.filter(Collections.singletonList(structuralLanguageRange), locales,
+				Locale.FilteringMode.EXTENDED_FILTERING);
 	}
 
 	private boolean hasCompatibleLikelyScript(@NonNull String requestedLanguageTag, @NonNull Locale availableLocale) {
@@ -1934,6 +1982,9 @@ class DefaultStrings implements Strings {
 		List<@NonNull Locale> matchingLocales = new ArrayList<>();
 
 		for (Locale locale : availableLocales) {
+			if (CldrLocaleData.hasUndeterminedLanguage(locale.toLanguageTag()))
+				continue;
+
 			Optional<String> availableLikelySubtag = CldrLocaleData.languageScriptForLikelySubtag(locale);
 
 			if (availableLikelySubtag.isPresent() && availableLikelySubtag.get().equalsIgnoreCase(likelySubtag.get()))
@@ -2279,6 +2330,75 @@ class DefaultStrings implements Strings {
 
 		@NonNull private Locale getLocale() { return locale; }
 		@Nullable private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
+	}
+
+	@Immutable
+	private enum LanguageRangeMatchCategory {
+		WILDCARD(false),
+		PRIMARY_LANGUAGE(false),
+		LIKELY_SUBTAG(false),
+		CLDR_FALLBACK(false),
+		DIRECT_STRUCTURAL(true),
+		CANONICAL(true),
+		EXACT(true);
+
+		private final boolean eligibleForExclusion;
+
+		LanguageRangeMatchCategory(boolean eligibleForExclusion) {
+			this.eligibleForExclusion = eligibleForExclusion;
+		}
+
+		private boolean isEligibleForExclusion() {
+			return eligibleForExclusion;
+		}
+	}
+
+	/**
+	 * Locale-range specificity ordered without additive score bands. Match category always outranks structural
+	 * depth, so even an arbitrarily long range cannot spill into another category. Internal wildcard subtags are not
+	 * constraints and therefore cannot manufacture additional depth. Java extended filtering gives one or more trailing
+	 * wildcards the narrower meaning "at least one descendant subtag", represented once after concrete depth. Fallback
+	 * distance is considered last, with a nearer fallback considered more specific.
+	 */
+	@Immutable
+	private static final class LanguageRangeSpecificity implements Comparable<@NonNull LanguageRangeSpecificity> {
+		@NonNull private final LanguageRangeMatchCategory category;
+		private final int structuralDepth;
+		private final boolean requiresDescendantSubtag;
+		private final int fallbackDistance;
+
+		private LanguageRangeSpecificity(@NonNull LanguageRangeMatchCategory category, int structuralDepth,
+												 boolean requiresDescendantSubtag, int fallbackDistance) {
+			this.category = requireNonNull(category);
+			this.structuralDepth = structuralDepth;
+			this.requiresDescendantSubtag = requiresDescendantSubtag;
+			this.fallbackDistance = fallbackDistance;
+		}
+
+		private boolean isEligibleForExclusion() {
+			return category.isEligibleForExclusion();
+		}
+
+		@Override
+		public int compareTo(@NonNull LanguageRangeSpecificity other) {
+			requireNonNull(other);
+			int categoryComparison = category.compareTo(other.category);
+
+			if (categoryComparison != 0)
+				return categoryComparison;
+
+			int depthComparison = Integer.compare(structuralDepth, other.structuralDepth);
+
+			if (depthComparison != 0)
+				return depthComparison;
+
+			int descendantComparison = Boolean.compare(requiresDescendantSubtag, other.requiresDescendantSubtag);
+
+			if (descendantComparison != 0)
+				return descendantComparison;
+
+			return Integer.compare(other.fallbackDistance, fallbackDistance);
+		}
 	}
 
 	/**

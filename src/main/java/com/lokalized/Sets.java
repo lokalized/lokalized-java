@@ -41,8 +41,9 @@ final class Sets {
    * @param values the values for the set, may be null
    * @param <T>    the type of values in the set
    * @return an immutable sorted set, not null
-   */
+  */
   @NonNull
+  @SafeVarargs
   static <T> SortedSet<@NonNull T> sortedSet(@NonNull T @Nullable ... values) {
     if (values == null || values.length == 0)
       return Collections.emptySortedSet();

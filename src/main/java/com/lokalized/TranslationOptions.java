@@ -35,6 +35,9 @@ import static java.util.Objects.requireNonNull;
  * Per-invocation options for localized string lookup.
  * <p>
  * These options override the defaults configured on a {@link Strings} instance for a single lookup.
+ * Instances are structurally immutable and safe to share. A configured {@link TranslationFailureHandler} or
+ * {@link TranslationFallbackPolicy} may be invoked concurrently when the same options are used by concurrent
+ * lookups; application-supplied implementations must therefore be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
@@ -152,6 +155,8 @@ public final class TranslationOptions {
 
 	/**
 	 * Gets the translation failure handler override, if configured.
+	 * <p>
+	 * The handler may be invoked concurrently when these options are shared and must be thread-safe.
 	 *
 	 * @return an optional containing the translation failure handler override when configured, otherwise empty. not null
 	 */
@@ -162,6 +167,8 @@ public final class TranslationOptions {
 
 	/**
 	 * Gets the locale-fallback policy override, if configured.
+	 * <p>
+	 * The policy may be invoked concurrently when these options are shared and must be thread-safe.
 	 *
 	 * @return configured fallback policy, or empty, not null
 	 */
@@ -340,6 +347,8 @@ public final class TranslationOptions {
 
 		/**
 		 * Applies a translation failure handler override.
+		 * <p>
+		 * The handler may be invoked concurrently after the options are built and must be thread-safe.
 		 *
 		 * @param translationFailureHandler handler for failed lookups, may be null
 		 * @return this builder, not null
@@ -352,6 +361,8 @@ public final class TranslationOptions {
 
 		/**
 		 * Applies a locale-fallback policy override for this lookup.
+		 * <p>
+		 * The policy may be invoked concurrently after the options are built and must be thread-safe.
 		 *
 		 * @param translationFallbackPolicy locale-fallback policy, may be null
 		 * @return this builder, not null

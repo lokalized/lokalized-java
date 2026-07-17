@@ -100,18 +100,22 @@ All notable changes to Lokalized will be documented in this file.
 - Added a redacted `TranslationFailure.getMessage()` containing the key, lookup locale, reason, and attempted locales.
   It omits caller placeholder values and runtime-cause messages; the cause remains separately available via
   `getCause()`.
-- Added `LocalizedStringLoadingOptions` for bounded input size, JSON nesting depth, and opt-in exhaustive classpath-root
-  searching for JARs that omit directory entries. Ordinary classloader resource discovery remains the safe default.
+- Added [`LocalizedStringLoadingOptions`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.html) for bounded input size, JSON nesting depth, discovery entries, and opt-in
+  exhaustive classpath-root searching for JARs that omit directory entries. Ordinary classloader resource discovery
+  remains the safe default.
 - Added CLDR 48.2-backed cardinality, ordinality, cardinality-range, locale-alias, likely-subtag,
   parent-locale, and locale-validity behavior generated from pinned Unicode CLDR source data.
 - Added `PluralOperands` plus `Cardinality.forOperands(...)` and `Ordinality.forOperands(...)` for
   visible-decimal-place and compact-decimal plural evaluation. `PluralOperands` values are accepted by cardinality,
   ordinality, and numeric alternative expressions as well as generated-placeholder rules.
 - Added bidirectional isolation for caller-supplied placeholder values in resolved right-to-left locales,
-  with `BidiIsolation.NONE` available as a global or per-invocation opt-out. The RTL script set is generated
-  from pinned CLDR script metadata instead of maintained by hand.
+  with [`BidiIsolation.NONE`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#NONE) available as a global or per-invocation opt-out and [`BidiIsolation.ALWAYS`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#ALWAYS) available when
+  right-to-left caller values can appear in left-to-right translations. The RTL script set is generated from pinned
+  CLDR script metadata instead of maintained by hand.
 - Added escaped literal mustache support with `\{{...}}`.
-- Added a packaged JSON Schema at `schema/lokalized-strings.schema.json`.
+- Added a packaged JSON Schema at `schema/lokalized-strings.schema.json`, with canonical
+  `https://lokalized.com/schema/lokalized-strings.schema.json` identity and the same Unicode combining-mark identifier
+  acceptance as the runtime loader.
 - Added `TranslationFallbackPolicy` so candidate-locale fallback is configured independently from final
   `TranslationFailureHandler` behavior. Global and per-invocation policies are supported.
 - Added opt-in `TranslationResult` diagnostics with lookup/resolved locales, locales actually attempted, fallback
@@ -167,14 +171,19 @@ All notable changes to Lokalized will be documented in this file.
   balancing is performed directly into a bounded result; oversized failure-key values return the raw key without
   scanning or copying the complete input. Lokalized cannot bound application code inside an arbitrary
   non-`CharSequence` object's `toString()` implementation.
-- `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched locale
-  preferences resolve to the configured fallback locale.
+- [`bestMatchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) resolves `Locale.ROOT`, `und`, wildcard-only language ranges, empty preference lists, and unmatched
+  locale preferences to the configured fallback locale. Strict [`matchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#matchFor(java.util.List)) never manufactures a fallback after a miss.
 - Language-range matching accepts at most 32 parsed preferences per call. `Locale.LanguageRange.parse(...)` may expand
   one source range into multiple IANA-equivalent ranges, all of which count toward the limit. If every supported locale
   is excluded by `q=0`, `bestMatchFor(...)` returns the configured fallback while strict `matchFor(...)` reports no
   acceptable locale.
 - Language-range matching no longer crosses known likely-script boundaries and applies `q=0` exclusions to canonical
   alias descendants, such as `sh;q=0` excluding `sr-Latn-RS`.
+- Internal-wildcard language ranges now use RFC 4647 extended filtering without CLDR, likely-subtag, or primary-language
+  broadening; successful results consistently report [`EXTENDED_RANGE`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchType.html#EXTENDED_RANGE). Locale-range specificity is ordered
+  lexicographically over real structural constraints, so long ranges cannot overflow into a stronger match or
+  exclusion category and redundant wildcard subtags cannot manufacture exclusion specificity. Available `und`/root
+  data can no longer masquerade as a likely English match.
 - Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
   limits, preventing many individually legal cached fragments from exhausting the heap. The default cumulative budget
   is 1,048,576 UTF-16 code units, with an 8,388,608-code-unit hard ceiling.
@@ -186,6 +195,14 @@ All notable changes to Lokalized will be documented in this file.
   produces the controlled 128-level validation error instead of `StackOverflowError` during `Strings` construction.
 - `LocalizedString.equals()` and `hashCode()` now traverse alternative graphs iteratively and memoize shared nodes, so
   direct value comparisons and hashing do not overflow on deep graphs or expand shared DAG work exponentially.
+- [`LocalizedString.toString()`](https://javadoc.lokalized.com/com/lokalized/LocalizedString.html#toString()) is now an iterative, identity-aware, bounded diagnostic rendering, so deep, cyclic, or
+  shared programmatic graphs cannot overflow the stack or expand output exponentially.
+- Public localized-string value constructors now reject null collection keys, values, and elements at the construction
+  boundary instead of deferring those failures to graph validation.
+- JSON loading rejects unpaired Unicode surrogates and reports source lines consistently for LF, CRLF, and bare-CR
+  input. Exploded-classpath discovery filters unrelated names before resolving real paths, explicit resource maps
+  reject malformed or duplicate rendered locale tags, and a contract-violating zero-read input stream can no longer
+  make parsing spin forever.
 - Canonical-alias lookup records and evaluates against the locale of the loaded localized strings, deduplicates
   equivalent locale attempts, and keeps inspection APIs strict to exact members of `getSupportedLocales()`.
 - Classpath loading honors runtime-selected multi-release JAR entries, expands filesystem manifest `Class-Path` roots
@@ -254,16 +271,18 @@ All notable changes to Lokalized will be documented in this file.
   explicit null placeholder modes, blank/BOM-only localized strings files, and malformed UTF-8 are rejected while
   loading. Use `{}` for an empty localized strings file.
 - Review localized strings file sizes and nesting against the new per-resource defaults (8 MiB input, 8,388,608 reader
-  UTF-16 code units, and depth 64) and load-wide defaults (32 MiB input and 256 localized strings files). The
+  UTF-16 code units, and depth 64) and load-wide defaults (32 MiB input, 256 localized strings files, and 100,000
+  examined discovery entries). The
   100,000-translation-node budget counts roots, whole-message alternatives, placeholder definitions, and
   expression-fragment alternatives; it and the
   1,000-warning budget also apply to single-resource `parse(...)` calls. A configured total-input budget also applies
   to single-resource `Path` and `InputStream` parsing. Pass
   `LocalizedStringLoadingOptions` to select different limits; nesting cannot be raised above 128.
-- Bound the raw `Accept-Language` header size before calling `Locale.LanguageRange.parse(...)`, then ensure the parsed
-  list contains at most 32 ranges. Parsing may add equivalent ranges, and Lokalized cannot bound work that occurs before
-  it receives the parsed list.
-- Review any application that relied on the previous runtime defaults. Use `TranslationRuntimeLimits` to opt back up
+- Combine repeated `Accept-Language` field lines in received order, bound all raw values before calling
+  [`Locale.LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String)), ignore bounded empty comma-list members, then ensure the parsed list contains at
+  most 32 ranges. Parsing may add equivalent ranges, and Lokalized cannot bound work that occurs before it receives the
+  parsed list.
+- Review any application that relied on the previous runtime defaults. Use [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html) to opt back up
   where necessary; the previous numeric, expression, generated-placeholder, interpolation, and expansion values remain
   hard ceilings.
 - Prefer a namespaced classpath package such as `com/example/myapp/strings`. Enable
@@ -278,7 +297,8 @@ All notable changes to Lokalized will be documented in this file.
   default. Pass a warning-handler lambda to collect or forward them, or use
   `LocalizedStringWarningHandler.throwException()` for build-time strictness.
 - Right-to-left locale output may now include Unicode FSI/PDI controls around caller-supplied placeholder
-  values. Use `BidiIsolation.NONE` only for sinks that cannot accept bidi controls.
+  values. Use [`BidiIsolation.ALWAYS`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#ALWAYS) when right-to-left caller values can appear in left-to-right translations, and use
+  [`BidiIsolation.NONE`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#NONE) only for sinks that cannot accept bidi controls.
 
 Selected-branch placeholder inheritance intentionally changes one caller-collision case. Given this localized strings file:
 

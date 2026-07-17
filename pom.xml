@@ -28,7 +28,7 @@
     <scm>
         <connection>scm:git:git@github.com:lokalized/lokalized-java.git</connection>
         <developerConnection>scm:git:git@github.com:lokalized/lokalized-java.git</developerConnection>
-        <url>git@github.com:lokalized/lokalized-java.git</url>
+        <url>https://github.com/lokalized/lokalized-java</url>
     </scm>
 
     <distributionManagement>
@@ -86,6 +86,10 @@
                 <configuration>
                     <fork>true</fork>
                     <release>${project.java.version}</release>
+                    <compilerArgs>
+                        <arg>-Xlint:all,-serial</arg>
+                        <arg>-Werror</arg>
+                    </compilerArgs>
                 </configuration>
             </plugin>
             <plugin>
@@ -207,6 +211,26 @@
             <id>release</id>
             <build>
                 <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>build-helper-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>require-exact-release-version</id>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>regex-property</goal>
+                                </goals>
+                                <configuration>
+                                    <name>lokalized.verified.release.version</name>
+                                    <value>${project.version}</value>
+                                    <regex>^3\.0\.0$</regex>
+                                    <replacement>$0</replacement>
+                                    <failIfNoMatch>true</failIfNoMatch>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>

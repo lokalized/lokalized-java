@@ -230,6 +230,40 @@ public class TranslationRuntimeLimitsTests {
 	}
 
 	@Test
+	public void expressionTokenAndGroupingDepthLimitsAreInclusive() {
+		String tokenBoundaryExpression = "1 == 1 || 2 == 2";
+		assertEquals(7, new ExpressionTokenizer().extractTokens(tokenBoundaryExpression).size());
+		TranslationRuntimeLimits exactTokenLimit = TranslationRuntimeLimits.builder()
+				.maximumExpressionTokens(7)
+				.build();
+		TranslationRuntimeLimits oneOverTokenLimit = TranslationRuntimeLimits.builder()
+				.maximumExpressionTokens(6)
+				.build();
+
+		assertTrue(new ExpressionEvaluator(null, null, exactTokenLimit)
+				.evaluate(tokenBoundaryExpression, Locale.ENGLISH));
+		assertTrue(assertThrows(ExpressionEvaluationException.class,
+				() -> new ExpressionEvaluator(null, null, oneOverTokenLimit)
+						.evaluate(tokenBoundaryExpression, Locale.ENGLISH)).getMessage()
+				.contains("maximum supported token count 6"));
+
+		String groupingBoundaryExpression = "((1 == 1))";
+		TranslationRuntimeLimits exactGroupingLimit = TranslationRuntimeLimits.builder()
+				.maximumExpressionNestingDepth(2)
+				.build();
+		TranslationRuntimeLimits oneOverGroupingLimit = TranslationRuntimeLimits.builder()
+				.maximumExpressionNestingDepth(1)
+				.build();
+
+		assertTrue(new ExpressionEvaluator(null, null, exactGroupingLimit)
+				.evaluate(groupingBoundaryExpression, Locale.ENGLISH));
+		assertTrue(assertThrows(ExpressionEvaluationException.class,
+				() -> new ExpressionEvaluator(null, null, oneOverGroupingLimit)
+						.evaluate(groupingBoundaryExpression, Locale.ENGLISH)).getMessage()
+				.contains("maximum supported depth 1"));
+	}
+
+	@Test
 	public void stringsEagerlyCompileAllFragmentPredicatesAgainstLowerLimits() {
 		LocalizedString lengthLimited = localizedStringWithUnusedFragment("count == 1");
 		LocalizedString tokenLimited = localizedStringWithUnusedFragment("count == 1");
@@ -308,7 +342,7 @@ public class TranslationRuntimeLimitsTests {
 	}
 
 	@Test
-	public void stringsHonorsGeneratedPlaceholderDepthLimit() {
+	public void generatedPlaceholderDepthLimitIsInclusiveAndRootIsDepthZero() {
 		Map<String, LocalizedString.LanguageFormTranslation> generatedPlaceholders = Map.of(
 				"p0", new LocalizedString.LanguageFormTranslation("count", Map.of(
 						Cardinality.ONE, "{{p1}}", Cardinality.OTHER, "{{p1}}")),
@@ -320,16 +354,19 @@ public class TranslationRuntimeLimitsTests {
 				.translation("{{p0}}")
 				.placeholderDefinitions(generatedPlaceholders)
 				.build();
-		Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
-				.localizedStringSupplier(() -> Map.of(Locale.ENGLISH, Set.of(localizedString)))
-				.localeSupplier(matcher -> Locale.ENGLISH)
-				.translationFailureHandler(TranslationFailureHandler.throwException())
-				.runtimeLimits(TranslationRuntimeLimits.builder().maximumGeneratedPlaceholderDepth(1).build())
-				.build();
+		Strings exactDepth = stringsWithLimits(localizedString, TranslationRuntimeLimits.builder()
+				.maximumGeneratedPlaceholderDepth(3)
+				.build());
+		Strings oneOverDepth = stringsWithLimits(localizedString, TranslationRuntimeLimits.builder()
+				.maximumGeneratedPlaceholderDepth(2)
+				.build());
+
+		assertEquals("item", exactDepth.get("Items", Map.of("count", 1)),
+				"The root template is depth 0 and its first generated fragment is depth 1");
 
 		IllegalStateException exception = assertThrows(IllegalStateException.class,
-				() -> strings.get("Items", Map.of("count", 1)));
-		assertTrue(exception.getMessage().contains("maximum depth of 1"));
+				() -> oneOverDepth.get("Items", Map.of("count", 1)));
+		assertTrue(exception.getMessage().contains("maximum depth of 2"));
 	}
 
 	@Test
@@ -342,10 +379,12 @@ public class TranslationRuntimeLimitsTests {
 						"p2", new LocalizedString.ExpressionTranslation("done")
 				))
 				.build();
+		assertEquals("done", stringsWithLimits(deep, TranslationRuntimeLimits.builder()
+				.maximumGeneratedPlaceholderDepth(3).build()).get("Deep expression fragments"));
 		IllegalStateException depthException = assertThrows(IllegalStateException.class,
 				() -> stringsWithLimits(deep, TranslationRuntimeLimits.builder()
-						.maximumGeneratedPlaceholderDepth(1).build()).get("Deep expression fragments"));
-		assertTrue(depthException.getMessage().contains("maximum depth of 1"));
+						.maximumGeneratedPlaceholderDepth(2).build()).get("Deep expression fragments"));
+		assertTrue(depthException.getMessage().contains("maximum depth of 2"));
 
 		LocalizedString output = new LocalizedString.Builder("Expression output")
 				.translation("{{fragment}}")
@@ -361,12 +400,17 @@ public class TranslationRuntimeLimitsTests {
 				.translation("{{p0}}")
 				.placeholderDefinitions(Map.of(
 						"p0", new LocalizedString.ExpressionTranslation("{{p1}}{{p1}}"),
-						"p1", new LocalizedString.ExpressionTranslation("abc")
+						"p1", new LocalizedString.LanguageFormTranslation("count", Map.of(
+								Cardinality.ONE, "abc", Cardinality.OTHER, "abc"))
 				))
 				.build();
+		assertEquals("abcabc", stringsWithLimits(expansion, TranslationRuntimeLimits.builder()
+				.maximumGeneratedExpansionCharacters(9).build()).get("Expression expansion", Map.of("count", 1)),
+				"The cumulative budget counts p1's three characters once and p0's six-character expansion");
 		IllegalStateException expansionException = assertThrows(IllegalStateException.class,
 				() -> stringsWithLimits(expansion, TranslationRuntimeLimits.builder()
-						.maximumGeneratedExpansionCharacters(5).build()).get("Expression expansion"));
+						.maximumGeneratedExpansionCharacters(8).build())
+						.get("Expression expansion", Map.of("count", 1)));
 		assertTrue(expansionException.getMessage().contains("cumulative limit"));
 	}
 

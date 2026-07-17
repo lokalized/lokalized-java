@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -209,12 +210,130 @@ public class LocalizedStringTests {
   }
 
   @Test
+  public void localizedStringRenderingIsIterativeAndBoundedForDeepGraphs() {
+    LocalizedString localizedString = new LocalizedString.Builder("leaf").translation("leaf").build();
+
+    for (int depth = 0; depth < 5_000; ++depth)
+      localizedString = new LocalizedString.Builder("count == 1").alternatives(List.of(localizedString)).build();
+
+    String diagnostic = localizedString.toString();
+
+    assertTrue(diagnostic.length() <= 16 * 1024);
+    assertTrue(diagnostic.endsWith("<truncated>"));
+    assertEquals(diagnostic, localizedString.toString());
+  }
+
+  @Test
+  public void localizedStringRenderingUsesStableReferencesForSharedAlternativeDags() {
+    LocalizedString localizedString = new LocalizedString.Builder("leaf").translation("leaf").build();
+
+    for (int depth = 0; depth < 120; ++depth)
+      localizedString = new LocalizedString.Builder("count == 1")
+          .alternatives(List.of(localizedString, localizedString))
+          .build();
+
+    String diagnostic = localizedString.toString();
+
+    assertTrue(diagnostic.contains("<ref#"));
+    assertTrue(diagnostic.length() <= 16 * 1024);
+    assertFalse(diagnostic.endsWith("<truncated>"));
+    assertEquals(diagnostic, localizedString.toString());
+  }
+
+  @Test
+  public void localizedStringRenderingTerminatesForIdentityCycles() throws ReflectiveOperationException {
+    LocalizedString localizedString = new LocalizedString.Builder("cycle").translation("fallback").build();
+    Field alternativesField = LocalizedString.class.getDeclaredField("alternatives");
+    alternativesField.setAccessible(true);
+    alternativesField.set(localizedString, List.of(localizedString));
+
+    assertEquals("LocalizedString{key=cycle, translation=fallback, alternatives=[<cycle#1>]}",
+        localizedString.toString());
+  }
+
+  @Test
+  public void localizedStringRenderingCapsIndividualScalarValuesIncrementally() {
+    StringBuilder oversizedKeyBuilder = new StringBuilder(100_000);
+
+    for (int index = 0; index < 50_000; ++index)
+      oversizedKeyBuilder.append("\uD83D\uDE42");
+
+    String oversizedKey = oversizedKeyBuilder.toString();
+    LocalizedString localizedString = new LocalizedString.Builder(oversizedKey).translation("translation").build();
+
+    String diagnostic = localizedString.toString();
+
+    assertTrue(diagnostic.length() <= 16 * 1024);
+    assertTrue(diagnostic.endsWith("<truncated>"));
+    assertTrue(diagnostic.codePoints().noneMatch(codePoint ->
+        codePoint >= Character.MIN_SURROGATE && codePoint <= Character.MAX_SURROGATE));
+  }
+
+  @Test
+  public void localizedStringRenderingPreservesOrdinaryShallowDiagnostics() {
+    LocalizedString alternative = new LocalizedString.Builder("count == 1").translation("one").build();
+    LocalizedString localizedString = new LocalizedString.Builder("key")
+        .translation("default")
+        .commentary("note")
+        .alternatives(List.of(alternative))
+        .build();
+
+    assertEquals("LocalizedString{key=key, translation=default, commentary=note, alternatives=[" +
+        "LocalizedString{key=count == 1, translation=one}]}", localizedString.toString());
+  }
+
+  @Test
   public void expressionValueTypesRejectInvalidConstructorArguments() {
     assertThrows(NullPointerException.class, () -> new ExpressionTranslation(null));
     assertThrows(NullPointerException.class, () -> new ExpressionTranslation("default", null));
     assertThrows(IllegalArgumentException.class, () -> new ExpressionTranslation("default", List.of()));
     assertThrows(NullPointerException.class, () -> new ExpressionAlternative(null, "translation"));
     assertThrows(NullPointerException.class, () -> new ExpressionAlternative("count == 0", null));
+  }
+
+  @Test
+  public void publicValueCollectionsRejectNullContentsAtConstruction() {
+    LocalizedString child = new LocalizedString.Builder("child").translation("child").build();
+    List<LocalizedString> localizedStringAlternatives = new ArrayList<>();
+    localizedStringAlternatives.add(child);
+    localizedStringAlternatives.add(null);
+    NullPointerException nullAlternative = assertThrows(NullPointerException.class,
+        () -> new LocalizedString.Builder("root").alternatives(localizedStringAlternatives).build());
+    assertTrue(nullAlternative.getMessage().contains("alternatives"));
+
+    PlaceholderDefinition definition = new ExpressionTranslation("generated");
+    Map<String, PlaceholderDefinition> nullDefinitionKey = new HashMap<>();
+    nullDefinitionKey.put(null, definition);
+    NullPointerException nullPlaceholderKey = assertThrows(NullPointerException.class,
+        () -> new LocalizedString.Builder("root").translation("root")
+            .placeholderDefinitions(nullDefinitionKey).build());
+    assertTrue(nullPlaceholderKey.getMessage().contains("null key"));
+
+    Map<String, PlaceholderDefinition> nullDefinitionValue = new HashMap<>();
+    nullDefinitionValue.put("generated", null);
+    NullPointerException nullPlaceholderValue = assertThrows(NullPointerException.class,
+        () -> new LocalizedString.Builder("root").translation("root")
+            .placeholderDefinitions(nullDefinitionValue).build());
+    assertTrue(nullPlaceholderValue.getMessage().contains("null value"));
+
+    List<ExpressionAlternative> expressionAlternatives = new ArrayList<>();
+    expressionAlternatives.add(new ExpressionAlternative("count == 1", "one"));
+    expressionAlternatives.add(null);
+    NullPointerException nullExpressionAlternative = assertThrows(NullPointerException.class,
+        () -> new ExpressionTranslation("default", expressionAlternatives));
+    assertTrue(nullExpressionAlternative.getMessage().contains("alternatives"));
+
+    Map<LanguageForm, String> nullLanguageFormKey = new HashMap<>();
+    nullLanguageFormKey.put(null, "other");
+    NullPointerException nullFormKey = assertThrows(NullPointerException.class,
+        () -> new LanguageFormTranslation("count", nullLanguageFormKey));
+    assertTrue(nullFormKey.getMessage().contains("null key"));
+
+    Map<LanguageForm, String> nullLanguageFormValue = new HashMap<>();
+    nullLanguageFormValue.put(Cardinality.OTHER, null);
+    NullPointerException nullFormValue = assertThrows(NullPointerException.class,
+        () -> new LanguageFormTranslation("count", nullLanguageFormValue));
+    assertTrue(nullFormValue.getMessage().contains("null value"));
   }
 
   @Test

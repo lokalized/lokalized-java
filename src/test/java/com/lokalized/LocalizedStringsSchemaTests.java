@@ -26,15 +26,21 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
 import java.io.IOException;
-import java.net.URL;
+import java.io.InputStream;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -52,14 +58,54 @@ public class LocalizedStringsSchemaTests {
   private static final Path STRINGS_RESOURCE_PATH = Paths.get("src/test/resources/strings");
   @NonNull
   private static final String SCHEMA_RESOURCE_PATH = "schema/lokalized-strings.schema.json";
+  @NonNull
+  private static final String CANONICAL_SCHEMA_ID = "https://lokalized.com/schema/lokalized-strings.schema.json";
+  @NonNull
+  private static final List<@NonNull IdentifierCase> IDENTIFIER_CASES = Arrays.asList(
+      accepted("ASCII letter", "name"),
+      accepted("underscore only", "_"),
+      accepted("underscore start", "_private"),
+      accepted("hyphen and ASCII number suffixes", "item-name2"),
+      accepted("trailing hyphen", "name-"),
+      accepted("Cyrillic letters", "книги"),
+      accepted("Devanagari letters and marks", "नाम"),
+      accepted("Arabic-Indic number suffix", "item\u0661"),
+      accepted("supplementary-plane letter", "\uD801\uDC00name"),
+      accepted("nonspacing mark suffix (Mn)", "a\u0301"),
+      accepted("spacing combining mark suffix (Mc)", "a\u0903"),
+      accepted("enclosing mark suffix (Me)", "a\u20DD"),
+      accepted("letter number suffix (Nl)", "a\u216B"),
+      accepted("other number suffix (No)", "a\u00B2"),
+      rejected("empty", ""),
+      rejected("ASCII number start", "1name"),
+      rejected("Unicode number start", "\u0661name"),
+      rejected("nonspacing mark start (Mn)", "\u0301a"),
+      rejected("spacing combining mark start (Mc)", "\u0903a"),
+      rejected("enclosing mark start (Me)", "\u20DDa"),
+      rejected("hyphen start", "-name"),
+      rejected("embedded whitespace", "first name"),
+      rejected("period", "first.name"),
+      rejected("slash", "first/name"),
+      rejected("format character suffix", "name\u200D"),
+      rejected("symbol suffix", "name\uD83D\uDE42"),
+      rejected("reserved cardinality name", "CARDINALITY_ONE"),
+      rejected("reserved phonetic name", "PHONETIC_OTHER")
+  );
 
   @Test
   public void schemaIsValidJsonAndPackaged() throws IOException {
-    String schemaContents = readUtf8(SCHEMA_PATH);
-    MinimalJson.Json.parse(schemaContents);
+    byte[] schemaBytes = Files.readAllBytes(SCHEMA_PATH);
+    String schemaContents = new String(schemaBytes, StandardCharsets.UTF_8);
+    MinimalJson.JsonObject schemaObject = MinimalJson.Json.parse(schemaContents).asObject();
 
-    URL schemaResource = Thread.currentThread().getContextClassLoader().getResource(SCHEMA_RESOURCE_PATH);
-    assertNotNull(schemaResource, "Expected Lokalized strings schema to be packaged as a classpath resource");
+    assertEquals(CANONICAL_SCHEMA_ID, schemaObject.getString("$id", null));
+
+    try (InputStream schemaResource = Thread.currentThread().getContextClassLoader()
+        .getResourceAsStream(SCHEMA_RESOURCE_PATH)) {
+      assertNotNull(schemaResource, "Expected Lokalized strings schema to be packaged as a classpath resource");
+      assertArrayEquals(schemaBytes, schemaResource.readAllBytes(),
+          "Expected the packaged schema to be byte-identical to the source schema");
+    }
   }
 
   @Test
@@ -135,6 +181,23 @@ public class LocalizedStringsSchemaTests {
   }
 
   @Test
+  public void schemaAndRuntimeAgreeOnIdentifierCorpus() throws IOException {
+    Schema schema = loadSchema();
+
+    for (IdentifierCase identifierCase : IDENTIFIER_CASES) {
+      String localizedStringsFile = localizedStringsFileForIdentifier(identifierCase.identifier);
+      boolean acceptedByRuntime = acceptedByRuntime(localizedStringsFile);
+      boolean acceptedBySchema = schema.validate(localizedStringsFile, InputFormat.JSON).isEmpty();
+      String message = String.format("Identifier corpus case '%s' (%s)", identifierCase.description,
+          codePointsIn(identifierCase.identifier));
+
+      assertEquals(identifierCase.accepted, acceptedByRuntime, message + " had unexpected runtime result");
+      assertEquals(identifierCase.accepted, acceptedBySchema, message + " had unexpected schema result");
+      assertEquals(acceptedByRuntime, acceptedBySchema, message + " differed between runtime and schema");
+    }
+  }
+
+  @Test
   public void schemaValidatesTemplatePlaceholders() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Search completed.\" : {\n" +
@@ -194,6 +257,31 @@ public class LocalizedStringsSchemaTests {
   }
 
   @Test
+  public void schemaRejectsLoaderInvalidMixedAndRangePlaceholderShapes() throws IOException {
+    List<String> invalidPlaceholderDefinitions = new ArrayList<>(List.of(
+        "{\"value\":\"count\",\"range\":null}",
+        "{\"value\":null,\"range\":{\"start\":\"min\",\"end\":\"max\"}}",
+        "{\"value\":\"count\",\"translation\":null}",
+        "{\"value\":null,\"translation\":\"default\"}",
+        "{\"translations\":null,\"alternatives\":null}"
+    ));
+
+    for (String languageFormMember : List.of("value", "range", "translations"))
+      for (String templateMember : List.of("translation", "alternatives"))
+        invalidPlaceholderDefinitions.add(String.format("{\"%s\":null,\"%s\":null}",
+            languageFormMember, templateMember));
+
+    Schema schema = loadSchema();
+    for (String invalidPlaceholderDefinition : invalidPlaceholderDefinitions) {
+      String localizedStringsFile = "{\"root\":{\"translation\":\"{{summary}}\",\"placeholders\":{\"summary\":" +
+          invalidPlaceholderDefinition + "}}}";
+      List<Error> validationMessages = schema.validate(localizedStringsFile, InputFormat.JSON);
+
+      assertFalse(validationMessages.isEmpty(), invalidPlaceholderDefinition);
+    }
+  }
+
+  @Test
   public void schemaRejectsRemovedPlaceholderMetadataSyntax() throws IOException {
     List<Error> validationMessages = loadSchema().validate("{\n" +
         "  \"Hello {{name}}\" : {\n" +
@@ -240,5 +328,62 @@ public class LocalizedStringsSchemaTests {
     return validationMessages.stream()
         .map(Error::getMessage)
         .collect(Collectors.joining("; "));
+  }
+
+  @NonNull
+  private String localizedStringsFileForIdentifier(@NonNull String identifier) {
+    MinimalJson.JsonObject placeholder = MinimalJson.Json.object()
+        .add("translation", "value");
+    MinimalJson.JsonObject placeholders = MinimalJson.Json.object()
+        .add(identifier, placeholder);
+    MinimalJson.JsonObject localizedString = MinimalJson.Json.object()
+        .add("translation", "value")
+        .add("placeholders", placeholders);
+    return MinimalJson.Json.object()
+        .add("key", localizedString)
+        .toString();
+  }
+
+  private boolean acceptedByRuntime(@NonNull String localizedStringsFile) {
+    try {
+      LocalizedStringLoader.parse(new StringReader(localizedStringsFile), Locale.ENGLISH, "identifier-corpus");
+      return true;
+    } catch (LocalizedStringLoadingException e) {
+      return false;
+    }
+  }
+
+  @NonNull
+  private String codePointsIn(@NonNull String value) {
+    if (value.isEmpty())
+      return "empty string";
+
+    return value.codePoints()
+        .mapToObj(codePoint -> String.format("U+%04X", codePoint))
+        .collect(Collectors.joining(" "));
+  }
+
+  @NonNull
+  private static IdentifierCase accepted(@NonNull String description, @NonNull String identifier) {
+    return new IdentifierCase(description, identifier, true);
+  }
+
+  @NonNull
+  private static IdentifierCase rejected(@NonNull String description, @NonNull String identifier) {
+    return new IdentifierCase(description, identifier, false);
+  }
+
+  private static final class IdentifierCase {
+    @NonNull
+    private final String description;
+    @NonNull
+    private final String identifier;
+    private final boolean accepted;
+
+    private IdentifierCase(@NonNull String description, @NonNull String identifier, boolean accepted) {
+      this.description = description;
+      this.identifier = identifier;
+      this.accepted = accepted;
+    }
   }
 }

@@ -32,6 +32,11 @@ import static java.util.Objects.requireNonNull;
  * configured tiebreakers determine which locale wins. Unmatched, root, and undetermined requests resolve to the
  * configured fallback locale when using {@code bestMatchFor(...)}. The strict {@code matchFor(...)} methods represent
  * the same state as an unmatched {@link LocaleMatchResult} instead of manufacturing a match.
+ * <p>
+ * Non-bare wildcard language ranges use RFC 4647 extended filtering only; they are not broadened through
+ * CLDR, likely-subtag, or primary-language heuristics, and successful results report
+ * {@link LocaleMatchType#EXTENDED_RANGE}. When multiple ranges match one supported locale, the most-specific exact,
+ * canonical, or structural range determines its effective quality, including a {@code q=0} exclusion.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */

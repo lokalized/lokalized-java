@@ -46,8 +46,9 @@ final class Maps {
    * @param <K>        the type of keys in the map
    * @param <V>        type type of values in the map
    * @return an immutable sorted map, not null
-   */
+  */
   @NonNull
+  @SafeVarargs
   static <K, V> SortedMap<@NonNull K, @NonNull V> sortedMap(
       @NonNull MapEntry<@NonNull K, @NonNull V> @Nullable ... mapEntries) {
     if (mapEntries == null || mapEntries.length == 0)
@@ -130,7 +131,7 @@ final class Maps {
       if (other == null || !getClass().equals(other.getClass()))
         return false;
 
-      MapEntry mapEntry = (MapEntry) other;
+      MapEntry<?, ?> mapEntry = (MapEntry<?, ?>) other;
 
       return Objects.equals(getKey(), mapEntry.getKey())
           && Objects.equals(getValue(), mapEntry.getValue());

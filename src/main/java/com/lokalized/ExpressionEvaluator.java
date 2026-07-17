@@ -611,15 +611,23 @@ class ExpressionEvaluator {
       boolean lhsIsCallerSuppliedCharacterSequence = isCallerSuppliedCharacterSequence(leftHandOperand, context);
       boolean rhsIsCallerSuppliedCharacterSequence = isCallerSuppliedCharacterSequence(rightHandOperand, context);
 
-      if ((operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO)
-          && lhsOperandType == OperandType.PHONETIC && rhsOperandType == OperandType.PHONETIC
-          && lhsIsCallerSuppliedCharacterSequence && rhsIsCallerSuppliedCharacterSequence)
+      if (lhsOperandType == OperandType.PHONETIC && rhsOperandType == OperandType.PHONETIC
+          && lhsIsCallerSuppliedCharacterSequence && rhsIsCallerSuppliedCharacterSequence) {
+        if (operator.getTokenType() == TokenType.EQUAL_TO || operator.getTokenType() == TokenType.NOT_EQUAL_TO)
+          throw new ExpressionEvaluationException(format(
+              "Raw CharSequence placeholders '%s' and '%s' cannot be compared with '%s': " +
+                  "expressions do not support textual equality. Compare phonetic input with a PHONETIC_* constant " +
+                  "or an explicit %s value instead",
+              leftHandOperand.getSymbol(), rightHandOperand.getSymbol(), operator.getSymbol(),
+              Phonetic.class.getSimpleName()));
+
         throw new ExpressionEvaluationException(format(
             "Raw CharSequence placeholders '%s' and '%s' cannot be compared with '%s': " +
-                "expressions do not support textual equality. Compare phonetic input with a PHONETIC_* constant " +
-                "or an explicit %s value instead",
+                "expressions do not support textual ordering. Use numeric operands for ordering, or compare " +
+                "phonetic input with a PHONETIC_* constant or an explicit %s value using '==' or '!='",
             leftHandOperand.getSymbol(), rightHandOperand.getSymbol(), operator.getSymbol(),
             Phonetic.class.getSimpleName()));
+      }
 
       Token characterSequenceOperand = null;
 
