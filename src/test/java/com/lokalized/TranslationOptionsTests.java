@@ -114,4 +114,13 @@ public class TranslationOptionsTests {
 		assertThrows(IllegalArgumentException.class,
 				() -> TranslationOptions.builder().languageRanges(excessiveLanguageRanges));
 	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void malformedLocaleOverridesAreRejected() {
+		Locale malformed = new Locale("e");
+
+		assertThrows(IllegalArgumentException.class, () -> TranslationOptions.forLocale(malformed));
+		assertThrows(IllegalArgumentException.class, () -> TranslationOptions.builder().locale(malformed));
+	}
 }

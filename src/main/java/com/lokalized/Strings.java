@@ -205,9 +205,10 @@ public interface Strings extends LocaleMatcher {
 	 *
 	 * @param fallbackLocale the fallback locale, not null
 	 * @return a builder for a {@link Strings} instance, not null
+	 * @throws IllegalArgumentException if the fallback locale is not a well-formed IETF BCP 47 locale
 	 */
 	static @NonNull Builder withFallbackLocale(@NonNull Locale fallbackLocale) {
-		requireNonNull(fallbackLocale);
+		LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
 		return new Builder(fallbackLocale);
 	}
 
@@ -226,9 +227,9 @@ public interface Strings extends LocaleMatcher {
 		@Nullable
 		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
 		@Nullable
-		private Function<LocaleMatcher, Locale> localeSupplier;
+		private Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier;
 		@Nullable
-		private Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier;
+		private Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier;
 		@Nullable
 		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
@@ -254,6 +255,9 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies a localized string supplier to this builder.
+		 * <p>
+		 * Locale keys returned by the supplier must be well-formed and must render to distinct IETF BCP 47 language tags.
+		 * Each per-locale iterable must contain unique translation keys.
 		 *
 		 * @param localizedStringSupplier localized string supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
@@ -267,13 +271,15 @@ public interface Strings extends LocaleMatcher {
 		/**
 		 * Applies a locale supplier to this builder.
 		 * <p>
-		 * The supplier may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe.
+		 * The supplier may be invoked concurrently after the {@link Strings} instance is built and must be thread-safe. It
+		 * must return a well-formed IETF BCP 47 locale.
 		 *
 		 * @param localeSupplier locale supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
-		public Builder localeSupplier(@Nullable Function<LocaleMatcher, Locale> localeSupplier) {
+		public Builder localeSupplier(
+				@Nullable Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier) {
 			this.localeSupplier = localeSupplier;
 
 			if (localeSupplier != null)
@@ -294,7 +300,8 @@ public interface Strings extends LocaleMatcher {
 		 * @since 3.0.0
 		 */
 		@NonNull
-		public Builder localeMatchSupplier(@Nullable Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier) {
+		public Builder localeMatchSupplier(
+				@Nullable Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier) {
 			this.localeMatchSupplier = localeMatchSupplier;
 
 			if (localeMatchSupplier != null)
@@ -305,6 +312,7 @@ public interface Strings extends LocaleMatcher {
 
 		/**
 		 * Applies a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales to this builder.
+		 * Every supplied locale must be a well-formed IETF BCP 47 locale.
 		 *
 		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
 		 * @return this builder instance, useful for chaining. not null
@@ -398,8 +406,9 @@ public interface Strings extends LocaleMatcher {
 		 * Constructs a {@link Strings} instance.
 		 *
 		 * @return a {@link Strings} instance, not null
-		 * @throws IllegalArgumentException if supplied localized strings are invalid, including an alternative graph nested
-		 *                                  more than 128 levels deep
+		 * @throws IllegalArgumentException if a configured locale is malformed, localized-string locale keys render to
+		 *                                  duplicate language tags, or supplied localized strings are invalid, including an
+		 *                                  alternative graph nested more than 128 levels deep
 		 * @throws ExpressionEvaluationException if an expression cannot be compiled, including when it exceeds the
 		 *                                       configured runtime limits
 		 */

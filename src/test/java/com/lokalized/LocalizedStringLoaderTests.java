@@ -395,6 +395,40 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testSingleResourceParseOverloadsRejectMalformedLocales() throws IOException {
+    String localizedStringsFile = "{\"hello\":\"world\"}";
+    byte[] localizedStringsFileBytes = localizedStringsFile.getBytes(StandardCharsets.UTF_8);
+    Path file = Files.createTempFile("lokalized-single-resource-malformed-locale", ".json");
+    file.toFile().deleteOnExit();
+    Files.write(file, localizedStringsFileBytes);
+    Locale malformedLocale = new Locale("x");
+
+    assertThrows(IllegalArgumentException.class, () -> LocalizedStringLoader.parse(file, malformedLocale));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.parse(new ByteArrayInputStream(localizedStringsFileBytes), malformedLocale,
+            "malformed-locale-default-bytes"));
+    assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(localizedStringsFile), malformedLocale,
+            "malformed-locale-default-characters"));
+
+    IllegalArgumentException pathException = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.parse(file, malformedLocale, LocalizedStringWarningHandler.ignore(),
+            LocalizedStringLoadingOptions.defaults()));
+    IllegalArgumentException inputStreamException = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.parse(new ByteArrayInputStream(localizedStringsFileBytes), malformedLocale,
+            "malformed-locale-bytes", LocalizedStringWarningHandler.ignore(),
+            LocalizedStringLoadingOptions.defaults()));
+    IllegalArgumentException readerException = assertThrows(IllegalArgumentException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(localizedStringsFile), malformedLocale,
+            "malformed-locale-characters", LocalizedStringWarningHandler.ignore(),
+            LocalizedStringLoadingOptions.defaults()));
+
+    assertTrue(pathException.getMessage().contains("well-formed IETF BCP 47 locale"));
+    assertTrue(inputStreamException.getMessage().contains("well-formed IETF BCP 47 locale"));
+    assertTrue(readerException.getMessage().contains("well-formed IETF BCP 47 locale"));
+  }
+
+  @Test
   public void testSingleResourceParseEnforcesByteCharacterAndNestingLimits() {
     String localizedStringsFile = "{\"hello\":\"world\"}";
     byte[] localizedStringsFileBytes = localizedStringsFile.getBytes(StandardCharsets.UTF_8);
@@ -862,6 +896,19 @@ public class LocalizedStringLoaderTests {
 
     assertTrue(exception.getMessage().contains("unexpected field 'unknown'"));
     assertFalse(exception.getMessage().contains("mixes language-form members"));
+  }
+
+  @Test
+  public void testUnexpectedObjectMemberDiagnosticSortsValidFields() {
+    String localizedStringsFile =
+        "{\"hello\":{\"translation\":\"world\",\"unknown\":true}}";
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.parse(new StringReader(localizedStringsFile), Locale.ENGLISH,
+            "deterministic-valid-fields"));
+
+    assertEquals("deterministic-valid-fields: unexpected field 'unknown' in localized string for key 'hello'. " +
+        "Valid fields are [alternatives, commentary, placeholders, translation]", exception.getMessage());
   }
 
   @Test
@@ -1545,6 +1592,14 @@ public class LocalizedStringLoaderTests {
     }
   }
 
+  @Test
+  public void testClasspathLoadingIgnoresMalformedMultiReleaseJarVersionDirectories() throws IOException {
+    for (String malformedVersion : List.of("09", "+9", "\u0669", "\uFF19")) {
+      verifyMalformedMultiReleaseVersionIgnored(malformedVersion, true, false);
+      verifyMalformedMultiReleaseVersionIgnored(malformedVersion, false, true);
+    }
+  }
+
 	@Test
 	public void testMultiReleaseJarDoesNotOverlayLogicalMetaInfResources() throws IOException {
 		Path tempJar = Files.createTempFile("lokalized-strings-meta-inf-multi-release", ".jar");
@@ -2062,6 +2117,37 @@ public class LocalizedStringLoaderTests {
       jarOutputStream.putNextEntry(entry);
       jarOutputStream.write(json.getBytes(StandardCharsets.UTF_8));
       jarOutputStream.closeEntry();
+    }
+  }
+
+  private void verifyMalformedMultiReleaseVersionIgnored(String malformedVersion, boolean includeDirectoryEntry,
+                                                         boolean exhaustiveClasspathSearch) throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-strings-malformed-multi-release", ".jar");
+    tempJar.toFile().deleteOnExit();
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest.getMainAttributes().putValue("Multi-Release", "true");
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar), manifest)) {
+      if (includeDirectoryEntry)
+        writeJarEntry(jarOutputStream, "strings/", null);
+
+      writeJarEntry(jarOutputStream, "strings/en.json", "{\"message\":\"base\"}");
+      writeJarEntry(jarOutputStream, format("META-INF/versions/%s/strings/en.json", malformedVersion),
+          "{\"message\":\"malformed-version\"}");
+    }
+
+    LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+        .exhaustiveClasspathSearch(exhaustiveClasspathSearch)
+        .build();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions);
+      LocalizedString localizedString = localizedStringsByLocale.get(Locale.ENGLISH).iterator().next();
+
+      assertEquals("base", localizedString.getTranslation().orElse(null),
+          format("Malformed version directory '%s' must not overlay the base resource", malformedVersion));
     }
   }
 

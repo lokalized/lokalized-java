@@ -19,9 +19,11 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.IllformedLocaleException;
 import java.util.Locale;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -33,6 +35,33 @@ import static java.util.Objects.requireNonNull;
 class LocaleUtils {
   private LocaleUtils() {
     // Non-instantiable
+  }
+
+  /**
+   * Requires a locale whose fields form a well-formed IETF BCP 47 locale.
+   * <p>
+   * {@link Locale} permits its legacy constructors to create instances that cannot be represented faithfully as
+   * language tags. Public Lokalized boundaries reject those instances instead of silently treating them as
+   * {@code und}.
+   *
+   * @param locale locale to validate, not null
+   * @param description diagnostic description of the locale, not null
+   * @return the supplied locale, not null
+   * @throws IllegalArgumentException if the locale is not well-formed
+   */
+  @NonNull
+  static Locale requireWellFormed(@NonNull Locale locale, @NonNull String description) {
+    requireNonNull(locale);
+    requireNonNull(description);
+
+    try {
+      new Locale.Builder().setLocale(locale).build();
+    } catch (IllformedLocaleException e) {
+      throw new IllegalArgumentException(format(
+          "%s '%s' is not a well-formed IETF BCP 47 locale", description, locale), e);
+    }
+
+    return locale;
   }
 
   /**

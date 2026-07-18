@@ -19,6 +19,7 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -30,8 +31,9 @@ import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
- * Diagnostic result for a translation lookup. Collection state is defensively copied; an optional failure cause is
- * exposed by reference.
+ * Diagnostic result for a translation lookup. Instances are structurally immutable and safe to share. Collection
+ * state is defensively copied; an optional failure cause is exposed by reference and is outside this class's
+ * thread-safety guarantee.
  * <p>
  * If evaluating a reachable {@link LocalizedString.ExpressionAlternative expression-fragment predicate} or
  * interpolating its selected/default fragment fails, a handler-produced result reports
@@ -45,6 +47,7 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
  */
+@ThreadSafe
 public final class TranslationResult {
 	@NonNull private final String key;
 	@NonNull private final String translation;
@@ -69,8 +72,9 @@ public final class TranslationResult {
 	 * @param failureReason final failure reason for a handler response, otherwise null
 	 * @param cause first runtime resolution cause, including an evaluated expression-fragment or selected/default
 	 *              fragment failure, otherwise null
-	 * @throws IllegalArgumentException if success and failure state is mixed, a resolution cause and reason disagree,
-	 *                                  attempted locales contain duplicates, or the resolved locale was not attempted
+	 * @throws IllegalArgumentException if any locale is malformed, success and failure state is mixed, a resolution
+	 *                                  cause and reason disagree, attempted locales contain duplicates, or the resolved
+	 *                                  locale was not attempted
 	 */
 	public TranslationResult(@NonNull String key, @NonNull String translation, @NonNull Locale lookupLocale,
 								@Nullable Locale resolvedLocale, @NonNull List<@NonNull Locale> attemptedLocales,
@@ -92,8 +96,9 @@ public final class TranslationResult {
 	 * @param failureReason final failure reason for a handler response, otherwise null
 	 * @param cause runtime resolution cause, including an evaluated expression-fragment or selected/default fragment
 	 *              failure, otherwise null
-	 * @throws IllegalArgumentException if success and failure state is mixed, a resolution cause and reason disagree,
-	 *                                  attempted locales contain duplicates, or the resolved locale was not attempted
+	 * @throws IllegalArgumentException if any locale is malformed, success and failure state is mixed, a resolution
+	 *                                  cause and reason disagree, attempted locales contain duplicates, or the resolved
+	 *                                  locale was not attempted
 	 */
 	public TranslationResult(@NonNull String key, @NonNull String translation, @NonNull Locale lookupLocale,
 								@Nullable LocaleMatchResult localeMatchResult, @Nullable Locale resolvedLocale,
@@ -101,13 +106,22 @@ public final class TranslationResult {
 								@Nullable TranslationFailureReason failureReason, @Nullable Throwable cause) {
 		this.key = requireNonNull(key);
 		this.translation = requireNonNull(translation);
-		this.lookupLocale = requireNonNull(lookupLocale);
+		this.lookupLocale = LocaleUtils.requireWellFormed(lookupLocale, "Lookup locale");
 		this.localeMatchResult = localeMatchResult;
-		this.resolvedLocale = resolvedLocale;
+		this.resolvedLocale = resolvedLocale == null ? null : LocaleUtils.requireWellFormed(resolvedLocale, "Resolved locale");
 		List<@NonNull Locale> attemptedLocaleCopy = new ArrayList<>(requireNonNull(attemptedLocales).size());
+		LinkedHashSet<@NonNull String> attemptedLanguageTags = new LinkedHashSet<>();
 
-		for (Locale attemptedLocale : attemptedLocales)
-			attemptedLocaleCopy.add(requireNonNull(attemptedLocale));
+		for (Locale attemptedLocale : attemptedLocales) {
+			Locale validatedLocale = LocaleUtils.requireWellFormed(attemptedLocale, "Attempted locale");
+			String normalizedLanguageTag = validatedLocale.toLanguageTag().toLowerCase(Locale.ROOT);
+
+			if (!attemptedLanguageTags.add(normalizedLanguageTag))
+				throw new IllegalArgumentException(format(
+						"Attempted locales must not contain duplicate language tag '%s'", validatedLocale.toLanguageTag()));
+
+			attemptedLocaleCopy.add(validatedLocale);
+		}
 
 		if (new LinkedHashSet<>(attemptedLocaleCopy).size() != attemptedLocaleCopy.size())
 			throw new IllegalArgumentException("Attempted locales must not contain duplicates");
@@ -230,13 +244,34 @@ public final class TranslationResult {
 	/**
 	 * Reports whether negotiation or per-key resolution used a fallback.
 	 *
-	 * @return whether negotiation used the configured fallback or per-key resolution used a non-equivalent locale,
-	 * not null
+	 * @return whether negotiation produced no match, used CLDR parent, likely-subtag, or primary-language fallback, or
+	 * per-key resolution used a non-equivalent locale, not null
 	 */
 	@NonNull
 	public Boolean isFallback() {
-		return (localeMatchResult != null && !localeMatchResult.isMatch())
+		return negotiationUsedFallback()
 				|| (resolvedLocale != null && !CldrLocaleData.equivalent(lookupLocale, resolvedLocale));
+	}
+
+	private boolean negotiationUsedFallback() {
+		if (localeMatchResult == null)
+			return false;
+
+		switch (localeMatchResult.getMatchType()) {
+			case NONE:
+			case CLDR_FALLBACK:
+			case LIKELY_SUBTAG:
+			case PRIMARY_LANGUAGE:
+				return true;
+			case EXACT:
+			case CANONICAL:
+			case EXTENDED_RANGE:
+			case WILDCARD:
+				return false;
+			default:
+				throw new IllegalArgumentException(format("Unsupported locale match type %s",
+						localeMatchResult.getMatchType()));
+		}
 	}
 
 	/**

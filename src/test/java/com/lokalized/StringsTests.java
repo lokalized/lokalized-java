@@ -2195,6 +2195,56 @@ public class StringsTests {
 	}
 
 	@Test
+	public void translationResultReportsCldrFallbackForLocaleAndLanguageRangeLookups() {
+		Locale english = Locale.ENGLISH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Hello").translation("Hello").build())))
+				.localeSupplier(matcher -> english)
+				.build();
+
+		TranslationResult localeResult = strings.getResult("Hello", TranslationOptions.forLocale(americanEnglish));
+		TranslationResult rangesResult = strings.getResult("Hello",
+				TranslationOptions.forLanguageRanges(List.of(new LanguageRange("en-US"))));
+
+		assertEquals(LocaleMatchType.CLDR_FALLBACK, localeResult.getLocaleMatchResult()
+				.orElseThrow(AssertionError::new).getMatchType());
+		assertEquals(LocaleMatchType.CLDR_FALLBACK, rangesResult.getLocaleMatchResult()
+				.orElseThrow(AssertionError::new).getMatchType());
+		assertTrue(localeResult.isFallback());
+		assertTrue(rangesResult.isFallback());
+	}
+
+	@Test
+	public void translationResultNegotiationFallbackClassificationIsExplicit() {
+		Locale english = Locale.ENGLISH;
+		List<Locale> consideredLocales = List.of(english);
+
+		for (LocaleMatchType matchType : List.of(LocaleMatchType.CLDR_FALLBACK, LocaleMatchType.LIKELY_SUBTAG,
+				LocaleMatchType.PRIMARY_LANGUAGE)) {
+			LanguageRange range = new LanguageRange("en-US");
+			LocaleMatchResult matchResult = new LocaleMatchResult(List.of(range), english, range, 1.0, matchType,
+					english, consideredLocales);
+			TranslationResult result = new TranslationResult("Hello", "Hello", english, matchResult, english,
+					consideredLocales, TranslationResultStatus.TRANSLATED, null, null);
+
+			assertTrue(result.isFallback(), () -> matchType + " should be classified as fallback");
+		}
+
+		for (LocaleMatchType matchType : List.of(LocaleMatchType.EXACT, LocaleMatchType.CANONICAL,
+				LocaleMatchType.EXTENDED_RANGE, LocaleMatchType.WILDCARD)) {
+			LanguageRange range = new LanguageRange(matchType == LocaleMatchType.WILDCARD ? "*" : "en");
+			LocaleMatchResult matchResult = new LocaleMatchResult(List.of(range), english, range, 1.0, matchType,
+					english, consideredLocales);
+			TranslationResult result = new TranslationResult("Hello", "Hello", english, matchResult, english,
+					consideredLocales, TranslationResultStatus.TRANSLATED, null, null);
+
+			assertTrue(!result.isFallback(), () -> matchType + " should not be classified as fallback");
+		}
+	}
+
+	@Test
 	public void localeMatchSupplierPreservesDefaultNegotiationDiagnostics() {
 		Locale english = Locale.ENGLISH;
 		List<LanguageRange> requestedRanges = LanguageRange.parse("fr-CA,fr;q=0.8");
@@ -2240,6 +2290,32 @@ public class StringsTests {
 				TranslationFailureReason.MISSING_TRANSLATION, new RuntimeException("wrong cause")));
 		assertThrows(IllegalArgumentException.class, () -> new TranslationResult("key", "value", english,
 				english, Collections.emptyList(), TranslationResultStatus.TRANSLATED, null, null));
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void translationResultConstructorRejectsMalformedLocales() {
+		Locale english = Locale.ENGLISH;
+		Locale malformed = new Locale("e");
+
+		assertThrows(IllegalArgumentException.class, () -> new TranslationResult("key", "value", malformed,
+				english, List.of(english), TranslationResultStatus.TRANSLATED, null, null));
+		assertThrows(IllegalArgumentException.class, () -> new TranslationResult("key", "value", english,
+				malformed, List.of(malformed), TranslationResultStatus.TRANSLATED, null, null));
+	}
+
+	@Test
+	public void nullPlaceholderNamesAreRejectedBeforeLookup() {
+		Locale english = Locale.ENGLISH;
+		Strings strings = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, Set.of(
+						new LocalizedString.Builder("Hello").translation("Hello").build())))
+				.localeSupplier(matcher -> english)
+				.build();
+		Map<String, Object> placeholders = new HashMap<>();
+		placeholders.put(null, "value");
+
+		assertThrows(IllegalArgumentException.class, () -> strings.getResult("Hello", placeholders));
 	}
 
 	@Test

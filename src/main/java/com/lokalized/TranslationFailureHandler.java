@@ -18,6 +18,7 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.function.Consumer;
 
 import static java.util.Objects.requireNonNull;
@@ -40,6 +41,7 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
  */
+@ThreadSafe
 @FunctionalInterface
 public interface TranslationFailureHandler {
 	/**

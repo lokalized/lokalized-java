@@ -954,6 +954,7 @@ public final class LocalizedStringLoader {
    * @param path   file to parse, not null
    * @param locale locale represented by the file, not null
    * @return localized strings contained in the file, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
    * @since 3.0.0
    */
@@ -970,6 +971,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the file, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
    * @since 3.0.0
    */
@@ -981,6 +983,7 @@ public final class LocalizedStringLoader {
     requireNonNull(locale);
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
+    LocaleUtils.requireWellFormed(locale, "Locale");
     return parseLocalizedStringsFile(path, locale, warningHandler, loadingOptions);
   }
 
@@ -991,6 +994,7 @@ public final class LocalizedStringLoader {
    * @param locale      locale represented by the resource, not null
    * @param source      human-readable source identifier used in diagnostics, not null
    * @return localized strings contained in the resource, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
    * @since 3.0.0
    */
@@ -1011,6 +1015,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the resource, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
    * @since 3.0.0
    */
@@ -1024,6 +1029,7 @@ public final class LocalizedStringLoader {
     requireNonNull(source);
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
+    LocaleUtils.requireWellFormed(locale, "Locale");
 
     return parse(inputStream, locale, source, new LoadingSession(loadingOptions, warningHandler));
   }
@@ -1035,6 +1041,7 @@ public final class LocalizedStringLoader {
    * @param locale locale represented by the resource, not null
    * @param source human-readable source identifier used in diagnostics, not null
    * @return localized strings contained in the resource, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
    * @since 3.0.0
    */
@@ -1054,6 +1061,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
    * @return localized strings contained in the resource, not null
+   * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
    * @since 3.0.0
    */
@@ -1067,6 +1075,7 @@ public final class LocalizedStringLoader {
     requireNonNull(source);
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
+    LocaleUtils.requireWellFormed(locale, "Locale");
 
     LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
     loadingSession.beginLocalizedStringsFile(source);
@@ -1326,8 +1335,15 @@ public final class LocalizedStringLoader {
         if (versionEnd < 0)
           continue;
 
+        String versionName = logicalEntryName.substring(versionedPrefix.length(), versionEnd);
+
+        // The JAR specification defines a version directory as N = [1-9][0-9]*. Integer.parseInt() alone is
+        // intentionally more permissive (for example, it accepts "09", "+9", and non-ASCII decimal digits).
+        if (!isCanonicalMultiReleaseJarVersion(versionName))
+          continue;
+
         try {
-          version = Integer.parseInt(logicalEntryName.substring(versionedPrefix.length(), versionEnd));
+          version = Integer.parseInt(versionName);
         } catch (NumberFormatException e) {
           continue;
         }
@@ -1364,6 +1380,19 @@ public final class LocalizedStringLoader {
       entriesByRelativeName.put(selection.getKey(), selection.getValue().getJarEntry());
 
     return Collections.unmodifiableMap(entriesByRelativeName);
+  }
+
+  private static boolean isCanonicalMultiReleaseJarVersion(@NonNull String version) {
+    requireNonNull(version);
+
+    if (version.isEmpty() || version.charAt(0) < '1' || version.charAt(0) > '9')
+      return false;
+
+    for (int i = 1; i < version.length(); ++i)
+      if (version.charAt(i) < '0' || version.charAt(i) > '9')
+        return false;
+
+    return true;
   }
 
   @NonNull
@@ -1528,14 +1557,7 @@ public final class LocalizedStringLoader {
   }
 
   private static void validateExplicitLocale(@NonNull Locale locale) {
-    requireNonNull(locale);
-
-    try {
-      new Locale.Builder().setLocale(locale).build();
-    } catch (IllformedLocaleException e) {
-      throw new IllegalArgumentException(format(
-          "Locale key '%s' is not a well-formed IETF BCP 47 locale", locale), e);
-    }
+    LocaleUtils.requireWellFormed(locale, "Locale key");
   }
 
   /**
@@ -2494,7 +2516,8 @@ public final class LocalizedStringLoader {
     for (Member member : jsonObject)
       if (!expectedMemberNames.contains(member.getName()))
         throw new LocalizedStringLoadingException(format("%s: unexpected field '%s' in %s for key '%s'. Valid fields are [%s]",
-            canonicalPath, member.getName(), description, key, expectedMemberNames.stream().collect(Collectors.joining(", "))));
+            canonicalPath, member.getName(), description, key,
+            expectedMemberNames.stream().sorted().collect(Collectors.joining(", "))));
   }
 
   private static void ensureValidPlaceholderName(@NonNull String canonicalPath, @NonNull String key,

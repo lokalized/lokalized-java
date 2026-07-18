@@ -18,6 +18,7 @@ package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 
 /**
@@ -30,6 +31,7 @@ import java.util.Locale;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 1.2.0
  */
+@ThreadSafe
 @FunctionalInterface
 public interface PhoneticResolver {
   /**

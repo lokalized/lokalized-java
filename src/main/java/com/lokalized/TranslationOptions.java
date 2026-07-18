@@ -70,7 +70,7 @@ public final class TranslationOptions {
 		if (locale != null && languageRanges != null)
 			throw new IllegalArgumentException("Specify either locale or languageRanges, not both");
 
-		this.locale = locale;
+		this.locale = locale == null ? null : LocaleUtils.requireWellFormed(locale, "Locale override");
 		this.languageRanges = languageRanges == null ? null : immutableLanguageRanges(languageRanges);
 		this.bidiIsolation = bidiIsolation;
 		this.translationFailureHandler = translationFailureHandler;
@@ -92,6 +92,7 @@ public final class TranslationOptions {
 	 *
 	 * @param locale locale to use, not null
 	 * @return translation options, not null
+	 * @throws IllegalArgumentException if the locale is not well-formed
 	 */
 	@NonNull
 	public static TranslationOptions forLocale(@NonNull Locale locale) {
@@ -302,10 +303,11 @@ public final class TranslationOptions {
 		 *
 		 * @param locale locale to use, may be null
 		 * @return this builder, not null
+		 * @throws IllegalArgumentException if the locale is not well-formed
 		 */
 		@NonNull
 		public Builder locale(@Nullable Locale locale) {
-			this.locale = locale;
+			this.locale = locale == null ? null : LocaleUtils.requireWellFormed(locale, "Locale override");
 
 			if (locale != null)
 				this.languageRanges = null;

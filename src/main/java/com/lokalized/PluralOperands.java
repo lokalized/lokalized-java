@@ -20,6 +20,7 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.Immutable;
+import javax.annotation.concurrent.NotThreadSafe;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.RoundingMode;
@@ -302,6 +303,7 @@ public final class PluralOperands {
    *
    * @since 3.0.0
    */
+  @NotThreadSafe
   public static final class Builder {
     @NonNull
     private final Number number;

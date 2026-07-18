@@ -22,8 +22,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Locale.LanguageRange;
 
-import static java.util.Objects.requireNonNull;
-
 /**
  * Contract for matching an input {@link Locale} or {@link List}{@code <}{@link LanguageRange}{@code >} to an appropriate localized strings {@link Locale}.
  * <p>
@@ -57,11 +55,12 @@ public interface LocaleMatcher {
 	 *
 	 * @param locale requested locale, not null
 	 * @return diagnostic match result, not null
+	 * @throws IllegalArgumentException if the locale is not well-formed
 	 * @since 3.0.0
 	 */
 	@NonNull
 	default LocaleMatchResult matchFor(@NonNull Locale locale) {
-		requireNonNull(locale);
+		LocaleUtils.requireWellFormed(locale, "Requested locale");
 		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
 	}
 
@@ -81,6 +80,7 @@ public interface LocaleMatcher {
 	 *
 	 * @param locale the locale for which to find the best match.
 	 * @return the best-matching locale, not null
+	 * @throws IllegalArgumentException if the locale is not well-formed
 	 */
 	@NonNull
 	Locale bestMatchFor(@NonNull Locale locale);

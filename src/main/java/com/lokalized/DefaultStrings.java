@@ -81,9 +81,9 @@ class DefaultStrings implements Strings {
 	@NonNull
 	private final Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> localizedStringsByLocale;
 	@Nullable
-	private final Function<LocaleMatcher, Locale> localeSupplier;
+	private final Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier;
 	@Nullable
-	private final Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier;
+	private final Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier;
 	@NonNull
 	private final Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 	@NonNull
@@ -125,8 +125,8 @@ class DefaultStrings implements Strings {
 	 * @param translationFailureHandler       handler for lookup failures, may be null
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+												 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+												 @NonNull Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable TranslationFailureHandler translationFailureHandler) {
 		this(fallbackLocale, localizedStringSupplier, localeSupplier, tiebreakerLocalesByLanguageCode, translationFailureHandler, null);
@@ -143,8 +143,8 @@ class DefaultStrings implements Strings {
 	 * @param phoneticResolver                resolver for phonetic categories, may be null (defaults to fail-fast resolver)
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+												 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+												 @NonNull Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 													 @Nullable TranslationFailureHandler translationFailureHandler,
 													 @Nullable PhoneticResolver phoneticResolver) {
@@ -164,8 +164,8 @@ class DefaultStrings implements Strings {
 	 * @param bidiIsolation                   bidi isolation behavior, may be null (defaults to isolating caller-supplied values in RTL locales)
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-													 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-													 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+												 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+												 @NonNull Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
 													 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 															 @Nullable TranslationFailureHandler translationFailureHandler,
 															 @Nullable PhoneticResolver phoneticResolver,
@@ -178,8 +178,8 @@ class DefaultStrings implements Strings {
 	 * Constructs a localized string provider with builder-supplied data and locale-fallback policy.
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-															 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-															 @NonNull Function<LocaleMatcher, Locale> localeSupplier,
+														 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+														 @NonNull Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
 															 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 															 @Nullable TranslationFailureHandler translationFailureHandler,
 															 @Nullable PhoneticResolver phoneticResolver,
@@ -193,8 +193,8 @@ class DefaultStrings implements Strings {
 	 * Constructs a localized string provider with builder-supplied data, fallback policy, and safety limits.
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-																 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-																 @Nullable Function<LocaleMatcher, Locale> localeSupplier,
+															 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+															 @Nullable Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
 																 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 																 @Nullable TranslationFailureHandler translationFailureHandler,
 																 @Nullable PhoneticResolver phoneticResolver,
@@ -209,16 +209,16 @@ class DefaultStrings implements Strings {
 	 * Constructs a localized string provider with either a locale or locale-match supplier.
 	 */
 	protected DefaultStrings(@NonNull Locale fallbackLocale,
-																 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
-																 @Nullable Function<LocaleMatcher, Locale> localeSupplier,
-																 @Nullable Function<LocaleMatcher, LocaleMatchResult> localeMatchSupplier,
+															 @NonNull Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+															 @Nullable Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
+															 @Nullable Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier,
 																 @Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
 																 @Nullable TranslationFailureHandler translationFailureHandler,
 																 @Nullable PhoneticResolver phoneticResolver,
 																 @Nullable BidiIsolation bidiIsolation,
 																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
 																 @Nullable TranslationRuntimeLimits runtimeLimits) {
-		requireNonNull(fallbackLocale);
+		LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
 		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
 
 		if ((localeSupplier == null) == (localeMatchSupplier == null))
@@ -233,6 +233,7 @@ class DefaultStrings implements Strings {
 		// Preserve insertion order without structurally hashing LocalizedString graphs. A deep graph can overflow while
 		// hashing, and a shared DAG can make recursive hashing exponentially expensive even when its depth is valid.
 		Map<@NonNull Locale, @NonNull List<@NonNull LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+		Map<@NonNull String, @NonNull Locale> localesByLanguageTag = new LinkedHashMap<>();
 
 		for (Entry<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>> entry :
 				suppliedLocalizedStringsByLocale.entrySet()) {
@@ -240,6 +241,14 @@ class DefaultStrings implements Strings {
 
 			if (locale == null)
 				throw new IllegalArgumentException("Null locale encountered in supplied localized strings");
+
+			LocaleUtils.requireWellFormed(locale, "Localized strings locale");
+			String normalizedLanguageTag = locale.toLanguageTag().toLowerCase(Locale.ROOT);
+			@Nullable Locale existingLocale = localesByLanguageTag.putIfAbsent(normalizedLanguageTag, locale);
+
+			if (existingLocale != null)
+				throw new IllegalArgumentException(format("Localized strings locales '%s' and '%s' both use IETF BCP 47 " +
+						"language tag '%s'", existingLocale, locale, locale.toLanguageTag()));
 
 			Iterable<@NonNull LocalizedString> suppliedLocalizedStrings = entry.getValue();
 
@@ -281,8 +290,21 @@ class DefaultStrings implements Strings {
 		if (tiebreakerLocalesByLanguageCode != null) {
 			for (Entry<@NonNull String, @Nullable List<@NonNull Locale>> entry : tiebreakerLocalesByLanguageCode.entrySet()) {
 				@Nullable List<@NonNull Locale> locales = entry.getValue();
-				internalTiebreakerLocalesByLanguageCode.put(normalizedLanguageCode(entry.getKey()),
-						locales == null ? null : new ArrayList<>(locales));
+				@Nullable List<@NonNull Locale> validatedLocales = null;
+
+				if (locales != null) {
+					validatedLocales = new ArrayList<>(locales.size());
+
+					for (Locale locale : locales) {
+						if (locale == null)
+							throw new IllegalArgumentException(format("Null tiebreaker locale encountered for language code '%s'",
+									entry.getKey()));
+
+						validatedLocales.add(LocaleUtils.requireWellFormed(locale, "Tiebreaker locale"));
+					}
+				}
+
+				internalTiebreakerLocalesByLanguageCode.put(normalizedLanguageCode(entry.getKey()), validatedLocales);
 			}
 		}
 
@@ -590,7 +612,12 @@ class DefaultStrings implements Strings {
 		TranslationFallbackPolicy translationFallbackPolicy = options.getTranslationFallbackPolicy()
 				.orElse(getTranslationFallbackPolicy());
 		// All locale candidates, failure reporting, and interpolation must observe one coherent caller-input snapshot.
-		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(new HashMap<>(placeholders));
+		Map<@NonNull String, @Nullable Object> contextSnapshot = new HashMap<>(placeholders);
+
+		if (contextSnapshot.containsKey(null))
+			throw new IllegalArgumentException("Placeholder names must not be null");
+
+		Map<@NonNull String, @Nullable Object> immutableContext = Collections.unmodifiableMap(contextSnapshot);
 		RuntimeException firstFallbackFailure = null;
 		boolean noMatchingAlternativeEncountered = false;
 		List<@NonNull LocaleFallbackCandidate> fallbackCandidates = localeFallbackCandidates(locale);
@@ -1428,7 +1455,7 @@ class DefaultStrings implements Strings {
 	@NonNull
 	@Override
 	public LocaleMatchResult matchFor(@NonNull Locale locale) {
-		requireNonNull(locale);
+		LocaleUtils.requireWellFormed(locale, "Requested locale");
 		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
 	}
 
@@ -1517,14 +1544,9 @@ class DefaultStrings implements Strings {
 					return localeMatch(locale, languageRange, highestEffectiveWeight, LocaleMatchType.EXACT,
 							requestedLanguageRanges, consideredLocales);
 
-			// Private-use tags have no language semantics to broaden. They can select an exact localized strings source,
-			// but must not be treated as an ordinary primary language such as "x".
-			if (privateUseRange)
-				continue;
-
-			// Internal wildcards have RFC 4647 structural semantics only. In particular, an extended range that has no
+			// Noninitial wildcards have RFC 4647 structural semantics only. In particular, an extended range that has no
 			// structural candidates must not be broadened through canonical, CLDR, likely-subtag, or primary-language
-			// matching. Probe with maximum weight so structural matching remains independent of quality.
+			// matching. This also applies to private-use ranges such as x-*. Probe independently of quality.
 			if (range.contains("*")) {
 				List<@NonNull Locale> filteredCandidates = structurallyFilteredLocales(range, availableLocales);
 
@@ -1539,6 +1561,11 @@ class DefaultStrings implements Strings {
 				return localeMatch(preferredLocale, languageRange, highestEffectiveWeight,
 						LocaleMatchType.EXTENDED_RANGE, requestedLanguageRanges, consideredLocales);
 			}
+
+			// Private-use tags have no language semantics to broaden. Without a wildcard, they can select an exact
+			// localized strings source but must not be treated as an ordinary primary language such as "x".
+			if (privateUseRange)
+				continue;
 
 			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
 			// so honor configured tiebreakers rather than returning the first lexicographic alias.
@@ -1682,31 +1709,30 @@ class DefaultStrings implements Strings {
 		requireNonNull(languageRange);
 
 		String range = languageRange.getRange();
+		String structuralRange = normalizedExtendedLanguageRange(range);
 		String localeTag = locale.toLanguageTag();
 		boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
 
-		if ("*".equals(range))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.WILDCARD, 0, false, 0);
+		if ("*".equals(structuralRange))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.WILDCARD, 0, 0);
 
 		if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
 			return null;
 
-		int structuralDepth = structuralConstraintCountFor(range);
+		int structuralDepth = structuralConstraintCountFor(structuralRange);
 
-		if (localeTag.equalsIgnoreCase(range))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.EXACT, structuralDepth, false, 0);
+		if (localeTag.equalsIgnoreCase(structuralRange))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.EXACT, structuralDepth, 0);
 
-		if (privateUseRange)
+		if (privateUseRange && !range.contains("*"))
 			return null;
 
-		// Locale.filter applies q=0 exclusions and therefore returns no matches when handed a singleton
-		// zero-weight range. Specificity needs a structural match probe independent of quality so that a
-		// negative range such as en-US;q=0 also excludes en-US-posix and en-US-u-nu-latn.
+		// Specificity needs a structural match probe independent of quality so that a negative range such as
+		// en-US;q=0 also excludes en-US-posix and en-US-u-nu-latn.
 		List<@NonNull Locale> directlyFiltered = structurallyFilteredLocales(range, Collections.singletonList(locale));
 
 		if (!directlyFiltered.isEmpty())
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.DIRECT_STRUCTURAL, structuralDepth,
-					hasTrailingWildcard(range), 0);
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.DIRECT_STRUCTURAL, structuralDepth, 0);
 
 		if (range.contains("*"))
 			return null;
@@ -1715,22 +1741,16 @@ class DefaultStrings implements Strings {
 		String canonicalLocaleTag = CldrLocaleData.canonicalLanguageTag(localeTag);
 
 		if (canonicalLocaleTag.equalsIgnoreCase(canonicalRange))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, false, 0);
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, 0);
 
-		LanguageRange canonicalStructuralRange = new LanguageRange(canonicalRange, LanguageRange.MAX_WEIGHT);
-		Locale canonicalLocale = Locale.forLanguageTag(canonicalLocaleTag);
-		List<Locale> canonicallyFiltered = Locale.filter(Collections.singletonList(canonicalStructuralRange),
-				Collections.singletonList(canonicalLocale), Locale.FilteringMode.EXTENDED_FILTERING);
-
-		if (!canonicallyFiltered.isEmpty())
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, false, 0);
+		if (structurallyMatches(canonicalRange, canonicalLocaleTag))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, 0);
 
 		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
 
 		for (int index = 0; index < fallbackLocales.size(); ++index)
 			if (CldrLocaleData.equivalent(locale, fallbackLocales.get(index)))
-				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CLDR_FALLBACK, structuralDepth, false,
-						index);
+				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CLDR_FALLBACK, structuralDepth, index);
 
 		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(range);
 		Optional<@NonNull String> availableLanguageScript = CldrLocaleData.hasUndeterminedLanguage(localeTag)
@@ -1739,14 +1759,14 @@ class DefaultStrings implements Strings {
 
 		if (requestedLanguageScript.isPresent() && availableLanguageScript.isPresent() &&
 				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get()))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.LIKELY_SUBTAG, structuralDepth, false, 0);
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.LIKELY_SUBTAG, structuralDepth, 0);
 
 		String requestedPrimary = normalizedLanguageCode(range.split("-")[0]);
 		Optional<String> availablePrimary = LocaleUtils.normalizedLanguage(locale);
 
 		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary) &&
 				hasCompatibleLikelyScript(range, locale))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.PRIMARY_LANGUAGE, structuralDepth, false, 0);
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.PRIMARY_LANGUAGE, structuralDepth, 0);
 
 		return null;
 	}
@@ -1771,19 +1791,72 @@ class DefaultStrings implements Strings {
 		return constraintCount;
 	}
 
-	private static boolean hasTrailingWildcard(@NonNull String range) {
-		requireNonNull(range);
-		return range.endsWith("-*");
-	}
-
 	@NonNull
 	private static List<@NonNull Locale> structurallyFilteredLocales(@NonNull String range,
-																													 @NonNull List<@NonNull Locale> locales) {
+																							 @NonNull List<@NonNull Locale> locales) {
 		requireNonNull(range);
 		requireNonNull(locales);
-		LanguageRange structuralLanguageRange = new LanguageRange(range, LanguageRange.MAX_WEIGHT);
-		return Locale.filter(Collections.singletonList(structuralLanguageRange), locales,
-				Locale.FilteringMode.EXTENDED_FILTERING);
+		List<@NonNull Locale> filteredLocales = new ArrayList<>();
+
+		for (Locale locale : locales)
+			if (structurallyMatches(range, locale.toLanguageTag()))
+				filteredLocales.add(locale);
+
+		return filteredLocales;
+	}
+
+	/** Implements the extended-filtering algorithm in RFC 4647 section 3.3.2. */
+	private static boolean structurallyMatches(@NonNull String range, @NonNull String languageTag) {
+		requireNonNull(range);
+		requireNonNull(languageTag);
+		String[] rangeSubtags = range.split("-");
+		String[] tagSubtags = languageTag.split("-");
+
+		if (!"*".equals(rangeSubtags[0]) && !rangeSubtags[0].equalsIgnoreCase(tagSubtags[0]))
+			return false;
+
+		int rangeIndex = 1;
+		int tagIndex = 1;
+
+		while (rangeIndex < rangeSubtags.length) {
+			String rangeSubtag = rangeSubtags[rangeIndex];
+
+			// RFC 4647 ignores wildcard subtags outside the first position.
+			if ("*".equals(rangeSubtag)) {
+				++rangeIndex;
+				continue;
+			}
+
+			if (tagIndex >= tagSubtags.length)
+				return false;
+
+			String tagSubtag = tagSubtags[tagIndex];
+
+			if (rangeSubtag.equalsIgnoreCase(tagSubtag)) {
+				++rangeIndex;
+				++tagIndex;
+			} else if (tagSubtag.length() == 1) {
+				return false;
+			} else {
+				++tagIndex;
+			}
+		}
+
+		return true;
+	}
+
+	/** Removes noninitial wildcards, which RFC 4647 defines as ignored during extended filtering. */
+	@NonNull
+	private static String normalizedExtendedLanguageRange(@NonNull String range) {
+		requireNonNull(range);
+		String[] subtags = range.split("-");
+		StringBuilder normalizedRange = new StringBuilder(subtags[0]);
+
+		for (int index = 1; index < subtags.length; ++index)
+			if (!"*".equals(subtags[index]))
+				normalizedRange.append('-').append(subtags[index]);
+
+		return normalizedRange.toString();
 	}
 
 	private boolean hasCompatibleLikelyScript(@NonNull String requestedLanguageTag, @NonNull Locale availableLocale) {
@@ -1822,6 +1895,7 @@ class DefaultStrings implements Strings {
 		}
 
 		Locale suppliedLocale = requireNonNull(requireNonNull(localeSupplier).apply(this), "localeSupplier returned null");
+		LocaleUtils.requireWellFormed(suppliedLocale, "localeSupplier result");
 		return new LocaleLookup(suppliedLocale, matchFor(suppliedLocale));
 	}
 
@@ -2058,9 +2132,9 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	public Set<@NonNull Locale> getSupportedLocales() {
-		Set<@NonNull Locale> supportedLocales = new TreeSet<>(Comparator.comparing(Locale::toLanguageTag));
-		supportedLocales.addAll(getLocalizedStringsByLocale().keySet());
-		return Collections.unmodifiableSet(supportedLocales);
+		List<@NonNull Locale> sortedLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
+		sortedLocales.sort(Comparator.comparing(Locale::toLanguageTag));
+		return Collections.unmodifiableSet(new LinkedHashSet<>(sortedLocales));
 	}
 
 	/**
@@ -2072,7 +2146,7 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	public Set<@NonNull String> getKeysForLocale(@NonNull Locale locale) {
-		requireNonNull(locale);
+		LocaleUtils.requireWellFormed(locale, "Locale");
 
 		@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings =
 				getLocalizedStringsByKeyByLocale().get(locale);
@@ -2094,8 +2168,8 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	public Set<@NonNull String> getMissingKeys(@NonNull Locale sourceLocale, @NonNull Locale targetLocale) {
-		requireNonNull(sourceLocale);
-		requireNonNull(targetLocale);
+		LocaleUtils.requireWellFormed(sourceLocale, "Source locale");
+		LocaleUtils.requireWellFormed(targetLocale, "Target locale");
 
 		if (!getLocalizedStringsByKeyByLocale().containsKey(sourceLocale))
 			throw new IllegalArgumentException(format("Source locale '%s' is not supported", sourceLocale.toLanguageTag()));
@@ -2114,13 +2188,13 @@ class DefaultStrings implements Strings {
 	 * @return the locale supplier, or null when a locale-match supplier is configured
 	 */
 	@Nullable
-	public Function<LocaleMatcher, Locale> getLocaleSupplier() {
+	public Function<@NonNull LocaleMatcher, @NonNull Locale> getLocaleSupplier() {
 		return this.localeSupplier;
 	}
 
 	/** @return locale-match supplier, or null when a locale supplier is configured */
 	@Nullable
-	public Function<LocaleMatcher, LocaleMatchResult> getLocaleMatchSupplier() {
+	public Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> getLocaleMatchSupplier() {
 		return localeMatchSupplier;
 	}
 
@@ -2355,23 +2429,20 @@ class DefaultStrings implements Strings {
 
 	/**
 	 * Locale-range specificity ordered without additive score bands. Match category always outranks structural
-	 * depth, so even an arbitrarily long range cannot spill into another category. Internal wildcard subtags are not
-	 * constraints and therefore cannot manufacture additional depth. Java extended filtering gives one or more trailing
-	 * wildcards the narrower meaning "at least one descendant subtag", represented once after concrete depth. Fallback
+	 * depth, so even an arbitrarily long range cannot spill into another category. RFC 4647 ignores noninitial wildcard
+	 * subtags, so they are removed before categorization and cannot manufacture either depth or specificity. Fallback
 	 * distance is considered last, with a nearer fallback considered more specific.
 	 */
 	@Immutable
 	private static final class LanguageRangeSpecificity implements Comparable<@NonNull LanguageRangeSpecificity> {
 		@NonNull private final LanguageRangeMatchCategory category;
 		private final int structuralDepth;
-		private final boolean requiresDescendantSubtag;
 		private final int fallbackDistance;
 
 		private LanguageRangeSpecificity(@NonNull LanguageRangeMatchCategory category, int structuralDepth,
-												 boolean requiresDescendantSubtag, int fallbackDistance) {
+										 int fallbackDistance) {
 			this.category = requireNonNull(category);
 			this.structuralDepth = structuralDepth;
-			this.requiresDescendantSubtag = requiresDescendantSubtag;
 			this.fallbackDistance = fallbackDistance;
 		}
 
@@ -2391,11 +2462,6 @@ class DefaultStrings implements Strings {
 
 			if (depthComparison != 0)
 				return depthComparison;
-
-			int descendantComparison = Boolean.compare(requiresDescendantSubtag, other.requiresDescendantSubtag);
-
-			if (descendantComparison != 0)
-				return descendantComparison;
 
 			return Integer.compare(other.fallbackDistance, fallbackDistance);
 		}

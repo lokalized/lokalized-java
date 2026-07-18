@@ -19,6 +19,7 @@ package com.lokalized;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
+import javax.annotation.concurrent.ThreadSafe;
 import java.util.Locale;
 
 import static java.util.Objects.requireNonNull;
@@ -42,6 +43,7 @@ import static java.util.Objects.requireNonNull;
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
  */
+@ThreadSafe
 @FunctionalInterface
 public interface TranslationFallbackPolicy {
 	/**

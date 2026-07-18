@@ -58,7 +58,8 @@ public final class LocaleMatchResult {
 	 * @param matchType match relationship, not null
 	 * @param fallbackLocale configured fallback locale, not null
 	 * @param consideredLocales supported locales considered, not null
-	 * @throws IllegalArgumentException if matched and unmatched state is mixed, the effective weight is outside
+	 * @throws IllegalArgumentException if any locale is malformed, considered locales have duplicate language tags,
+	 *                                  matched and unmatched state is mixed, the effective weight is outside
 	 *                                  {@code (0, 1]}, or selected/fallback locales were not considered
 	 */
 	public LocaleMatchResult(@NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
@@ -72,11 +73,11 @@ public final class LocaleMatchResult {
 			requestedLanguageRangeCopy.add(requireNonNull(requestedLanguageRange));
 
 		this.requestedLanguageRanges = Collections.unmodifiableList(requestedLanguageRangeCopy);
-		this.locale = locale;
+		this.locale = locale == null ? null : LocaleUtils.requireWellFormed(locale, "Selected locale");
 		this.languageRange = languageRange;
 		this.effectiveWeight = effectiveWeight;
 		this.matchType = requireNonNull(matchType);
-		this.fallbackLocale = requireNonNull(fallbackLocale);
+		this.fallbackLocale = LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
 
 		if (locale == null && (languageRange != null || effectiveWeight != null || matchType != LocaleMatchType.NONE))
 			throw new IllegalArgumentException("An unmatched locale result must use NONE and omit range and weight");
@@ -89,9 +90,18 @@ public final class LocaleMatchResult {
 		if (effectiveWeight != null && (!Double.isFinite(effectiveWeight) || effectiveWeight <= 0.0 || effectiveWeight > 1.0))
 			throw new IllegalArgumentException("A matched locale result requires a finite effective weight greater than 0 and at most 1");
 		List<@NonNull Locale> consideredLocaleCopy = new ArrayList<>(requireNonNull(consideredLocales).size());
+		LinkedHashSet<@NonNull String> consideredLanguageTags = new LinkedHashSet<>();
 
-		for (Locale consideredLocale : consideredLocales)
-			consideredLocaleCopy.add(requireNonNull(consideredLocale));
+		for (Locale consideredLocale : consideredLocales) {
+			Locale validatedLocale = LocaleUtils.requireWellFormed(consideredLocale, "Considered locale");
+			String normalizedLanguageTag = validatedLocale.toLanguageTag().toLowerCase(Locale.ROOT);
+
+			if (!consideredLanguageTags.add(normalizedLanguageTag))
+				throw new IllegalArgumentException(format(
+						"Considered locales must not contain duplicate language tag '%s'", validatedLocale.toLanguageTag()));
+
+			consideredLocaleCopy.add(validatedLocale);
+		}
 
 		if (new LinkedHashSet<>(consideredLocaleCopy).size() != consideredLocaleCopy.size())
 			throw new IllegalArgumentException("Considered locales must not contain duplicates");

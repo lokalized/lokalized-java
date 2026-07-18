@@ -222,6 +222,67 @@ public class LocaleMatcherTests {
 	}
 
 	@Test
+	public void trailingWildcardMatchesABareLanguageTag() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, english);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("en-*")));
+
+		assertEquals(english, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
+	public void repeatedNoninitialWildcardsMatchABareLanguageTag() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, english);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("en-*-*")));
+
+		assertEquals(english, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
+	public void repeatedCatchallWildcardsHaveBareWildcardSpecificity() {
+		Locale english = Locale.ENGLISH;
+		Strings strings = stringsForLocales(english);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("*;q=1,*-*;q=0"));
+
+		assertEquals(english, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.WILDCARD, result.getMatchType());
+	}
+
+	@Test
+	public void trailingWildcardCanExcludeABareLanguageTag() {
+		Locale english = Locale.ENGLISH;
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(french, english);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("*;q=1,en-*;q=0"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.WILDCARD, result.getMatchType());
+	}
+
+	@Test
+	public void privateUseTrailingWildcardUsesExtendedFiltering() {
+		Locale english = Locale.ENGLISH;
+		Locale privateUse = Locale.forLanguageTag("x-acme");
+		Strings strings = stringsForLocales(english, privateUse);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("x-*")));
+
+		assertEquals(privateUse, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+		assertEquals(english, strings.bestMatchFor(LanguageRange.parse("*;q=1,x-*;q=0")));
+	}
+
+	@Test
 	public void wildcardPrimaryExtendedRangePrefersSupportedFallback() {
 		Locale americanEnglish = Locale.forLanguageTag("en-US");
 		Locale americanFrench = Locale.forLanguageTag("fr-US");
@@ -264,7 +325,7 @@ public class LocaleMatcherTests {
 	}
 
 	@Test
-	public void trailingWildcardExcludesOnlyStructuralDescendants() {
+	public void trailingWildcardDoesNotRequireADescendantSubtag() {
 		Locale french = Locale.FRENCH;
 		Locale americanEnglish = Locale.forLanguageTag("en-US");
 		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
@@ -279,8 +340,9 @@ public class LocaleMatcherTests {
 		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
 
 		Strings descendantsOnly = stringsForLocales(french, posixEnglish);
-		assertFalse(descendantsOnly.matchFor(ranges).isMatch());
-		assertEquals(french, descendantsOnly.bestMatchFor(ranges));
+		assertEquals(posixEnglish,
+				descendantsOnly.matchFor(ranges).getLocale().orElseThrow(AssertionError::new));
+		assertEquals(posixEnglish, descendantsOnly.bestMatchFor(ranges));
 	}
 
 	@Test
@@ -529,6 +591,62 @@ public class LocaleMatcherTests {
 		assertEquals(english, strings.bestMatchFor(expandedAtLimit));
 		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(expandedOverLimit));
 		assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(expandedOverLimit));
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void malformedProgrammaticLocalesAreRejectedAtConfigurationAndLookupBoundaries() {
+		Locale english = Locale.ENGLISH;
+		Locale malformed = new Locale("e");
+		Map<Locale, Set<LocalizedString>> malformedLocalizedStrings = new LinkedHashMap<>();
+		malformedLocalizedStrings.put(english, localizedStringsFor(english));
+		malformedLocalizedStrings.put(malformed, localizedStringsFor(malformed));
+
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(malformed)
+				.localizedStringSupplier(() -> Map.of(malformed, localizedStringsFor(malformed)))
+				.localeSupplier(matcher -> malformed)
+				.build());
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> malformedLocalizedStrings)
+				.localeSupplier(matcher -> english)
+				.build());
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, localizedStringsFor(english)))
+				.localeSupplier(matcher -> english)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(malformed)))
+				.build());
+
+		Strings malformedSupplier = Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> Map.of(english, localizedStringsFor(english)))
+				.localeSupplier(matcher -> malformed)
+				.build();
+		Strings strings = stringsForLocales(english);
+
+		assertThrows(IllegalArgumentException.class, () -> malformedSupplier.get("hello"));
+		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(malformed));
+		assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(malformed));
+		assertThrows(IllegalArgumentException.class, () -> strings.getKeysForLocale(malformed));
+	}
+
+	@Test
+	@SuppressWarnings("deprecation")
+	public void supportedLocaleSetUsesLocaleEqualityAndDuplicateLanguageTagsAreRejected() {
+		Locale undetermined = new Locale("und");
+		Strings rootStrings = stringsForLocales(Locale.ROOT);
+
+		assertEquals(Set.of(Locale.ROOT), rootStrings.getSupportedLocales());
+		assertFalse(rootStrings.getSupportedLocales().contains(undetermined));
+
+		Map<Locale, Set<LocalizedString>> duplicateTags = new LinkedHashMap<>();
+		duplicateTags.put(Locale.ROOT, localizedStringsFor(Locale.ROOT));
+		duplicateTags.put(undetermined, localizedStringsFor(undetermined));
+
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(Locale.ROOT)
+				.localizedStringSupplier(() -> duplicateTags)
+				.localeSupplier(matcher -> Locale.ROOT)
+				.build());
+		assertThrows(IllegalArgumentException.class, () -> new LocaleMatchResult(Collections.emptyList(), null,
+				null, null, LocaleMatchType.NONE, Locale.ROOT, List.of(Locale.ROOT, undetermined)));
 	}
 
   private Strings englishStrings(Locale fallbackLocale, Locale otherLocale) {

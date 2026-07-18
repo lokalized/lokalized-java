@@ -46,6 +46,9 @@ All notable changes to Lokalized will be documented in this file.
   strings when `Strings` is built, so invalid expressions, form maps, and generated fragments fail earlier.
 - Programmatic localized-string iterables now reject every duplicate translation key, including structurally equal
   roots that the previous defensive `Set` conversion silently collapsed.
+- Programmatic locale inputs used for configuration, matching, loading, and diagnostics must now be well-formed IETF
+  BCP 47 locales. Localized-string maps also reject distinct `Locale` keys that render to the same language tag, such
+  as `Locale.ROOT` and `new Locale("und")`.
 - Removed the unused selector-driven placeholder format (`selectors`, rule-array `translations`, and `when`) and its
   public `LanguageFormType`, `LanguageFormSelector`, and `LanguageFormTranslationRule` APIs. Use ordered
   `alternatives` for multi-axis decisions owned by the localized strings file, or select a purpose-specific translation
@@ -53,9 +56,9 @@ All notable changes to Lokalized will be documented in this file.
 - Removed the unused `placeholderMetadata` localized strings file field and `LocalizedString.PlaceholderMetadata` API.
   Put concise translator guidance in message-level `commentary` or keep richer placeholder contracts in external
   translation tooling.
-- `Range<T>` is now a final immutable `Iterable<T>` instead of a `Collection<T>`. Its mutation methods, collection
-  facade, and `getInfinite()` were removed; use `getValues()` and boxed `isInfinite()`. Factories now reject null arrays
-  and null elements instead of treating a null array as empty or retaining null values.
+- `Range<T>` is now a final structurally immutable `Iterable<T>` instead of a `Collection<T>`. Its mutation methods,
+  collection facade, and `getInfinite()` were removed; use `getValues()` and boxed `isInfinite()`. Factories now reject
+  null arrays and null elements instead of treating a null array as empty or retaining null values.
 - `LocalizedString` and its concrete immutable nested value types are final, and `LocalizedString` construction is
   builder-only; the immutability of localized strings at runtime can no longer be invalidated by subclasses with mutable
   overridden getters. The abstract `PlaceholderDefinition` base is closed by a private constructor.
