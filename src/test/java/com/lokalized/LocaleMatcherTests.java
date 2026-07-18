@@ -258,6 +258,17 @@ public class LocaleMatcherTests {
 	}
 
 	@Test
+	public void nonBareCatchallWildcardReportsExtendedRangeWithoutManufacturingSpecificity() {
+		Locale english = Locale.ENGLISH;
+		Strings strings = stringsForLocales(english);
+
+		LocaleMatchResult result = strings.matchFor(List.of(new LanguageRange("*-*")));
+
+		assertEquals(english, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
+	}
+
+	@Test
 	public void trailingWildcardCanExcludeABareLanguageTag() {
 		Locale english = Locale.ENGLISH;
 		Locale french = Locale.FRENCH;
@@ -368,6 +379,50 @@ public class LocaleMatcherTests {
 
     assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("en;q=1,en-US;q=0.5")));
   }
+
+	@Test
+	public void diagnosticsUseTheRangeThatDeterminedTheSelectedLocalesEffectiveWeight() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		List<LanguageRange> languageRanges = LanguageRange.parse("en;q=1,en-US;q=0.5,en-GB;q=0.8");
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+		localizedStringsByLocale.put(americanEnglish,
+				Set.of(new LocalizedString.Builder("hello").translation("hello").build()));
+		localizedStringsByLocale.put(britishEnglish,
+				Set.of(new LocalizedString.Builder("hello").translation("hello").build()));
+		Strings strings = Strings.withFallbackLocale(americanEnglish)
+				.localizedStringSupplier(() -> localizedStringsByLocale)
+				.localeMatchSupplier(matcher -> matcher.matchFor(languageRanges))
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(americanEnglish, britishEnglish)))
+				.build();
+
+		LocaleMatchResult matchResult = strings.matchFor(languageRanges);
+
+		assertEquals(britishEnglish, matchResult.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en-gb", matchResult.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.8), matchResult.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, matchResult.getMatchType());
+		assertFalse(strings.getResult("hello").isFallback());
+	}
+
+	@Test
+	public void effectiveRangeRetainsTheSelectionHierarchysDiagnosticRelationship() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		List<LanguageRange> languageRanges = List.of(new LanguageRange("en"));
+		Strings strings = Strings.withFallbackLocale(americanEnglish)
+				.localizedStringSupplier(() -> Map.of(americanEnglish,
+						Set.of(new LocalizedString.Builder("hello").translation("hello").build())))
+				.localeMatchSupplier(matcher -> matcher.matchFor(languageRanges))
+				.build();
+
+		LocaleMatchResult matchResult = strings.matchFor(languageRanges);
+
+		assertEquals(americanEnglish, matchResult.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en", matchResult.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), matchResult.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, matchResult.getMatchType());
+		assertTrue(strings.getResult("hello").isFallback());
+	}
 
 	@Test
 	public void longNonmatchingZeroWeightRangeCannotAcquireExclusionAuthority() {

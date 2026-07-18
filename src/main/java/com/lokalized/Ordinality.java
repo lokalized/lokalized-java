@@ -107,8 +107,9 @@ public enum Ordinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
-   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
-   *                                  number exceeds the safety limits documented by {@link PluralOperands}
+   * @throws IllegalArgumentException if the locale is malformed, the number implementation is unsupported, the
+   *                                  number is non-finite, or the number exceeds the safety limits documented by
+   *                                  {@link PluralOperands}
    */
   @NonNull
   public static Ordinality forNumber(@NonNull Number number, @NonNull Locale locale) {
@@ -131,6 +132,7 @@ public enum Ordinality implements LanguageForm {
    * @param locale   the locale that drives pluralization, not null
    * @return an appropriate plural ordinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @throws IllegalArgumentException if the locale is malformed
    * @since 3.0.0
    */
   @NonNull
@@ -150,6 +152,7 @@ public enum Ordinality implements LanguageForm {
    *
    * @param locale the locale to use for lookup, not null
    * @return the ordinalities supported by the given locale, not null
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static SortedSet<@NonNull Ordinality> supportedOrdinalitiesForLocale(@NonNull Locale locale) {
@@ -166,6 +169,7 @@ public enum Ordinality implements LanguageForm {
    *
    * @param locale the locale to use for lookup, not null
    * @return a mapping of ordinalities to example integer values, not null
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static SortedMap<@NonNull Ordinality, @NonNull Range<@NonNull Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {

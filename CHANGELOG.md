@@ -46,9 +46,12 @@ All notable changes to Lokalized will be documented in this file.
   strings when `Strings` is built, so invalid expressions, form maps, and generated fragments fail earlier.
 - Programmatic localized-string iterables now reject every duplicate translation key, including structurally equal
   roots that the previous defensive `Set` conversion silently collapsed.
-- Programmatic locale inputs used for configuration, matching, loading, and diagnostics must now be well-formed IETF
-  BCP 47 locales. Localized-string maps also reject distinct `Locale` keys that render to the same language tag, such
-  as `Locale.ROOT` and `new Locale("und")`.
+- Programmatic locale inputs used for configuration, matching, loading, diagnostics, and plural-rule queries must now
+  be well-formed IETF BCP 47 locales. Localized-string maps also reject distinct `Locale` keys that render to the same
+  language tag, such as `Locale.ROOT` and `new Locale("und")`.
+- Tiebreaker-map keys must be primary language codes, and keys that canonicalize to the same language, such as `he` and
+  `iw`, are rejected instead of silently overwriting each other. Each tiebreaker list must contain every loaded locale
+  for that language exactly once and no locale from another language.
 - Removed the unused selector-driven placeholder format (`selectors`, rule-array `translations`, and `when`) and its
   public `LanguageFormType`, `LanguageFormSelector`, and `LanguageFormTranslationRule` APIs. Use ordered
   `alternatives` for multi-axis decisions owned by the localized strings file, or select a purpose-specific translation
@@ -187,6 +190,9 @@ All notable changes to Lokalized will be documented in this file.
   lexicographically over real structural constraints, so long ranges cannot overflow into a stronger match or
   exclusion category and redundant wildcard subtags cannot manufacture exclusion specificity. Available `und`/root
   data can no longer masquerade as a likely English match.
+- Weighted locale diagnostics now retain the same most-specific preference range that determines a selected locale's
+  effective quality. The reported match type and `TranslationResult.isFallback()` classification therefore describe
+  the preference that actually won rather than an earlier, broader range with a higher raw weight.
 - Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
   limits, preventing many individually legal cached fragments from exhausting the heap. The default cumulative budget
   is 1,048,576 UTF-16 code units, with an 8,388,608-code-unit hard ceiling.
@@ -206,6 +212,14 @@ All notable changes to Lokalized will be documented in this file.
   input. Exploded-classpath discovery filters unrelated names before resolving real paths, explicit resource maps
   reject malformed or duplicate rendered locale tags, and a contract-violating zero-read input stream can no longer
   make parsing spin forever.
+- Loader result maps preserve deterministic language-tag iteration order without comparator-based key equivalence, so
+  ordinary `Map.get`, `containsKey`, and equality semantics remain based on `Locale.equals()`. Duplicate physical JAR
+  entries for one logical runtime resource are rejected instead of allowing Lokalized and the JVM classloader to select
+  different bytes.
+- Explicit locale-to-resource mappings are checked against the localized-strings file-count limit before they are
+  copied or sorted. Exhaustive discovery consistently recognizes an existing package whose only direct resources are
+  warning-and-skip foreign JSON files, and the physical multi-release namespace under `META-INF/versions` is reserved
+  from package discovery.
 - Canonical-alias lookup records and evaluates against the locale of the loaded localized strings, deduplicates
   equivalent locale attempts, and keeps inspection APIs strict to exact members of `getSupportedLocales()`.
 - Classpath loading honors runtime-selected multi-release JAR entries, expands filesystem manifest `Class-Path` roots

@@ -123,8 +123,9 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
-   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
-   *                                  number exceeds the safety limits documented by {@link PluralOperands}
+   * @throws IllegalArgumentException if the locale is malformed, the number implementation is unsupported, the
+   *                                  number is non-finite, or the number exceeds the safety limits documented by
+   *                                  {@link PluralOperands}
    */
   @NonNull
   public static Cardinality forNumber(@NonNull Number number, @NonNull Locale locale) {
@@ -158,9 +159,9 @@ public enum Cardinality implements LanguageForm {
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
    * @throws ArithmeticException if the requested visible decimal places would require rounding
-   * @throws IllegalArgumentException if the number implementation is unsupported, the number is non-finite, or the
-   *                                  number or visible decimal places exceeds the safety limits documented by
-   *                                  {@link PluralOperands}
+   * @throws IllegalArgumentException if the locale is malformed, the number implementation is unsupported, the
+   *                                  number is non-finite, or the number or visible decimal places exceeds the safety
+   *                                  limits documented by {@link PluralOperands}
    */
   @NonNull
   public static Cardinality forNumber(@NonNull Number number, @Nullable Integer visibleDecimalPlaces, @NonNull Locale locale) {
@@ -183,6 +184,7 @@ public enum Cardinality implements LanguageForm {
    * @param locale   the locale that drives pluralization, not null
    * @return an appropriate plural cardinality, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @throws IllegalArgumentException if the locale is malformed
    * @since 3.0.0
    */
   @NonNull
@@ -210,6 +212,7 @@ public enum Cardinality implements LanguageForm {
    * @param locale the locale that drives pluralization, not null
    * @return an appropriate plural cardinality for the range, not null
    * @throws UnsupportedLocaleException if the locale is not supported
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static Cardinality forRange(@NonNull Cardinality start, @NonNull Cardinality end, @NonNull Locale locale) {
@@ -229,6 +232,7 @@ public enum Cardinality implements LanguageForm {
    *
    * @param locale the locale to use for lookup, not null
    * @return the cardinalities supported by the given locale, not null
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static SortedSet<@NonNull Cardinality> supportedCardinalitiesForLocale(@NonNull Locale locale) {
@@ -245,6 +249,7 @@ public enum Cardinality implements LanguageForm {
    *
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example integer values, not null
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull Integer>> exampleIntegerValuesForLocale(@NonNull Locale locale) {
@@ -261,6 +266,7 @@ public enum Cardinality implements LanguageForm {
    *
    * @param locale the locale to use for lookup, not null
    * @return a mapping of cardinalities to example decimal values, not null
+   * @throws IllegalArgumentException if the locale is malformed
    */
   @NonNull
   public static SortedMap<@NonNull Cardinality, @NonNull Range<@NonNull BigDecimal>> exampleDecimalValuesForLocale(@NonNull Locale locale) {

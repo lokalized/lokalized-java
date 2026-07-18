@@ -231,7 +231,7 @@ public interface Strings extends LocaleMatcher {
 		@Nullable
 		private Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier;
 		@Nullable
-		private Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
+		private Map<@NonNull String, @NonNull List<@NonNull Locale>> tiebreakerLocalesByLanguageCode;
 		@Nullable
 		private TranslationFailureHandler translationFailureHandler;
 		@Nullable
@@ -311,14 +311,19 @@ public interface Strings extends LocaleMatcher {
 		}
 
 		/**
-		 * Applies a mapping of an ISO 639 language code to its ordered "tiebreaker" fallback locales to this builder.
-		 * Every supplied locale must be a well-formed IETF BCP 47 locale.
+		 * Applies a mapping of a well-formed IETF BCP 47 primary language subtag to its ordered "tiebreaker" fallback
+		 * locales to this builder.
+		 * <p>
+		 * Deprecated language aliases are canonicalized, so aliases such as {@code he} and {@code iw} must not both be
+		 * supplied. Each list must be a duplicate-free exact permutation of the loaded {@link Locale}s whose normalized
+		 * primary language matches its key. This configuration is validated by {@link #build()}.
 		 *
-		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null
+		 * @param tiebreakerLocalesByLanguageCode "tiebreaker" fallback locales, may be null; keys, lists, and locales
+		 *                                         must not be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
-		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<@NonNull String, @Nullable List<@NonNull Locale>> tiebreakerLocalesByLanguageCode) {
+		public Builder tiebreakerLocalesByLanguageCode(@Nullable Map<@NonNull String, @NonNull List<@NonNull Locale>> tiebreakerLocalesByLanguageCode) {
 			this.tiebreakerLocalesByLanguageCode = tiebreakerLocalesByLanguageCode;
 			return this;
 		}
@@ -407,8 +412,10 @@ public interface Strings extends LocaleMatcher {
 		 *
 		 * @return a {@link Strings} instance, not null
 		 * @throws IllegalArgumentException if a configured locale is malformed, localized-string locale keys render to
-		 *                                  duplicate language tags, or supplied localized strings are invalid, including an
-		 *                                  alternative graph nested more than 128 levels deep
+		 *                                  duplicate language tags, tiebreaker keys are invalid or collide after
+		 *                                  canonicalization, a tiebreaker list is not an exact permutation of its language's
+		 *                                  loaded locales, or supplied localized strings are invalid, including an alternative
+		 *                                  graph nested more than 128 levels deep
 		 * @throws ExpressionEvaluationException if an expression cannot be compiled, including when it exceeds the
 		 *                                       configured runtime limits
 		 */

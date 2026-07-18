@@ -284,10 +284,14 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .build();
 ```
 
+[`tiebreakerLocalesByLanguageCode(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#tiebreakerLocalesByLanguageCode(java.util.Map))
+map keys are primary language codes. Each list must contain every loaded locale for that language exactly once, and
+canonical aliases such as `he` and `iw` may not be configured as separate keys.
+
 #### 5. Respect User Language Preferences
 
 Here's a common scenario: a user visits your webapp, and their browser automatically populates the `Accept-Language` HTTP request header with
-an [RFC 3282](https://datatracker.ietf.org/doc/html/rfc3282) ordered set of language range values like `en-GB;q=1.0,en;q=0.75,fr-FR;q=0.25`.
+an [RFC 9110 weighted preference list](https://www.rfc-editor.org/rfc/rfc9110.html#section-12.5.4) like `en-GB;q=1.0,en;q=0.75,fr-FR;q=0.25`.
 
 That one says: "I prefer British English, then other forms of English, then French (from France) - in that order."
 
@@ -352,6 +356,9 @@ publish resources into the same package. [`loadFromClasspath(String)`](https://j
 Filesystem and classpath loading both scan only the specified directory or package; child directories and child packages are not scanned recursively.
 Classpath package names must be nonempty slash-relative paths and may not contain empty interior, `.` or `..` segments.
 One or more trailing slashes are ignored; leading slashes and traversal remain invalid.
+The multi-release JAR implementation namespace under `META-INF/versions` is reserved from package discovery; use
+[`loadFromClasspathResources(...)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#loadFromClasspathResources(java.lang.ClassLoader,java.util.Map,com.lokalized.LocalizedStringWarningHandler,com.lokalized.LocalizedStringLoadingOptions))
+when an application intentionally needs an exact resource path.
 The valid BCP 47 tag `und` represents Java's `Locale.ROOT`, so a root localized strings file is named `und.json`; tags such as
 `und-Latn.json` are also supported.
 

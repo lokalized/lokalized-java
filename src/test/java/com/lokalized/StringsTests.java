@@ -97,6 +97,59 @@ public class StringsTests {
 	}
 
 	@Test
+	public void tiebreakerConfigurationUsesCanonicalPrimaryLanguagesAndExactLocalePermutations() {
+		Locale hebrew = Locale.forLanguageTag("he");
+		Locale israeliHebrew = Locale.forLanguageTag("he-IL");
+		Map<Locale, Set<LocalizedString>> hebrewStrings = localizedStringsForTiebreakerLocales(hebrew, israeliHebrew);
+		Strings canonicalAlias = Strings.withFallbackLocale(hebrew)
+				.localizedStringSupplier(() -> hebrewStrings)
+				.localeSupplier(matcher -> hebrew)
+				.tiebreakerLocalesByLanguageCode(Map.of("iw", List.of(israeliHebrew, hebrew)))
+				.build();
+
+		assertEquals(List.of(israeliHebrew, hebrew),
+				((DefaultStrings) canonicalAlias).getTiebreakerLocalesByLanguageCode().get("he"));
+
+		for (List<String> aliases : List.of(List.of("he", "iw"), List.of("iw", "he"))) {
+			Map<String, List<Locale>> duplicateAliasKeys = new LinkedHashMap<>();
+			duplicateAliasKeys.put(aliases.get(0), List.of(hebrew, israeliHebrew));
+			duplicateAliasKeys.put(aliases.get(1), List.of(hebrew, israeliHebrew));
+
+			assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(hebrew)
+					.localizedStringSupplier(() -> hebrewStrings)
+					.localeSupplier(matcher -> hebrew)
+					.tiebreakerLocalesByLanguageCode(duplicateAliasKeys)
+					.build());
+		}
+
+		Locale english = Locale.ENGLISH;
+		Locale britishEnglish = Locale.UK;
+		Locale french = Locale.FRENCH;
+		Map<Locale, Set<LocalizedString>> englishStrings = localizedStringsForTiebreakerLocales(english, britishEnglish);
+
+		for (String invalidLanguageCode : List.of("en-US", ""))
+			assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(english)
+					.localizedStringSupplier(() -> englishStrings)
+					.localeSupplier(matcher -> english)
+					.tiebreakerLocalesByLanguageCode(Map.of(invalidLanguageCode, List.of(english, britishEnglish)))
+					.build());
+
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> englishStrings)
+				.localeSupplier(matcher -> english)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(english, english, britishEnglish)))
+				.build());
+
+		Map<Locale, Set<LocalizedString>> multilingualStrings =
+				localizedStringsForTiebreakerLocales(english, britishEnglish, french);
+		assertThrows(IllegalArgumentException.class, () -> Strings.withFallbackLocale(english)
+				.localizedStringSupplier(() -> multilingualStrings)
+				.localeSupplier(matcher -> english)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(english, britishEnglish, french)))
+				.build());
+	}
+
+	@Test
 	public void basicLanguageSpecificityTest() {
 		Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en"))
 				.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
@@ -3187,6 +3240,16 @@ public class StringsTests {
 				() -> strings.getKeysForLocale(en).add("Other"));
 		assertThrows(UnsupportedOperationException.class,
 				() -> strings.getMissingKeys(en, en).add("Other"));
+	}
+
+	private Map<Locale, Set<LocalizedString>> localizedStringsForTiebreakerLocales(Locale... locales) {
+		Map<Locale, Set<LocalizedString>> localizedStringsByLocale = new LinkedHashMap<>();
+
+		for (Locale locale : locales)
+			localizedStringsByLocale.put(locale, Set.of(
+					new LocalizedString.Builder("hello").translation(locale.toLanguageTag()).build()));
+
+		return localizedStringsByLocale;
 	}
 
 	private String searchResult(Strings strings, Integer resultCount, String formattedResultCount,

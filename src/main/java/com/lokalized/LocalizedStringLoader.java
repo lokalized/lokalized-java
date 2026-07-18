@@ -78,6 +78,10 @@ import static java.util.Objects.requireNonNull;
 /**
  * Utility methods for loading localized strings files.
  * <p>
+ * Map-returning load methods return unmodifiable maps whose locales iterate in ascending
+ * {@link Locale#toLanguageTag()} order. Key lookup and map equality retain ordinary {@link Locale#equals(Object)}
+ * semantics.
+ * <p>
  * A generated placeholder may be language-form-driven ({@link LocalizedString.LanguageFormTranslation}; localized strings file
  * members {@code value} or {@code range}, plus {@code translations}) or template-driven
  * ({@link LocalizedString.ExpressionTranslation}; a required default {@code translation}, plus optional ordered
@@ -209,6 +213,10 @@ public final class LocalizedStringLoader {
    * Note: this implementation only scans the specified package, it does not descend into child packages.
    * A trailing slash is optional and is normalized before lookup.
    * <p>
+   * The physical multi-release JAR namespace {@code META-INF/versions} and its child packages are reserved and cannot
+   * be used for package discovery. Use {@link #loadFromClasspathResources(Map)} when an exact resource beneath that
+   * namespace must be loaded.
+   * <p>
    * By default, discovery uses {@link ClassLoader#getResources(String)} and does not inspect unrelated classpath roots.
    * Use a {@link LocalizedStringLoadingOptions} overload with exhaustive classpath search enabled only for JARs that
    * omit package directory entries. A classpath {@code .json} resource whose filename is not a locale tag is ignored
@@ -217,6 +225,8 @@ public final class LocalizedStringLoader {
    *
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    */
   @NonNull
@@ -230,6 +240,8 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
@@ -245,6 +257,8 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    * @since 3.0.0
    */
@@ -261,6 +275,8 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
@@ -284,6 +300,8 @@ public final class LocalizedStringLoader {
    * @param classLoader classloader to search, not null
    * @param classpathPackage location of a package on the classpath, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    * @since 3.0.0
    */
@@ -301,6 +319,8 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
@@ -319,6 +339,8 @@ public final class LocalizedStringLoader {
    * @param classpathPackage location of a package on the classpath, not null
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    * @since 3.0.0
    */
@@ -338,6 +360,8 @@ public final class LocalizedStringLoader {
    * @param warningHandler   handler for non-fatal validation warnings, not null
    * @param loadingOptions   loading and classpath-discovery options to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws IllegalArgumentException if {@code classpathPackage} is invalid or names the reserved physical
+   * multi-release JAR namespace
    * @throws LocalizedStringLoadingException if loading, discovery, validation, or a configured limit fails
    * @since 3.0.0
    */
@@ -351,7 +375,7 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
     classpathPackage = normalizeClasspathPackage(classpathPackage);
-    validateClasspathPackage(classpathPackage);
+    validateClasspathDiscoveryPackage(classpathPackage);
     LoadingSession loadingSession = new LoadingSession(loadingOptions, warningHandler);
 
     Enumeration<@NonNull URL> urls;
@@ -406,15 +430,15 @@ public final class LocalizedStringLoader {
           continue;
 
         try (JarFile jarFile = new JarFile(classpathRoot.toFile())) {
-          Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale =
+          JarPackageLoadResult jarPackageLoadResult =
               loadFromJarFile(jarFile, packagePath, loadingSession);
 
-          if (localizedStringsByLocale.isEmpty()) {
+          if (!jarPackageLoadResult.isPackagePresent()) {
             processedLocations.remove(locationIdentity);
             continue;
           }
 
-          mergeLocalizedStrings(mergedByLocale, localizedStringsByLocale);
+          mergeLocalizedStrings(mergedByLocale, jarPackageLoadResult.getLocalizedStringsByLocale());
         } catch (ZipException e) {
           processedLocations.remove(locationIdentity);
         } catch (IOException e) {
@@ -438,6 +462,7 @@ public final class LocalizedStringLoader {
    * Unlike package discovery, this API does not enumerate directories or depend on {@code file}/{@code jar} URL
    * protocols. It is therefore appropriate for containers, module systems, and plugin classloaders that can open known
    * resources but cannot expose a scannable package URL. Resource paths must be nonempty slash-relative paths.
+   * Unlike package discovery, exact physical resources beneath {@code META-INF/versions} are permitted.
    *
    * @param resourcePathByLocale exact classpath resource path for each locale, not null
    * @return per-locale sets of localized strings, not null
@@ -597,6 +622,13 @@ public final class LocalizedStringLoader {
     requireNonNull(warningHandler);
     requireNonNull(loadingOptions);
 
+    int localizedStringsFileCount = resourcePathByLocale.size();
+
+    if (localizedStringsFileCount > loadingOptions.getMaximumLocalizedStringsFiles())
+      throw new LocalizedStringLoadingException(format(
+          "Classpath resource mapping contains %d localized strings files, exceeding the aggregate localized strings file limit of %d",
+          localizedStringsFileCount, loadingOptions.getMaximumLocalizedStringsFiles()));
+
     List<Map.@NonNull Entry<@NonNull Locale, @NonNull String>> sortedResourcePathsByLocale = new ArrayList<>();
     Map<@NonNull String, @NonNull String> resourcePathByLanguageTag = new LinkedHashMap<>();
 
@@ -638,7 +670,7 @@ public final class LocalizedStringLoader {
       }
     }
 
-    return Collections.unmodifiableMap(localizedStringsByLocale);
+    return unmodifiableLocaleMapInLanguageTagOrder(localizedStringsByLocale);
   }
 
   @NonNull
@@ -864,6 +896,16 @@ public final class LocalizedStringLoader {
         packagePath.normalize().startsWith(".."))
       throw new IllegalArgumentException(format(
           "Classpath package '%s' must remain beneath its classpath root", classpathPackage));
+  }
+
+  private static void validateClasspathDiscoveryPackage(@NonNull String classpathPackage) {
+    requireNonNull(classpathPackage);
+    validateClasspathPackage(classpathPackage);
+
+    if ("META-INF/versions".equals(classpathPackage) || classpathPackage.startsWith("META-INF/versions/"))
+      throw new IllegalArgumentException(format(
+          "Classpath package '%s' is beneath the reserved physical multi-release JAR namespace META-INF/versions; " +
+              "use loadFromClasspathResources(...) to load an exact resource", classpathPackage));
   }
 
   private static void validateClasspathResourcePath(@NonNull String resourcePath) {
@@ -1142,7 +1184,7 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory), e);
     }
 
-    return Collections.unmodifiableMap(localizedStringsByLocale);
+    return unmodifiableLocaleMapInLanguageTagOrder(localizedStringsByLocale);
   }
 
   @NonNull
@@ -1203,7 +1245,7 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Unable to list files in directory '%s'", directory), e);
     }
 
-    return Collections.unmodifiableMap(localizedStringsByLocale);
+    return unmodifiableLocaleMapInLanguageTagOrder(localizedStringsByLocale);
   }
 
   @NonNull
@@ -1248,7 +1290,7 @@ public final class LocalizedStringLoader {
         if (packagePath == null || packagePath.isEmpty())
           packagePath = classpathPackage;
 
-        return loadFromJarFile(jarFile, packagePath, loadingSession);
+        return loadFromJarFile(jarFile, packagePath, loadingSession).getLocalizedStringsByLocale();
       }
     } catch (IOException e) {
       throw new LocalizedStringLoadingException(format("Unable to load localized strings from '%s'", jarUrl), e);
@@ -1256,7 +1298,7 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
-  private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> loadFromJarFile(
+  private static JarPackageLoadResult loadFromJarFile(
       @NonNull JarFile jarFile, @NonNull String packagePath,
       @NonNull LoadingSession loadingSession) throws IOException {
     requireNonNull(jarFile);
@@ -1266,10 +1308,11 @@ public final class LocalizedStringLoader {
     Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale = createSourceLocaleMap();
     Map<@NonNull Locale, @NonNull String> originByLocale = createLocaleOriginMap();
     packagePath = normalizedJarPackagePath(packagePath) + "/";
-    Map<@NonNull String, @NonNull JarEntry> entriesByRelativeName =
+    EffectiveJarEntries effectiveJarEntries =
         effectiveJarEntriesInPackage(jarFile, packagePath, loadingSession);
 
-    for (Map.Entry<@NonNull String, @NonNull JarEntry> entryByRelativeName : entriesByRelativeName.entrySet()) {
+    for (Map.Entry<@NonNull String, @NonNull JarEntry> entryByRelativeName
+        : effectiveJarEntries.getEntriesByRelativeName().entrySet()) {
       String relativeName = entryByRelativeName.getKey();
       JarEntry entry = entryByRelativeName.getValue();
       String entryName = entry.getName();
@@ -1297,7 +1340,8 @@ public final class LocalizedStringLoader {
       }
     }
 
-    return Collections.unmodifiableMap(localizedStringsByLocale);
+    return new JarPackageLoadResult(
+        unmodifiableLocaleMapInLanguageTagOrder(localizedStringsByLocale), effectiveJarEntries.isPackagePresent());
   }
 
   /**
@@ -1306,25 +1350,24 @@ public final class LocalizedStringLoader {
    * selection that a classloader would perform.
    */
   @NonNull
-  private static Map<@NonNull String, @NonNull JarEntry> effectiveJarEntriesInPackage(
+  private static EffectiveJarEntries effectiveJarEntriesInPackage(
       @NonNull JarFile jarFile, @NonNull String packagePath, @NonNull LoadingSession loadingSession) {
     requireNonNull(jarFile);
     requireNonNull(packagePath);
     requireNonNull(loadingSession);
 
     Map<@NonNull String, @NonNull JarEntrySelection> selectionsByRelativeName = new TreeMap<>();
+    Map<@NonNull String, @NonNull Set<@NonNull Integer>> versionsByRelativeName = new LinkedHashMap<>();
     Enumeration<@NonNull JarEntry> entries = jarFile.entries();
     boolean multiRelease = jarFile.isMultiRelease();
     int runtimeMajorVersion = JarFile.runtimeVersion().major();
     String versionedPrefix = "META-INF/versions/";
     String discoverySource = format("JAR '%s'", jarFile.getName());
+    boolean packagePresent = false;
 
     while (entries.hasMoreElements()) {
       JarEntry entry = entries.nextElement();
       loadingSession.discoverEntry(discoverySource);
-
-      if (entry.isDirectory())
-        continue;
 
       String logicalEntryName = entry.getName();
       int version = 0;
@@ -1360,13 +1403,25 @@ public final class LocalizedStringLoader {
 				logicalEntryName = versionedLogicalEntryName;
       }
 
-      if (!logicalEntryName.startsWith(packagePath))
+      if (logicalEntryName.equals(packagePath) || logicalEntryName.startsWith(packagePath))
+        packagePresent = true;
+
+      if (entry.isDirectory() || !logicalEntryName.startsWith(packagePath))
         continue;
 
       String relativeName = logicalEntryName.substring(packagePath.length());
 
       if (relativeName.isEmpty() || relativeName.contains("/"))
         continue;
+
+      Set<@NonNull Integer> versions = versionsByRelativeName.computeIfAbsent(
+          relativeName, ignored -> new HashSet<>());
+
+      if (!versions.add(version))
+        throw new LocalizedStringLoadingException(format(
+            "Duplicate physical JAR entry '%s' maps to logical resource '%s' at %s in JAR '%s'",
+            entry.getName(), logicalEntryName,
+            version == 0 ? "the base version" : format("multi-release version %d", version), jarFile.getName()));
 
       @Nullable JarEntrySelection existingSelection = selectionsByRelativeName.get(relativeName);
 
@@ -1379,7 +1434,7 @@ public final class LocalizedStringLoader {
     for (Map.Entry<@NonNull String, @NonNull JarEntrySelection> selection : selectionsByRelativeName.entrySet())
       entriesByRelativeName.put(selection.getKey(), selection.getValue().getJarEntry());
 
-    return Collections.unmodifiableMap(entriesByRelativeName);
+    return new EffectiveJarEntries(Collections.unmodifiableMap(entriesByRelativeName), packagePresent);
   }
 
   private static boolean isCanonicalMultiReleaseJarVersion(@NonNull String version) {
@@ -1397,22 +1452,46 @@ public final class LocalizedStringLoader {
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull Set<@NonNull LocalizedString>> createLocaleMap() {
-    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+    return new LinkedHashMap<>();
   }
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> createSourceLocaleMap() {
-    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+    return new LinkedHashMap<>();
   }
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull String> createLocaleOriginMap() {
-    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+    return new LinkedHashMap<>();
   }
 
   @NonNull
   private static Map<@NonNull Locale, @NonNull Map<@NonNull String, @NonNull SourceLocalizedString>> createSourceLocaleKeyMap() {
-    return new TreeMap<>((locale1, locale2) -> locale1.toLanguageTag().compareTo(locale2.toLanguageTag()));
+    return new LinkedHashMap<>();
+  }
+
+  @NonNull
+  private static <V extends @NonNull Object> Map<@NonNull Locale, V> unmodifiableLocaleMapInLanguageTagOrder(
+      @NonNull Map<@NonNull Locale, V> valuesByLocale) {
+    requireNonNull(valuesByLocale);
+
+    List<Map.Entry<@NonNull Locale, V>> entries = new ArrayList<>(valuesByLocale.entrySet());
+    entries.sort(Comparator.comparing(entry -> entry.getKey().toLanguageTag()));
+    Map<@NonNull Locale, V> sortedValuesByLocale = new LinkedHashMap<>();
+    Set<@NonNull String> languageTags = new HashSet<>();
+
+    for (Map.Entry<@NonNull Locale, V> entry : entries) {
+      Locale locale = entry.getKey();
+      String languageTag = locale.toLanguageTag();
+
+      if (!languageTags.add(languageTag.toLowerCase(Locale.ROOT)))
+        throw new LocalizedStringLoadingException(format(
+            "Duplicate locale key rendering as language tag '%s'", languageTag));
+
+      sortedValuesByLocale.put(locale, entry.getValue());
+    }
+
+    return Collections.unmodifiableMap(sortedValuesByLocale);
   }
 
   private static void mergeLocalizedStrings(
@@ -1464,7 +1543,7 @@ public final class LocalizedStringLoader {
       localizedStringsByLocale.put(entry.getKey(), Collections.unmodifiableSet(localizedStrings));
     }
 
-    return Collections.unmodifiableMap(localizedStringsByLocale);
+    return unmodifiableLocaleMapInLanguageTagOrder(localizedStringsByLocale);
   }
 
   @NonNull
@@ -2777,6 +2856,51 @@ public final class LocalizedStringLoader {
 
       ++warnings;
       warningHandler.handle(warning);
+    }
+  }
+
+  @NotThreadSafe
+  private static final class EffectiveJarEntries {
+    @NonNull
+    private final Map<@NonNull String, @NonNull JarEntry> entriesByRelativeName;
+    private final boolean packagePresent;
+
+    private EffectiveJarEntries(@NonNull Map<@NonNull String, @NonNull JarEntry> entriesByRelativeName,
+                                boolean packagePresent) {
+      this.entriesByRelativeName = requireNonNull(entriesByRelativeName);
+      this.packagePresent = packagePresent;
+    }
+
+    @NonNull
+    private Map<@NonNull String, @NonNull JarEntry> getEntriesByRelativeName() {
+      return entriesByRelativeName;
+    }
+
+    private boolean isPackagePresent() {
+      return packagePresent;
+    }
+  }
+
+  @NotThreadSafe
+  private static final class JarPackageLoadResult {
+    @NonNull
+    private final Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale;
+    private final boolean packagePresent;
+
+    private JarPackageLoadResult(
+        @NonNull Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> localizedStringsByLocale,
+        boolean packagePresent) {
+      this.localizedStringsByLocale = requireNonNull(localizedStringsByLocale);
+      this.packagePresent = packagePresent;
+    }
+
+    @NonNull
+    private Map<@NonNull Locale, @NonNull Set<@NonNull SourceLocalizedString>> getLocalizedStringsByLocale() {
+      return localizedStringsByLocale;
+    }
+
+    private boolean isPackagePresent() {
+      return packagePresent;
     }
   }
 

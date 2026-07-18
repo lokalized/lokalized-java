@@ -530,7 +530,7 @@ public final class LocalizedString {
    * @return this string's default translation, not null
    */
   @NonNull
-  public Optional<String> getTranslation() {
+  public Optional<@NonNull String> getTranslation() {
     return Optional.ofNullable(translation);
   }
 
@@ -540,7 +540,7 @@ public final class LocalizedString {
    * @return this string's commentary, not null
    */
   @NonNull
-  public Optional<String> getCommentary() {
+  public Optional<@NonNull String> getCommentary() {
     return Optional.ofNullable(commentary);
   }
 
@@ -799,7 +799,7 @@ public final class LocalizedString {
      * @return the value for this per-language-form translation set, not null
      */
     @NonNull
-    public Optional<String> getValue() {
+    public Optional<@NonNull String> getValue() {
       return Optional.ofNullable(value);
     }
 
@@ -809,7 +809,7 @@ public final class LocalizedString {
      * @return the range for this per-language-form translation set, not null
      */
     @NonNull
-    public Optional<LanguageFormTranslationRange> getRange() {
+    public Optional<@NonNull LanguageFormTranslationRange> getRange() {
       return Optional.ofNullable(range);
     }
 

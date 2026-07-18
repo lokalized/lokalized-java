@@ -239,6 +239,7 @@ final class CldrPluralRules {
 
   @NonNull
   private static List<@NonNull String> localeCandidates(@NonNull Locale locale) {
+    LocaleUtils.requireWellFormed(locale, "Locale");
     String canonicalLanguageTag = CldrLocaleData.canonicalLanguageTag(locale.toLanguageTag());
     Locale canonicalLocale = Locale.forLanguageTag(canonicalLanguageTag);
     Optional<@NonNull String> language = LocaleUtils.languageForCanonicalTag(canonicalLanguageTag);

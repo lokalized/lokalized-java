@@ -38,6 +38,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1593,6 +1594,16 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testClasspathLoadingRejectsDuplicateBaseJarEntries() throws IOException {
+    verifyDuplicatePhysicalJarEntriesRejected(false);
+  }
+
+  @Test
+  public void testClasspathLoadingRejectsDuplicateSameVersionMultiReleaseJarEntries() throws IOException {
+    verifyDuplicatePhysicalJarEntriesRejected(true);
+  }
+
+  @Test
   public void testClasspathLoadingIgnoresMalformedMultiReleaseJarVersionDirectories() throws IOException {
     for (String malformedVersion : List.of("09", "+9", "\u0669", "\uFF19")) {
       verifyMalformedMultiReleaseVersionIgnored(malformedVersion, true, false);
@@ -1696,6 +1707,101 @@ public class LocalizedStringLoaderTests {
     assertThrows(IllegalArgumentException.class,
         () -> LocalizedStringLoader.loadFromClasspathResources(classLoader,
             Map.of(Locale.FRENCH, "C:localized-strings/fr.json")));
+  }
+
+  @Test
+  public void testLoaderResultMapUsesLocaleEqualityAndDeterministicTagOrder() {
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        return new ByteArrayInputStream(("{\"" + resourcePath + "\":\"value\"}")
+            .getBytes(StandardCharsets.UTF_8));
+      }
+    };
+    Map<Locale, String> resourcePathByLocale = new LinkedHashMap<>();
+    resourcePathByLocale.put(Locale.ROOT, "localized-strings/root.json");
+    resourcePathByLocale.put(Locale.FRENCH, "localized-strings/fr.json");
+    resourcePathByLocale.put(Locale.ENGLISH, "localized-strings/en.json");
+
+    Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+        LocalizedStringLoader.loadFromClasspathResources(classLoader, resourcePathByLocale);
+    Locale explicitUndeterminedLocale = new Locale("und");
+    Locale malformedRootRenderingLocale = new Locale("x");
+
+    assertEquals(List.of(Locale.ENGLISH, Locale.FRENCH, Locale.ROOT),
+        new ArrayList<>(localizedStringsByLocale.keySet()));
+    assertFalse(localizedStringsByLocale.containsKey(explicitUndeterminedLocale));
+    assertEquals(null, localizedStringsByLocale.get(explicitUndeterminedLocale));
+    assertFalse(localizedStringsByLocale.containsKey(malformedRootRenderingLocale));
+    assertEquals(null, localizedStringsByLocale.get(malformedRootRenderingLocale));
+
+    Map<Locale, Set<LocalizedString>> mapWithExplicitUndeterminedLocale = new LinkedHashMap<>();
+    mapWithExplicitUndeterminedLocale.put(Locale.ENGLISH, localizedStringsByLocale.get(Locale.ENGLISH));
+    mapWithExplicitUndeterminedLocale.put(Locale.FRENCH, localizedStringsByLocale.get(Locale.FRENCH));
+    mapWithExplicitUndeterminedLocale.put(explicitUndeterminedLocale, localizedStringsByLocale.get(Locale.ROOT));
+
+    assertFalse(localizedStringsByLocale.equals(mapWithExplicitUndeterminedLocale));
+    assertFalse(mapWithExplicitUndeterminedLocale.equals(localizedStringsByLocale));
+
+    Map<Locale, Set<LocalizedString>> mapWithMalformedRootRenderingLocale = new LinkedHashMap<>();
+    mapWithMalformedRootRenderingLocale.put(Locale.ENGLISH, localizedStringsByLocale.get(Locale.ENGLISH));
+    mapWithMalformedRootRenderingLocale.put(Locale.FRENCH, localizedStringsByLocale.get(Locale.FRENCH));
+    mapWithMalformedRootRenderingLocale.put(malformedRootRenderingLocale,
+        localizedStringsByLocale.get(Locale.ROOT));
+
+    assertFalse(localizedStringsByLocale.equals(mapWithMalformedRootRenderingLocale));
+    assertFalse(mapWithMalformedRootRenderingLocale.equals(localizedStringsByLocale));
+    assertThrows(UnsupportedOperationException.class, localizedStringsByLocale::clear);
+  }
+
+  @Test
+  public void testExplicitClasspathResourceMappingPreflightsFileLimit() {
+    ClassLoader unopenedClassLoader = new ClassLoader(null) {
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        throw new AssertionError("An oversized mapping must be rejected before resources are opened");
+      }
+    };
+    Map<Locale, String> resourcePathByLocale = new LinkedHashMap<>();
+    resourcePathByLocale.put(Locale.ENGLISH, "localized-strings/en.json");
+    resourcePathByLocale.put(Locale.FRENCH, "localized-strings/fr.json");
+    LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+        .maximumLocalizedStringsFiles(1)
+        .build();
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspathResources(
+            unopenedClassLoader, resourcePathByLocale, loadingOptions));
+
+    assertTrue(exception.getMessage().contains("contains 2 localized strings files"));
+    assertTrue(exception.getMessage().contains("limit of 1"));
+  }
+
+  @Test
+  public void testPackageDiscoveryRejectsReservedMultiReleaseNamespaceButExactResourcesRemainAvailable() {
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        throw new AssertionError("A reserved package must be rejected before classpath lookup");
+      }
+
+      @Override
+      public InputStream getResourceAsStream(String resourcePath) {
+        if ("META-INF/versions/9/strings/en.json".equals(resourcePath))
+          return new ByteArrayInputStream("{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
+
+        return null;
+      }
+    };
+
+    for (String reservedPackage : List.of("META-INF/versions", "META-INF/versions/9/strings")) {
+      IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, reservedPackage));
+      assertTrue(exception.getMessage().contains("reserved physical multi-release JAR namespace"));
+    }
+
+    assertEquals(Set.of(Locale.ENGLISH), LocalizedStringLoader.loadFromClasspathResources(classLoader,
+        Map.of(Locale.ENGLISH, "META-INF/versions/9/strings/en.json")).keySet());
   }
 
   @Test
@@ -1944,6 +2050,33 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testForeignOnlyClasspathPackageReturnsEmptyForOrdinaryAndExhaustiveDiscovery() throws IOException {
+    for (boolean exhaustiveClasspathSearch : List.of(false, true)) {
+      Path tempJar = Files.createTempFile("lokalized-foreign-only-strings", ".jar");
+      tempJar.toFile().deleteOnExit();
+
+      if (exhaustiveClasspathSearch)
+        writeJarEntryWithoutDirectory(tempJar, "strings/template.json", "{\"foreign\":true}");
+      else
+        writeJarEntry(tempJar, "strings/template.json", "{\"foreign\":true}");
+
+      try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+        List<LocalizedStringWarning> warnings = new ArrayList<>();
+        LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+            .exhaustiveClasspathSearch(exhaustiveClasspathSearch)
+            .build();
+        Map<Locale, Set<LocalizedString>> localizedStringsByLocale = LocalizedStringLoader.loadFromClasspath(
+            classLoader, "strings", warnings::add, loadingOptions);
+
+        assertTrue(localizedStringsByLocale.isEmpty());
+        assertEquals(1, warnings.size());
+        assertEquals(LocalizedStringWarning.Type.INVALID_CLASSPATH_LOCALE_FILENAME,
+            warnings.get(0).getType());
+      }
+    }
+  }
+
+  @Test
   public void testClasspathLoadingIgnoresInvalidJsonNameFromOrdinaryDiscovery() throws IOException {
     Path tempJar = Files.createTempFile("lokalized-strings-invalid-name", ".jar");
     tempJar.toFile().deleteOnExit();
@@ -2105,6 +2238,86 @@ public class LocalizedStringLoaderTests {
       assertNotNull(localizedStrings);
       assertEquals(1, localizedStrings.size());
     }
+  }
+
+  private void verifyDuplicatePhysicalJarEntriesRejected(boolean multiRelease) throws IOException {
+    for (boolean exhaustiveClasspathSearch : List.of(false, true)) {
+      Path tempJar = Files.createTempFile("lokalized-duplicate-physical-entries", ".jar");
+      tempJar.toFile().deleteOnExit();
+      Manifest manifest = new Manifest();
+      manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+
+      if (multiRelease)
+        manifest.getMainAttributes().putValue("Multi-Release", "true");
+
+      String firstEntryName = multiRelease
+          ? "META-INF/versions/9/strings/en.json"
+          : "strings/en.json";
+      String secondEntryName = multiRelease
+          ? "META-INF/versions/9/strings/fr.json"
+          : "strings/fr.json";
+
+      try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(tempJar), manifest)) {
+        if (!exhaustiveClasspathSearch)
+          writeJarEntry(jarOutputStream, "strings/", null);
+
+        if (multiRelease)
+          writeJarEntry(jarOutputStream, "strings/en.json", "{\"message\":\"base\"}");
+
+        writeJarEntry(jarOutputStream, firstEntryName, "{\"message\":\"first\"}");
+
+        // A higher selected entry between the duplicate version-9 entries verifies that duplicate accounting is
+        // independent from highest-version selection. Version 10 is simply ignored when tests run on Java 9.
+        if (multiRelease)
+          writeJarEntry(jarOutputStream, "META-INF/versions/10/strings/en.json",
+              "{\"message\":\"higher\"}");
+
+        writeJarEntry(jarOutputStream, secondEntryName, "{\"message\":\"second\"}");
+      }
+
+      replaceJarEntryName(tempJar, secondEntryName, firstEntryName);
+      LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+          .exhaustiveClasspathSearch(exhaustiveClasspathSearch)
+          .build();
+
+      try (URLClassLoader classLoader = new URLClassLoader(new URL[]{tempJar.toUri().toURL()}, null)) {
+        LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+            () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions));
+
+        assertTrue(exception.getMessage().contains("Duplicate physical JAR entry"));
+        assertTrue(exception.getMessage().contains(firstEntryName));
+        assertTrue(exception.getMessage().contains(multiRelease ? "version 9" : "the base version"));
+      }
+    }
+  }
+
+  private void replaceJarEntryName(Path jarPath, String originalEntryName, String replacementEntryName)
+      throws IOException {
+    assertEquals(originalEntryName.length(), replacementEntryName.length());
+    byte[] jarBytes = Files.readAllBytes(jarPath);
+    byte[] originalBytes = originalEntryName.getBytes(StandardCharsets.UTF_8);
+    byte[] replacementBytes = replacementEntryName.getBytes(StandardCharsets.UTF_8);
+    int replacements = 0;
+
+    for (int offset = 0; offset <= jarBytes.length - originalBytes.length; ++offset) {
+      boolean matches = true;
+
+      for (int i = 0; i < originalBytes.length; ++i)
+        if (jarBytes[offset + i] != originalBytes[i]) {
+          matches = false;
+          break;
+        }
+
+      if (!matches)
+        continue;
+
+      System.arraycopy(replacementBytes, 0, jarBytes, offset, replacementBytes.length);
+      ++replacements;
+      offset += originalBytes.length - 1;
+    }
+
+    assertEquals(2, replacements, "Expected to rewrite local and central ZIP entry names");
+    Files.write(jarPath, jarBytes);
   }
 
   private void writeJarEntry(Path jarPath, String entryName, String json) throws IOException {

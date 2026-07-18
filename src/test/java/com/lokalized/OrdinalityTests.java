@@ -25,6 +25,7 @@ import java.util.Map;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -73,6 +74,25 @@ public class OrdinalityTests {
     assertTrue(Ordinality.getSupportedLocaleTags().contains("und"));
     assertFalse(Ordinality.getSupportedLocaleTags().contains("root"));
     assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, Locale.forLanguageTag("und")));
+  }
+
+  @Test
+  @SuppressWarnings("deprecation")
+  public void localeQueriesRejectMalformedLocales() {
+    Locale malformed = new Locale("e");
+    PluralOperands operands = PluralOperands.forNumber(1).build();
+
+    assertThrows(IllegalArgumentException.class, () -> Ordinality.forNumber(1, malformed));
+    assertThrows(IllegalArgumentException.class, () -> Ordinality.forOperands(operands, malformed));
+    assertThrows(IllegalArgumentException.class, () -> Ordinality.supportedOrdinalitiesForLocale(malformed));
+    assertThrows(IllegalArgumentException.class, () -> Ordinality.exampleIntegerValuesForLocale(malformed));
+  }
+
+  @Test
+  public void wellFormedRootExtensionAndPrivateUseLocalesRemainSupported() {
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, Locale.ROOT));
+    assertEquals(Ordinality.ONE, Ordinality.forNumber(1, Locale.forLanguageTag("en-US-u-nu-latn")));
+    assertEquals(Ordinality.OTHER, Ordinality.forNumber(1, Locale.forLanguageTag("x-lokalized")));
   }
 
   @Test

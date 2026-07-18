@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -66,6 +67,7 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param key translation key, not null
 	 * @param placeholders caller placeholders, not null
 	 * @param lookupLocale the locale used to begin locale fallback, not null
+	 * @throws IllegalArgumentException if the lookup locale is malformed
 	 */
 	public MissingTranslationException(@NonNull String message,
 																		 @NonNull String key,
@@ -84,8 +86,8 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param lookupLocale     locale used to begin locale fallback, not null
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
-	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
-	 *                                  duplicates
+	 * @throws IllegalArgumentException if any locale is malformed, attempted locales have duplicate language tags,
+	 *                                  or the reason is {@code RESOLUTION_FAILURE}
 	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
@@ -107,8 +109,8 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param localeMatchResult strict locale-negotiation diagnostics, or null when unavailable
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
-	 * @throws IllegalArgumentException if the reason is {@code RESOLUTION_FAILURE} or attempted locales contain
-	 *                                  duplicates
+	 * @throws IllegalArgumentException if any locale is malformed, attempted locales have duplicate language tags,
+	 *                                  or the reason is {@code RESOLUTION_FAILURE}
 	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
@@ -122,7 +124,6 @@ public class MissingTranslationException extends RuntimeException {
 
 		requireNonNull(key);
 		requireNonNull(placeholders);
-		requireNonNull(lookupLocale);
 		requireNonNull(reason);
 		requireNonNull(attemptedLocales);
 
@@ -131,13 +132,22 @@ public class MissingTranslationException extends RuntimeException {
 
 		this.key = key;
 		this.placeholders = Collections.unmodifiableMap(new HashMap<>(placeholders));
-		this.lookupLocale = lookupLocale;
+		this.lookupLocale = LocaleUtils.requireWellFormed(lookupLocale, "Lookup locale");
 		this.localeMatchResult = Optional.ofNullable(localeMatchResult);
 		this.reason = reason;
 		List<@NonNull Locale> attemptedLocaleCopy = new ArrayList<>(attemptedLocales.size());
+		LinkedHashSet<@NonNull String> attemptedLanguageTags = new LinkedHashSet<>();
 
-		for (Locale attemptedLocale : attemptedLocales)
-			attemptedLocaleCopy.add(requireNonNull(attemptedLocale));
+		for (Locale attemptedLocale : attemptedLocales) {
+			Locale validatedLocale = LocaleUtils.requireWellFormed(attemptedLocale, "Attempted locale");
+			String normalizedLanguageTag = validatedLocale.toLanguageTag().toLowerCase(Locale.ROOT);
+
+			if (!attemptedLanguageTags.add(normalizedLanguageTag))
+				throw new IllegalArgumentException(format(
+						"Attempted locales must not contain duplicate language tag '%s'", validatedLocale.toLanguageTag()));
+
+			attemptedLocaleCopy.add(validatedLocale);
+		}
 
 		if (new LinkedHashSet<>(attemptedLocaleCopy).size() != attemptedLocaleCopy.size())
 			throw new IllegalArgumentException("Attempted locales must not contain duplicates");

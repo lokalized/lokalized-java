@@ -29,6 +29,7 @@ import java.util.SortedMap;
 import static java.lang.String.format;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -77,6 +78,29 @@ public class CardinalityTests {
     assertTrue(Cardinality.getSupportedLocaleTags().contains("und"));
     assertFalse(Cardinality.getSupportedLocaleTags().contains("root"));
     assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, Locale.forLanguageTag("und")));
+  }
+
+  @Test
+  @SuppressWarnings("deprecation")
+  public void localeQueriesRejectMalformedLocales() {
+    Locale malformed = new Locale("e");
+    PluralOperands operands = PluralOperands.forNumber(1).build();
+
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.forNumber(1, malformed));
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.forNumber(1, 2, malformed));
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.forOperands(operands, malformed));
+    assertThrows(IllegalArgumentException.class,
+        () -> Cardinality.forRange(Cardinality.ONE, Cardinality.OTHER, malformed));
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.supportedCardinalitiesForLocale(malformed));
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.exampleIntegerValuesForLocale(malformed));
+    assertThrows(IllegalArgumentException.class, () -> Cardinality.exampleDecimalValuesForLocale(malformed));
+  }
+
+  @Test
+  public void wellFormedRootExtensionAndPrivateUseLocalesRemainSupported() {
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, Locale.ROOT));
+    assertEquals(Cardinality.ONE, Cardinality.forNumber(1, Locale.forLanguageTag("en-US-u-nu-latn")));
+    assertEquals(Cardinality.OTHER, Cardinality.forNumber(1, Locale.forLanguageTag("x-lokalized")));
   }
 
   @Test
