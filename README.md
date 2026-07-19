@@ -67,25 +67,17 @@ Lokalized has proudly powered production systems since 2017.
 
 ## Maven Installation
 
-Build and install the current development snapshot from a Lokalized checkout:
-
-```shell
-mvn -B -ntp clean install
-```
-
-Then use the locally installed artifact:
-
 ```xml
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>3.0.0-SNAPSHOT</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven, run the build above and drop `target/lokalized-3.0.0-SNAPSHOT.jar` directly into your project. No other dependencies are required.
+If you don't use Maven, you can drop [lokalized-2.1.0.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/2.1.0/lokalized-2.1.0.jar) directly into your project.  No other dependencies are required.
 
 Upgrading an existing application? See the [2.1-to-3.0 Java migration guide](https://lokalized.com/upgrading/2.1-to-3.0/).
 
@@ -266,9 +258,9 @@ String message = strings.get("You have {{formattedCount}} items.", Map.of(
 
 #### 4. Ensure Determinism via Tiebreakers
 
-Suppose you have two localized strings files for Portuguese - Brazilian (`pt-BR`) and European (`pt-PT`).
+Suppose you have two localized strings files for English - American (`en-US`) and British (`en-GB`).
 
-A caller requests Canadian Portuguese (`pt-CA`). Neither an exact match nor a CLDR parent locale is present in the loaded files, and both files are compatible `pt-Latn` candidates. The configured order therefore decides which translation wins.
+A caller requests Canadian English (`en-CA`). Neither an exact match nor a CLDR parent locale is present in the loaded files, and both files are compatible `en-Latn` candidates. The configured order therefore decides which translation wins.
 
 To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects more than one loaded locale with the same primary BCP 47 language subtag.
 
@@ -282,10 +274,10 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   // Declare your tiebreakers where ambiguity exists.
   // Lokalized will automatically detect ambiguities and require you to resolve them here -
   // an exception will be thrown with detailed instructions to that effect.
-  // A request such as pt-CA selects Brazilian Portuguese when no earlier
+  // A request such as en-CA selects American English when no earlier
   // exact, canonical, or CLDR-parent match resolves it.
   .tiebreakerLocalesByLanguageCode(Map.of(
-    "pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
+    "en", List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en-GB"))
   ))
   .build();
 ```

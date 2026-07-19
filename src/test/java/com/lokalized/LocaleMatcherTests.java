@@ -426,29 +426,29 @@ public class LocaleMatcherTests {
 
 	@Test
 	public void tiebreakerOrderControlsOtherwiseEquivalentLikelySubtagCandidates() {
-		Locale brazilianPortuguese = Locale.forLanguageTag("pt-BR");
-		Locale europeanPortuguese = Locale.forLanguageTag("pt-PT");
-		Locale canadianPortuguese = Locale.forLanguageTag("pt-CA");
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Locale canadianEnglish = Locale.forLanguageTag("en-CA");
 		Map<Locale, Set<LocalizedString>> localizedStrings = localizedStringsFor(
-				brazilianPortuguese, europeanPortuguese);
-		Strings preferBrazil = Strings.withFallbackLocale(brazilianPortuguese)
+				americanEnglish, britishEnglish);
+		Strings preferAmerica = Strings.withFallbackLocale(americanEnglish)
 				.localizedStringSupplier(() -> localizedStrings)
-				.localeSupplier(matcher -> brazilianPortuguese)
-				.tiebreakerLocalesByLanguageCode(Map.of("pt", List.of(brazilianPortuguese, europeanPortuguese)))
+				.localeSupplier(matcher -> americanEnglish)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(americanEnglish, britishEnglish)))
 				.build();
-		Strings preferPortugal = Strings.withFallbackLocale(brazilianPortuguese)
+		Strings preferBritain = Strings.withFallbackLocale(americanEnglish)
 				.localizedStringSupplier(() -> localizedStrings)
-				.localeSupplier(matcher -> brazilianPortuguese)
-				.tiebreakerLocalesByLanguageCode(Map.of("pt", List.of(europeanPortuguese, brazilianPortuguese)))
+				.localeSupplier(matcher -> americanEnglish)
+				.tiebreakerLocalesByLanguageCode(Map.of("en", List.of(britishEnglish, americanEnglish)))
 				.build();
 
-		LocaleMatchResult brazilMatch = preferBrazil.matchFor(canadianPortuguese);
-		LocaleMatchResult portugalMatch = preferPortugal.matchFor(canadianPortuguese);
+		LocaleMatchResult americanMatch = preferAmerica.matchFor(canadianEnglish);
+		LocaleMatchResult britishMatch = preferBritain.matchFor(canadianEnglish);
 
-		assertEquals(brazilianPortuguese, brazilMatch.getLocale().orElseThrow(AssertionError::new));
-		assertEquals(europeanPortuguese, portugalMatch.getLocale().orElseThrow(AssertionError::new));
-		assertEquals(LocaleMatchType.LIKELY_SUBTAG, brazilMatch.getMatchType());
-		assertEquals(LocaleMatchType.LIKELY_SUBTAG, portugalMatch.getMatchType());
+		assertEquals(americanEnglish, americanMatch.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(britishEnglish, britishMatch.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, americanMatch.getMatchType());
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, britishMatch.getMatchType());
 	}
 
 	@Test
