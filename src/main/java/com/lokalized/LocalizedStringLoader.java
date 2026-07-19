@@ -78,9 +78,9 @@ import static java.util.Objects.requireNonNull;
 /**
  * Utility methods for loading localized strings files.
  * <p>
- * Map-returning load methods return unmodifiable maps whose locales iterate in ascending
+ * Map-returning load methods return unmodifiable maps containing unmodifiable sets. Their locales iterate in ascending
  * {@link Locale#toLanguageTag()} order. Key lookup and map equality retain ordinary {@link Locale#equals(Object)}
- * semantics.
+ * semantics. All {@code parse(...)} methods return unmodifiable sets.
  * <p>
  * A generated placeholder may be language-form-driven ({@link LocalizedString.LanguageFormTranslation}; localized strings file
  * members {@code value} or {@code range}, plus {@code translations}) or template-driven
@@ -948,6 +948,7 @@ public final class LocalizedStringLoader {
    * @param directory      directory in which to search, not null
    * @param loadingOptions resource limits to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    * @since 3.0.0
    */
   @NonNull
@@ -978,6 +979,7 @@ public final class LocalizedStringLoader {
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
    * @return per-locale sets of localized strings, not null
+   * @throws LocalizedStringLoadingException if an error occurs while loading localized strings files
    * @since 3.0.0
    */
   @NonNull
@@ -995,7 +997,7 @@ public final class LocalizedStringLoader {
    *
    * @param path   file to parse, not null
    * @param locale locale represented by the file, not null
-   * @return localized strings contained in the file, not null
+   * @return unmodifiable localized strings contained in the file, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
    * @since 3.0.0
@@ -1012,7 +1014,7 @@ public final class LocalizedStringLoader {
    * @param locale         locale represented by the file, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
-   * @return localized strings contained in the file, not null
+   * @return unmodifiable localized strings contained in the file, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the file cannot be read or is invalid
    * @since 3.0.0
@@ -1035,7 +1037,7 @@ public final class LocalizedStringLoader {
    * @param inputStream UTF-8 resource contents, not null
    * @param locale      locale represented by the resource, not null
    * @param source      human-readable source identifier used in diagnostics, not null
-   * @return localized strings contained in the resource, not null
+   * @return unmodifiable localized strings contained in the resource, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
    * @since 3.0.0
@@ -1056,7 +1058,7 @@ public final class LocalizedStringLoader {
    * @param source         human-readable source identifier used in diagnostics, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
-   * @return localized strings contained in the resource, not null
+   * @return unmodifiable localized strings contained in the resource, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid UTF-8/JSON
    * @since 3.0.0
@@ -1082,7 +1084,7 @@ public final class LocalizedStringLoader {
    * @param reader character resource contents, not null
    * @param locale locale represented by the resource, not null
    * @param source human-readable source identifier used in diagnostics, not null
-   * @return localized strings contained in the resource, not null
+   * @return unmodifiable localized strings contained in the resource, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
    * @since 3.0.0
@@ -1102,7 +1104,7 @@ public final class LocalizedStringLoader {
    * @param source         human-readable source identifier used in diagnostics, not null
    * @param warningHandler handler for non-fatal validation warnings, not null
    * @param loadingOptions resource limits to apply, not null
-   * @return localized strings contained in the resource, not null
+   * @return unmodifiable localized strings contained in the resource, not null
    * @throws IllegalArgumentException if {@code locale} is not a well-formed IETF BCP 47 locale
    * @throws LocalizedStringLoadingException if the resource cannot be read or is invalid
    * @since 3.0.0

@@ -19,6 +19,7 @@ package com.lokalized;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -304,6 +305,45 @@ public class ExpressionEvaluatorTests {
 				"Numbers should remain comparable to cardinality values");
 		assertTrue(expressionEvaluator.evaluate("value == " + ordinalityName, Map.of("value", 1), LOCALE),
 				"Numbers should remain comparable to ordinality values");
+	}
+
+	@Test
+	public void pluralOperandsPreserveSourceSignForNumericComparisons() {
+		ExpressionEvaluator expressionEvaluator = new ExpressionEvaluator();
+		PluralOperands negativeInteger = PluralOperands.forNumber(-1L).build();
+		PluralOperands negativeDecimal = PluralOperands.forNumber(new BigDecimal("-1.50"))
+				.visibleDecimalPlaces(2)
+				.build();
+		PluralOperands negativeCompactDecimal = PluralOperands.forNumber(new BigDecimal("-1.5"))
+				.visibleDecimalPlaces(1)
+				.compactExponent(6)
+				.build();
+
+		assertNumericComparisonParity(expressionEvaluator, -1L, negativeInteger,
+				"value == -1", "value != -1", "value < 0", "value > 0", "value == 1");
+		assertNumericComparisonParity(expressionEvaluator, new BigDecimal("-1.50"), negativeDecimal,
+				"value == -1.5", "value != -1.5", "value < 0", "value > 0", "value == 1.5");
+		assertNumericComparisonParity(expressionEvaluator, new BigDecimal("-1.5"), negativeCompactDecimal,
+				"value == -1.5", "value < 0", "value > 0");
+
+		PluralOperands positiveCompactDecimal = PluralOperands.forNumber(new BigDecimal("1.5"))
+				.visibleDecimalPlaces(1)
+				.compactExponent(6)
+				.build();
+		assertEquals(Cardinality.forOperands(positiveCompactDecimal, LOCALE),
+				Cardinality.forOperands(negativeCompactDecimal, LOCALE),
+				"CLDR plural-category evaluation should remain sign-independent");
+		assertTrue(expressionEvaluator.evaluate("value == CARDINALITY_" +
+				Cardinality.forOperands(negativeCompactDecimal, LOCALE).name(),
+				Map.of("value", negativeCompactDecimal), LOCALE),
+				"Signed source preservation should not affect PluralOperands category evaluation");
+
+		assertNumericComparisonParity(expressionEvaluator, BigDecimal.ZERO,
+				PluralOperands.forNumber(BigDecimal.ZERO).build(),
+				"value == 0", "value < 0", "value > 0");
+		assertNumericComparisonParity(expressionEvaluator, -0.0D,
+				PluralOperands.forNumber(-0.0D).build(),
+				"value == 0", "value < 0", "value > 0");
 	}
 
 	@Test
@@ -679,6 +719,21 @@ public class ExpressionEvaluatorTests {
 		assertTrue(exception.getMessage().contains(expression));
 		assertFalse(exception.getMessage().contains("PHONETIC"));
 		assertFalse(exception.getMessage().contains("NUMBER ("));
+	}
+
+	private void assertNumericComparisonParity(
+			ExpressionEvaluator expressionEvaluator,
+			Number sourceNumber,
+			PluralOperands pluralOperands,
+			String... expressions) {
+		for (String expression : expressions) {
+			boolean numberResult = expressionEvaluator.evaluate(expression, Map.of("value", sourceNumber), LOCALE);
+			boolean pluralOperandsResult = expressionEvaluator.evaluate(expression,
+					Map.of("value", pluralOperands), LOCALE);
+
+			assertEquals(numberResult, pluralOperandsResult,
+					"Number and PluralOperands should agree for '" + expression + "'");
+		}
 	}
 
 	private String overlongExpression() {

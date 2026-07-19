@@ -52,6 +52,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class StringsTests {
 	@Test
 	public void configurationVerificationTest() {
+		IllegalArgumentException missingLocalizedStrings = assertThrows(IllegalArgumentException.class,
+				() -> Strings.withFallbackLocale(Locale.ENGLISH).build());
+		assertTrue(missingLocalizedStrings.getMessage().contains("localizedStringSupplier"));
+
+		IllegalArgumentException missingLocale = assertThrows(IllegalArgumentException.class,
+				() -> Strings.withFallbackLocale(Locale.ENGLISH)
+						.localizedStringSupplier(Collections::emptyMap)
+						.build());
+		assertTrue(missingLocale.getMessage().contains("exactly one of 'localeSupplier' or 'localeMatchSupplier'"));
+
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("fake"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

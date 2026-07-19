@@ -58,16 +58,23 @@ public final class LocaleMatchResult {
 	 * @param matchType match relationship, not null
 	 * @param fallbackLocale configured fallback locale, not null
 	 * @param consideredLocales supported locales considered, not null
-	 * @throws IllegalArgumentException if any locale is malformed, considered locales have duplicate language tags,
-	 *                                  matched and unmatched state is mixed, the effective weight is outside
-	 *                                  {@code (0, 1]}, or selected/fallback locales were not considered
+	 * @throws IllegalArgumentException if more than {@link LocaleMatcher#MAXIMUM_LANGUAGE_RANGES} requested language
+	 *                                  ranges are supplied, any locale is malformed, considered locales have duplicate
+	 *                                  language tags, matched and unmatched state is mixed, the effective weight is
+	 *                                  outside {@code (0, 1]}, or selected/fallback locales were not considered
 	 */
 	public LocaleMatchResult(@NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
 								@Nullable Locale locale, @Nullable LanguageRange languageRange, @Nullable Double effectiveWeight,
 								@NonNull LocaleMatchType matchType, @NonNull Locale fallbackLocale,
 								@NonNull List<@NonNull Locale> consideredLocales) {
+		requireNonNull(requestedLanguageRanges);
+
+		if (requestedLanguageRanges.size() > LocaleMatcher.MAXIMUM_LANGUAGE_RANGES)
+			throw new IllegalArgumentException(format("At most %d language ranges are supported, but received %d",
+					LocaleMatcher.MAXIMUM_LANGUAGE_RANGES, requestedLanguageRanges.size()));
+
 		List<@NonNull LanguageRange> requestedLanguageRangeCopy =
-				new ArrayList<>(requireNonNull(requestedLanguageRanges).size());
+				new ArrayList<>(requestedLanguageRanges.size());
 
 		for (LanguageRange requestedLanguageRange : requestedLanguageRanges)
 			requestedLanguageRangeCopy.add(requireNonNull(requestedLanguageRange));

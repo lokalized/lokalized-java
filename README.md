@@ -67,6 +67,14 @@ Lokalized has proudly powered production systems since 2017.
 
 ## Maven Installation
 
+Build and install the current development snapshot from a Lokalized checkout:
+
+```shell
+mvn -B -ntp clean install
+```
+
+Then use the locally installed artifact:
+
 ```xml
 <dependency>
   <groupId>com.lokalized</groupId>
@@ -77,7 +85,7 @@ Lokalized has proudly powered production systems since 2017.
 
 ## Direct Download
 
-If you don't use Maven, you can drop [lokalized-3.0.0-SNAPSHOT.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.0.0-SNAPSHOT/lokalized-3.0.0-SNAPSHOT.jar) directly into your project.  No other dependencies are required.
+If you don't use Maven, run the build above and drop `target/lokalized-3.0.0-SNAPSHOT.jar` directly into your project. No other dependencies are required.
 
 Upgrading an existing application? See the [2.1-to-3.0 Java migration guide](https://lokalized.com/upgrading/2.1-to-3.0/).
 
@@ -260,11 +268,9 @@ String message = strings.get("You have {{formattedCount}} items.", Map.of(
 
 Suppose you have two localized strings files for Portuguese - Brazilian (`pt-BR`) and European (`pt-PT`).
 
-A user who prefers only Angolan Portuguese (`pt-AO`) as defined by their `Accept-Language` HTTP request header then accesses your webapp.
+A caller requests Canadian Portuguese (`pt-CA`). Neither an exact match nor a CLDR parent locale is present in the loaded files, and both files are compatible `pt-Latn` candidates. The configured order therefore decides which translation wins.
 
-Lokalized needs to know how to consistently "break the tie" to provide the Angolan user with a `pt` translation.
-
-To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects that you have more than one localized strings file per ISO 639 language code.
+To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects more than one loaded locale with the same primary BCP 47 language subtag.
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
@@ -276,8 +282,8 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   // Declare your tiebreakers where ambiguity exists.
   // Lokalized will automatically detect ambiguities and require you to resolve them here -
   // an exception will be thrown with detailed instructions to that effect.
-  // Here, we express that if there's a language preference for Portuguese but no exact locale match,
-  // we should provide the user with a Brazilian Portuguese translation  
+  // A request such as pt-CA selects Brazilian Portuguese when no earlier
+  // exact, canonical, or CLDR-parent match resolves it.
   .tiebreakerLocalesByLanguageCode(Map.of(
     "pt", List.of(Locale.forLanguageTag("pt-BR"), Locale.forLanguageTag("pt-PT"))
   ))
@@ -285,7 +291,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 ```
 
 [`tiebreakerLocalesByLanguageCode(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#tiebreakerLocalesByLanguageCode(java.util.Map))
-map keys are primary language codes. Each list must contain every loaded locale for that language exactly once, and
+map keys are primary BCP 47 language subtags. Each list must contain every loaded locale for that language exactly once, and
 canonical aliases such as `he` and `iw` may not be configured as separate keys.
 
 #### 5. Respect User Language Preferences
@@ -1995,7 +2001,7 @@ applications may configure these with
 [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html), up to hard
 ceilings of 4,096 characters, 512 tokens, and 64 nested groups.
 
-Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` also expose their numeric value for ordinary numeric comparisons. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
+Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` preserve their original signed value for ordinary numeric comparisons, while CLDR plural-category evaluation continues to use the absolute value. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
  
 ```text
 bookCount == CARDINALITY_OTHER

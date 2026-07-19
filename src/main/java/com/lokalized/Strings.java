@@ -411,11 +411,11 @@ public interface Strings extends LocaleMatcher {
 		 * Constructs a {@link Strings} instance.
 		 *
 		 * @return a {@link Strings} instance, not null
-		 * @throws IllegalArgumentException if a configured locale is malformed, localized-string locale keys render to
-		 *                                  duplicate language tags, tiebreaker keys are invalid or collide after
-		 *                                  canonicalization, a tiebreaker list is not an exact permutation of its language's
-		 *                                  loaded locales, or supplied localized strings are invalid, including an alternative
-		 *                                  graph nested more than 128 levels deep
+		 * @throws IllegalArgumentException if required localized-string or locale suppliers are missing, a configured locale
+		 *                                  is malformed, localized-string locale keys render to duplicate language tags,
+		 *                                  tiebreaker keys are invalid or collide after canonicalization, a tiebreaker list is
+		 *                                  not an exact permutation of its language's loaded locales, or supplied localized
+		 *                                  strings are invalid, including an alternative graph nested more than 128 levels deep
 		 * @throws ExpressionEvaluationException if an expression cannot be compiled, including when it exceeds the
 		 *                                       configured runtime limits
 		 */

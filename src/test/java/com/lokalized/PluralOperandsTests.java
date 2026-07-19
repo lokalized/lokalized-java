@@ -119,11 +119,13 @@ public class PluralOperandsTests {
     PluralOperands onePointZero = PluralOperands.forNumber(new BigDecimal("1.0")).build();
     PluralOperands onePointZeroAgain = PluralOperands.forNumber(new BigDecimal("1.0")).build();
     PluralOperands onePointZeroZero = PluralOperands.forNumber(new BigDecimal("1.00")).build();
+    PluralOperands negativeOnePointZero = PluralOperands.forNumber(new BigDecimal("-1.0")).build();
     PluralOperands compactMillion = PluralOperands.forNumber(new BigDecimal("1.0")).compactExponent(6).build();
 
     assertEquals(onePointZero, onePointZeroAgain);
     assertEquals(onePointZero.hashCode(), onePointZeroAgain.hashCode());
     assertNotEquals(onePointZero, onePointZeroZero);
+    assertNotEquals(onePointZero, negativeOnePointZero);
     assertNotEquals(onePointZero, compactMillion);
   }
 

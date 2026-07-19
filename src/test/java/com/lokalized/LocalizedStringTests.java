@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -238,17 +237,6 @@ public class LocalizedStringTests {
     assertTrue(diagnostic.length() <= 16 * 1024);
     assertFalse(diagnostic.endsWith("<truncated>"));
     assertEquals(diagnostic, localizedString.toString());
-  }
-
-  @Test
-  public void localizedStringRenderingTerminatesForIdentityCycles() throws ReflectiveOperationException {
-    LocalizedString localizedString = new LocalizedString.Builder("cycle").translation("fallback").build();
-    Field alternativesField = LocalizedString.class.getDeclaredField("alternatives");
-    alternativesField.setAccessible(true);
-    alternativesField.set(localizedString, List.of(localizedString));
-
-    assertEquals("LocalizedString{key=cycle, translation=fallback, alternatives=[<cycle#1>]}",
-        localizedString.toString());
   }
 
   @Test

@@ -111,9 +111,12 @@ All notable changes to Lokalized will be documented in this file.
   remains the safe default.
 - Added CLDR 48.2-backed cardinality, ordinality, cardinality-range, locale-alias, likely-subtag,
   parent-locale, and locale-validity behavior generated from pinned Unicode CLDR source data.
-- Added `PluralOperands` plus `Cardinality.forOperands(...)` and `Ordinality.forOperands(...)` for
-  visible-decimal-place and compact-decimal plural evaluation. `PluralOperands` values are accepted by cardinality,
-  ordinality, and numeric alternative expressions as well as generated-placeholder rules.
+- Added [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) plus
+  [`Cardinality.forOperands(...)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale))
+  and [`Ordinality.forOperands(...)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale))
+  for visible-decimal-place and compact-decimal plural evaluation. `PluralOperands` values are accepted by cardinality,
+  ordinality, and numeric alternative expressions as well as generated-placeholder rules. Numeric comparisons preserve
+  the signed source value while CLDR category evaluation uses its absolute value.
 - Added bidirectional isolation for caller-supplied placeholder values in resolved right-to-left locales,
   with [`BidiIsolation.NONE`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#NONE) available as a global or per-invocation opt-out and [`BidiIsolation.ALWAYS`](https://javadoc.lokalized.com/com/lokalized/BidiIsolation.html#ALWAYS) available when
   right-to-left caller values can appear in left-to-right translations. The RTL script set is generated from pinned
@@ -244,7 +247,20 @@ All notable changes to Lokalized will be documented in this file.
   `TranslationFailureHandler.returnKey()` preserves the silent default soft-fail behavior,
   `returnKey(Consumer<? super TranslationFailure>)` also reports structured events to an application observer, and
   `TranslationFailureHandler.throwException()` provides fail-fast behavior.
-- Replace direct construction or references to `DefaultStrings` with `Strings.withFallbackLocale(...).build()`.
+- Replace direct construction or references to `DefaultStrings` with
+  [`Strings.withFallbackLocale(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#withFallbackLocale(java.util.Locale)).
+  A minimal replacement supplies both
+  [`localizedStringSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localizedStringSupplier(java.util.function.Supplier))
+  and [`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
+  before calling
+  [`build()`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#build()):
+
+  ```java
+  Strings strings = Strings.withFallbackLocale(Locale.forLanguageTag("en-US"))
+    .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+    .localeSupplier(matcher -> matcher.bestMatchFor(Locale.getDefault()))
+    .build();
+  ```
 - Update custom `Strings` implementations with the three new inspection methods.
 - Replace `Cardinality.getSupportedLanguageCodes()` and `Ordinality.getSupportedLanguageCodes()` with
   the corresponding `getSupportedLocaleTags()` calls.

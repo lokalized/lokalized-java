@@ -43,6 +43,10 @@ import static java.util.Objects.requireNonNull;
  * {@link Ordinality#forNumber(Number, java.util.Locale)}. Use this type when the displayed number has details that
  * are not fully represented by the Java {@link Number}, such as an explicitly visible decimal count or a compact-decimal exponent.
  * <p>
+ * CLDR plural-category evaluation uses the absolute numeric value exposed by {@link #getNumber()}. When an instance is
+ * used in an alternative expression's ordinary numeric comparison, Lokalized instead preserves the sign of the source
+ * number supplied to {@link #forNumber(Number)}.
+ * <p>
  * Supported number implementations are {@link BigDecimal}, {@link BigInteger}, the boxed JDK numeric types
  * ({@link Byte}, {@link Short}, {@link Integer}, {@link Long}, {@link Float}, and {@link Double}), and the JDK atomic
  * numeric types ({@link AtomicInteger}, {@link AtomicLong}, {@link LongAdder}, {@link DoubleAdder},
@@ -110,13 +114,13 @@ public final class PluralOperands {
   private final BigDecimal c;
   @NonNull
   private final BigDecimal e;
-	@NonNull
-	private final BigDecimal sourceNumber;
-	@Nullable
-	private final Integer explicitVisibleDecimalPlaces;
+  @NonNull
+  private final BigDecimal sourceNumber;
+  @Nullable
+  private final Integer explicitVisibleDecimalPlaces;
 
   private PluralOperands(@NonNull BigDecimal sourceNumber, @NonNull BigDecimal number, int compactExponent,
-								 @Nullable Integer explicitVisibleDecimalPlaces) {
+                         @Nullable Integer explicitVisibleDecimalPlaces) {
     requireNonNull(sourceNumber);
     requireNonNull(number);
 
@@ -132,8 +136,8 @@ public final class PluralOperands {
     this.t = new BigDecimal(NumberUtils.fractionalComponent(strippedNumber));
     this.c = exponent;
     this.e = exponent;
-		this.sourceNumber = sourceNumber;
-		this.explicitVisibleDecimalPlaces = explicitVisibleDecimalPlaces;
+    this.sourceNumber = sourceNumber;
+    this.explicitVisibleDecimalPlaces = explicitVisibleDecimalPlaces;
   }
 
   /**
@@ -242,15 +246,15 @@ public final class PluralOperands {
     return c;
   }
 
-	@NonNull
-	BigDecimal sourceNumber() {
-		return sourceNumber;
-	}
+  @NonNull
+  BigDecimal sourceNumber() {
+    return sourceNumber;
+  }
 
-	@NonNull
-	Optional<@NonNull Integer> explicitVisibleDecimalPlaces() {
-		return Optional.ofNullable(explicitVisibleDecimalPlaces);
-	}
+  @NonNull
+  Optional<@NonNull Integer> explicitVisibleDecimalPlaces() {
+    return Optional.ofNullable(explicitVisibleDecimalPlaces);
+  }
 
   @NonNull
   BigDecimal e() {
@@ -285,6 +289,7 @@ public final class PluralOperands {
     PluralOperands pluralOperands = (PluralOperands) other;
 
     return Objects.equals(n(), pluralOperands.n())
+        && sourceNumber.signum() == pluralOperands.sourceNumber.signum()
         && Objects.equals(getCompactExponent(), pluralOperands.getCompactExponent());
   }
 
@@ -295,7 +300,7 @@ public final class PluralOperands {
    */
   @Override
   public int hashCode() {
-    return Objects.hash(n(), getCompactExponent());
+    return Objects.hash(n(), sourceNumber.signum(), getCompactExponent());
   }
 
   /**
@@ -403,8 +408,8 @@ public final class PluralOperands {
       boolean numberIsBigDecimal = number instanceof BigDecimal;
       BigDecimal numberAsBigDecimal = numberIsBigDecimal ? (BigDecimal) number : NumberUtils.toBigDecimal(number);
       validateNumericValue(numberAsBigDecimal, "Number", runtimeLimits);
-      numberAsBigDecimal = numberAsBigDecimal.abs();
       BigDecimal sourceNumber = numberAsBigDecimal;
+      numberAsBigDecimal = numberAsBigDecimal.abs();
 
       int effectiveScale = numberAsBigDecimal.scale();
       long materializedPrecision = numberAsBigDecimal.precision();

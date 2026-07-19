@@ -393,6 +393,9 @@ public class LocalizedStringLoaderTests {
     assertEquals(1, fromPath.size());
     assertEquals(fromPath, fromInputStream);
     assertEquals(fromPath, fromReader);
+    assertThrows(UnsupportedOperationException.class, fromPath::clear);
+    assertThrows(UnsupportedOperationException.class, fromInputStream::clear);
+    assertThrows(UnsupportedOperationException.class, fromReader::clear);
   }
 
   @Test
@@ -1752,6 +1755,9 @@ public class LocalizedStringLoaderTests {
     assertFalse(localizedStringsByLocale.equals(mapWithMalformedRootRenderingLocale));
     assertFalse(mapWithMalformedRootRenderingLocale.equals(localizedStringsByLocale));
     assertThrows(UnsupportedOperationException.class, localizedStringsByLocale::clear);
+    Set<LocalizedString> englishLocalizedStrings =
+        requireNonNull(localizedStringsByLocale.get(Locale.ENGLISH));
+    assertThrows(UnsupportedOperationException.class, englishLocalizedStrings::clear);
   }
 
   @Test

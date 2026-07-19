@@ -425,6 +425,33 @@ public class LocaleMatcherTests {
 	}
 
 	@Test
+	public void tiebreakerOrderControlsOtherwiseEquivalentLikelySubtagCandidates() {
+		Locale brazilianPortuguese = Locale.forLanguageTag("pt-BR");
+		Locale europeanPortuguese = Locale.forLanguageTag("pt-PT");
+		Locale canadianPortuguese = Locale.forLanguageTag("pt-CA");
+		Map<Locale, Set<LocalizedString>> localizedStrings = localizedStringsFor(
+				brazilianPortuguese, europeanPortuguese);
+		Strings preferBrazil = Strings.withFallbackLocale(brazilianPortuguese)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> brazilianPortuguese)
+				.tiebreakerLocalesByLanguageCode(Map.of("pt", List.of(brazilianPortuguese, europeanPortuguese)))
+				.build();
+		Strings preferPortugal = Strings.withFallbackLocale(brazilianPortuguese)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> brazilianPortuguese)
+				.tiebreakerLocalesByLanguageCode(Map.of("pt", List.of(europeanPortuguese, brazilianPortuguese)))
+				.build();
+
+		LocaleMatchResult brazilMatch = preferBrazil.matchFor(canadianPortuguese);
+		LocaleMatchResult portugalMatch = preferPortugal.matchFor(canadianPortuguese);
+
+		assertEquals(brazilianPortuguese, brazilMatch.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(europeanPortuguese, portugalMatch.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, brazilMatch.getMatchType());
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, portugalMatch.getMatchType());
+	}
+
+	@Test
 	public void longNonmatchingZeroWeightRangeCannotAcquireExclusionAuthority() {
 		Locale americanEnglish = Locale.forLanguageTag("en-US");
 		Locale britishEnglish = Locale.forLanguageTag("en-GB");
@@ -629,8 +656,12 @@ public class LocaleMatcherTests {
 
 		assertEquals(english, strings.bestMatchFor(maximumLanguageRanges));
 		assertEquals(english, strings.matchFor(maximumLanguageRanges).getLocale().orElseThrow(AssertionError::new));
+		assertEquals(maximumLanguageRanges, new LocaleMatchResult(maximumLanguageRanges, null, null, null,
+				LocaleMatchType.NONE, english, List.of(english)).getRequestedLanguageRanges());
 		assertThrows(IllegalArgumentException.class, () -> strings.bestMatchFor(excessiveLanguageRanges));
 		assertThrows(IllegalArgumentException.class, () -> strings.matchFor(excessiveLanguageRanges));
+		assertThrows(IllegalArgumentException.class, () -> new LocaleMatchResult(excessiveLanguageRanges, null,
+				null, null, LocaleMatchType.NONE, english, List.of(english)));
   }
 
 	@Test

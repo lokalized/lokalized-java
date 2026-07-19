@@ -95,6 +95,7 @@ public final class Range<T> implements Iterable<@NonNull T> {
    * @return an infinite range, not null
    */
   @SafeVarargs
+  @SuppressWarnings("varargs")
   @NonNull
   public static <T> Range<T> ofInfiniteValues(@NonNull T @NonNull ... values) {
     requireNonNull(values);
@@ -122,6 +123,7 @@ public final class Range<T> implements Iterable<@NonNull T> {
    * @return a finite range, not null
    */
   @SafeVarargs
+  @SuppressWarnings("varargs")
   @NonNull
   public static <T> Range<T> ofFiniteValues(@NonNull T @NonNull ... values) {
     requireNonNull(values);

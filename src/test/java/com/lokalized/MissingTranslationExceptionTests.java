@@ -19,6 +19,7 @@ package com.lokalized;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -56,5 +57,16 @@ public class MissingTranslationExceptionTests {
 						TranslationFailureReason.MISSING_TRANSLATION, List.of(Locale.ROOT, new Locale("und"))));
 
 		assertTrue(exception.getMessage().contains("duplicate language tag 'und'"));
+	}
+
+	@Test
+	public void constructorsRejectNullPlaceholderKeys() {
+		Map<String, Object> placeholders = new HashMap<>();
+		placeholders.put(null, "value");
+
+		IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+				() -> new MissingTranslationException("message", "key", placeholders, Locale.ENGLISH));
+
+		assertTrue(exception.getMessage().contains("Placeholder names must not be null"));
 	}
 }

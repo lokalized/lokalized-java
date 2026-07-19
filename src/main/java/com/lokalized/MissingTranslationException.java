@@ -61,13 +61,13 @@ public class MissingTranslationException extends RuntimeException {
 	private final List<@NonNull Locale> attemptedLocales;
 
 	/**
-	 * Constructs a new exception with the unsupported locale.
+	 * Constructs a new missing-translation exception.
 	 *
 	 * @param message failure message, not null
 	 * @param key translation key, not null
 	 * @param placeholders caller placeholders, not null
 	 * @param lookupLocale the locale used to begin locale fallback, not null
-	 * @throws IllegalArgumentException if the lookup locale is malformed
+	 * @throws IllegalArgumentException if the lookup locale is malformed or the placeholders contain a null key
 	 */
 	public MissingTranslationException(@NonNull String message,
 																		 @NonNull String key,
@@ -86,8 +86,8 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param lookupLocale     locale used to begin locale fallback, not null
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
-	 * @throws IllegalArgumentException if any locale is malformed, attempted locales have duplicate language tags,
-	 *                                  or the reason is {@code RESOLUTION_FAILURE}
+	 * @throws IllegalArgumentException if the placeholders contain a null key, any locale is malformed, attempted
+	 *                                  locales have duplicate language tags, or the reason is {@code RESOLUTION_FAILURE}
 	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
@@ -109,8 +109,8 @@ public class MissingTranslationException extends RuntimeException {
 	 * @param localeMatchResult strict locale-negotiation diagnostics, or null when unavailable
 	 * @param reason           final failure reason, not null
 	 * @param attemptedLocales ordered locales attempted, not null
-	 * @throws IllegalArgumentException if any locale is malformed, attempted locales have duplicate language tags,
-	 *                                  or the reason is {@code RESOLUTION_FAILURE}
+	 * @throws IllegalArgumentException if the placeholders contain a null key, any locale is malformed, attempted
+	 *                                  locales have duplicate language tags, or the reason is {@code RESOLUTION_FAILURE}
 	 * @since 3.0.0
 	 */
 	public MissingTranslationException(@NonNull String message,
@@ -130,8 +130,13 @@ public class MissingTranslationException extends RuntimeException {
 		if (reason == TranslationFailureReason.RESOLUTION_FAILURE)
 			throw new IllegalArgumentException("MissingTranslationException cannot represent a resolution failure cause");
 
+		Map<@NonNull String, @Nullable Object> placeholderCopy = new HashMap<>(placeholders);
+
+		if (placeholderCopy.containsKey(null))
+			throw new IllegalArgumentException("Placeholder names must not be null");
+
 		this.key = key;
-		this.placeholders = Collections.unmodifiableMap(new HashMap<>(placeholders));
+		this.placeholders = Collections.unmodifiableMap(placeholderCopy);
 		this.lookupLocale = LocaleUtils.requireWellFormed(lookupLocale, "Lookup locale");
 		this.localeMatchResult = Optional.ofNullable(localeMatchResult);
 		this.reason = reason;

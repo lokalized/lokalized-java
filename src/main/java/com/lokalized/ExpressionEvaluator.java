@@ -1257,7 +1257,7 @@ class ExpressionEvaluator {
 
       try {
         if (value instanceof PluralOperands)
-          return validatePluralOperands((PluralOperands) value, operand.getSymbol()).getNumber();
+          return validatePluralOperands((PluralOperands) value, operand.getSymbol()).sourceNumber();
         if (value instanceof Number)
           return PluralOperands.validateNumericValue(NumberUtils.toBigDecimal((Number) value),
               format("Numeric value '%s'", operand.getSymbol()), runtimeLimits);

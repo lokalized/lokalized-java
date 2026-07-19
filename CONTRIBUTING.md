@@ -39,10 +39,17 @@ mvn -B -ntp -Prelease clean verify
 ```
 
 The release profile intentionally refuses every version except exact `3.0.0`; it cannot be used while the POM still
-reports `3.0.0-SNAPSHOT`. After the signed Java release commit exists, update the sibling website's generation lock
-and run `npm run build && npm run verify:release` there. That coordinated gate checks the Java README and changelog,
-generated website and AI documentation, canonical schema, clean source SHAs, build provenance, and versioned Javadocs
-before the CI-produced deployment bundle is eligible to publish.
+reports `3.0.0-SNAPSHOT`. After the signed Java release commit exists:
+
+1. Create and verify the signed `3.0.0` tag at that exact commit.
+2. In the sibling `javadoc.lokalized.com` repository, generate the immutable `dist/3.0.0/` tree from that tag and commit
+   it together with the updated `scripts/immutable-version-tree-sha256.txt` Javadoc lock.
+3. Update the sibling website's generation lock to the final Java and Javadoc commits.
+4. Run `npm run build && npm run verify:release` in the website repository.
+
+That coordinated gate checks the Java README and changelog, generated website and AI documentation, canonical schema,
+clean source SHAs, build provenance, and versioned Javadocs before the CI-produced deployment bundle is eligible to
+publish.
 
 Inspect the generated artifacts and `.asc` signatures in `target/`. Once that exact staging flow succeeds from the
 release commit, deploy with:

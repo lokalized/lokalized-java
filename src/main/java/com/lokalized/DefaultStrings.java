@@ -220,7 +220,10 @@ class DefaultStrings implements Strings {
 																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
 																 @Nullable TranslationRuntimeLimits runtimeLimits) {
 		LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
-		requireNonNull(localizedStringSupplier, format("You must specify a 'localizedStringSupplier' when creating a %s instance", DefaultStrings.class.getSimpleName()));
+
+		if (localizedStringSupplier == null)
+			throw new IllegalArgumentException(format("You must specify a 'localizedStringSupplier' when creating a %s instance",
+					DefaultStrings.class.getSimpleName()));
 
 		if ((localeSupplier == null) == (localeMatchSupplier == null))
 			throw new IllegalArgumentException(format("You must specify exactly one of 'localeSupplier' or 'localeMatchSupplier' when creating a %s instance",
