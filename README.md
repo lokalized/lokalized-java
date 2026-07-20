@@ -40,26 +40,21 @@ assertEquals("I didn't read any books.", message);
 
 Lokalized has proudly powered production systems since 2017.
 
-## Design Goals
+## Why Lokalized?
 
-* Complex translation rules can be expressed in a configuration file, not code
-* First-class support for common language forms such as gender, grammatical case, definiteness, classifiers, register, and plural (cardinal, ordinal, range)
-* Provide a simple expression language to handle traditionally difficult edge cases
-* Support multiple platforms natively
-* Immutability/thread-safety
-* No dependencies
+* **Keep language rules out of application code:** locale-specific grammar and wording live with the translations instead of being scattered through conditionals
+* **Give translators expressive control:** placeholders, language forms, and ordered alternatives can rewrite a fragment or an entire message when natural copy requires it
+* **Model more than simple plurals:** cardinality, ordinality, ranges, gender, grammatical case, definiteness, classifiers, formality, clusivity, animacy, and phonetics are first-class concepts
+* **Solve agreement problems many localization formats do not model directly:** combine typed language forms with ordered fragment and whole-message alternatives when several values or exact application rules jointly affect wording; [see how Lokalized compares](#comparing-localization-formats)
+* **Match locales predictably:** [`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) handles BCP 47 tags, CLDR parent locales, likely scripts, weighted `Accept-Language` preferences, and explicit tiebreakers deterministically
+* **Fail safely:** bounded loading and evaluation, explicit fallback policies, and structured diagnostics make malformed or incomplete translations observable
+* **Stay lightweight:** immutable, thread-safe design. **Lokalized requires no runtime dependencies.**
 
-## Design Non-Goals
+## Non-Goals
 
 * Support for date/time, number, percentage, and currency formatting/parsing (JDK provides these)
 * Support for collation (JDK provides this)
 * Support for Java 8 and below; Lokalized is for Java 9+ only
-
-## Roadmap
-
-* Static analysis tool to autogenerate/sync localized strings files
-* Additional Ports (JavaScript, Python, Android, Go, ...)
-* Webapp for translators
 
 ## License
 
@@ -78,16 +73,6 @@ Lokalized has proudly powered production systems since 2017.
 ## Direct Download
 
 If you don't use Maven, you can drop [lokalized-2.1.0.jar](https://repo1.maven.org/maven2/com/lokalized/lokalized/2.1.0/lokalized-2.1.0.jar) directly into your project.  No other dependencies are required.
-
-Upgrading an existing application? See the [2.1-to-3.0 Java migration guide](https://lokalized.com/upgrading/2.1-to-3.0/).
-
-## Why Lokalized?
-
-* **As a developer**, it is unrealistic to embed per-locale translation rules in code for every text string
-* **As a translator**, sufficient context and the power of an expression language are required to provide the best translations possible
-* **As a manager**, it is preferable to have a single translation specification that works on the backend, web frontend, and native mobile apps
-
-Perhaps most importantly, the Lokalized placeholder system and expression language allow you to support edge cases that are critical to natural-sounding translations - this can be difficult to achieve using traditional solutions. 
 
 ## Getting Started
 
@@ -262,7 +247,7 @@ Suppose you have two localized strings files for English - American (`en-US`) an
 
 A caller requests Canadian English (`en-CA`). Neither an exact match nor a CLDR parent locale is present in the loaded files, and both files are compatible `en-Latn` candidates. The configured order therefore decides which translation wins.
 
-To that end, Lokalized will require that you specify `tiebreakerLocalesByLanguageCode` if it detects more than one loaded locale with the same primary BCP 47 language subtag.
+**Fails fast during construction:** Lokalized detects multiple loaded locales with the same primary language. If an application constructs [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) during startup, [`build()`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#build()) throws [`IllegalArgumentException`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/IllegalArgumentException.html) unless each ambiguous language has a tiebreaker list containing every loaded locale exactly once.
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
@@ -271,9 +256,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
     Locale locale = MyWebContext.getHttpServletRequest().getLocale();
     return matcher.bestMatchFor(locale);
   })
-  // Declare your tiebreakers where ambiguity exists.
-  // Lokalized will automatically detect ambiguities and require you to resolve them here -
-  // an exception will be thrown with detailed instructions to that effect.
+  // Declare a complete order for each language with multiple loaded locales.
   // A request such as en-CA selects American English when no earlier
   // exact, canonical, or CLDR-parent match resolves it.
   .tiebreakerLocalesByLanguageCode(Map.of(
@@ -295,14 +278,14 @@ That one says: "I prefer British English, then other forms of English, then Fren
 
 Lokalized offers "best match" functionality which evaluates the combination of your available localized strings files and
 the raw header value to pick the most appropriate localization that your application supports for that user.
-[`bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+[`bestMatchForAcceptLanguage(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguage(java.lang.String))
 is bounded and fail-soft for request handling.
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
   // The helper combines repeated Accept-Language field lines in received order
-  .localeSupplier((matcher) -> matcher.bestMatchForAcceptLanguageHeader(
+  .localeSupplier((matcher) -> matcher.bestMatchForAcceptLanguage(
     MyWebContext.getCombinedAcceptLanguageHeader()))
   .build();
 ```
@@ -1301,27 +1284,27 @@ The plural form of the range is determined by examining the cardinality of its s
 
 #### English
 
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `1–2 days`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0–1 days`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 days`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `1-2 days`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0-1 days`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0-2 days`)
 
 #### French
 
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 jour`)
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 jours`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `2–100 jours`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0-1 jour`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0-2 jours`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `2-100 jours`)
 
 #### Latvian
 
-* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0–10 diennaktis`)
-* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0–1 diennakts`)
-* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0–2 diennaktis`)
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1–10 diennaktis`)
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0,1–1 diennakts`)
-* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1–2 diennaktis`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–10 diennaktis`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0,2–1 diennakts`)
-* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2–2 diennaktis`)
+* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0-10 diennaktis`)
+* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0-1 diennakts`)
+* [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0-2 diennaktis`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1-10 diennaktis`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0,1-1 diennakts`)
+* [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,1-2 diennaktis`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ZERO`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ZERO) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2-10 diennaktis`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) ⇒ [`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE) (e.g. `0,2-1 diennakts`)
+* [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) - [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) ⇒ [`CARDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#OTHER) (e.g. `0,2-2 diennaktis`)
 
 You may programmatically determine a range's cardinality using [`Cardinality#forRange(Cardinality start, Cardinality end, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forRange(com.lokalized.Cardinality,com.lokalized.Cardinality,java.util.Locale)) as shown below.
 
@@ -1640,7 +1623,7 @@ can retain the original negotiation diagnostics when an application already has 
 values. It passes through the result of strict
 [`matchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#matchFor(java.util.List)); raw request
 headers should use the fail-soft
-[`bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+[`bestMatchForAcceptLanguage(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguage(java.lang.String))
 example above. Its immutable
 [`LocaleMatchResult`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchResult.html) preserves the requested ranges,
 locales considered, winning range and quality, match kind

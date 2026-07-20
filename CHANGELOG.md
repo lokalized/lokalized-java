@@ -93,7 +93,7 @@ All notable changes to Lokalized will be documented in this file.
 
 ### Features
 
-- Added [`LocaleMatcher.bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+- Added [`LocaleMatcher.bestMatchForAcceptLanguage(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguage(java.lang.String))
   for bounded, fail-soft parsing and matching of raw `Accept-Language` values without truncating parsed preferences.
 - Added per-invocation `TranslationOptions` for locale, language-range, bidi-isolation, and
   translation-failure-handler overrides.
@@ -314,7 +314,7 @@ All notable changes to Lokalized will be documented in this file.
   to single-resource `Path` and `InputStream` parsing. Pass
   `LocalizedStringLoadingOptions` to select different limits; nesting cannot be raised above 128.
 - Combine repeated `Accept-Language` field lines in received order and pass the combined value to
-  [`LocaleMatcher.bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String)).
+  [`LocaleMatcher.bestMatchForAcceptLanguage(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguage(java.lang.String)).
   It bounds and parses raw input, falls back for unusable values, and never truncates preferences. The parsed-list APIs
   remain strict and accept at most 32 ranges.
 - Review any application that relied on the previous runtime defaults. Use [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html) to opt back up

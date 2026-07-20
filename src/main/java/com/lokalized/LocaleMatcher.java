@@ -97,7 +97,7 @@ public interface LocaleMatcher {
 	Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges);
 
 	/**
-	 * Given a raw {@code Accept-Language} HTTP request header value, determines the best-matching localized strings
+	 * Given a raw {@code Accept-Language} HTTP field value, determines the best-matching localized strings
 	 * file's locale.
 	 * <p>
 	 * This is a fail-soft convenience for request handling. A missing, blank, malformed, or longer than 4,096 UTF-16
@@ -108,21 +108,21 @@ public interface LocaleMatcher {
 	 * {@link #matchFor(List)} or {@link #bestMatchFor(List)} when language ranges have already been parsed and strict
 	 * limit enforcement is desired.
 	 *
-	 * @param acceptLanguageHeader raw, already-combined {@code Accept-Language} header value, or null if absent
+	 * @param acceptLanguage raw, already-combined {@code Accept-Language} field value, or null if absent
 	 * @return the best-matching locale, or the configured fallback for unusable input, not null
 	 * @since 3.0.0
 	 */
 	@NonNull
-	default Locale bestMatchForAcceptLanguageHeader(@Nullable String acceptLanguageHeader) {
-		if (acceptLanguageHeader == null ||
-				acceptLanguageHeader.length() > 4_096 ||
-				acceptLanguageHeader.trim().isEmpty())
+	default Locale bestMatchForAcceptLanguage(@Nullable String acceptLanguage) {
+		if (acceptLanguage == null ||
+				acceptLanguage.length() > 4_096 ||
+				acceptLanguage.trim().isEmpty())
 			return bestMatchFor(List.of());
 
 		List<@NonNull LanguageRange> languageRanges;
 
 		try {
-			languageRanges = LanguageRange.parse(acceptLanguageHeader);
+			languageRanges = LanguageRange.parse(acceptLanguage);
 		} catch (IllegalArgumentException exception) {
 			return bestMatchFor(List.of());
 		}

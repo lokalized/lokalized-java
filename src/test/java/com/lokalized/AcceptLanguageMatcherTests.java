@@ -48,11 +48,11 @@ public class AcceptLanguageMatcherTests {
 	public void missingBlankMalformedAndOversizedHeadersUseFallback() {
 		Strings strings = strings();
 
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(null));
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(""));
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(" \t\r\n"));
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader("fr;q=invalid"));
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(null));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(""));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(" \t\r\n"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("fr;q=invalid"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(
 				paddedHeader("fr", MAXIMUM_HEADER_CHARACTERS + 1)));
 	}
 
@@ -62,7 +62,7 @@ public class AcceptLanguageMatcherTests {
 		String header = "fr-CA,fr;q=0.8,en-US;q=0.5";
 
 		assertEquals(strings.bestMatchFor(LanguageRange.parse(header)),
-				strings.bestMatchForAcceptLanguageHeader(header));
+				strings.bestMatchForAcceptLanguage(header));
 	}
 
 	@Test
@@ -70,7 +70,7 @@ public class AcceptLanguageMatcherTests {
 		Strings strings = strings();
 
 		assertEquals(BRITISH_ENGLISH,
-				strings.bestMatchForAcceptLanguageHeader("en;q=1,fr;q=0.5,en-US;q=0"));
+				strings.bestMatchForAcceptLanguage("en;q=1,fr;q=0.5,en-US;q=0"));
 	}
 
 	@Test
@@ -80,7 +80,7 @@ public class AcceptLanguageMatcherTests {
 		List<LanguageRange> expandedRanges = LanguageRange.parse(header);
 
 		assertTrue(expandedRanges.size() > LocaleMatcher.MAXIMUM_LANGUAGE_RANGES);
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(header));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(header));
 	}
 
 	@Test
@@ -90,8 +90,8 @@ public class AcceptLanguageMatcherTests {
 		String overLimit = paddedHeader("fr", MAXIMUM_HEADER_CHARACTERS + 1);
 
 		assertEquals(MAXIMUM_HEADER_CHARACTERS, atLimit.length());
-		assertEquals(FRENCH, strings.bestMatchForAcceptLanguageHeader(atLimit));
-		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguageHeader(overLimit));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage(atLimit));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(overLimit));
 	}
 
 	@Test
@@ -113,7 +113,7 @@ public class AcceptLanguageMatcherTests {
 			List<Future<Locale>> results = new ArrayList<>();
 
 			for (int index = 0; index < 100; ++index)
-				results.add(executorService.submit(() -> strings.bestMatchForAcceptLanguageHeader("fr")));
+				results.add(executorService.submit(() -> strings.bestMatchForAcceptLanguage("fr")));
 
 			for (Future<Locale> result : results)
 				assertEquals(FRENCH, result.get(10, TimeUnit.SECONDS));
