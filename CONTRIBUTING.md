@@ -35,7 +35,7 @@ can be retained in shell history and exposed through process inspection.
 Rehearse the complete signed build without uploading anything:
 
 ```shell
-mvn -B -ntp -Prelease clean verify
+mvn -ntp -Prelease clean verify
 ```
 
 The release profile intentionally refuses every version except exact `3.0.0`; it cannot be used while the POM still
@@ -48,15 +48,17 @@ reports `3.0.0-SNAPSHOT`. After the signed Java release commit exists:
 4. Run `npm run build && npm run verify:release` in the website repository.
 
 That coordinated gate checks the Java README and changelog, generated website and AI documentation, canonical schema,
-clean source SHAs, build provenance, and versioned Javadocs before the CI-produced deployment bundle is eligible to
-publish.
+clean source SHAs, build provenance, and versioned Javadocs before the deployment bundle is eligible to publish.
 
-Inspect the generated artifacts and `.asc` signatures in `target/`. Once that exact staging flow succeeds from the
-release commit, deploy with:
+Inspect the generated POM, main JAR, sources JAR, Javadocs JAR, and `.asc` signatures in `target/`. Once that staging
+flow succeeds from the release commit, deploy with:
 
 ```shell
-mvn -B -ntp -Prelease clean deploy
+mvn -ntp -Prelease clean deploy
 ```
+
+The Central plugin leaves the validated deployment unpublished. Review its version, artifacts, checksums, and
+signatures in the Central Publisher Portal, then explicitly select **Publish**.
 
 The `release` profile is only needed when building or publishing signed release artifacts. Normal contributor builds
 should use `mvn -B -ntp clean verify` and do not require Central Portal or GPG credentials.

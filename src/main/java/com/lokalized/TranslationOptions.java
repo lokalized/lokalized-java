@@ -218,7 +218,7 @@ public final class TranslationOptions {
 		if (translationFallbackPolicy != null)
 			components.add("translationFallbackPolicy=" + translationFallbackPolicy);
 
-		return String.format("%s{%s}", getClass().getSimpleName(), String.join(", ", components));
+		return Diagnostics.format("%s{%s}", getClass().getSimpleName(), String.join(", ", components));
 	}
 
 	/**
@@ -258,7 +258,7 @@ public final class TranslationOptions {
 		requireNonNull(languageRanges);
 
 		if (languageRanges.size() > LocaleMatcher.MAXIMUM_LANGUAGE_RANGES)
-			throw new IllegalArgumentException(String.format("At most %d language ranges are supported, but received %d",
+			throw new IllegalArgumentException(Diagnostics.format("At most %d language ranges are supported, but received %d",
 					LocaleMatcher.MAXIMUM_LANGUAGE_RANGES, languageRanges.size()));
 
 		List<@NonNull LanguageRange> copy = new ArrayList<>(languageRanges.size());

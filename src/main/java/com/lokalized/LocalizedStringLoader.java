@@ -40,14 +40,17 @@ import java.net.JarURLConnection;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.file.DirectoryIteratorException;
 import java.nio.file.DirectoryStream;
+import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.ProviderNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -71,7 +74,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.zip.ZipException;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
 
@@ -88,6 +91,10 @@ import static java.util.Objects.requireNonNull;
  * expression {@code alternatives}). Template alternatives select string fragments only; the first matching
  * expression wins and the required default is used when none match. Placeholder modes are mutually exclusive, and
  * all expressions and fragment placeholder references are validated while loading.
+ * <p>
+ * Unicode letter, number, and mark membership in placeholder and expression identifiers follows the executing JDK's
+ * {@link Pattern} Unicode tables. Author files for the oldest JDK in the deployment fleet when the same files must be
+ * portable across runtime versions; {@code [A-Za-z_][A-Za-z0-9_-]*} is the portable ASCII subset.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
@@ -381,8 +388,8 @@ public final class LocalizedStringLoader {
     Enumeration<@NonNull URL> urls;
 
     try {
-      urls = classLoader.getResources(classpathPackage);
-    } catch (IOException e) {
+      urls = requireNonNull(classLoader.getResources(classpathPackage));
+    } catch (IOException | RuntimeException e) {
       throw new LocalizedStringLoadingException(format("Unable to search classpath for '%s'", classpathPackage), e);
     }
 
@@ -390,8 +397,8 @@ public final class LocalizedStringLoader {
     Set<@NonNull String> processedLocations = new LinkedHashSet<>();
     String packageDiscoverySource = format("classpath package '%s'", classpathPackage);
 
-    while (urls.hasMoreElements()) {
-      URL url = urls.nextElement();
+    while (hasMoreClasspathResources(urls, classpathPackage)) {
+      URL url = nextClasspathResource(urls, classpathPackage);
       loadingSession.discoverEntry(packageDiscoverySource);
 
       if (!processedLocations.add(classpathLocationIdentity(url, classpathPackage)))
@@ -404,10 +411,10 @@ public final class LocalizedStringLoader {
 
     if (loadingOptions.isExhaustiveClasspathSearchEnabled()) {
       for (Path classpathRoot : classpathRootsFor(classLoader, loadingSession)) {
-        if (Files.isDirectory(classpathRoot)) {
+        if (isDirectoryForClasspathDiscovery(classpathRoot)) {
           Path packageDirectory = classpathRoot.resolve(classpathPackage);
 
-          if (!Files.isDirectory(packageDirectory))
+          if (!isDirectoryForClasspathDiscovery(packageDirectory))
             continue;
 
           String locationIdentity = canonicalPathForPath(packageDirectory);
@@ -420,7 +427,7 @@ public final class LocalizedStringLoader {
           continue;
         }
 
-        if (!Files.isRegularFile(classpathRoot))
+        if (!isRegularFileForClasspathDiscovery(classpathRoot))
           continue;
 
         String packagePath = normalizedJarPackagePath(classpathPackage);
@@ -441,7 +448,7 @@ public final class LocalizedStringLoader {
           mergeLocalizedStrings(mergedByLocale, jarPackageLoadResult.getLocalizedStringsByLocale());
         } catch (ZipException e) {
           processedLocations.remove(locationIdentity);
-        } catch (IOException e) {
+        } catch (IOException | SecurityException e) {
           throw new LocalizedStringLoadingException(format(
               "Unable to load localized strings from classpath root '%s'", classpathRoot), e);
         }
@@ -452,6 +459,33 @@ public final class LocalizedStringLoader {
       throw new LocalizedStringLoadingException(format("Unable to find package '%s' on the classpath", classpathPackage));
 
     return toLocalizedStringsByLocale(mergedByLocale);
+  }
+
+  private static boolean hasMoreClasspathResources(
+      @NonNull Enumeration<@NonNull URL> urls, @NonNull String classpathPackage) {
+    requireNonNull(urls);
+    requireNonNull(classpathPackage);
+
+    try {
+      return urls.hasMoreElements();
+    } catch (RuntimeException e) {
+      throw new LocalizedStringLoadingException(format(
+          "Unable to enumerate classpath resources for '%s'", classpathPackage), e);
+    }
+  }
+
+  @NonNull
+  private static URL nextClasspathResource(
+      @NonNull Enumeration<@NonNull URL> urls, @NonNull String classpathPackage) {
+    requireNonNull(urls);
+    requireNonNull(classpathPackage);
+
+    try {
+      return requireNonNull(urls.nextElement());
+    } catch (RuntimeException e) {
+      throw new LocalizedStringLoadingException(format(
+          "Unable to enumerate classpath resources for '%s'", classpathPackage), e);
+    }
   }
 
   /**
@@ -706,11 +740,7 @@ public final class LocalizedStringLoader {
         if (!"file".equals(url.getProtocol()))
           continue;
 
-        try {
-          classpathRoots.add(Paths.get(url.toURI()).toAbsolutePath().normalize());
-        } catch (URISyntaxException e) {
-          throw new LocalizedStringLoadingException(format("Unable to resolve classpath root '%s'", url), e);
-        }
+        classpathRoots.add(pathForClasspathUrl(url, "classpath root"));
       }
     }
 
@@ -725,7 +755,14 @@ public final class LocalizedStringLoader {
           // Charge the candidate before allocating a token or asking Path to parse it.
           loadingSession.discoverEntry("system classpath roots");
           String entry = classpath.substring(entryStart, entryEnd);
-          classpathRoots.add(Paths.get(entry).toAbsolutePath().normalize());
+
+          try {
+            classpathRoots.add(Paths.get(entry).toAbsolutePath().normalize());
+          } catch (IllegalArgumentException | FileSystemNotFoundException | ProviderNotFoundException
+                   | SecurityException e) {
+            throw new LocalizedStringLoadingException(format(
+                "Unable to resolve system classpath root '%s'", entry), e);
+          }
         }
 
         if (separatorIndex < 0)
@@ -753,7 +790,7 @@ public final class LocalizedStringLoader {
     for (int rootIndex = 0; rootIndex < pendingRoots.size(); ++rootIndex) {
       Path classpathRoot = pendingRoots.get(rootIndex);
 
-      if (!Files.isRegularFile(classpathRoot))
+      if (!isRegularFileForClasspathDiscovery(classpathRoot))
         continue;
 
       try (JarFile jarFile = new JarFile(classpathRoot.toFile())) {
@@ -786,24 +823,50 @@ public final class LocalizedStringLoader {
           loadingSession.discoverEntry(manifestDiscoverySource);
           String manifestEntry = manifestClasspath.substring(entryStart, entryEnd);
           entryStart = entryEnd;
-          URL resolvedEntry = new URL(manifestBase, manifestEntry);
+          try {
+            URL resolvedEntry = new URL(manifestBase, manifestEntry);
 
-          // Exhaustive discovery operates on filesystem roots. Non-file resources remain available through ordinary
-          // ClassLoader resource lookup or the explicit locale-to-resource mapping API.
-          if (!"file".equals(resolvedEntry.getProtocol()))
-            continue;
+            // Exhaustive discovery operates on filesystem roots. Non-file resources remain available through
+            // ordinary ClassLoader resource lookup or the explicit locale-to-resource mapping API.
+            if (!"file".equals(resolvedEntry.getProtocol()))
+              continue;
 
-          Path resolvedRoot = Paths.get(resolvedEntry.toURI()).toAbsolutePath().normalize();
+            Path resolvedRoot = Paths.get(resolvedEntry.toURI()).toAbsolutePath().normalize();
 
-          if (classpathRoots.add(resolvedRoot))
-            pendingRoots.add(resolvedRoot);
+            if (classpathRoots.add(resolvedRoot))
+              pendingRoots.add(resolvedRoot);
+          } catch (IOException | URISyntaxException | IllegalArgumentException | FileSystemNotFoundException
+                   | ProviderNotFoundException | SecurityException e) {
+            // A manifest Class-Path entry is optional. Classloaders ignore entries that cannot be resolved to usable
+            // URLs, so exhaustive filesystem discovery must do the same instead of failing an otherwise valid load.
+          }
         }
       } catch (ZipException e) {
         // A regular classpath file need not be a JAR.
-      } catch (IOException | URISyntaxException e) {
+      } catch (IOException | SecurityException e) {
         throw new LocalizedStringLoadingException(format(
             "Unable to inspect manifest Class-Path for classpath root '%s'", classpathRoot), e);
       }
+    }
+  }
+
+  private static boolean isDirectoryForClasspathDiscovery(@NonNull Path path) {
+    requireNonNull(path);
+
+    try {
+      return Files.isDirectory(path);
+    } catch (SecurityException e) {
+      throw new LocalizedStringLoadingException(format("Unable to inspect classpath location '%s'", path), e);
+    }
+  }
+
+  private static boolean isRegularFileForClasspathDiscovery(@NonNull Path path) {
+    requireNonNull(path);
+
+    try {
+      return Files.isRegularFile(path);
+    } catch (SecurityException e) {
+      throw new LocalizedStringLoadingException(format("Unable to inspect classpath location '%s'", path), e);
     }
   }
 
@@ -813,27 +876,35 @@ public final class LocalizedStringLoader {
   }
 
   @NonNull
+  private static Path pathForClasspathUrl(@NonNull URL url, @NonNull String locationDescription) {
+    requireNonNull(url);
+    requireNonNull(locationDescription);
+
+    try {
+      return Paths.get(url.toURI()).toAbsolutePath().normalize();
+    } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException | ProviderNotFoundException
+             | SecurityException e) {
+      throw new LocalizedStringLoadingException(format("Unable to resolve %s '%s'", locationDescription, url), e);
+    }
+  }
+
+  @NonNull
   private static String classpathLocationIdentity(@NonNull URL url, @NonNull String classpathPackage) {
     requireNonNull(url);
     requireNonNull(classpathPackage);
 
-    if ("file".equals(url.getProtocol())) {
-      try {
-        return canonicalPathForPath(Paths.get(url.toURI()));
-      } catch (URISyntaxException e) {
-        throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
-      }
-    }
+    if ("file".equals(url.getProtocol()))
+      return canonicalPathForPath(pathForClasspathUrl(url, "classpath location"));
 
     if ("jar".equals(url.getProtocol())) {
       try {
-        JarURLConnection connection = (JarURLConnection) url.openConnection();
+        JarURLConnection connection = jarConnectionForUrl(url);
         connection.setUseCaches(false);
         URL jarFileUrl = connection.getJarFileURL();
         String jarIdentity = jarFileUrl.toExternalForm();
 
         if ("file".equals(jarFileUrl.getProtocol()))
-          jarIdentity = canonicalPathForPath(Paths.get(jarFileUrl.toURI()));
+          jarIdentity = canonicalPathForPath(pathForClasspathUrl(jarFileUrl, "classpath JAR location"));
 
         String entryName = connection.getEntryName();
 
@@ -841,12 +912,30 @@ public final class LocalizedStringLoader {
           entryName = normalizedJarPackagePath(classpathPackage);
 
         return jarIdentity + "!/" + normalizedJarPackagePath(entryName);
-      } catch (IOException | URISyntaxException e) {
+      } catch (IOException | SecurityException e) {
         throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
       }
     }
 
     return url.toExternalForm();
+  }
+
+  /**
+   * Opens a JAR URL and verifies that its protocol handler honors the standard JAR-connection contract. A custom
+   * handler can legally be attached to an individual {@link URL}, so the protocol name alone does not make a cast
+   * to {@link JarURLConnection} safe.
+   */
+  @NonNull
+  private static JarURLConnection jarConnectionForUrl(@NonNull URL jarUrl) throws IOException {
+    requireNonNull(jarUrl);
+
+    URLConnection connection = jarUrl.openConnection();
+
+    if (!(connection instanceof JarURLConnection))
+      throw new IOException(format("JAR URL handler for '%s' returned '%s' instead of '%s'", jarUrl,
+          connection.getClass().getName(), JarURLConnection.class.getName()));
+
+    return (JarURLConnection) connection;
   }
 
   @NonNull
@@ -1259,13 +1348,8 @@ public final class LocalizedStringLoader {
 
     String protocol = url.getProtocol();
 
-    if ("file".equals(protocol)) {
-      try {
-        return loadFromDirectoryWithOrigins(Paths.get(url.toURI()), loadingSession);
-      } catch (URISyntaxException e) {
-        throw new LocalizedStringLoadingException(format("Unable to resolve classpath location '%s'", url), e);
-      }
-    }
+    if ("file".equals(protocol))
+      return loadFromDirectoryWithOrigins(pathForClasspathUrl(url, "classpath location"), loadingSession);
 
     if ("jar".equals(protocol))
       return loadFromJar(url, classpathPackage, loadingSession);
@@ -1283,7 +1367,7 @@ public final class LocalizedStringLoader {
     requireNonNull(loadingSession);
 
     try {
-      JarURLConnection connection = (JarURLConnection) jarUrl.openConnection();
+      JarURLConnection connection = jarConnectionForUrl(jarUrl);
       connection.setUseCaches(false);
 
       try (JarFile jarFile = connection.getJarFile()) {
@@ -1294,7 +1378,7 @@ public final class LocalizedStringLoader {
 
         return loadFromJarFile(jarFile, packagePath, loadingSession).getLocalizedStringsByLocale();
       }
-    } catch (IOException e) {
+    } catch (IOException | SecurityException e) {
       throw new LocalizedStringLoadingException(format("Unable to load localized strings from '%s'", jarUrl), e);
     }
   }
@@ -1800,7 +1884,7 @@ public final class LocalizedStringLoader {
 
     try {
       return path.toRealPath().toString();
-    } catch (IOException e) {
+    } catch (IOException | SecurityException e) {
       throw new LocalizedStringLoadingException(
           format("Unable to determine canonical path for localized strings file %s", path), e);
     }

@@ -62,6 +62,14 @@ public class StringsTests {
 						.build());
 		assertTrue(missingLocale.getMessage().contains("exactly one of 'localeSupplier' or 'localeMatchSupplier'"));
 
+		IllegalArgumentException nullLocalizedStrings = assertThrows(IllegalArgumentException.class,
+				() -> Strings.withFallbackLocale(Locale.ENGLISH)
+						.localizedStringSupplier(() -> null)
+						.localeSupplier(matcher -> Locale.ENGLISH)
+						.build());
+		assertTrue(nullLocalizedStrings.getMessage().contains("localizedStringSupplier"));
+		assertTrue(nullLocalizedStrings.getMessage().contains("returned null"));
+
 		assertThrows(IllegalArgumentException.class, () -> {
 			Strings.withFallbackLocale(Locale.forLanguageTag("fake"))
 					.localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))

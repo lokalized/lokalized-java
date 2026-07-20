@@ -32,13 +32,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
 
 /**
  * Represents a single localized string - its key, translated value, and any associated translation rules.
  * <p>
  * Normally instances are sourced from a file which contains all localized strings for a given locale.
+ * <p>
+ * Unicode letter, number, and mark membership in placeholder and expression identifiers follows the executing JDK's
+ * {@link java.util.regex.Pattern} Unicode tables. For cross-JDK portability, author identifiers for the oldest JDK in
+ * the deployment fleet; {@code [A-Za-z_][A-Za-z0-9_-]*} is the portable ASCII subset.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */

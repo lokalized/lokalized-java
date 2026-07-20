@@ -114,7 +114,7 @@ final class Maps {
     @Override
     @NonNull
     public String toString() {
-      return String.format("%s{key=%s, value=%s}", getClass().getSimpleName(), getKey(), getValue());
+      return Diagnostics.format("%s{key=%s, value=%s}", getClass().getSimpleName(), getKey(), getValue());
     }
 
     /**

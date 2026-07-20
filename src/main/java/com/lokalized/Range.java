@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
 
 /**

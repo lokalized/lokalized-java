@@ -20,7 +20,7 @@ import org.jspecify.annotations.NonNull;
 
 import javax.annotation.concurrent.ThreadSafe;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
 
 /** Internal bounded conversions for caller-supplied character sequences. */

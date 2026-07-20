@@ -17,6 +17,7 @@
 package com.lokalized;
 
 import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Locale;
@@ -94,4 +95,41 @@ public interface LocaleMatcher {
 	 */
 	@NonNull
 	Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges);
+
+	/**
+	 * Given a raw {@code Accept-Language} HTTP request header value, determines the best-matching localized strings
+	 * file's locale.
+	 * <p>
+	 * This is a fail-soft convenience for request handling. A missing, blank, malformed, or longer than 4,096 UTF-16
+	 * code-unit value returns the configured fallback locale. The length limit is applied before parsing so parser work
+	 * is bounded independently of the parsed-range limit. The configured fallback is also returned if parsing produces
+	 * more than {@link #MAXIMUM_LANGUAGE_RANGES} ranges, which can happen when {@link LanguageRange#parse(String)} adds
+	 * IANA-equivalent ranges. A valid parsed list is passed through whole; preferences are never truncated. Use
+	 * {@link #matchFor(List)} or {@link #bestMatchFor(List)} when language ranges have already been parsed and strict
+	 * limit enforcement is desired.
+	 *
+	 * @param acceptLanguageHeader raw, already-combined {@code Accept-Language} header value, or null if absent
+	 * @return the best-matching locale, or the configured fallback for unusable input, not null
+	 * @since 3.0.0
+	 */
+	@NonNull
+	default Locale bestMatchForAcceptLanguageHeader(@Nullable String acceptLanguageHeader) {
+		if (acceptLanguageHeader == null ||
+				acceptLanguageHeader.length() > 4_096 ||
+				acceptLanguageHeader.trim().isEmpty())
+			return bestMatchFor(List.of());
+
+		List<@NonNull LanguageRange> languageRanges;
+
+		try {
+			languageRanges = LanguageRange.parse(acceptLanguageHeader);
+		} catch (IllegalArgumentException exception) {
+			return bestMatchFor(List.of());
+		}
+
+		if (languageRanges.size() > MAXIMUM_LANGUAGE_RANGES)
+			return bestMatchFor(List.of());
+
+		return bestMatchFor(languageRanges);
+	}
 }

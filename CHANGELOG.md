@@ -93,6 +93,8 @@ All notable changes to Lokalized will be documented in this file.
 
 ### Features
 
+- Added [`LocaleMatcher.bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+  for bounded, fail-soft parsing and matching of raw `Accept-Language` values without truncating parsed preferences.
 - Added per-invocation `TranslationOptions` for locale, language-range, bidi-isolation, and
   translation-failure-handler overrides.
 - Added `Strings` inspection APIs: `getSupportedLocales()`, `getKeysForLocale(Locale)`, and
@@ -311,10 +313,10 @@ All notable changes to Lokalized will be documented in this file.
   1,000-warning budget also apply to single-resource `parse(...)` calls. A configured total-input budget also applies
   to single-resource `Path` and `InputStream` parsing. Pass
   `LocalizedStringLoadingOptions` to select different limits; nesting cannot be raised above 128.
-- Combine repeated `Accept-Language` field lines in received order, bound all raw values before calling
-  [`Locale.LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String)), ignore bounded empty comma-list members, then ensure the parsed list contains at
-  most 32 ranges. Parsing may add equivalent ranges, and Lokalized cannot bound work that occurs before it receives the
-  parsed list.
+- Combine repeated `Accept-Language` field lines in received order and pass the combined value to
+  [`LocaleMatcher.bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String)).
+  It bounds and parses raw input, falls back for unusable values, and never truncates preferences. The parsed-list APIs
+  remain strict and accept at most 32 ranges.
 - Review any application that relied on the previous runtime defaults. Use [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html) to opt back up
   where necessary; the previous numeric, expression, generated-placeholder, interpolation, and expansion values remain
   hard ceilings.
@@ -324,6 +326,8 @@ All notable changes to Lokalized will be documented in this file.
   in explicitly loaded filesystem directories containing localized strings files.
 - Placeholder and alternative-expression identifiers now follow the same rule: start with a Unicode letter
   or underscore, then use Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens.
+  Unicode property membership follows the executing JDK (or independent schema validator), so author identifiers for
+  the oldest runtime in the deployment fleet; use `[A-Za-z_][A-Za-z0-9_-]*` for maximum cross-runtime portability.
 - Expect CLDR-backed plural and locale matching behavior to differ from the older handwritten tables in
   some locales.
 - Incomplete CLDR cardinality or ordinality maps now produce structured loading warnings, which are silently ignored by

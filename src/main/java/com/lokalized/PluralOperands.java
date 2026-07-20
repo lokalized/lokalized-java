@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.DoubleAdder;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.concurrent.atomic.LongAdder;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
 
 /**

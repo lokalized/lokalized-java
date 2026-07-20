@@ -23,7 +23,7 @@ import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.NotThreadSafe;
 import java.util.Objects;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 
 /**
  * Immutable safety limits for translation construction and evaluation.

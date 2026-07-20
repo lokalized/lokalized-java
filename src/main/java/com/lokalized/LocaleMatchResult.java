@@ -28,7 +28,7 @@ import java.util.Locale.LanguageRange;
 import java.util.Objects;
 import java.util.Optional;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
 
 /**

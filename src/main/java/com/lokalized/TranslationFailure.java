@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static java.lang.String.format;
+import static com.lokalized.Diagnostics.format;
 
 /**
  * Describes a failed localized string lookup.

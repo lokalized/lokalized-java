@@ -225,7 +225,8 @@ public interface Strings extends LocaleMatcher {
 		@NonNull
 		private final Locale fallbackLocale;
 		@Nullable
-		private Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
+		private Supplier<@NonNull Map<@NonNull Locale,
+				? extends @NonNull Iterable<@NonNull LocalizedString>>> localizedStringSupplier;
 		@Nullable
 		private Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier;
 		@Nullable
@@ -257,13 +258,15 @@ public interface Strings extends LocaleMatcher {
 		 * Applies a localized string supplier to this builder.
 		 * <p>
 		 * Locale keys returned by the supplier must be well-formed and must render to distinct IETF BCP 47 language tags.
-		 * Each per-locale iterable must contain unique translation keys.
+		 * The returned map, its keys, each per-locale iterable, and every localized string must be non-null. Each
+		 * per-locale iterable must contain unique translation keys.
 		 *
 		 * @param localizedStringSupplier localized string supplier, may be null
 		 * @return this builder instance, useful for chaining. not null
 		 */
 		@NonNull
-		public Builder localizedStringSupplier(@Nullable Supplier<Map<@NonNull Locale, ? extends Iterable<@NonNull LocalizedString>>> localizedStringSupplier) {
+		public Builder localizedStringSupplier(@Nullable Supplier<@NonNull Map<@NonNull Locale,
+				? extends @NonNull Iterable<@NonNull LocalizedString>>> localizedStringSupplier) {
 			this.localizedStringSupplier = localizedStringSupplier;
 			return this;
 		}

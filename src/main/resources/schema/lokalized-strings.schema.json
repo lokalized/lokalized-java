@@ -3,6 +3,7 @@
   "$id": "https://lokalized.com/schema/lokalized-strings.schema.json",
   "title": "Lokalized Strings File",
   "description": "Schema for one Lokalized strings file, normally named with an IETF BCP 47 language tag such as en, en-US, or fr-CA.json.",
+  "$comment": "Unicode letter, number, and mark membership in identifier patterns follows the Unicode tables used by the schema validator. Author identifiers for the oldest validator and JDK in the deployment fleet; [A-Za-z_][A-Za-z0-9_-]* is the portable ASCII subset.",
   "type": "object",
   "additionalProperties": {
     "$ref": "#/$defs/localizedString"
@@ -296,6 +297,7 @@
     },
     "placeholderName": {
       "type": "string",
+      "description": "A placeholder or expression identifier. Unicode property membership follows the schema validator's Unicode tables.",
       "pattern": "^[\\p{L}_][\\p{L}\\p{N}\\p{M}_-]*$",
       "not": {
         "$ref": "#/$defs/languageFormName"

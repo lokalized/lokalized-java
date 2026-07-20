@@ -30,6 +30,8 @@ import java.io.InputStream;
 import java.io.StringReader;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.net.URLConnection;
+import java.net.URLStreamHandler;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -44,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
@@ -1670,6 +1673,163 @@ public class LocalizedStringLoaderTests {
   }
 
   @Test
+  public void testExhaustiveClasspathLoadingSkipsUnusableManifestClasspathEntries() throws IOException {
+    Path tempDirectory = Files.createTempDirectory("lokalized-unusable-manifest-classpath");
+    tempDirectory.toFile().deleteOnExit();
+    Path localizedStringsFilesJar = tempDirectory.resolve("localized-strings-files.jar");
+    Path applicationJar = tempDirectory.resolve("application.jar");
+    writeJarEntryWithoutDirectory(localizedStringsFilesJar, "strings/en.json", "{\"hello\":\"world\"}");
+
+    Manifest manifest = new Manifest();
+    manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+    manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH,
+        "ignored.jar?query ignored.jar#fragment % " + localizedStringsFilesJar.getFileName());
+
+    try (JarOutputStream jarOutputStream = new JarOutputStream(Files.newOutputStream(applicationJar), manifest)) {
+      writeJarEntry(jarOutputStream, "strings/", null);
+      writeJarEntry(jarOutputStream, "strings/fr.json", "{\"bonjour\":\"monde\"}");
+    }
+
+    URL applicationPackageUrl = new URL("jar:" + applicationJar.toUri().toURL() + "!/strings");
+
+    // Enumerate the primary package directly so this test exercises Lokalized's manifest traversal consistently.
+    // Some JDK URLClassLoader versions inspect malformed optional entries while enumerating and throw before a
+    // caller can perform its own exhaustive traversal; that boundary has separate wrapping coverage below.
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{applicationJar.toUri().toURL()}, null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        return Collections.enumeration(List.of(applicationPackageUrl));
+      }
+    }) {
+      assertEquals(Set.of(Locale.FRENCH),
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings").keySet(),
+          "Optional manifest entries must not affect ordinary package discovery");
+
+      LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+          .exhaustiveClasspathSearch(true)
+          .build();
+      Map<Locale, Set<LocalizedString>> localizedStringsByLocale =
+          LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions);
+
+      assertEquals(Set.of(Locale.ENGLISH, Locale.FRENCH), localizedStringsByLocale.keySet());
+      assertEquals(1, localizedStringsByLocale.get(Locale.ENGLISH).size());
+      assertEquals(1, localizedStringsByLocale.get(Locale.FRENCH).size());
+    }
+  }
+
+  @Test
+  public void testClasspathLoadingWrapsResourceEnumerationFailure() throws IOException {
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        return new Enumeration<>() {
+          @Override
+          public boolean hasMoreElements() {
+            throw new IllegalArgumentException("Malformed optional classpath URL");
+          }
+
+          @Override
+          public URL nextElement() {
+            throw new AssertionError("Should not be called");
+          }
+        };
+      }
+    };
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+    assertTrue(exception.getMessage().contains("Unable to enumerate classpath resources"));
+    assertTrue(exception.getCause() instanceof IllegalArgumentException);
+  }
+
+  @Test
+  public void testClasspathLoadingWrapsNonJarConnectionDuringLocationIdentity() throws IOException {
+    URL customJarUrl = new URL(null, "jar:file:/not-used.jar!/strings", new URLStreamHandler() {
+      @Override
+      protected URLConnection openConnection(URL url) {
+        return inertUrlConnection(url);
+      }
+    });
+    ClassLoader classLoader = classLoaderForClasspathUrl(customJarUrl);
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+    assertTrue(exception.getMessage().contains("Unable to resolve classpath location"));
+    assertTrue(exception.getCause() instanceof IOException);
+    assertTrue(exception.getCause().getMessage().contains("instead of 'java.net.JarURLConnection'"));
+  }
+
+  @Test
+  public void testClasspathLoadingWrapsNonJarConnectionDuringJarLoad() throws IOException {
+    Path tempJar = Files.createTempFile("lokalized-custom-jar-handler", ".jar");
+    tempJar.toFile().deleteOnExit();
+    URL standardJarUrl = new URL("jar:" + tempJar.toUri().toURL() + "!/strings");
+    AtomicInteger connectionCount = new AtomicInteger();
+    URL customJarUrl = new URL(null, standardJarUrl.toExternalForm(), new URLStreamHandler() {
+      @Override
+      protected URLConnection openConnection(URL url) throws IOException {
+        if (connectionCount.getAndIncrement() == 0)
+          return standardJarUrl.openConnection();
+
+        return inertUrlConnection(url);
+      }
+    });
+    ClassLoader classLoader = classLoaderForClasspathUrl(customJarUrl);
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+    assertEquals(2, connectionCount.get());
+    assertTrue(exception.getMessage().contains("Unable to load localized strings"));
+    assertTrue(exception.getCause() instanceof IOException);
+    assertTrue(exception.getCause().getMessage().contains("instead of 'java.net.JarURLConnection'"));
+  }
+
+  @Test
+  public void testClasspathLoadingWrapsMalformedPrimaryPackageUrl() throws IOException {
+    Path classpathRoot = Files.createTempDirectory("lokalized-malformed-package-url");
+    classpathRoot.toFile().deleteOnExit();
+    URL malformedPackageUrl = new URL(classpathRoot.toUri().toURL().toExternalForm() + "?query");
+    ClassLoader classLoader = new ClassLoader(null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        return Collections.enumeration(List.of(malformedPackageUrl));
+      }
+    };
+
+    LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+        () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings"));
+
+    assertTrue(exception.getMessage().contains("Unable to resolve classpath location"));
+    assertTrue(exception.getCause() instanceof IllegalArgumentException);
+  }
+
+  @Test
+  public void testExhaustiveClasspathLoadingWrapsMalformedPrimaryRootUrl() throws IOException {
+    Path classpathRoot = Files.createTempDirectory("lokalized-malformed-root-url");
+    classpathRoot.toFile().deleteOnExit();
+    URL malformedRootUrl = new URL(classpathRoot.toUri().toURL().toExternalForm() + "?query");
+    LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
+        .exhaustiveClasspathSearch(true)
+        .build();
+
+    try (URLClassLoader classLoader = new URLClassLoader(new URL[]{malformedRootUrl}, null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        return Collections.emptyEnumeration();
+      }
+    }) {
+      LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
+          () -> LocalizedStringLoader.loadFromClasspath(classLoader, "strings", loadingOptions));
+
+      assertTrue(exception.getMessage().contains("Unable to resolve classpath root"));
+      assertTrue(exception.getCause() instanceof IllegalArgumentException);
+    }
+  }
+
+  @Test
   public void testExplicitClasspathResourceMappingSupportsNonEnumerableClassloader() {
     ClassLoader classLoader = new ClassLoader(null) {
       @Override
@@ -2244,6 +2404,30 @@ public class LocalizedStringLoaderTests {
       assertNotNull(localizedStrings);
       assertEquals(1, localizedStrings.size());
     }
+  }
+
+  @NonNull
+  private static ClassLoader classLoaderForClasspathUrl(@NonNull URL classpathUrl) {
+    requireNonNull(classpathUrl);
+
+    return new ClassLoader(null) {
+      @Override
+      public Enumeration<URL> getResources(String name) {
+        return Collections.enumeration(List.of(classpathUrl));
+      }
+    };
+  }
+
+  @NonNull
+  private static URLConnection inertUrlConnection(@NonNull URL url) {
+    requireNonNull(url);
+
+    return new URLConnection(url) {
+      @Override
+      public void connect() {
+        // No connection is needed: the loader must reject this type before using it as a JAR connection.
+      }
+    };
   }
 
   private void verifyDuplicatePhysicalJarEntriesRejected(boolean multiRelease) throws IOException {

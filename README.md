@@ -294,18 +294,16 @@ an [RFC 9110 weighted preference list](https://www.rfc-editor.org/rfc/rfc9110.ht
 That one says: "I prefer British English, then other forms of English, then French (from France) - in that order."
 
 Lokalized offers "best match" functionality which evaluates the combination of your available localized strings files and
-a set of language range values to pick the most appropriate localization that your application supports for that user. 
+the raw header value to pick the most appropriate localization that your application supports for that user.
+[`bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+is bounded and fail-soft for request handling.
 
 ```java
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  // Drive locale selection via List<LanguageRange> parsed from Accept-Language header
-  .localeSupplier((matcher) -> {
-    HttpServletRequest request = MyWebContext.getHttpServletRequest();
-    String acceptLanguage = request.getHeader("Accept-Language");
-    List<LanguageRange> languageRanges = LanguageRange.parse(acceptLanguage);
-    return matcher.bestMatchFor(languageRanges);
-  })
+  // The helper combines repeated Accept-Language field lines in received order
+  .localeSupplier((matcher) -> matcher.bestMatchForAcceptLanguageHeader(
+    MyWebContext.getCombinedAcceptLanguageHeader()))
   .build();
 ```
 
@@ -327,9 +325,10 @@ per call to bound matching work. This count applies to the list returned by
 [`LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String)),
 which may add IANA-equivalent ranges beyond those written in the header.
 [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) enforces the same limit when
-the options are constructed, before a lookup begins. Applications accepting untrusted `Accept-Language` values should
-also limit the raw HTTP header size before parsing; Lokalized receives the parsed list and cannot bound the parser's
-work. `bestMatchFor(...)` always returns a locale and uses the configured fallback when nothing is acceptable.
+the options are constructed, before a lookup begins. The raw-header convenience method above bounds input at 4,096
+UTF-16 code units before parsing and uses the configured fallback for missing, blank, malformed, or over-limit values;
+it never truncates preferences. `bestMatchFor(...)` always returns a locale and uses the configured fallback when
+nothing is acceptable.
 
 ## Loading Localized Strings
 
@@ -1635,24 +1634,14 @@ when applicable. Per-call language ranges, such as those supplied through
 [`TranslationOptions.forLanguageRanges(...)`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html#forLanguageRanges(java.util.List)),
 are preserved in its optional [`LocaleMatchResult`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchResult.html).
 
-If request-scoped `Accept-Language` negotiation is configured globally and those original diagnostics must be retained,
-use the diagnostic supplier explicitly:
-
-```java
-Strings stringsWithNegotiationDiagnostics = Strings.withFallbackLocale(FALLBACK_LOCALE)
-  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  .localeMatchSupplier((matcher) -> {
-    HttpServletRequest request = MyWebContext.getHttpServletRequest();
-    String acceptLanguage = request.getHeader("Accept-Language");
-    List<LanguageRange> languageRanges = LanguageRange.parse(acceptLanguage);
-    return matcher.matchFor(languageRanges);
-  })
-  .build();
-```
-
 [`localeMatchSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeMatchSupplier(java.util.function.Function))
-passes through the result of strict
-[`matchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#matchFor(java.util.List)). Its immutable
+can retain the original negotiation diagnostics when an application already has a validated, bounded list of
+[`LanguageRange`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html)
+values. It passes through the result of strict
+[`matchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#matchFor(java.util.List)); raw request
+headers should use the fail-soft
+[`bestMatchForAcceptLanguageHeader(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguageHeader(java.lang.String))
+example above. Its immutable
 [`LocaleMatchResult`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchResult.html) preserves the requested ranges,
 locales considered, winning range and quality, match kind
 ([`LocaleMatchType`](https://javadoc.lokalized.com/com/lokalized/LocaleMatchType.html)), and an explicit unmatched state. If
@@ -1736,6 +1725,12 @@ A placeholder is any translation value enclosed in a pair of "mustaches" - `{{PL
 Placeholder names must start with a Unicode letter or underscore. Subsequent characters may be Unicode letters,
 Unicode numbers, Unicode combining marks, underscores, or hyphens. Whitespace inside mustaches is not allowed, so
 write `{{bookCount}}`, not `{{ bookCount }}`.
+
+Unicode letter, number, and mark membership follows the Unicode tables in the executing JDK's
+[`Pattern`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/regex/Pattern.html) implementation;
+independent JSON Schema validators likewise use their own Unicode tables. For portable files, author identifiers for
+the oldest JDK and schema validator deployed by your application. The ASCII subset
+`[A-Za-z_][A-Za-z0-9_-]*` is portable across supported JDK versions and schema engines.
 
 To render a literal placeholder instead of resolving it, escape the opening delimiter with a backslash. In JSON this means writing `\\{{name}}`, which renders as `{{name}}` and is not resolved against the placeholder context. You can also write `\\}}` for a literal closing delimiter, or `\\\\{{name}}` when you need a literal backslash immediately before a live placeholder.
 

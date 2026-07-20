@@ -97,7 +97,7 @@ class CardinalityRange implements Comparable<CardinalityRange> {
   @Override
   @NonNull
   public String toString() {
-    return String.format("%s{start=%s, end=%s}", getClass().getSimpleName(), getStart().name(), getEnd().name());
+    return Diagnostics.format("%s{start=%s, end=%s}", getClass().getSimpleName(), getStart().name(), getEnd().name());
   }
 
   /**

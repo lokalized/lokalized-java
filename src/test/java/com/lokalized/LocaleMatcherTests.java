@@ -381,6 +381,76 @@ public class LocaleMatcherTests {
   }
 
 	@Test
+	public void broadRangeCannotSelectLocaleOwnedByLaterEqualWeightSpecificRange() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(americanEnglish, french);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en;q=1,fr;q=0.5,en-US;q=0.5"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("fr", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
+	public void reversingEqualWeightSpecificRangesReversesTheWinner() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(americanEnglish, french);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en;q=1,en-US;q=0.5,fr;q=0.5"));
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en-us", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
+	public void wildcardCannotSelectLocaleOwnedByLaterEqualWeightSpecificRange() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(americanEnglish, french);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("*;q=1,fr;q=0.5,en-US;q=0.5"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("fr", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
+	public void extendedWildcardCannotSelectLocaleOwnedByLaterEqualWeightSpecificRange() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(americanEnglish, french);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en-*;q=1,fr;q=0.5,en-US;q=0.5"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("fr", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
+	public void zeroWeightSpecificRangeCannotReenterBroadRangeSelection() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(americanEnglish, french);
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en;q=1,fr;q=0.5,en-US;q=0"));
+
+		assertEquals(french, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("fr", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
 	public void diagnosticsUseTheRangeThatDeterminedTheSelectedLocalesEffectiveWeight() {
 		Locale americanEnglish = Locale.forLanguageTag("en-US");
 		Locale britishEnglish = Locale.forLanguageTag("en-GB");
