@@ -621,34 +621,6 @@ message = strings.get("{{heOrShe}} was one of the {{groupSize}} best baseball pl
 assertEquals("Esta persona era quien mejor jugaba al béisbol.", message);
 ```
 
-### Recursive Alternatives
-
-You can exploit the recursive nature of alternative expressions to reduce logic duplication.  Here, we define a toplevel alternative for `groupSize <= 1` which itself has alternatives for `GENDER_MASCULINE` and `GENDER_FEMININE` cases.  This is equivalent to the alternative rules defined above but might be a more "comfortable" way to express behavior for some.
-
-Note that this is just a snippet to illustrate functionality - the other portion of this localized string has been elided for brevity.
-
-```json
-{
-  "alternatives" : [
-    {
-      "groupSize <= 1" : {
-        "alternatives" : [
-          {
-            "heOrShe == GENDER_MASCULINE" : "Él era el mejor jugador de béisbol."
-          },
-          {
-            "heOrShe == GENDER_FEMININE" : "Ella era la mejor jugadora de béisbol."
-          },
-          {
-            "heOrShe == GENDER_COMMON" : "Esta persona era quien mejor jugaba al béisbol."
-          }
-        ]
-      }
-    }
-  ]
-}
-```
-
 ## Cardinality Ranges
 
 When expressing a range of values (`1-3 meters`, `2.5-3.5 hours`), the cardinality of the range is determined by applying per-language rules to its start and end cardinalities.
@@ -1796,7 +1768,7 @@ and applications can opt up to the 1,048,576-code-unit hard ceiling with
 values remain opaque and are never reinterpreted as template syntax, even when a value contains text such as
 `{{name}}`.
 
-#### Expression-Selected Fragments
+#### Alternatives
 
 Use a generated fragment with `translation` and ordered `alternatives` when a small, reusable portion of a message
 depends on an exact value, threshold, or compound business rule. `translation` is the required default. The first
@@ -1951,11 +1923,70 @@ Here, the cardinalities of `minHours` and `maxHours` are evaluated to determine 
 
 You are prohibited from supplying both `range` and `value` fields - use `range` only for cardinality ranges and `value` otherwise.
 
-### Alternatives
+### Recursive Alternatives
 
-You may specify bounded, parenthesized expressions in `alternatives` to fine-tune your translations. Each object in an `alternatives` array contains exactly one expression.
-It's perfectly legal to have an alternative like this:
- 
+Each value in an `alternatives` array can use the string shorthand or a full object with `translation`, `commentary`, `placeholders`, and more `alternatives`. A selected alternative can therefore refine itself with additional rules.
+
+In this recruiter notification, gender matters only when exactly one applicant is present. Nesting writes `applicantCount == 1` once, groups the gender-specific wording beneath it, and retains a neutral default for [`Gender.COMMON`](https://javadoc.lokalized.com/com/lokalized/Gender.html#COMMON) or [`Gender.NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER).
+
+A flat ordered list using `&&` would be equivalent. Recursion adds hierarchy, branch-local defaults, and inherited definitions rather than additional Boolean power. Application code supplies `applicantCount` and `applicantGender` as a [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) value.
+
+```json
+{
+  "You have {{applicantCount}} new applicants." : {
+    "translation" : "Tienes {{applicantCount}} candidaturas nuevas.",
+    "alternatives" : [
+      {
+        "applicantCount == 0" : "No tienes candidaturas nuevas."
+      },
+      {
+        "applicantCount == 1" : {
+          "translation" : "Tienes una candidatura nueva.",
+          "alternatives" : [
+            {
+              "applicantGender == GENDER_MASCULINE" : "Tienes un candidato nuevo."
+            },
+            {
+              "applicantGender == GENDER_FEMININE" : "Tienes una candidata nueva."
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
+```
+
+```java
+String message = strings.get("You have {{applicantCount}} new applicants.", Map.of(
+  "applicantCount", 1,
+  "applicantGender", Gender.FEMININE
+));
+assertEquals("Tienes una candidata nueva.", message);
+
+message = strings.get("You have {{applicantCount}} new applicants.", Map.of(
+  "applicantCount", 1,
+  "applicantGender", Gender.COMMON
+));
+assertEquals("Tienes una candidatura nueva.", message);
+```
+
+Alternative evaluation follows these rules:
+
+* At each level, expressions are evaluated according to their order in the list, halting at the first match
+* Within a matched branch, nested alternatives are evaluated before that branch's default `translation`
+* Once an expression matches, evaluation stays within that branch; an unmatched nested subtree does not fall through
+  to a later sibling
+* Placeholder definitions declared by the root and each selected branch are inherited by descendants; the nearest
+  selected definition replaces a same-named ancestor definition as a complete unit
+* Predicates read only the immutable caller-input snapshot. Generated placeholder values do not become operands
+* If no expression matches and no default `translation` is present in any attempted candidate locale, failure handlers receive
+  [`TranslationFailureReason.NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)
+
+#### Expression Language
+
+Fragment alternatives and recursive alternatives use the same bounded expression language. Each object in an `alternatives` array contains exactly one expression. For example:
+
 ```text
 gender == GENDER_MASCULINE && (bookCount > 10 || magazineCount > 20)
 ```
@@ -1971,106 +2002,68 @@ applications may configure these with
 [`TranslationRuntimeLimits`](https://javadoc.lokalized.com/com/lokalized/TranslationRuntimeLimits.html), up to hard
 ceilings of 4,096 characters, 512 tokens, and 64 nested groups.
 
-Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` preserve their original signed value for ordinary numeric comparisons, while CLDR plural-category evaluation continues to use the absolute value. For example, in English, if I were to supply `bookCount` of `50`, this expression would evaluate to `true`:
- 
+Lokalized will automatically evaluate cardinality and ordinality for numbers or [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOperands.html) if required by the expression. `PluralOperands` preserve their original signed value for ordinary numeric comparisons, while CLDR plural-category evaluation continues to use the absolute value. For example, in English, if application code supplies `bookCount` of `50`, both of these expressions evaluate to `true`:
+
 ```text
 bookCount == CARDINALITY_OTHER
-``` 
-
-...and so would this:
-
-```text
 bookCount == 50
-``` 
-
-Note that the supported comparison operators for cardinality, ordinality, gender, and phonetic forms are `==` and `!=`.  You cannot say `bookCount < CARDINALITY_FEW`, for example.
-
-Alternative expression recursion is supported. That is, each value for `alternatives` can itself have `translation`, `commentary`, `placeholders`, and `alternatives`.  You can also use the simpler string-only form if no special translation functionality is needed.
-  
-Alternative evaluation follows these rules:
-
-* At each level, expressions are evaluated according to their order in the list, halting at the first match
-* Within a matched branch, nested alternatives are evaluated before that branch's default `translation`
-* Once an expression matches, evaluation stays within that branch; an unmatched nested subtree does not fall through
-  to a later sibling
-* Placeholder definitions declared by the root and each selected branch are inherited by descendants; the nearest
-  selected definition replaces a same-named ancestor definition as a complete unit
-* Predicates read only the immutable caller-input snapshot. Generated placeholder values do not become operands
-* If no expression matches and no default `translation` is present in any attempted candidate locale, failure handlers receive
-  [`TranslationFailureReason.NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE)
-
-A somewhat contrived example of multiple levels of recursion follows.  The first level of recursion uses a full object, the second uses the string shorthand.
-
-```json
-{
-  "I read {{bookCount}} books." : {
-    "translation" : "I read {{bookCount}} books.",    
-    "alternatives" : [
-      {
-        "bookCount < 3" : {
-          "translation" : "I only read a few books. {{bookCount}}, in fact!",
-          "alternatives": [
-            {
-              "bookCount == 0" : "I'm ashamed to admit I didn't read anything."
-            }
-          ]
-        }        
-      }
-    ]
-  }  
-}
 ```
 
-Evaluation works as you might expect.
+The supported comparison operators for cardinality, ordinality, gender, and phonetic forms are `==` and `!=`. You cannot say `bookCount < CARDINALITY_FEW`, for example.
 
-```java
-// Deepest recursion
-String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 0));
-assertEquals("I'm ashamed to admit I didn't read anything.", message);
-
-// 1 level deep recursion
-message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 1));
-assertEquals("I only read a few books. 1, in fact!", message);
-
-// Normal case
-message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
-assertEquals("I read 3 books.", message);
-```
-
-A grammar for alternative expressions follows.
+#### Expression Grammar
 
 ```EBNF
-EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
+EXPRESSION = OR_EXPRESSION ;
+OR_EXPRESSION = AND_EXPRESSION { "||" AND_EXPRESSION } ;
+AND_EXPRESSION = PRIMARY_EXPRESSION { "&&" PRIMARY_EXPRESSION } ;
+PRIMARY_EXPRESSION = COMPARISON | "(" EXPRESSION ")" ;
+COMPARISON = OPERAND COMPARISON_OPERATOR OPERAND ;
 OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
-LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE | DEFINITENESS | CLASSIFIER | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
-CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
-ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
-GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_COMMON" | "GENDER_NEUTER" ;
-GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE" | "CASE_GENITIVE" | "CASE_DATIVE"
-                 | "CASE_INSTRUMENTAL" | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL" | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
-DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE" | "DEFINITENESS_CONSTRUCT" ;
-CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL" | "CLASSIFIER_LONG_THIN"
-           | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND" | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
-FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
+LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE
+              | DEFINITENESS | CLASSIFIER | FORMALITY | CLUSIVITY
+              | ANIMACY | PHONETIC ;
+CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO"
+            | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
+ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO"
+           | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
+GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE"
+       | "GENDER_COMMON" | "GENDER_NEUTER" ;
+GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE"
+                 | "CASE_GENITIVE" | "CASE_DATIVE" | "CASE_INSTRUMENTAL"
+                 | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL"
+                 | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
+DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE"
+             | "DEFINITENESS_CONSTRUCT" ;
+CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL"
+           | "CLASSIFIER_LONG_THIN" | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND"
+           | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
+FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL"
+          | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
 CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
 ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
 PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
-         | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
+         | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS"
+         | "PHONETIC_PN" | "PHONETIC_X"
          | "PHONETIC_GLIDE_Y" | "PHONETIC_GLIDE_W"
          | "PHONETIC_STRESSED_A"
          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" 
          | "PHONETIC_OTHER" ;
-NUMBER = [ SIGN ], ( DIGITS, [ ".", { DIGIT } ] | ".", DIGITS ), [ EXPONENT ] ;
+NUMBER = [ SIGN ],
+         ( DIGITS, [ ".", { DIGIT } ] | ".", DIGITS ),
+         [ EXPONENT ] ;
 EXPONENT = ( "e" | "E" ), [ SIGN ], DIGITS ;
 SIGN = "+" | "-" ;
 DIGITS = DIGIT, { DIGIT } ;
 DIGIT = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 VARIABLE = ( Unicode letter | "_" )
-           { Unicode letter | Unicode number | Unicode combining mark | "_" | "-" } ;
-BOOLEAN_OPERATOR = "&&" | "||" ;
+           { Unicode letter | Unicode number | Unicode combining mark
+           | "_" | "-" } ;
 COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
 ```
+
+Comparison operators bind more tightly than `&&`, which binds more tightly than `||`. Parentheses override that precedence.
 
 Expressions ignore ASCII space, horizontal tab, carriage return, line feed, and form feed between tokens. Other
 Unicode whitespace and separator characters are rejected rather than silently skipped.

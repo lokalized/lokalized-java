@@ -40,34 +40,61 @@ import static java.util.Objects.requireNonNull;
 /**
  * Evaluator for localized string "alternative" expressions.
  * <p>
- * Rough grammar:
+ * Expression grammar:
  * <p>
  * <pre>
- * EXPRESSION = OPERAND COMPARISON_OPERATOR OPERAND | "(" EXPRESSION ")" | EXPRESSION BOOLEAN_OPERATOR EXPRESSION ;
+ * EXPRESSION = OR_EXPRESSION ;
+ * OR_EXPRESSION = AND_EXPRESSION { "||" AND_EXPRESSION } ;
+ * AND_EXPRESSION = PRIMARY_EXPRESSION { "&&" PRIMARY_EXPRESSION } ;
+ * PRIMARY_EXPRESSION = COMPARISON | "(" EXPRESSION ")" ;
+ * COMPARISON = OPERAND COMPARISON_OPERATOR OPERAND ;
  * OPERAND = VARIABLE | LANGUAGE_FORM | NUMBER ;
- * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE | DEFINITENESS | CLASSIFIER
- *               | FORMALITY | CLUSIVITY | ANIMACY | PHONETIC ;
- * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO" | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
- * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO" | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
- * GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE" | "GENDER_COMMON" | "GENDER_NEUTER" ;
- * GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE" | "CASE_GENITIVE" | "CASE_DATIVE"
- *                  | "CASE_INSTRUMENTAL" | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL" | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
- * DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE" | "DEFINITENESS_CONSTRUCT" ;
- * CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL" | "CLASSIFIER_LONG_THIN"
- *            | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND" | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
- * FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL" | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
+ * LANGUAGE_FORM = CARDINALITY | ORDINALITY | GENDER | GRAMMATICAL_CASE
+ *               | DEFINITENESS | CLASSIFIER | FORMALITY | CLUSIVITY
+ *               | ANIMACY | PHONETIC ;
+ * CARDINALITY = "CARDINALITY_ZERO" | "CARDINALITY_ONE" | "CARDINALITY_TWO"
+ *             | "CARDINALITY_FEW" | "CARDINALITY_MANY" | "CARDINALITY_OTHER" ;
+ * ORDINALITY = "ORDINALITY_ZERO" | "ORDINALITY_ONE" | "ORDINALITY_TWO"
+ *            | "ORDINALITY_FEW" | "ORDINALITY_MANY" | "ORDINALITY_OTHER" ;
+ * GENDER = "GENDER_MASCULINE" | "GENDER_FEMININE"
+ *        | "GENDER_COMMON" | "GENDER_NEUTER" ;
+ * GRAMMATICAL_CASE = "CASE_NOMINATIVE" | "CASE_ACCUSATIVE"
+ *                  | "CASE_GENITIVE" | "CASE_DATIVE" | "CASE_INSTRUMENTAL"
+ *                  | "CASE_LOCATIVE" | "CASE_PREPOSITIONAL"
+ *                  | "CASE_VOCATIVE" | "CASE_ABLATIVE" ;
+ * DEFINITENESS = "DEFINITENESS_DEFINITE" | "DEFINITENESS_INDEFINITE"
+ *              | "DEFINITENESS_CONSTRUCT" ;
+ * CLASSIFIER = "CLASSIFIER_GENERAL" | "CLASSIFIER_PERSON" | "CLASSIFIER_ANIMAL"
+ *            | "CLASSIFIER_LONG_THIN" | "CLASSIFIER_FLAT" | "CLASSIFIER_BOUND"
+ *            | "CLASSIFIER_MACHINE" | "CLASSIFIER_VEHICLE" ;
+ * FORMALITY = "FORMALITY_CASUAL" | "FORMALITY_INFORMAL" | "FORMALITY_FORMAL"
+ *           | "FORMALITY_HUMBLE" | "FORMALITY_HONORIFIC" ;
  * CLUSIVITY = "CLUSIVITY_INCLUSIVE" | "CLUSIVITY_EXCLUSIVE" ;
  * ANIMACY = "ANIMACY_ANIMATE" | "ANIMACY_INANIMATE" ;
- * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT" | "PHONETIC_OTHER"
+ * PHONETIC = "PHONETIC_VOWEL" | "PHONETIC_CONSONANT"
  *          | "PHONETIC_H_SILENT" | "PHONETIC_H_ASPIRATED"
- *          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS" | "PHONETIC_PN" | "PHONETIC_X"
+ *          | "PHONETIC_S_IMPURE" | "PHONETIC_Z" | "PHONETIC_GN" | "PHONETIC_PS"
+ *          | "PHONETIC_PN" | "PHONETIC_X"
  *          | "PHONETIC_GLIDE_Y" | "PHONETIC_GLIDE_W"
  *          | "PHONETIC_STRESSED_A"
- *          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR" ;
- * VARIABLE = ( alphabetic character | "_" ) { alphabetic character | digit | "_" | "-" } ;
- * BOOLEAN_OPERATOR = "&&" | "||" ;
- * COMPARISON_OPERATOR = "<" | ">" | "<=" | ">=" | "==" | "!=" ;
+ *          | "PHONETIC_SOLAR" | "PHONETIC_LUNAR"
+ *          | "PHONETIC_OTHER" ;
+ * NUMBER = [ SIGN ],
+ *          ( DIGITS, [ ".", { DIGIT } ] | ".", DIGITS ),
+ *          [ EXPONENT ] ;
+ * EXPONENT = ( "e" | "E" ), [ SIGN ], DIGITS ;
+ * SIGN = "+" | "-" ;
+ * DIGITS = DIGIT, { DIGIT } ;
+ * DIGIT = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+ * VARIABLE = ( Unicode letter | "_" )
+ *            { Unicode letter | Unicode number | Unicode combining mark
+ *            | "_" | "-" } ;
+ * COMPARISON_OPERATOR = "&lt;" | "&gt;" | "&lt;=" | "&gt;=" | "==" | "!=" ;
  * </pre>
+ * Comparison operators bind more tightly than {@code &&}, which binds more tightly than {@code ||}. Parentheses
+ * override that precedence. ASCII space, horizontal tab, carriage return, line feed, and form feed are ignored
+ * between tokens; other Unicode whitespace and separator characters are rejected.
+ * <p>
  * Caller-supplied {@link CharSequence} variable values are phonetic inputs, not string literals. They may be compared
  * with an explicit {@code PHONETIC_*} constant or {@link Phonetic} value, but two raw character sequences cannot be
  * compared for textual equality.
