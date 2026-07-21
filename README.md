@@ -45,7 +45,7 @@ Lokalized has proudly powered production systems since 2017.
 * **Keep language rules out of application code:** locale-specific grammar and wording live with the translations instead of being scattered through conditionals
 * **Give translators expressive control:** placeholders, language forms, and ordered alternatives can rewrite a fragment or an entire message when natural copy requires it
 * **Model more than simple plurals:** cardinality, ordinality, ranges, gender, grammatical case, definiteness, classifiers, formality, clusivity, animacy, and phonetics are first-class concepts
-* **Solve agreement problems many localization formats do not model directly:** combine typed language forms with ordered fragment and whole-message alternatives when several values or exact application rules jointly affect wording; [see how Lokalized compares](#comparing-localization-formats)
+* **Solve agreement problems many localization formats do not model directly:** a small but powerful expression language gives translators the freedom to author the natural, idiomatic phrasing each situation requires; [see how Lokalized compares](#comparing-localization-formats)
 * **Match locales predictably:** [`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) handles BCP 47 tags, CLDR parent locales, likely scripts, weighted `Accept-Language` preferences, and explicit tiebreakers deterministically
 * **Fail safely:** bounded loading and evaluation, explicit fallback policies, and structured diagnostics make malformed or incomplete translations observable
 * **Stay lightweight:** immutable, thread-safe design. **Lokalized requires no runtime dependencies.**
