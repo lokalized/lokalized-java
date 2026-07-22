@@ -1574,11 +1574,22 @@ TranslationResult result = strings.getResult(
   TranslationOptions.forLanguageRanges(LanguageRange.parse("pt-PT,pt;q=0.8"))
 );
 
+// Returned text, e.g. "Li 3 livros."
 String message = result.getTranslation();
+
+// Negotiated locale used to begin lookup, e.g. pt-PT.
 Locale lookupLocale = result.getLookupLocale();
+
+// Locale that supplied the translation, e.g. Optional[pt-PT].
 Optional<Locale> resolvedLocale = result.getResolvedLocale();
+
+// Ordered locales actually tried, e.g. [pt-PT].
 List<Locale> attemptedLocales = result.getAttemptedLocales();
+
+// Whether negotiation or per-key resolution fell back, e.g. false.
 Boolean usedFallback = result.isFallback();
+
+// Negotiation details when available, e.g. an exact pt-PT match.
 Optional<LocaleMatchResult> localeMatch = result.getLocaleMatchResult();
 ```
 
@@ -2163,9 +2174,11 @@ It's possible to cherrypick and create a hybrid solution.  For example, you migh
 
 ## Comparing Localization Formats
 
-Lokalized overlaps with [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), [MF2](https://messageformat.unicode.org/), [Fluent](https://projectfluent.org/), and [gettext](https://www.gnu.org/software/gettext/), but it is optimized for a narrower job: selecting natural-sounding translated phrases from structured JSON while application code supplies typed placeholder values.
+Lokalized, [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/), [MessageFormat 2 (MF2)](https://messageformat.unicode.org/), [Fluent](https://projectfluent.org/), and [gettext](https://www.gnu.org/software/gettext/) all handle variable substitution and ordinary plural selection. The meaningful differences appear when several runtime facts jointly control wording, a language needs agreement beyond plurals, or the application needs a strict runtime contract.
 
-For simple plural messages, ICU MessageFormat and MF2 are compact and widely supported:
+### A Common Baseline: Plural Selection
+
+Classic ICU MessageFormat expresses a plural message compactly:
 
 ```text
 {bookCount, plural, one {I read # book.} other {I read # books.}}
@@ -2190,9 +2203,28 @@ The equivalent Lokalized file separates the sentence shape from the plural word 
 }
 ```
 
-That extra structure lets translators keep individual grammatical choices close to the words they affect. Cardinality ranges use CLDR plural-range data, and phonetic choices such as English `a`/`an` or Spanish `el agua` use an application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html). When an entire message depends on several values at once, use ordered `alternatives` or have application code choose a purpose-specific translation key.
+This baseline is not a differentiator: every format above handles it well. Lokalized's extra structure starts paying for itself when the message must coordinate several forms or isolate one agreement-sensitive fragment without duplicating every complete sentence.
 
-Use the standard JDK formatters for dates, times, numbers, percentages, and currency. Consider ICU MessageFormat/MF2 or Fluent when your team already has those translation workflows and needs broad ecosystem tooling. Consider gettext when PO-file tooling and translator workflows are the main constraint. Lokalized is strongest when the hard part is runtime agreement across plural, gender, case, range, definiteness, classifier, formality, clusivity, animacy, or phonetic forms.
+### Where Lokalized Goes Further Out of the Box
+
+| Concern | Lokalized | Other formats |
+|---|---|---|
+| Sparse compound rules | Ordered predicates can combine typed forms, exact numbers, thresholds, `&&`, `\|\|`, and parentheses. A rule can replace one fragment or the whole message, with the ordinary translation serving as the default. | [ICU MessageFormat](https://unicode-org.github.io/icu/userguide/format_parse/messages/) nests `select` and `plural`; [MF2](https://messageformat.unicode.org/docs/reference/matchers/) enumerates multi-selector variants; [Fluent](https://projectfluent.org/fluent/guide/selectors.html) uses select expressions. Equivalent output is often possible, but inequalities and sparse cross-field exceptions generally need more variants, a custom selector, or a value precomputed by application code. gettext leaves non-plural selection to keys, contexts, or application logic. |
+| Grammatical vocabulary | Cardinality, ordinality, gender, grammatical case, definiteness, classifiers, formality, clusivity, animacy, and phonetics are named, typed concepts shared by translation files and Java callers. | ICU and Fluent can use application-defined selector keys; [Fluent terms](https://projectfluent.org/fluent/guide/terms.html) can model case and other facets. [MF2 custom selectors](https://messageformat.unicode.org/docs/reference/functions/) can add domain-specific behavior. The format itself does not supply Lokalized's complete vocabulary as one built-in contract. |
+| Cardinality ranges | A generated placeholder accepts typed start and end values and selects the result using pinned CLDR plural-range data. | Range agreement is not a built-in selector in the compared core message syntaxes. MF2 documents it as a custom-selector use case; other approaches normally preprocess the range, add custom logic, or select a separate key. |
+| Phonetic agreement | An application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) maps runtime text to typed onset categories for rules such as *a/an*, silent or aspirated *h*, Italian initial clusters, Spanish stressed *a*, and Arabic sun or moon letters. | The application generally supplies a precomputed selector value or extends the runtime with a custom function or selector. |
+| Runtime guarantees | The Java library adds fail-fast compilation, bounded evaluation, structured diagnostics, deterministic locale matching, immutable thread-safe objects, and no runtime dependencies. | ICU, MF2, Fluent, and gettext primarily define translation behavior. Validation, resource limits, locale negotiation, concurrency, and dependency choices vary by implementation and integration. |
+
+> **A fair comparison.** ICU's nested selectors, MF2's multi-selector matching and custom functions, and Fluent's selectors and parameterized terms are powerful. Lokalized's distinction is that its Java runtime provides the agreement concepts and operational guarantees above as one coherent, zero-dependency system, without requiring a project to invent custom selector conventions first.
+
+### When Lokalized Earns the Extra Structure
+
+* A translator needs direct control over case, gender, register, phonetics, or another typed form rather than an opaque application-generated flag.
+* Most messages follow a default translation but a few compound predicates require natural whole-phrase rewrites.
+* CLDR cardinality ranges or phonetic onset rules are real product requirements rather than theoretical edge cases.
+* A Java service benefits from startup validation, bounded evaluation, deterministic locale fallback, and a dependency-free runtime.
+
+Use the standard JDK formatters for dates, times, numbers, percentages, and currency. Choose ICU MessageFormat, MF2, or Fluent when an established translation workflow, rich formatting functions, or broad ecosystem tooling is the primary requirement. Choose gettext when PO-file tooling and existing translator workflows are the main constraint. Choose Lokalized when agreement logic is the difficult part and translators should own that logic without pushing it back into application code.
 
 ## Language Reference
 
