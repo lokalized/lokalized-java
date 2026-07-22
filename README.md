@@ -2213,16 +2213,16 @@ This baseline is not a differentiator: every format above handles it well. Lokal
 | Grammatical vocabulary | Cardinality, ordinality, gender, grammatical case, definiteness, classifiers, formality, clusivity, animacy, and phonetics are named, typed concepts shared by translation files and Java callers. | ICU and Fluent can use application-defined selector keys; [Fluent terms](https://projectfluent.org/fluent/guide/terms.html) can model case and other facets. [MF2 custom selectors](https://messageformat.unicode.org/docs/reference/functions/) can add domain-specific behavior. The format itself does not supply Lokalized's complete vocabulary as one built-in contract. |
 | Cardinality ranges | A generated placeholder accepts typed start and end values and selects the result using pinned CLDR plural-range data. | Range agreement is not a built-in selector in the compared core message syntaxes. MF2 documents it as a custom-selector use case; other approaches normally preprocess the range, add custom logic, or select a separate key. |
 | Phonetic agreement | An application-supplied [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) maps runtime text to typed onset categories for rules such as *a/an*, silent or aspirated *h*, Italian initial clusters, Spanish stressed *a*, and Arabic sun or moon letters. | The application generally supplies a precomputed selector value or extends the runtime with a custom function or selector. |
-| Runtime guarantees | The Java library adds fail-fast compilation, bounded evaluation, structured diagnostics, deterministic locale matching, immutable thread-safe objects, and no runtime dependencies. | ICU, MF2, Fluent, and gettext primarily define translation behavior. Validation, resource limits, locale negotiation, concurrency, and dependency choices vary by implementation and integration. |
+| Runtime guarantees | Lokalized adds fail-fast compilation, bounded evaluation, structured diagnostics, deterministic locale matching, immutable thread-safe objects, and no runtime dependencies. | ICU, MF2, Fluent, and gettext primarily define translation behavior. Validation, resource limits, locale negotiation, concurrency, and dependency choices vary by implementation and integration. |
 
-> **A fair comparison.** ICU's nested selectors, MF2's multi-selector matching and custom functions, and Fluent's selectors and parameterized terms are powerful. Lokalized's distinction is that its Java runtime provides the agreement concepts and operational guarantees above as one coherent, zero-dependency system, without requiring a project to invent custom selector conventions first.
+> ICU's nested selectors, MF2's multi-selector matching and custom functions, and Fluent's selectors and parameterized terms are powerful. Lokalized's distinction is that its runtime provides the agreement concepts and operational guarantees above as one coherent, zero-dependency system, without requiring a project to invent custom selector conventions first.
 
-### When Lokalized Earns the Extra Structure
+### Where Lokalized's Approach Shines
 
 * A translator needs direct control over case, gender, register, phonetics, or another typed form rather than an opaque application-generated flag.
 * Most messages follow a default translation but a few compound predicates require natural whole-phrase rewrites.
 * CLDR cardinality ranges or phonetic onset rules are real product requirements rather than theoretical edge cases.
-* A Java service benefits from startup validation, bounded evaluation, deterministic locale fallback, and a dependency-free runtime.
+* An application benefits from startup validation, bounded evaluation, deterministic locale fallback, and a dependency-free runtime.
 
 Use the standard JDK formatters for dates, times, numbers, percentages, and currency. Choose ICU MessageFormat, MF2, or Fluent when an established translation workflow, rich formatting functions, or broad ecosystem tooling is the primary requirement. Choose gettext when PO-file tooling and existing translator workflows are the main constraint. Choose Lokalized when agreement logic is the difficult part and translators should own that logic without pushing it back into application code.
 
@@ -2485,4 +2485,4 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 
 ## About
 
-Lokalized was created by [Mark Allen](https://www.revetkn.com) and sponsored by [Transmogrify LLC](https://www.xmog.com) and [Revetware LLC](https://www.revetware.com).
+Lokalized was created by [Mark Allen](https://www.revetkn.com). Development is sponsored by [Transmogrify LLC](https://www.xmog.com) and [Revetware LLC](https://www.revetware.com).
