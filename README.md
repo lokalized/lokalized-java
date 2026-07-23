@@ -1673,7 +1673,7 @@ Warnings are silently ignored when no handler is supplied. Each [`LocalizedStrin
 
 ### Commentary
 
-This free-form field is used to supply context for the translator, such as how and where the phrase is used in the application.  It might also include documentation about the application-supplied placeholder values (names and types) so it's clear what data is available to perform the translation.
+The `commentary` field stores translator-facing context and is never rendered at runtime. It is particularly useful for contextual keys, strings whose meaning depends on their product surface, and documenting the names and types of application-supplied placeholder values.
 
 ```json
 {
