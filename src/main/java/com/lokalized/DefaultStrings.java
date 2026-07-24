@@ -1825,6 +1825,13 @@ class DefaultStrings implements Strings {
 					return localeMatch(locale, members, governorMemberIndexByLocale, governorWeightByLocale,
 							requestedLanguageRanges);
 
+			// A Java 9 parser may omit an IANA alias that newer runtimes materialize as a later exact member.
+			for (Locale locale : languageRangeLocales)
+				for (String identity : member.identities)
+					if (!identity.equalsIgnoreCase(range) && locale.toLanguageTag().equalsIgnoreCase(identity))
+						return localeMatch(locale, members, governorMemberIndexByLocale, governorWeightByLocale,
+								requestedLanguageRanges);
+
 			// Noninitial wildcards have RFC 4647 structural semantics only. In particular, an extended range that has no
 			// structural candidates must not be broadened through canonical, CLDR, likely-subtag, or primary-language
 			// matching. This also applies to private-use ranges such as x-*. Probe independently of quality.
@@ -1932,7 +1939,8 @@ class DefaultStrings implements Strings {
 		// The public match type is re-derived once for the selected locale only. It is deliberately not the governor's
 		// internal category: for example, a structural relationship on a wildcard-free range must report its CLDR or
 		// likely-subtag nature, never EXTENDED_RANGE.
-		LocaleMatchType matchType = languageRangeMatchTypeFor(locale, governor.languageRange, governor.semanticRange);
+		LocaleMatchType matchType = languageRangeMatchTypeFor(locale, governor.languageRange, governor.semanticRange,
+				governor.identities);
 		return new LocaleMatchResult(requestedLanguageRanges, locale, governor.languageRange,
 				governorWeightByLocale[localeIndex], matchType, getFallbackLocale(), sortedSupportedLocales);
 	}
@@ -1965,10 +1973,12 @@ class DefaultStrings implements Strings {
 	@NonNull
 	private LocaleMatchType languageRangeMatchTypeFor(@NonNull Locale locale,
 																							 @NonNull LanguageRange languageRange,
-																							 @NonNull String semanticRange) {
+																							 @NonNull String semanticRange,
+																							 @NonNull Set<@NonNull String> identities) {
 		requireNonNull(locale);
 		requireNonNull(languageRange);
 		requireNonNull(semanticRange);
+		requireNonNull(identities);
 		String range = languageRange.getRange();
 		String localeTag = locale.toLanguageTag();
 
@@ -1978,6 +1988,10 @@ class DefaultStrings implements Strings {
 			return LocaleMatchType.EXACT;
 		if (range.contains("*"))
 			return LocaleMatchType.EXTENDED_RANGE;
+
+		for (String identity : identities)
+			if (!identity.equalsIgnoreCase(range) && localeTag.equalsIgnoreCase(identity))
+				return LocaleMatchType.CANONICAL;
 
 		String canonicalRange = CldrLocaleData.canonicalLanguageTag(semanticRange);
 
@@ -2029,6 +2043,14 @@ class DefaultStrings implements Strings {
 		if (member.containsWildcard)
 			return null;
 
+		// A parser materializes IANA-equivalent ranges as independent members on newer JDKs. Preserve the same anchor
+		// on older runtimes when the equivalent identity was supplied by the lossless extlang fallback instead.
+		for (String identity : member.identities)
+			if (!identity.equalsIgnoreCase(member.range) &&
+					localeStatics.languageTag.equalsIgnoreCase(identity))
+				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL,
+						structuralConstraintCountFor(identity), 0);
+
 		boolean broadPositiveSemanticRange = member.weight > 0.0 && member.semanticDepth == 1;
 
 		if (localeStatics.canonicalTag.equalsIgnoreCase(member.canonicalRange))
@@ -2065,12 +2087,98 @@ class DefaultStrings implements Strings {
 				.toLowerCase(Locale.ROOT);
 	}
 
+	/**
+	 * Returns the BCP 47 extlang form materialized by {@link Locale#forLanguageTag(String)}, when that conversion is
+	 * lossless and the resulting tag is present in Lokalized's bundled CLDR data.
+	 * <p>
+	 * Older JDKs carry older IANA equivalence tables, so {@link LanguageRange#parse(String)} on Java 9 does not add
+	 * aliases such as {@code ar-ary -> ary}, {@code zh-cdo-CN -> cdo-CN}, or {@code sgn-nsl -> nsl}. The locale parser
+	 * has understood the BCP 47 extlang shape throughout Lokalized's supported runtime range, however. Restricting this
+	 * fallback to a syntactic extlang and a known, losslessly materialized tag avoids treating lossy conversions such
+	 * as {@code sgn-be-fx -> sgn-BE} as semantic aliases.
+	 */
+	@Nullable
+	private static String extlangEquivalentLanguageRangeFor(@NonNull String range) {
+		requireNonNull(range);
+
+		if (range.contains("*"))
+			return null;
+
+		String[] subtags = range.split("-");
+
+		if (subtags.length < 2 ||
+				(subtags[0].length() != 2 && subtags[0].length() != 3) ||
+				!isAlphabeticSubtag(subtags[0]) ||
+				subtags[1].length() != 3 ||
+				!isAlphabeticSubtag(subtags[1]))
+			return null;
+
+		StringBuilder equivalentRange = new StringBuilder(subtags[1].toLowerCase(Locale.ROOT));
+
+		for (int index = 2; index < subtags.length; ++index)
+			equivalentRange.append('-').append(subtags[index]);
+
+		String candidate = equivalentRange.toString();
+
+		if (!CldrLocaleData.isKnownLanguageTag(candidate) ||
+				!Locale.forLanguageTag(range).toLanguageTag().equalsIgnoreCase(candidate))
+			return null;
+
+		return candidate;
+	}
+
+	private static boolean isAlphabeticSubtag(@NonNull String subtag) {
+		requireNonNull(subtag);
+
+		for (int index = 0; index < subtag.length(); ++index)
+			if (!Character.isLetter(subtag.charAt(index)))
+				return false;
+
+		return true;
+	}
+
+	/**
+	 * Builds the direct IANA identity set for a range, supplementing an older JDK's registry with a lossless extlang
+	 * identity and the aliases that the same JDK already knows for that identity.
+	 */
+	@NonNull
+	private static Set<@NonNull String> languageRangeIdentitiesFor(@NonNull String range) {
+		requireNonNull(range);
+		Set<@NonNull String> identities = new LinkedHashSet<>();
+		identities.add(range.toLowerCase(Locale.ROOT));
+		addParsedLanguageRangeIdentities(range, identities);
+
+		@Nullable String extlangEquivalentRange = extlangEquivalentLanguageRangeFor(range);
+
+		if (extlangEquivalentRange != null) {
+			identities.add(extlangEquivalentRange.toLowerCase(Locale.ROOT));
+			addParsedLanguageRangeIdentities(extlangEquivalentRange, identities);
+		}
+
+		return identities;
+	}
+
+	private static void addParsedLanguageRangeIdentities(@NonNull String range,
+																											 @NonNull Set<@NonNull String> identities) {
+		requireNonNull(range);
+		requireNonNull(identities);
+
+		try {
+			for (LanguageRange equivalentRange : LanguageRange.parse(range))
+				identities.add(equivalentRange.getRange().toLowerCase(Locale.ROOT));
+		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+			// The range already came from a validated LanguageRange instance. Retaining identities established by the
+			// other bounded probes is still safe if a particular JDK cannot re-expand an otherwise accepted form.
+		}
+	}
+
 	@NonNull
 	private static String semanticLanguageRangeForDerivedMatching(@NonNull String range,
 																								boolean knownTag,
 																								boolean containsWildcard,
-																								@Nullable List<@NonNull LanguageRange> parsedEquivalentRanges) {
+																								@NonNull Set<@NonNull String> equivalentRanges) {
 		requireNonNull(range);
+		requireNonNull(equivalentRanges);
 
 		if (containsWildcard || knownTag)
 			return range;
@@ -2086,33 +2194,31 @@ class DefaultStrings implements Strings {
 
 		// A validated LanguageRange can still expose JDK parser bugs. The original range remains the safe semantic
 		// boundary when its registered equivalences could not be established.
-		if (parsedEquivalentRanges != null)
-			for (LanguageRange equivalentRange : parsedEquivalentRanges) {
-				String candidateRange = equivalentRange.getRange();
-				boolean candidateJdkSemanticRange =
-						candidateRange.equalsIgnoreCase(jdkLanguageTag);
-				boolean candidateKnownLanguageTag =
-						CldrLocaleData.isKnownLanguageTag(candidateRange);
-				int candidateConstraintCount =
-						recognizedLanguageTagConstraintCountFor(candidateRange);
-				boolean candidateCanonicalStable =
-						canonicalLanguageRangeIdentity(candidateRange)
-								.equals(candidateRange.toLowerCase(Locale.ROOT));
+		for (String candidateRange : equivalentRanges) {
+			boolean candidateJdkSemanticRange =
+					candidateRange.equalsIgnoreCase(jdkLanguageTag);
+			boolean candidateKnownLanguageTag =
+					CldrLocaleData.isKnownLanguageTag(candidateRange);
+			int candidateConstraintCount =
+					recognizedLanguageTagConstraintCountFor(candidateRange);
+			boolean candidateCanonicalStable =
+					canonicalLanguageRangeIdentity(candidateRange)
+							.equals(candidateRange.toLowerCase(Locale.ROOT));
 
-				if ((candidateJdkSemanticRange && !jdkSemanticRange) ||
-						(candidateJdkSemanticRange == jdkSemanticRange &&
-								((candidateKnownLanguageTag && !knownLanguageTag) ||
-										(candidateKnownLanguageTag == knownLanguageTag &&
-												(candidateConstraintCount > constraintCount ||
-														(candidateConstraintCount == constraintCount &&
-																candidateCanonicalStable && !canonicalStable)))))) {
-					semanticRange = candidateRange;
-					jdkSemanticRange = candidateJdkSemanticRange;
-					knownLanguageTag = candidateKnownLanguageTag;
-					constraintCount = candidateConstraintCount;
-					canonicalStable = candidateCanonicalStable;
-				}
+			if ((candidateJdkSemanticRange && !jdkSemanticRange) ||
+					(candidateJdkSemanticRange == jdkSemanticRange &&
+							((candidateKnownLanguageTag && !knownLanguageTag) ||
+									(candidateKnownLanguageTag == knownLanguageTag &&
+											(candidateConstraintCount > constraintCount ||
+													(candidateConstraintCount == constraintCount &&
+															candidateCanonicalStable && !canonicalStable)))))) {
+				semanticRange = candidateRange;
+				jdkSemanticRange = candidateJdkSemanticRange;
+				knownLanguageTag = candidateKnownLanguageTag;
+				constraintCount = candidateConstraintCount;
+				canonicalStable = candidateCanonicalStable;
 			}
+		}
 
 		return semanticRange;
 	}
@@ -2894,10 +3000,10 @@ class DefaultStrings implements Strings {
 	/**
 	 * Per-request facts about one language range member, computed once per match operation.
 	 * <p>
-	 * One {@link LanguageRange#parse(String)} expansion feeds both the JDK identity set and the semantic-range
-	 * election, and each derived CLDR lookup (canonical form, fallback chain, likely subtag) happens once per member
-	 * rather than once per (locale, member) cell. Derived lookups are skipped for wildcard, undetermined, and
-	 * private-use ranges, mirroring exactly the relationships classification can reach for them.
+	 * One bounded equivalence expansion feeds both the identity set and the semantic-range election, including the
+	 * Java 9 extlang compatibility fallback. Each derived CLDR lookup (canonical form, fallback chain, likely subtag)
+	 * happens once per member rather than once per (locale, member) cell. Derived lookups are skipped for wildcard,
+	 * undetermined, and private-use ranges, mirroring exactly the relationships classification can reach for them.
 	 */
 	@Immutable
 	private static final class MemberStatics {
@@ -2936,23 +3042,9 @@ class DefaultStrings implements Strings {
 			this.undetermined = CldrLocaleData.hasUndeterminedLanguage(range);
 			this.knownTag = CldrLocaleData.isKnownLanguageTag(range);
 
-			Set<@NonNull String> identities = new LinkedHashSet<>();
-			identities.add(range.toLowerCase(Locale.ROOT));
-			@Nullable List<@NonNull LanguageRange> parsedEquivalentRanges = null;
-
-			try {
-				parsedEquivalentRanges = LanguageRange.parse(range);
-
-				for (LanguageRange equivalentRange : parsedEquivalentRanges)
-					identities.add(equivalentRange.getRange().toLowerCase(Locale.ROOT));
-			} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
-				// The range already came from a validated LanguageRange instance. Retaining its direct identity is still
-				// safe if a particular JDK cannot re-expand an otherwise accepted form.
-			}
-
-			this.identities = identities;
+			this.identities = languageRangeIdentitiesFor(range);
 			this.semanticRange = semanticLanguageRangeForDerivedMatching(range, knownTag, containsWildcard,
-					parsedEquivalentRanges);
+					identities);
 			this.canonicalIdentity = canonicalLanguageRangeIdentity(semanticRange);
 			this.recognizedDepth = recognizedLanguageTagConstraintCountFor(semanticRange);
 

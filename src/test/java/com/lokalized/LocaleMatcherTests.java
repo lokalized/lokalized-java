@@ -746,14 +746,17 @@ public class LocaleMatcherTests {
 		Locale simplifiedChinese = Locale.forLanguageTag("zh-CN");
 		Strings strings = stringsForLocales(french, easternMinChinese, simplifiedChinese);
 		String header = "zh-cdo-CN;q=1,fr;q=0.8";
+		List<LanguageRange> request = LanguageRange.parse(header);
+		boolean materializedAlias = containsLanguageRange(request, "cdo-cn");
 
-		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+		LocaleMatchResult result = strings.matchFor(request);
 
 		assertEquals(easternMinChinese, result.getLocale().orElseThrow(AssertionError::new));
 		assertEquals(easternMinChinese, strings.bestMatchForAcceptLanguage(header));
-		assertEquals("cdo-cn", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(materializedAlias ? "cdo-cn" : "zh-cdo-cn",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
 		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
-		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+		assertEquals(materializedAlias ? LocaleMatchType.EXACT : LocaleMatchType.CANONICAL, result.getMatchType());
 	}
 
 	@Test
@@ -763,12 +766,14 @@ public class LocaleMatcherTests {
 		Locale egyptianArabic = Locale.forLanguageTag("ar-EG");
 		Strings strings = stringsForLocales(french, moroccanArabic, egyptianArabic);
 		String header = "ar-ary;q=1,fr;q=0.8";
+		List<LanguageRange> request = LanguageRange.parse(header);
 
-		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+		LocaleMatchResult result = strings.matchFor(request);
 
 		assertEquals(moroccanArabic, result.getLocale().orElseThrow(AssertionError::new));
 		assertEquals(moroccanArabic, strings.bestMatchForAcceptLanguage(header));
-		assertEquals("ary", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(containsLanguageRange(request, "ary") ? "ary" : "ar-ary",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
 		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
 		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
 	}
@@ -880,6 +885,26 @@ public class LocaleMatcherTests {
 	}
 
 	@Test
+	public void programmaticSignExtlangRangeRetainsItsEquivalentExactAnchor() {
+		Locale french = Locale.FRENCH;
+		Locale norwegianSignLanguage = Locale.forLanguageTag("nsl-SE");
+		Locale exactAlias = Locale.forLanguageTag("sgn-NO");
+		Strings strings = stringsForLocales(french, norwegianSignLanguage, exactAlias);
+		List<LanguageRange> request = List.of(
+				new LanguageRange("sgn-nsl", 1.0),
+				new LanguageRange("fr", 0.1));
+
+		LocaleMatchResult result = strings.matchFor(request);
+
+		assertEquals(exactAlias, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(exactAlias, strings.bestMatchFor(request));
+		assertEquals("sgn-nsl",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.CANONICAL, result.getMatchType());
+	}
+
+	@Test
 	public void semanticCanonicalIdentityGroupsLowerWeightProgrammaticAlias() {
 		Locale french = Locale.FRENCH;
 		Locale egyptianArabic = Locale.forLanguageTag("ar-EG");
@@ -964,12 +989,13 @@ public class LocaleMatcherTests {
 				"sgn-nsl;q=1,fr;q=0.8");
 
 		for (String header : headers) {
-			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+			List<LanguageRange> request = LanguageRange.parse(header);
+			LocaleMatchResult result = strings.matchFor(request);
 
 			assertEquals(norwegianSignLanguage,
 					result.getLocale().orElseThrow(AssertionError::new), header);
 			assertEquals(norwegianSignLanguage, strings.bestMatchForAcceptLanguage(header), header);
-			assertEquals("nsl",
+			assertEquals(containsLanguageRange(request, "nsl") ? "nsl" : "sgn-nsl",
 					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), header);
 			assertEquals(Double.valueOf(1.0),
 					result.getEffectiveWeight().orElseThrow(AssertionError::new), header);
@@ -989,16 +1015,19 @@ public class LocaleMatcherTests {
 				"sgn-nsl;q=1,fr;q=0.1");
 
 		for (String header : headers) {
-			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+			List<LanguageRange> request = LanguageRange.parse(header);
+			boolean materializedAlias = containsLanguageRange(request, "sgn-no");
+			LocaleMatchResult result = strings.matchFor(request);
 
 			assertEquals(exactParserAlias,
 					result.getLocale().orElseThrow(AssertionError::new), header);
 			assertEquals(exactParserAlias, strings.bestMatchForAcceptLanguage(header), header);
-			assertEquals("sgn-no",
+			assertEquals(materializedAlias ? "sgn-no" : "sgn-nsl",
 					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), header);
 			assertEquals(Double.valueOf(1.0),
 					result.getEffectiveWeight().orElseThrow(AssertionError::new), header);
-			assertEquals(LocaleMatchType.EXACT, result.getMatchType(), header);
+			assertEquals(materializedAlias ? LocaleMatchType.EXACT : LocaleMatchType.CANONICAL,
+					result.getMatchType(), header);
 		}
 	}
 
@@ -1396,6 +1425,14 @@ public class LocaleMatcherTests {
 
 	private Set<LocalizedString> localizedStringsFor(Locale locale) {
 		return Set.of(new LocalizedString.Builder("hello").translation(locale.toLanguageTag()).build());
+	}
+
+	private boolean containsLanguageRange(List<LanguageRange> languageRanges, String range) {
+		for (LanguageRange languageRange : languageRanges)
+			if (languageRange.getRange().equalsIgnoreCase(range))
+				return true;
+
+		return false;
 	}
 
 	private String rangeWithRepeatedSubtags(String prefix, int subtagCount) {
