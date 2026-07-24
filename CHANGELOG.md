@@ -95,10 +95,16 @@ All notable changes to Lokalized will be documented in this file.
 
 - Added [`LocaleMatcher.bestMatchForAcceptLanguage(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchForAcceptLanguage(java.lang.String))
   for bounded, fail-soft parsing and matching of raw `Accept-Language` values without truncating parsed preferences.
+  It accepts RFC 9110 horizontal-tab optional whitespace and empty list elements, and safely falls back for malformed
+  inputs across supported JDKs.
 - Added per-invocation `TranslationOptions` for locale, language-range, bidi-isolation, and
   translation-failure-handler overrides.
 - Added `Strings` inspection APIs: `getSupportedLocales()`, `getKeysForLocale(Locale)`, and
   `getMissingKeys(Locale, Locale)`.
+- `LocaleMatchResult` and `MissingTranslationException` now have supported Java serialized forms.
+  `Locale.LanguageRange` values are preserved as range/weight pairs; serializing a
+  `MissingTranslationException` requires each non-null placeholder value and its reachable object graph to be
+  serializable. This establishes a new 3.0 format that is not compatible with 2.x streams.
 - Added a public `LocalizedStringLoader.loadFromClasspath(ClassLoader, String)` overload and made the
   one-argument classpath loader prefer the thread context classloader when available.
 - Added `LocalizedStringWarning`, `LocalizedStringWarningHandler`, and warning-aware loader overloads for
@@ -188,6 +194,11 @@ All notable changes to Lokalized will be documented in this file.
   one source range into multiple IANA-equivalent ranges, all of which count toward the limit. If every supported locale
   is excluded by `q=0`, `bestMatchFor(...)` returns the configured fallback while strict `matchFor(...)` reports no
   acceptable locale.
+- Locale matching precomputes per-supported-locale CLDR canonicalization, fallback chains, and likely-subtag data once
+  per `Strings` instance instead of on every request. Match results are byte-for-byte identical; the change removes a
+  worst-case per-request CPU cost that scaled with (locales x requested ranges) and is influenceable through
+  `Accept-Language`, so adversarial many-range/many-locale negotiation is dramatically cheaper. The one-time cost of
+  building the precomputed data is paid at `Strings` construction.
 - Language-range matching no longer crosses known likely-script boundaries and applies `q=0` exclusions to canonical
   alias descendants, such as `sh;q=0` excluding `sr-Latn-RS`.
 - Internal-wildcard language ranges now use RFC 4647 extended filtering without CLDR, likely-subtag, or primary-language
@@ -198,6 +209,8 @@ All notable changes to Lokalized will be documented in this file.
 - Weighted locale diagnostics now retain the same most-specific preference range that determines a selected locale's
   effective quality. The reported match type and `TranslationResult.isFallback()` classification therefore describe
   the preference that actually won rather than an earlier, broader range with a higher raw weight.
+- Fixed-English diagnostics now format numbers with locale-independent digits and separators, regardless of the
+  process default locale.
 - Generated placeholder expansion now has a cumulative work/output budget in addition to per-fragment and final-output
   limits, preventing many individually legal cached fragments from exhausting the heap. The default cumulative budget
   is 1,048,576 UTF-16 code units, with an 8,388,608-code-unit hard ceiling.
@@ -292,6 +305,9 @@ All notable changes to Lokalized will be documented in this file.
 - Use `localeMatchSupplier(matcher -> matcher.matchFor(ranges))` instead of collapsing a request through
   `localeSupplier(matcher -> matcher.bestMatchFor(ranges))` when `TranslationResult` and failure diagnostics must retain
   the original language ranges.
+- Locale matching now front-loads its per-supported-locale CLDR work to `Strings` construction. Applications that build
+  very large `Strings` instances (hundreds of supported locales) and immediately discard them see a small one-time
+  construction cost in exchange for much cheaper per-request matching; long-lived shared instances are strictly faster.
 - Round values explicitly before reducing `PluralOperands.visibleDecimalPlaces(...)`; implicit flooring has been removed.
 - Convert application-specific `Number` implementations to `BigDecimal` before passing them to Lokalized. The library
   no longer treats an arbitrary `Number.toString()` result as a decimal representation.

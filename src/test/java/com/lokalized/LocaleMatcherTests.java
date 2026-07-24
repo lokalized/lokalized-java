@@ -371,14 +371,19 @@ public class LocaleMatcherTests {
 		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
 	}
 
-  @Test
-  public void moreSpecificLowerWeightOverridesBroaderWeightForThatLocale() {
-    Locale americanEnglish = Locale.forLanguageTag("en-US");
-    Locale britishEnglish = Locale.forLanguageTag("en-GB");
-    Strings strings = englishStrings(americanEnglish, britishEnglish);
+	@Test
+	public void moreSpecificLowerWeightOverridesBroaderWeightForThatLocale() {
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Strings strings = englishStrings(americanEnglish, britishEnglish);
 
-    assertEquals(britishEnglish, strings.bestMatchFor(LanguageRange.parse("en;q=1,en-US;q=0.5")));
-  }
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse("en;q=1,en-US;q=0.5"));
+
+		assertEquals(britishEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
 
 	@Test
 	public void broadRangeCannotSelectLocaleOwnedByLaterEqualWeightSpecificRange() {
@@ -492,6 +497,546 @@ public class LocaleMatcherTests {
 		assertEquals(Double.valueOf(1.0), matchResult.getEffectiveWeight().orElseThrow(AssertionError::new));
 		assertEquals(LocaleMatchType.LIKELY_SUBTAG, matchResult.getMatchType());
 		assertTrue(strings.getResult("hello").isFallback());
+	}
+
+	@Test
+	public void weightedRegionalChineseRangesRetainScriptAwareOwnership() {
+		Locale english = Locale.ENGLISH;
+		Locale simplifiedChinese = Locale.forLanguageTag("zh-Hans");
+		Locale traditionalChinese = Locale.forLanguageTag("zh-Hant");
+		Strings strings = dualScriptChineseStrings(english, simplifiedChinese, traditionalChinese);
+		List<String> regionalRanges = List.of("zh-TW", "zh-HK", "zh-CN");
+		List<Locale> expectedLocales = List.of(
+				traditionalChinese, traditionalChinese, simplifiedChinese);
+
+		for (int index = 0; index < regionalRanges.size(); ++index) {
+			String regionalRange = regionalRanges.get(index);
+			String header = regionalRange + ",zh;q=0.9,en;q=0.8";
+			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+			assertEquals(expectedLocales.get(index),
+					result.getLocale().orElseThrow(AssertionError::new), header);
+			assertEquals(expectedLocales.get(index),
+					strings.bestMatchForAcceptLanguage(header), header);
+			assertEquals(regionalRange.toLowerCase(Locale.ROOT),
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), header);
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), header);
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), header);
+		}
+	}
+
+	@Test
+	public void higherQualityBroadChineseRangeStillWinsAfterRegionalDowngrade() {
+		Locale english = Locale.ENGLISH;
+		Locale simplifiedChinese = Locale.forLanguageTag("zh-Hans");
+		Locale traditionalChinese = Locale.forLanguageTag("zh-Hant");
+		Strings strings = dualScriptChineseStrings(english, simplifiedChinese, traditionalChinese);
+
+		LocaleMatchResult result = strings.matchFor(
+				LanguageRange.parse("zh;q=1,zh-TW;q=0.5,en;q=0.4"));
+
+		assertEquals(simplifiedChinese, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("zh", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void specificLikelySubtagRangeAdvancesPastExcludedOrDowngradedTiebreaker() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, americanEnglish, britishEnglish);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(americanEnglish, britishEnglish)))
+				.build();
+		List<String> languageRangeHeaders = List.of(
+				"en-AU;q=1,en-US;q=0",
+				"en-AU;q=1,en-US;q=0.5");
+
+		for (String languageRangeHeader : languageRangeHeaders) {
+			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(languageRangeHeader));
+
+			assertEquals(britishEnglish,
+					result.getLocale().orElseThrow(AssertionError::new), languageRangeHeader);
+			assertEquals("en-au",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), languageRangeHeader);
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), languageRangeHeader);
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), languageRangeHeader);
+		}
+	}
+
+	@Test
+	public void structuralAnchorPreventsSpecificRangeFromOwningHeuristicSibling() {
+		Locale french = Locale.FRENCH;
+		Locale posixEnglish = Locale.forLanguageTag("en-US-posix");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, posixEnglish, britishEnglish);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(britishEnglish, posixEnglish)))
+				.build();
+
+		LocaleMatchResult result = strings.matchFor(
+				LanguageRange.parse("en;q=1,fr;q=0.8,en-US;q=0.5"));
+
+		assertEquals(britishEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void releasedSiblingCanBeClaimedByNextSpecificHeuristicRange() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, americanEnglish, britishEnglish);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(americanEnglish, britishEnglish)))
+				.build();
+		List<LanguageRange> languageRanges = List.of(
+				new LanguageRange("en-NZ", 1.0),
+				new LanguageRange("en-Latn-AU", 0.5));
+
+		LocaleMatchResult result = strings.matchFor(languageRanges);
+
+		assertEquals(britishEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en-nz", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void duplicateSpecificHeuristicRangeDoesNotConsumeAnotherLocale() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Locale britishEnglish = Locale.forLanguageTag("en-GB");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, americanEnglish, britishEnglish);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"en", List.of(americanEnglish, britishEnglish)))
+				.build();
+		LanguageRange broadEnglish = new LanguageRange("en", 1.0);
+		LanguageRange australianEnglish = new LanguageRange("en-AU", 0.5);
+
+		LocaleMatchResult singleResult =
+				strings.matchFor(List.of(broadEnglish, australianEnglish));
+		LocaleMatchResult duplicateResult =
+				strings.matchFor(List.of(broadEnglish, australianEnglish, australianEnglish));
+
+		for (LocaleMatchResult result : List.of(singleResult, duplicateResult)) {
+			assertEquals(britishEnglish, result.getLocale().orElseThrow(AssertionError::new));
+			assertEquals("en", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+			assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+		}
+	}
+
+	@Test
+	public void lowerWeightDuplicateCannotOverrideItsRepresentative() {
+		Locale french = Locale.FRENCH;
+		Locale americanEnglish = Locale.forLanguageTag("en-US");
+		Strings strings = stringsForLocales(french, americanEnglish);
+		List<LanguageRange> languageRanges = List.of(
+				new LanguageRange("en", 1.0),
+				new LanguageRange("en", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(languageRanges);
+
+		assertEquals(americanEnglish, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("en", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void equalWeightUnknownDuplicateDoesNotMoveSemanticOwner() {
+		Locale french = Locale.FRENCH;
+		Locale unknownRegionalLocale = Locale.forLanguageTag("zz-US");
+		Strings strings = stringsForLocales(french, unknownRegionalLocale);
+		LanguageRange unknownRange = new LanguageRange("zz", 1.0);
+		LanguageRange frenchRange = new LanguageRange("fr", 1.0);
+		List<List<LanguageRange>> requests = List.of(
+				List.of(unknownRange, frenchRange),
+				List.of(unknownRange, frenchRange, unknownRange));
+
+		for (List<LanguageRange> request : requests) {
+			LocaleMatchResult result = strings.matchFor(request);
+
+			assertEquals(unknownRegionalLocale,
+					result.getLocale().orElseThrow(AssertionError::new), request.toString());
+			assertEquals("zz",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(),
+					request.toString());
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), request.toString());
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), request.toString());
+		}
+	}
+
+	@Test
+	public void parserAddedAliasSharesOneSpecificHeuristicOwner() {
+		Locale french = Locale.FRENCH;
+		Locale americanHebrew = Locale.forLanguageTag("he-US");
+		Locale britishHebrew = Locale.forLanguageTag("he-GB");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, americanHebrew, britishHebrew);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"he", List.of(americanHebrew, britishHebrew)))
+				.build();
+		String header = "he;q=1,fr;q=0.8,he-IL;q=0.5";
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+		assertEquals(britishHebrew, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(britishHebrew, strings.bestMatchForAcceptLanguage(header));
+		assertEquals("he", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void parserAddedAliasCannotEvadeItsExactAnchor() {
+		Locale french = Locale.FRENCH;
+		Locale israeliHebrew = Locale.forLanguageTag("he-IL");
+		Locale americanHebrew = Locale.forLanguageTag("he-US");
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(french, israeliHebrew, americanHebrew);
+		Strings strings = Strings.withFallbackLocale(french)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> french)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"he", List.of(israeliHebrew, americanHebrew)))
+				.build();
+		String header = "he;q=1,fr;q=0.8,iw-IL;q=0.5";
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+		assertEquals(americanHebrew, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(americanHebrew, strings.bestMatchForAcceptLanguage(header));
+		assertEquals("he", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void parserAddedRegionalExtlangAliasRetainsItsExactAnchor() {
+		Locale french = Locale.FRENCH;
+		Locale easternMinChinese = Locale.forLanguageTag("cdo-CN");
+		Locale simplifiedChinese = Locale.forLanguageTag("zh-CN");
+		Strings strings = stringsForLocales(french, easternMinChinese, simplifiedChinese);
+		String header = "zh-cdo-CN;q=1,fr;q=0.8";
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+		assertEquals(easternMinChinese, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(easternMinChinese, strings.bestMatchForAcceptLanguage(header));
+		assertEquals("cdo-cn", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXACT, result.getMatchType());
+	}
+
+	@Test
+	public void parserAddedBareExtlangAliasOwnsHeuristicMatches() {
+		Locale french = Locale.FRENCH;
+		Locale moroccanArabic = Locale.forLanguageTag("ary-MA");
+		Locale egyptianArabic = Locale.forLanguageTag("ar-EG");
+		Strings strings = stringsForLocales(french, moroccanArabic, egyptianArabic);
+		String header = "ar-ary;q=1,fr;q=0.8";
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+		assertEquals(moroccanArabic, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(moroccanArabic, strings.bestMatchForAcceptLanguage(header));
+		assertEquals("ary", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void programmaticBareExtlangRangeUsesItsSemanticAlias() {
+		Locale french = Locale.FRENCH;
+		Locale moroccanArabic = Locale.forLanguageTag("ary-MA");
+		Locale egyptianArabic = Locale.forLanguageTag("ar-EG");
+		Strings strings = stringsForLocales(french, moroccanArabic, egyptianArabic);
+		LanguageRange extlangRange = new LanguageRange("ar-ary", 1.0);
+		LanguageRange frenchRange = new LanguageRange("fr", 0.1);
+		List<List<LanguageRange>> requests = List.of(
+				List.of(extlangRange, frenchRange),
+				List.of(extlangRange, new LanguageRange("ary", 0.5), frenchRange));
+
+		for (List<LanguageRange> request : requests) {
+			LocaleMatchResult result = strings.matchFor(request);
+
+			assertEquals(moroccanArabic,
+					result.getLocale().orElseThrow(AssertionError::new), request.toString());
+			assertEquals(moroccanArabic, strings.bestMatchFor(request), request.toString());
+			assertEquals("ar-ary",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(),
+					request.toString());
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), request.toString());
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), request.toString());
+		}
+	}
+
+	@Test
+	public void interleavedSemanticAliasRetainsRepresentativeGroupPriority() {
+		Locale french = Locale.FRENCH;
+		List<Locale> expectedLocales = List.of(
+				Locale.forLanguageTag("ary"),
+				Locale.forLanguageTag("ary-MA"));
+		List<LocaleMatchType> expectedMatchTypes = List.of(
+				LocaleMatchType.EXACT,
+				LocaleMatchType.LIKELY_SUBTAG);
+
+		for (int index = 0; index < expectedLocales.size(); ++index) {
+			Locale expectedLocale = expectedLocales.get(index);
+			Strings strings = stringsForLocales(french, expectedLocale);
+			List<LanguageRange> request = List.of(
+					new LanguageRange("ar-ary", 1.0),
+					new LanguageRange("fr", 1.0),
+					new LanguageRange("ary", 1.0));
+			LocaleMatchResult result = strings.matchFor(request);
+
+			assertEquals(expectedLocale,
+					result.getLocale().orElseThrow(AssertionError::new), expectedLocale.toString());
+			assertEquals(expectedLocale, strings.bestMatchFor(request), expectedLocale.toString());
+			assertEquals("ary",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(),
+					expectedLocale.toString());
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), expectedLocale.toString());
+			assertEquals(expectedMatchTypes.get(index), result.getMatchType(), expectedLocale.toString());
+		}
+	}
+
+	@Test
+	public void programmaticRegionalExtlangRangeUsesItsSemanticAlias() {
+		Locale french = Locale.FRENCH;
+		Locale easternMinChinese = Locale.forLanguageTag("cdo-CN");
+		Locale simplifiedChinese = Locale.forLanguageTag("zh-CN");
+		Strings strings = stringsForLocales(french, easternMinChinese, simplifiedChinese);
+		List<LanguageRange> request = List.of(
+				new LanguageRange("zh-cdo-CN", 1.0),
+				new LanguageRange("fr", 0.1));
+
+		LocaleMatchResult result = strings.matchFor(request);
+
+		assertEquals(easternMinChinese, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(easternMinChinese, strings.bestMatchFor(request));
+		assertEquals("zh-cdo-cn",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.CANONICAL, result.getMatchType());
+	}
+
+	@Test
+	public void programmaticSignExtlangRangeUsesItsSemanticAlias() {
+		Locale french = Locale.FRENCH;
+		Locale norwegianSignLanguage = Locale.forLanguageTag("nsl-SE");
+		Locale nigerianSignLanguage = Locale.forLanguageTag("nsi-NG");
+		Strings strings = stringsForLocales(
+				french, norwegianSignLanguage, nigerianSignLanguage);
+		LanguageRange extlangRange = new LanguageRange("sgn-nsl", 1.0);
+		LanguageRange frenchRange = new LanguageRange("fr", 0.1);
+		List<List<LanguageRange>> requests = List.of(
+				List.of(extlangRange, frenchRange),
+				List.of(extlangRange, new LanguageRange("sgn-no", 1.0), frenchRange));
+
+		for (List<LanguageRange> request : requests) {
+			LocaleMatchResult result = strings.matchFor(request);
+
+			assertEquals(norwegianSignLanguage,
+					result.getLocale().orElseThrow(AssertionError::new), request.toString());
+			assertEquals(norwegianSignLanguage, strings.bestMatchFor(request), request.toString());
+			assertEquals("sgn-nsl",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(),
+					request.toString());
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), request.toString());
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), request.toString());
+		}
+	}
+
+	@Test
+	public void semanticCanonicalIdentityGroupsLowerWeightProgrammaticAlias() {
+		Locale french = Locale.FRENCH;
+		Locale egyptianArabic = Locale.forLanguageTag("ar-EG");
+		Strings strings = stringsForLocales(french, egyptianArabic);
+		List<LanguageRange> request = List.of(
+				new LanguageRange("ar-arb", 1.0),
+				new LanguageRange("ar", 0.0),
+				new LanguageRange("fr", 0.8));
+
+		LocaleMatchResult result = strings.matchFor(request);
+
+		assertEquals(egyptianArabic, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(egyptianArabic, strings.bestMatchFor(request));
+		assertEquals("ar-arb",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void programmaticAliasUsesParserExpansionInsteadOfLossyLocaleTag() {
+		Locale french = Locale.FRENCH;
+		List<String> requestedRanges = List.of("sgn-be-fx", "sgn-ch-dd");
+		List<Locale> expectedLocales = List.of(
+				Locale.forLanguageTag("sfb"),
+				Locale.forLanguageTag("sgg"));
+		List<Locale> lossyLocales = List.of(
+				Locale.forLanguageTag("sgn-BE"),
+				Locale.forLanguageTag("sgn-CH"));
+
+		for (int index = 0; index < requestedRanges.size(); ++index) {
+			String requestedRange = requestedRanges.get(index);
+			Locale expectedLocale = expectedLocales.get(index);
+			Strings strings = stringsForLocales(
+					french, expectedLocale, lossyLocales.get(index));
+			List<LanguageRange> request = List.of(
+					new LanguageRange(requestedRange, 1.0),
+					new LanguageRange("fr", 0.1));
+
+			LocaleMatchResult result = strings.matchFor(request);
+
+			assertEquals(expectedLocale,
+					result.getLocale().orElseThrow(AssertionError::new), requestedRange);
+			assertEquals(expectedLocale, strings.bestMatchFor(request), requestedRange);
+			assertEquals(requestedRange,
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(),
+					requestedRange);
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), requestedRange);
+			assertEquals(LocaleMatchType.CANONICAL, result.getMatchType(), requestedRange);
+		}
+	}
+
+	@Test
+	public void malformedProgrammaticRangeDoesNotManufactureExclusion() {
+		Locale fallback = Locale.forLanguageTag("zz-US");
+		Locale french = Locale.FRENCH;
+		Strings strings = stringsForLocales(fallback, french);
+		List<LanguageRange> request = List.of(
+				new LanguageRange("*", 1.0),
+				new LanguageRange("zz-a", 0.0));
+
+		LocaleMatchResult result = strings.matchFor(request);
+
+		assertEquals(fallback, result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(fallback, strings.bestMatchFor(request));
+		assertEquals("*",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(1.0), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.WILDCARD, result.getMatchType());
+	}
+
+	@Test
+	public void parserAliasUsesStableSemanticMemberAcrossRegistryConflict() {
+		Locale french = Locale.FRENCH;
+		Locale norwegianSignLanguage = Locale.forLanguageTag("nsl-SE");
+		Locale nigerianSignLanguage = Locale.forLanguageTag("nsi-NG");
+		Strings strings = stringsForLocales(
+				french, norwegianSignLanguage, nigerianSignLanguage);
+		List<String> headers = List.of(
+				"nsl;q=1,fr;q=0.8",
+				"sgn-nsl;q=1,fr;q=0.8");
+
+		for (String header : headers) {
+			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+			assertEquals(norwegianSignLanguage,
+					result.getLocale().orElseThrow(AssertionError::new), header);
+			assertEquals(norwegianSignLanguage, strings.bestMatchForAcceptLanguage(header), header);
+			assertEquals("nsl",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), header);
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), header);
+			assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType(), header);
+		}
+	}
+
+	@Test
+	public void parserAddedExactAliasPreventsHeuristicSiblingSpill() {
+		Locale french = Locale.FRENCH;
+		Locale norwegianSignLanguage = Locale.forLanguageTag("nsl-SE");
+		Locale exactParserAlias = Locale.forLanguageTag("sgn-NO");
+		Strings strings = stringsForLocales(
+				french, norwegianSignLanguage, exactParserAlias);
+		List<String> headers = List.of(
+				"nsl;q=1,fr;q=0.1",
+				"sgn-nsl;q=1,fr;q=0.1");
+
+		for (String header : headers) {
+			LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+			assertEquals(exactParserAlias,
+					result.getLocale().orElseThrow(AssertionError::new), header);
+			assertEquals(exactParserAlias, strings.bestMatchForAcceptLanguage(header), header);
+			assertEquals("sgn-no",
+					result.getLanguageRange().orElseThrow(AssertionError::new).getRange(), header);
+			assertEquals(Double.valueOf(1.0),
+					result.getEffectiveWeight().orElseThrow(AssertionError::new), header);
+			assertEquals(LocaleMatchType.EXACT, result.getMatchType(), header);
+		}
+	}
+
+	@Test
+	public void parserAliasClosureDoesNotAbsorbDistinctCldrCanonicalRange() {
+		Locale french = Locale.FRENCH;
+		Locale nigerianSignLanguage = Locale.forLanguageTag("nsi-NG");
+		Strings strings = stringsForLocales(french, nigerianSignLanguage);
+		String header = "nsl;q=1,nsi;q=0.5,fr;q=0.4";
+
+		LocaleMatchResult result = strings.matchFor(LanguageRange.parse(header));
+
+		assertEquals(nigerianSignLanguage,
+				result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals(nigerianSignLanguage, strings.bestMatchForAcceptLanguage(header));
+		assertEquals("nsi", result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5), result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.LIKELY_SUBTAG, result.getMatchType());
+	}
+
+	@Test
+	public void explicitChineseScriptRangeOutranksInferredRegionalRelationship() {
+		Locale english = Locale.ENGLISH;
+		Locale simplifiedChinese = Locale.forLanguageTag("zh-Hans");
+		Locale traditionalHongKongChinese = Locale.forLanguageTag("zh-Hant-HK");
+		Strings strings = dualScriptChineseStrings(
+				english, simplifiedChinese, traditionalHongKongChinese);
+
+		LocaleMatchResult result = strings.matchFor(
+				LanguageRange.parse("zh-TW;q=1,zh-Hant-*;q=0.5,en;q=0.4"));
+
+		assertEquals(traditionalHongKongChinese,
+				result.getLocale().orElseThrow(AssertionError::new));
+		assertEquals("zh-hant-*",
+				result.getLanguageRange().orElseThrow(AssertionError::new).getRange());
+		assertEquals(Double.valueOf(0.5),
+				result.getEffectiveWeight().orElseThrow(AssertionError::new));
+		assertEquals(LocaleMatchType.EXTENDED_RANGE, result.getMatchType());
 	}
 
 	@Test
@@ -824,6 +1369,18 @@ public class LocaleMatcherTests {
 		return Strings.withFallbackLocale(fallbackLocale)
 				.localizedStringSupplier(() -> localizedStringsByLocale)
 				.localeSupplier(matcher -> fallbackLocale)
+				.build();
+	}
+
+	private Strings dualScriptChineseStrings(Locale fallbackLocale, Locale simplifiedChinese,
+																					 Locale traditionalChinese) {
+		Map<Locale, Set<LocalizedString>> localizedStrings =
+				localizedStringsFor(fallbackLocale, simplifiedChinese, traditionalChinese);
+		return Strings.withFallbackLocale(fallbackLocale)
+				.localizedStringSupplier(() -> localizedStrings)
+				.localeSupplier(matcher -> fallbackLocale)
+				.tiebreakerLocalesByLanguageCode(Map.of(
+						"zh", List.of(simplifiedChinese, traditionalChinese)))
 				.build();
 	}
 

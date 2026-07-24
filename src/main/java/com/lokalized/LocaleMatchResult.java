@@ -19,6 +19,9 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import javax.annotation.concurrent.Immutable;
+import java.io.InvalidObjectException;
+import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -33,18 +36,29 @@ import static java.util.Objects.requireNonNull;
 
 /**
  * Strict, immutable diagnostic result for locale negotiation.
+ * <p>
+ * This value supports Java serialization, including its requested {@link LanguageRange} values.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
  */
 @Immutable
-public final class LocaleMatchResult {
+public final class LocaleMatchResult implements Serializable {
+	private static final long serialVersionUID = 1L;
+
+	/** Language ranges supplied for negotiation, in caller order. */
 	@NonNull private final List<@NonNull LanguageRange> requestedLanguageRanges;
+	/** Selected supported locale, or null for no match. */
 	@Nullable private final Locale locale;
+	/** Language range associated with the selection, or null for no match. */
 	@Nullable private final LanguageRange languageRange;
+	/** Effective quality of the selected locale, or null for no match. */
 	@Nullable private final Double effectiveWeight;
+	/** Relationship used for the selection. */
 	@NonNull private final LocaleMatchType matchType;
+	/** Configured fallback locale. */
 	@NonNull private final Locale fallbackLocale;
+	/** Supported locales considered during negotiation. */
 	@NonNull private final List<@NonNull Locale> consideredLocales;
 
 	/**
@@ -229,5 +243,86 @@ public final class LocaleMatchResult {
 		return format("%s{requestedLanguageRanges=%s, locale=%s, languageRange=%s, effectiveWeight=%s, matchType=%s, fallbackLocale=%s, consideredLocales=%s}",
 				getClass().getSimpleName(), requestedLanguageRanges, locale, languageRange, effectiveWeight, matchType,
 				fallbackLocale, consideredLocales);
+	}
+
+	/**
+	 * Replaces this value with a proxy that serializes language ranges as range/weight pairs.
+	 *
+	 * @return serialization proxy, not null
+	 */
+	private Object writeReplace() {
+		return new SerializationProxy(this);
+	}
+
+	/**
+	 * Rejects direct deserialization so construction always passes through the validating proxy.
+	 *
+	 * @param inputStream serialized input, not null
+	 * @throws InvalidObjectException always
+	 */
+	private void readObject(ObjectInputStream inputStream) throws InvalidObjectException {
+		throw new InvalidObjectException("Serialization proxy required");
+	}
+
+	private static final class SerializationProxy implements Serializable {
+		private static final long serialVersionUID = 1L;
+
+		@NonNull private final String[] requestedLanguageRanges;
+		@NonNull private final double[] requestedLanguageRangeWeights;
+		@Nullable private final Locale locale;
+		private final int languageRangeIndex;
+		@Nullable private final Double effectiveWeight;
+		@NonNull private final LocaleMatchType matchType;
+		@NonNull private final Locale fallbackLocale;
+		@NonNull private final Locale[] consideredLocales;
+
+		private SerializationProxy(@NonNull LocaleMatchResult localeMatchResult) {
+			int requestedLanguageRangeCount = localeMatchResult.requestedLanguageRanges.size();
+			this.requestedLanguageRanges = new String[requestedLanguageRangeCount];
+			this.requestedLanguageRangeWeights = new double[requestedLanguageRangeCount];
+
+			for (int index = 0; index < requestedLanguageRangeCount; ++index) {
+				LanguageRange requestedLanguageRange = localeMatchResult.requestedLanguageRanges.get(index);
+				this.requestedLanguageRanges[index] = requestedLanguageRange.getRange();
+				this.requestedLanguageRangeWeights[index] = requestedLanguageRange.getWeight();
+			}
+
+			this.locale = localeMatchResult.locale;
+			this.languageRangeIndex = localeMatchResult.languageRange == null ? -1
+					: localeMatchResult.requestedLanguageRanges.indexOf(localeMatchResult.languageRange);
+			this.effectiveWeight = localeMatchResult.effectiveWeight;
+			this.matchType = localeMatchResult.matchType;
+			this.fallbackLocale = localeMatchResult.fallbackLocale;
+			this.consideredLocales = localeMatchResult.consideredLocales.toArray(new Locale[0]);
+		}
+
+		private Object readResolve() throws InvalidObjectException {
+			try {
+				if (requestedLanguageRanges.length != requestedLanguageRangeWeights.length)
+					throw new IllegalArgumentException("Language range values and weights must have equal lengths");
+
+				List<@NonNull LanguageRange> reconstructedLanguageRanges =
+						new ArrayList<>(requestedLanguageRanges.length);
+
+				for (int index = 0; index < requestedLanguageRanges.length; ++index)
+					reconstructedLanguageRanges.add(
+							new LanguageRange(requestedLanguageRanges[index], requestedLanguageRangeWeights[index]));
+
+				LanguageRange reconstructedLanguageRange = null;
+
+				if (languageRangeIndex < -1 || languageRangeIndex >= reconstructedLanguageRanges.size())
+					throw new IllegalArgumentException("Matched language range index is outside the requested ranges");
+				if (languageRangeIndex >= 0)
+					reconstructedLanguageRange = reconstructedLanguageRanges.get(languageRangeIndex);
+
+				return new LocaleMatchResult(reconstructedLanguageRanges, locale, reconstructedLanguageRange,
+						effectiveWeight, matchType, fallbackLocale, List.of(consideredLocales));
+			} catch (RuntimeException exception) {
+				InvalidObjectException invalidObjectException =
+						new InvalidObjectException("Invalid serialized LocaleMatchResult");
+				invalidObjectException.initCause(exception);
+				throw invalidObjectException;
+			}
+		}
 	}
 }

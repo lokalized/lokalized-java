@@ -36,11 +36,17 @@ import static java.util.Objects.requireNonNull;
  * Exception thrown when no translation is found and the configured {@link TranslationFailureHandler} chooses to throw.
  * <p>
  * This class is intended for use by a single thread.
+ * <p>
+ * Java serialization is supported when every non-null placeholder value and its reachable object graph implement
+ * {@link java.io.Serializable}. Otherwise, serialization fails with {@link java.io.NotSerializableException}.
+ * The supported serialized form begins with 3.0.0 and is not compatible with streams written by 2.x releases.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  */
 @NotThreadSafe
 public class MissingTranslationException extends RuntimeException {
+	private static final long serialVersionUID = 1L;
+
 	/** Translation key that could not be resolved. */
 	@NonNull
 	private final String key;
@@ -48,8 +54,8 @@ public class MissingTranslationException extends RuntimeException {
 	@NonNull
 	private final Locale lookupLocale;
 	/** Locale-negotiation diagnostics, when available. */
-	@NonNull
-	private final Optional<@NonNull LocaleMatchResult> localeMatchResult;
+	@Nullable
+	private final LocaleMatchResult localeMatchResult;
 	/** Caller-supplied placeholders for the failed translation attempt. */
 	@NonNull
 	private final Map<@NonNull String, @Nullable Object> placeholders;
@@ -138,7 +144,7 @@ public class MissingTranslationException extends RuntimeException {
 		this.key = key;
 		this.placeholders = Collections.unmodifiableMap(placeholderCopy);
 		this.lookupLocale = LocaleUtils.requireWellFormed(lookupLocale, "Lookup locale");
-		this.localeMatchResult = Optional.ofNullable(localeMatchResult);
+		this.localeMatchResult = localeMatchResult;
 		this.reason = reason;
 		List<@NonNull Locale> attemptedLocaleCopy = new ArrayList<>(attemptedLocales.size());
 		LinkedHashSet<@NonNull String> attemptedLanguageTags = new LinkedHashSet<>();
@@ -199,7 +205,7 @@ public class MissingTranslationException extends RuntimeException {
 	 */
 	@NonNull
 	public Optional<@NonNull LocaleMatchResult> getLocaleMatchResult() {
-		return localeMatchResult;
+		return Optional.ofNullable(localeMatchResult);
 	}
 
 	/**

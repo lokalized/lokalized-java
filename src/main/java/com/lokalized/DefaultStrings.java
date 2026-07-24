@@ -29,6 +29,7 @@ import javax.annotation.concurrent.Immutable;
 import javax.annotation.concurrent.ThreadSafe;
 import java.util.AbstractSet;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -115,6 +116,25 @@ class DefaultStrings implements Strings {
 	private final Map<@NonNull LocalizedString, @NonNull CompiledExpression> compiledExpressionsByAlternative;
 	@NonNull
 	private final Map<@NonNull ExpressionAlternative, @NonNull CompiledExpression> compiledExpressionsByFragmentAlternative;
+
+	/**
+	 * Supported locales sorted by language tag.
+	 * <p>
+	 * The supported set is immutable after construction, so this list also serves as the considered-locales
+	 * diagnostic snapshot attached to every {@link LocaleMatchResult}.
+	 */
+	@NonNull
+	private final List<@NonNull Locale> sortedSupportedLocales;
+	/**
+	 * Matching-invariant facts about each supported locale, indexed in parallel with {@link #sortedSupportedLocales}.
+	 * <p>
+	 * Computed once at construction so per-request classification performs array and string comparisons instead of
+	 * repeating CLDR canonicalization and likely-subtag discovery for every language range of every match operation.
+	 */
+	@NonNull
+	private final List<@NonNull SupportedLocaleStatics> supportedLocaleStatics;
+	@NonNull
+	private final Map<@NonNull Locale, @NonNull Integer> supportedLocaleIndicesByLocale;
 
 	/**
 	 * Constructs a localized string provider with builder-supplied data.
@@ -496,6 +516,22 @@ class DefaultStrings implements Strings {
 		this.compiledExpressionsByAlternative = Collections.unmodifiableMap(compiledExpressionsByAlternative);
 		this.compiledExpressionsByFragmentAlternative =
 				Collections.unmodifiableMap(compiledExpressionsByFragmentAlternative);
+
+		List<@NonNull Locale> sortedSupportedLocales = new ArrayList<>(inspectedLocalizedStringsByLocale.keySet());
+		sortedSupportedLocales.sort(Comparator.comparing(Locale::toLanguageTag));
+
+		List<@NonNull SupportedLocaleStatics> supportedLocaleStatics = new ArrayList<>(sortedSupportedLocales.size());
+		Map<@NonNull Locale, @NonNull Integer> supportedLocaleIndicesByLocale = new HashMap<>(sortedSupportedLocales.size());
+
+		for (int localeIndex = 0; localeIndex < sortedSupportedLocales.size(); ++localeIndex) {
+			Locale supportedLocale = sortedSupportedLocales.get(localeIndex);
+			supportedLocaleStatics.add(new SupportedLocaleStatics(supportedLocale));
+			supportedLocaleIndicesByLocale.put(supportedLocale, localeIndex);
+		}
+
+		this.sortedSupportedLocales = Collections.unmodifiableList(sortedSupportedLocales);
+		this.supportedLocaleStatics = Collections.unmodifiableList(supportedLocaleStatics);
+		this.supportedLocaleIndicesByLocale = Collections.unmodifiableMap(supportedLocaleIndicesByLocale);
 
 		this.localeSupplier = localeSupplier;
 		this.localeMatchSupplier = localeMatchSupplier;
@@ -1491,13 +1527,6 @@ class DefaultStrings implements Strings {
 
 	@NonNull
 	@Override
-	public LocaleMatchResult matchFor(@NonNull Locale locale) {
-		LocaleUtils.requireWellFormed(locale, "Requested locale");
-		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
-	}
-
-	@NonNull
-	@Override
 	public Locale bestMatchFor(@NonNull Locale locale) {
 		requireNonNull(locale);
 		return matchFor(locale).getLocale().orElse(getFallbackLocale());
@@ -1525,82 +1554,281 @@ class DefaultStrings implements Strings {
 			requestedLanguageRanges.add(requireNonNull(languageRange));
 
 		requestedLanguageRanges = Collections.unmodifiableList(requestedLanguageRanges);
+
+		if (requestedLanguageRanges.isEmpty())
+			return noLocaleMatch(requestedLanguageRanges);
+
 		List<@NonNull LanguageRange> sortedLanguageRanges = new ArrayList<>(requestedLanguageRanges);
 		sortedLanguageRanges.sort(Comparator.comparingDouble(LanguageRange::getWeight).reversed());
-		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
-		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
-		List<@NonNull Locale> consideredLocales = Collections.unmodifiableList(new ArrayList<>(availableLocales));
 
-		if (languageRanges.isEmpty())
-			return noLocaleMatch(requestedLanguageRanges, consideredLocales);
+		int memberCount = sortedLanguageRanges.size();
+		MemberStatics[] members = new MemberStatics[memberCount];
 
-		// A locale can match more than one language range. Its effective quality is taken from the
-		// most-specific matching range so, for example, "en;q=1,en-US;q=0" excludes en-US without
-		// excluding en-GB. Restricting the candidate set up front also prevents a broad, high-quality
-		// range from selecting a locale whose more-specific range has a lower quality.
-		Map<@NonNull Locale, @NonNull EffectiveLanguageRangeMatch> effectiveMatchesByLocale = new LinkedHashMap<>();
-		double highestEffectiveWeight = 0.0;
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex)
+			members[memberIndex] = new MemberStatics(sortedLanguageRanges.get(memberIndex));
 
-		for (Locale availableLocale : availableLocales) {
-			@Nullable EffectiveLanguageRangeMatch effectiveMatch =
-					effectiveLanguageRangeMatchFor(availableLocale, sortedLanguageRanges);
+		// LanguageRange.parse may add IANA-equivalent aliases (for example he/iw). Treat equivalent aliases and
+		// programmatic duplicates as one preference group so repetition cannot consume multiple heuristic locales.
+		// Equal-weight aliases remain active for syntactic diagnostics; lower-weight duplicates are dominated by the
+		// group maximum. Each range joins the first directly equivalent representative only — never through a
+		// nonrepresentative alias: the JDK maps nsl to sgn-NO while CLDR maps sgn-NO to nsi, and a transitive union
+		// would incorrectly collapse the distinct nsl and nsi preferences. Because members only ever join a range that
+		// is itself a representative, representative chains never exceed depth one and need no flattening.
+		int[] representativeIndices = new int[memberCount];
+		boolean[] activeMembers = new boolean[memberCount];
 
-			if (effectiveMatch != null && effectiveMatch.getWeight() > 0.0) {
-				effectiveMatchesByLocale.put(availableLocale, effectiveMatch);
-				highestEffectiveWeight = Math.max(highestEffectiveWeight, effectiveMatch.getWeight());
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+			representativeIndices[memberIndex] = memberIndex;
+
+			for (int representativeIndex = 0; representativeIndex < memberIndex; ++representativeIndex) {
+				if (representativeIndices[representativeIndex] != representativeIndex)
+					continue;
+
+				boolean jdkEquivalent = !Collections.disjoint(members[representativeIndex].identities,
+						members[memberIndex].identities);
+				boolean cldrEquivalent = members[representativeIndex].canonicalIdentity
+						.equals(members[memberIndex].canonicalIdentity);
+
+				if (jdkEquivalent || cldrEquivalent) {
+					representativeIndices[memberIndex] = representativeIndex;
+					break;
+				}
+			}
+
+			activeMembers[memberIndex] = Double.compare(members[memberIndex].weight,
+					members[representativeIndices[memberIndex]].weight) == 0;
+		}
+
+		// One member per group supplies derived (non-syntactic) matching. A recognized representative expresses the
+		// caller's semantic preference and remains authoritative. Otherwise prefer a materialized parser alias only
+		// when it is exactly the representative's independently established semantic range; retaining the
+		// representative in all other cases avoids crossing conflicting JDK/CLDR alias data.
+		int[] semanticMemberIndicesByRepresentative = new int[memberCount];
+
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex)
+			semanticMemberIndicesByRepresentative[memberIndex] = memberIndex;
+
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+			if (!activeMembers[memberIndex])
+				continue;
+
+			int representativeIndex = representativeIndices[memberIndex];
+			MemberStatics representative = members[representativeIndex];
+
+			if (representative.knownTag)
+				continue;
+
+			if (!representative.range.equalsIgnoreCase(representative.semanticRange) &&
+					semanticMemberIndicesByRepresentative[representativeIndex] == representativeIndex &&
+					members[memberIndex].range.equalsIgnoreCase(representative.semanticRange))
+				semanticMemberIndicesByRepresentative[representativeIndex] = memberIndex;
+		}
+
+		// Classify every (locale, member) relationship once; every later phase is a pure pass over these cells.
+		// Parser-added aliases remain interchangeable for exact and direct structural matches. Derived CLDR/canonical
+		// relationships come from one semantic member, however, because the JDK's IANA alias table can conflict with
+		// CLDR (and an extlang form such as ar-ary can otherwise infer ar-EG).
+		int localeCount = supportedLocaleStatics.size();
+		LanguageRangeSpecificity[][] cells = new LanguageRangeSpecificity[localeCount][memberCount];
+
+		for (int localeIndex = 0; localeIndex < localeCount; ++localeIndex) {
+			SupportedLocaleStatics localeStatics = supportedLocaleStatics.get(localeIndex);
+
+			for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+				if (!activeMembers[memberIndex])
+					continue;
+
+				@Nullable LanguageRangeSpecificity specificity =
+						languageRangeSpecificityFor(localeStatics, members[memberIndex]);
+
+				if (specificity != null && !specificity.isSyntactic() &&
+						memberIndex != semanticMemberIndicesByRepresentative[representativeIndices[memberIndex]])
+					continue;
+
+				cells[localeIndex][memberIndex] = specificity;
 			}
 		}
 
-		if (highestEffectiveWeight > 0.0) {
-			double requiredWeight = highestEffectiveWeight;
-			availableLocales.removeIf(locale -> {
-				@Nullable EffectiveLanguageRangeMatch effectiveMatch = effectiveMatchesByLocale.get(locale);
-				return effectiveMatch == null || Double.compare(effectiveMatch.getWeight(), requiredWeight) != 0;
-			});
-		} else {
-			return noLocaleMatch(requestedLanguageRanges, consideredLocales);
+		// Exact, canonical, structural, and positive CLDR-fallback relationships outrank all heuristics. Reserve each
+		// locale for its strongest such anchor first; a range that owns an anchor must not also spill into a sibling
+		// locale merely related by likely-subtag or primary-language inference.
+		Set<@NonNull Integer> restrictedHeuristicRangeIndices = new HashSet<>();
+		Map<@NonNull Integer, @NonNull Locale> preferredLocalesBySpecificHeuristicRangeIndex = new HashMap<>();
+		boolean[] localeReservedByAnchorOrSpecificHeuristic = new boolean[localeCount];
+		boolean[] rangeOwnsAnchor = new boolean[memberCount];
+
+		for (int localeIndex = 0; localeIndex < localeCount; ++localeIndex) {
+			@Nullable LanguageRangeSpecificity bestAnchorSpecificity = null;
+			int bestAnchorRangeIndex = -1;
+			double bestAnchorWeight = -1.0;
+
+			for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+				@Nullable LanguageRangeSpecificity specificity = cells[localeIndex][memberIndex];
+
+				if (specificity == null || !specificity.isAnchor())
+					continue;
+
+				if (members[memberIndex].weight <= 0.0 && !specificity.isEligibleForExclusion())
+					continue;
+
+				int comparison = bestAnchorSpecificity == null ? 1 : specificity.compareTo(bestAnchorSpecificity);
+
+				if (comparison > 0 || (comparison == 0 && members[memberIndex].weight > bestAnchorWeight)) {
+					bestAnchorSpecificity = specificity;
+					bestAnchorRangeIndex = memberIndex;
+					bestAnchorWeight = members[memberIndex].weight;
+				}
+			}
+
+			if (bestAnchorRangeIndex >= 0) {
+				localeReservedByAnchorOrSpecificHeuristic[localeIndex] = true;
+				int representativeIndex = representativeIndices[bestAnchorRangeIndex];
+				rangeOwnsAnchor[representativeIndex] = true;
+				restrictedHeuristicRangeIndices.add(representativeIndex);
+			}
 		}
 
-		// Walk through each LanguageRange in preference order. A maximum-weight locale may only be selected by the
-		// range that determined its effective quality; otherwise an earlier broad range could reach back and select a
-		// locale that a later, more-specific range deliberately downgraded.
-		for (int languageRangeIndex = 0; languageRangeIndex < sortedLanguageRanges.size(); ++languageRangeIndex) {
-			LanguageRange languageRange = sortedLanguageRanges.get(languageRangeIndex);
-			int requiredLanguageRangeIndex = languageRangeIndex;
-			List<@NonNull Locale> languageRangeLocales = availableLocales.stream()
-					.filter(locale -> requireNonNull(effectiveMatchesByLocale.get(locale)).getLanguageRangeIndex()
-							== requiredLanguageRangeIndex)
-					.collect(Collectors.toList());
+		List<@NonNull Integer> assignableSpecificHeuristicRangeIndices = new ArrayList<>();
 
-			if (languageRangeLocales.isEmpty())
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+			if (representativeIndices[memberIndex] != memberIndex)
 				continue;
 
-			String range = languageRange.getRange(); // e.g. "pt" or "pt-PT"
-			double weight = languageRange.getWeight();
-			boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
+			if (members[memberIndex].weight <= 0.0 ||
+					members[semanticMemberIndicesByRepresentative[memberIndex]].recognizedDepth <= 1)
+				continue;
 
-			if (weight <= 0)
+			restrictedHeuristicRangeIndices.add(memberIndex);
+
+			if (!rangeOwnsAnchor[memberIndex])
+				assignableSpecificHeuristicRangeIndices.add(memberIndex);
+		}
+
+		// Allocate one unreserved locale to each remaining specific heuristic range. Likely-subtag relationships outrank
+		// primary-language relationships; within a category, greater recognized depth, quality, and stable request order
+		// mirror the governor comparison. Lower-priority ranges therefore see locales released by stronger ones.
+		assignPreferredSpecificHeuristicLocales(LanguageRangeMatchCategory.LIKELY_SUBTAG,
+				assignableSpecificHeuristicRangeIndices, members, semanticMemberIndicesByRepresentative, cells,
+				localeReservedByAnchorOrSpecificHeuristic, preferredLocalesBySpecificHeuristicRangeIndex);
+		assignPreferredSpecificHeuristicLocales(LanguageRangeMatchCategory.PRIMARY_LANGUAGE,
+				assignableSpecificHeuristicRangeIndices, members, semanticMemberIndicesByRepresentative, cells,
+				localeReservedByAnchorOrSpecificHeuristic, preferredLocalesBySpecificHeuristicRangeIndex);
+
+		// Governor sweep. A locale can match more than one language range; its effective quality is taken from the
+		// most-specific matching range so, for example, "en;q=1,en-US;q=0" excludes en-US without excluding en-GB.
+		// Restricted heuristic ranges only govern their claimed locale, which prevents a broad, high-quality range
+		// from selecting a locale whose more-specific range has a lower quality. Negative ranges exclude syntactic or
+		// canonical matches, not locales that are merely related through Lokalized's CLDR parent/likely-subtag
+		// fallback heuristics.
+		int[] governorMemberIndexByLocale = new int[localeCount];
+		int[] selectionIndexByLocale = new int[localeCount];
+		double[] governorWeightByLocale = new double[localeCount];
+		double highestEffectiveWeight = 0.0;
+
+		Arrays.fill(governorMemberIndexByLocale, -1);
+
+		for (int localeIndex = 0; localeIndex < localeCount; ++localeIndex) {
+			Locale availableLocale = sortedSupportedLocales.get(localeIndex);
+			@Nullable LanguageRangeSpecificity bestSpecificity = null;
+			int bestMemberIndex = -1;
+			double effectiveWeight = -1.0;
+
+			for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+				@Nullable LanguageRangeSpecificity specificity = cells[localeIndex][memberIndex];
+
+				if (specificity == null)
+					continue;
+
+				int representativeIndex = representativeIndices[memberIndex];
+
+				if (specificity.isHeuristic() &&
+						restrictedHeuristicRangeIndices.contains(representativeIndex) &&
+						!availableLocale.equals(preferredLocalesBySpecificHeuristicRangeIndex.get(representativeIndex)))
+					continue;
+
+				if (members[memberIndex].weight <= 0.0 && !specificity.isEligibleForExclusion())
+					continue;
+
+				int comparison = bestSpecificity == null ? 1 : specificity.compareTo(bestSpecificity);
+
+				if (comparison > 0 || (comparison == 0 && members[memberIndex].weight > effectiveWeight)) {
+					bestSpecificity = specificity;
+					bestMemberIndex = memberIndex;
+					effectiveWeight = members[memberIndex].weight;
+				}
+			}
+
+			// A locale whose governing range is nonpositive is excluded outright; no later phase may restore it.
+			if (bestMemberIndex < 0 || effectiveWeight <= 0.0)
+				continue;
+
+			int representativeIndex = representativeIndices[bestMemberIndex];
+			boolean semanticMember = bestMemberIndex == semanticMemberIndicesByRepresentative[representativeIndex];
+
+			governorMemberIndexByLocale[localeIndex] = bestMemberIndex;
+			governorWeightByLocale[localeIndex] = effectiveWeight;
+			// Syntactic alias matches select at the member's own position; semantic and derived matches select at the
+			// group's first-member position so an interleaved equal-weight range cannot outrank the group.
+			selectionIndexByLocale[localeIndex] = semanticMember || !bestSpecificity.isSyntactic()
+					? representativeIndex
+					: bestMemberIndex;
+			highestEffectiveWeight = Math.max(highestEffectiveWeight, effectiveWeight);
+		}
+
+		if (highestEffectiveWeight <= 0.0)
+			return noLocaleMatch(requestedLanguageRanges);
+
+		// Serve maximum-weight survivors in preference order. A survivor may only be selected at the position of the
+		// range that determined its effective quality; otherwise an earlier broad range could reach back and select a
+		// locale that a later, more-specific range deliberately downgraded.
+		List<@Nullable List<@NonNull Locale>> survivorsBySelectionIndex =
+				new ArrayList<>(Collections.nCopies(memberCount, (List<@NonNull Locale>) null));
+
+		for (int localeIndex = 0; localeIndex < localeCount; ++localeIndex) {
+			if (governorMemberIndexByLocale[localeIndex] < 0 ||
+					Double.compare(governorWeightByLocale[localeIndex], highestEffectiveWeight) != 0)
+				continue;
+
+			int selectionIndex = selectionIndexByLocale[localeIndex];
+			@Nullable List<@NonNull Locale> survivors = survivorsBySelectionIndex.get(selectionIndex);
+
+			if (survivors == null) {
+				survivors = new ArrayList<>();
+				survivorsBySelectionIndex.set(selectionIndex, survivors);
+			}
+
+			survivors.add(sortedSupportedLocales.get(localeIndex));
+		}
+
+		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex) {
+			@Nullable List<@NonNull Locale> languageRangeLocales = survivorsBySelectionIndex.get(memberIndex);
+
+			if (languageRangeLocales == null)
+				continue;
+
+			MemberStatics member = members[memberIndex];
+			String range = member.range; // e.g. "pt" or "pt-PT"
+
+			if (member.weight <= 0)
 				continue;
 
 			if ("*".equals(range))
-				return localeMatch(preferredLocaleForWildcard(languageRangeLocales), effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(preferredLocaleForWildcard(languageRangeLocales), members,
+						governorMemberIndexByLocale, governorWeightByLocale, requestedLanguageRanges);
 
-			if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
+			if (member.undetermined && !member.privateUse)
 				continue;
-
-			String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
 
 			// An actual exact localized strings source must win over a different source with a canonically equivalent tag.
 			for (Locale locale : languageRangeLocales)
 				if (locale.toLanguageTag().equalsIgnoreCase(range))
-					return localeMatch(locale, effectiveMatchesByLocale,
-							requestedLanguageRanges, consideredLocales);
+					return localeMatch(locale, members, governorMemberIndexByLocale, governorWeightByLocale,
+							requestedLanguageRanges);
 
 			// Noninitial wildcards have RFC 4647 structural semantics only. In particular, an extended range that has no
 			// structural candidates must not be broadened through canonical, CLDR, likely-subtag, or primary-language
 			// matching. This also applies to private-use ranges such as x-*. Probe independently of quality.
-			if (range.contains("*")) {
+			if (member.containsWildcard) {
 				List<@NonNull Locale> filteredCandidates = structurallyFilteredLocales(range, languageRangeLocales);
 
 				if (filteredCandidates.isEmpty())
@@ -1611,14 +1839,17 @@ class DefaultStrings implements Strings {
 						? preferredLocaleForWildcard(filteredCandidates)
 						: preferredLocaleForRange(range, filteredCandidates).orElse(filteredCandidates.get(0));
 
-				return localeMatch(preferredLocale, effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(preferredLocale, members, governorMemberIndexByLocale, governorWeightByLocale,
+						requestedLanguageRanges);
 			}
 
 			// Private-use tags have no language semantics to broaden. Without a wildcard, they can select an exact
 			// localized strings source but must not be treated as an ordinary primary language such as "x".
-			if (privateUseRange)
+			if (member.privateUse)
 				continue;
+
+			String semanticRange = member.semanticRange;
+			String canonicalRange = requireNonNull(member.canonicalRange);
 
 			// CLDR-canonical tag match? Multiple deprecated aliases can collapse to the same canonical tag,
 			// so honor configured tiebreakers rather than returning the first lexicographic alias.
@@ -1628,29 +1859,31 @@ class DefaultStrings implements Strings {
 			Optional<@NonNull Locale> canonicalMatch = preferredLocaleForRange(canonicalRange, canonicalMatches);
 
 			if (canonicalMatch.isPresent())
-				return localeMatch(canonicalMatch.get(), effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(canonicalMatch.get(), members, governorMemberIndexByLocale, governorWeightByLocale,
+						requestedLanguageRanges);
 
-			Optional<Locale> lookupMatch = lookupMatchByFallbackCandidates(range, languageRangeLocales);
+			Optional<Locale> lookupMatch =
+					lookupMatchByFallbackCandidates(semanticRange, languageRangeLocales);
 
 			if (lookupMatch.isPresent())
-				return localeMatch(lookupMatch.get(), effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(lookupMatch.get(), members, governorMemberIndexByLocale, governorWeightByLocale,
+						requestedLanguageRanges);
 
-			Optional<Locale> likelySubtagMatch = lookupMatchByLikelySubtag(range, languageRangeLocales);
+			Optional<Locale> likelySubtagMatch =
+					lookupMatchByLikelySubtag(semanticRange, languageRangeLocales);
 
 			if (likelySubtagMatch.isPresent())
-				return localeMatch(likelySubtagMatch.get(), effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(likelySubtagMatch.get(), members, governorMemberIndexByLocale, governorWeightByLocale,
+						requestedLanguageRanges);
 
 			// Primary-tag candidates (e.g. "pt" or "pt-XX")
-			String primary = normalizedLanguageCode(range.split("-")[0]); // e.g. "pt"
+			String primary = requireNonNull(member.requestedPrimary); // e.g. "pt"
 
 			List<@NonNull Locale> candidates = languageRangeLocales.stream()
 					.filter(locale -> LocaleUtils.normalizedLanguage(locale)
 							.map(language -> language.equalsIgnoreCase(primary))
 							.orElse(false))
-					.filter(locale -> hasCompatibleLikelyScript(range, locale))
+					.filter(locale -> hasCompatibleLikelyScript(semanticRange, locale))
 					.collect(Collectors.toList());
 
 			if (candidates.isEmpty())
@@ -1669,8 +1902,8 @@ class DefaultStrings implements Strings {
 			}
 
 			if (candidates.size() == 1)
-				return localeMatch(candidates.get(0), effectiveMatchesByLocale,
-						requestedLanguageRanges, consideredLocales);
+				return localeMatch(candidates.get(0), members, governorMemberIndexByLocale, governorWeightByLocale,
+						requestedLanguageRanges);
 
 			// Tie‐breaker list for this primary tag?
 			@Nullable List<@NonNull Locale> tiebreakers = getTiebreakerLocalesByLanguageCode().get(primary);
@@ -1678,32 +1911,36 @@ class DefaultStrings implements Strings {
 			if (tiebreakers != null)
 				for (Locale tiebreaker : tiebreakers)
 					if (candidates.contains(tiebreaker))
-						return localeMatch(tiebreaker, effectiveMatchesByLocale,
-								requestedLanguageRanges, consideredLocales);
+						return localeMatch(tiebreaker, members, governorMemberIndexByLocale, governorWeightByLocale,
+								requestedLanguageRanges);
 
-			return localeMatch(candidates.get(0), effectiveMatchesByLocale,
-					requestedLanguageRanges, consideredLocales);
+			return localeMatch(candidates.get(0), members, governorMemberIndexByLocale, governorWeightByLocale,
+					requestedLanguageRanges);
 		}
 
-		return noLocaleMatch(requestedLanguageRanges, consideredLocales);
+		return noLocaleMatch(requestedLanguageRanges);
 	}
 
 	@NonNull
 	private LocaleMatchResult localeMatch(@NonNull Locale locale,
-																				 @NonNull Map<@NonNull Locale, @NonNull EffectiveLanguageRangeMatch> effectiveMatchesByLocale,
-																				 @NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
-																				 @NonNull List<@NonNull Locale> consideredLocales) {
-		EffectiveLanguageRangeMatch effectiveMatch = requireNonNull(effectiveMatchesByLocale.get(locale));
-		return new LocaleMatchResult(requestedLanguageRanges, locale, effectiveMatch.getLanguageRange(),
-				effectiveMatch.getWeight(), effectiveMatch.getMatchType(),
-				getFallbackLocale(), consideredLocales);
+																				@NonNull MemberStatics[] members,
+																				@NonNull int[] governorMemberIndexByLocale,
+																				@NonNull double[] governorWeightByLocale,
+																				@NonNull List<@NonNull LanguageRange> requestedLanguageRanges) {
+		int localeIndex = requireNonNull(supportedLocaleIndicesByLocale.get(locale));
+		MemberStatics governor = members[governorMemberIndexByLocale[localeIndex]];
+		// The public match type is re-derived once for the selected locale only. It is deliberately not the governor's
+		// internal category: for example, a structural relationship on a wildcard-free range must report its CLDR or
+		// likely-subtag nature, never EXTENDED_RANGE.
+		LocaleMatchType matchType = languageRangeMatchTypeFor(locale, governor.languageRange, governor.semanticRange);
+		return new LocaleMatchResult(requestedLanguageRanges, locale, governor.languageRange,
+				governorWeightByLocale[localeIndex], matchType, getFallbackLocale(), sortedSupportedLocales);
 	}
 
 	@NonNull
-	private LocaleMatchResult noLocaleMatch(@NonNull List<@NonNull LanguageRange> requestedLanguageRanges,
-																			 @NonNull List<@NonNull Locale> consideredLocales) {
+	private LocaleMatchResult noLocaleMatch(@NonNull List<@NonNull LanguageRange> requestedLanguageRanges) {
 		return new LocaleMatchResult(requestedLanguageRanges, null, null, null, LocaleMatchType.NONE,
-				getFallbackLocale(), consideredLocales);
+				getFallbackLocale(), sortedSupportedLocales);
 	}
 
 	@NonNull
@@ -1725,50 +1962,13 @@ class DefaultStrings implements Strings {
 		return fallbackLanguageTiebreaker.orElse(availableLocales.get(0));
 	}
 
-	@Nullable
-	private EffectiveLanguageRangeMatch effectiveLanguageRangeMatchFor(@NonNull Locale locale,
-																									 @NonNull List<@NonNull LanguageRange> languageRanges) {
-		requireNonNull(locale);
-		requireNonNull(languageRanges);
-
-		@Nullable LanguageRangeSpecificity bestSpecificity = null;
-		@Nullable LanguageRange bestLanguageRange = null;
-		int bestLanguageRangeIndex = -1;
-		double effectiveWeight = -1.0;
-
-		for (int languageRangeIndex = 0; languageRangeIndex < languageRanges.size(); ++languageRangeIndex) {
-			LanguageRange languageRange = languageRanges.get(languageRangeIndex);
-			@Nullable LanguageRangeSpecificity specificity = languageRangeSpecificityFor(locale, languageRange);
-
-			if (specificity == null)
-				continue;
-
-			// Negative ranges exclude syntactic or canonical matches, not locales that are merely related
-			// through Lokalized's CLDR parent/likely-subtag fallback heuristics. For example, en-US;q=0
-			// must not also exclude en-GB.
-			if (languageRange.getWeight() <= 0.0 && !specificity.isEligibleForExclusion())
-				continue;
-
-			int comparison = bestSpecificity == null ? 1 : specificity.compareTo(bestSpecificity);
-
-			if (comparison > 0 || (comparison == 0 && languageRange.getWeight() > effectiveWeight)) {
-				bestSpecificity = specificity;
-				bestLanguageRange = languageRange;
-				bestLanguageRangeIndex = languageRangeIndex;
-				effectiveWeight = languageRange.getWeight();
-			}
-		}
-
-		return bestLanguageRange == null ? null :
-				new EffectiveLanguageRangeMatch(bestLanguageRange, bestLanguageRangeIndex, requireNonNull(bestSpecificity),
-						languageRangeMatchTypeFor(locale, bestLanguageRange), effectiveWeight);
-	}
-
 	@NonNull
 	private LocaleMatchType languageRangeMatchTypeFor(@NonNull Locale locale,
-																							 @NonNull LanguageRange languageRange) {
+																							 @NonNull LanguageRange languageRange,
+																							 @NonNull String semanticRange) {
 		requireNonNull(locale);
 		requireNonNull(languageRange);
+		requireNonNull(semanticRange);
 		String range = languageRange.getRange();
 		String localeTag = locale.toLanguageTag();
 
@@ -1779,16 +1979,16 @@ class DefaultStrings implements Strings {
 		if (range.contains("*"))
 			return LocaleMatchType.EXTENDED_RANGE;
 
-		String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
+		String canonicalRange = CldrLocaleData.canonicalLanguageTag(semanticRange);
 
 		if (CldrLocaleData.canonicalLanguageTag(localeTag).equalsIgnoreCase(canonicalRange))
 			return LocaleMatchType.CANONICAL;
 
 		List<@NonNull Locale> selectedLocaleOnly = Collections.singletonList(locale);
 
-		if (lookupMatchByFallbackCandidates(range, selectedLocaleOnly).isPresent())
+		if (lookupMatchByFallbackCandidates(semanticRange, selectedLocaleOnly).isPresent())
 			return LocaleMatchType.CLDR_FALLBACK;
-		if (lookupMatchByLikelySubtag(range, selectedLocaleOnly).isPresent())
+		if (lookupMatchByLikelySubtag(semanticRange, selectedLocaleOnly).isPresent())
 			return LocaleMatchType.LIKELY_SUBTAG;
 		if (!structurallyFilteredLocales(range, selectedLocaleOnly).isEmpty())
 			return LocaleMatchType.EXTENDED_RANGE;
@@ -1797,72 +1997,213 @@ class DefaultStrings implements Strings {
 	}
 
 	@Nullable
-	private LanguageRangeSpecificity languageRangeSpecificityFor(@NonNull Locale locale,
-																							@NonNull LanguageRange languageRange) {
-		requireNonNull(locale);
-		requireNonNull(languageRange);
+	private LanguageRangeSpecificity languageRangeSpecificityFor(@NonNull SupportedLocaleStatics localeStatics,
+																							@NonNull MemberStatics member) {
+		requireNonNull(localeStatics);
+		requireNonNull(member);
 
-		String range = languageRange.getRange();
-		String structuralRange = normalizedExtendedLanguageRange(range);
-		String localeTag = locale.toLanguageTag();
-		boolean privateUseRange = CldrLocaleData.isPrivateUseLanguageTag(range);
-
-		if ("*".equals(structuralRange))
+		if (member.bareWildcard)
 			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.WILDCARD, 0, 0);
 
-		if (CldrLocaleData.hasUndeterminedLanguage(range) && !privateUseRange)
+		if (member.undetermined && !member.privateUse)
 			return null;
 
-		int structuralDepth = structuralConstraintCountFor(structuralRange);
+		// A positive bare language range ultimately selects through likely-script or primary-language matching.
+		// Classifying its syntactic descendant relationship as direct would let broad "zh" own zh-Hant even though
+		// the selection path correctly rejects that script, bypassing a preferred regional range such as zh-TW.
+		// Wildcards and nonpositive ranges retain direct structural authority, including q=0 exclusions.
+		boolean broadPositiveStructuralRange = member.weight > 0.0 &&
+				!member.containsWildcard && member.structuralDepth == 1;
 
-		if (localeTag.equalsIgnoreCase(structuralRange))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.EXACT, structuralDepth, 0);
+		if (localeStatics.languageTag.equalsIgnoreCase(member.structuralRange))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.EXACT, member.structuralDepth, 0);
 
-		if (privateUseRange && !range.contains("*"))
+		if (member.privateUse && !member.containsWildcard)
 			return null;
 
-		// Specificity needs a structural match probe independent of quality so that a negative range such as
+		// The structural match probe is independent of quality so that a negative range such as
 		// en-US;q=0 also excludes en-US-posix and en-US-u-nu-latn.
-		List<@NonNull Locale> directlyFiltered = structurallyFilteredLocales(range, Collections.singletonList(locale));
+		if (structurallyMatches(member.rangeSubtags, localeStatics.tagSubtags) && !broadPositiveStructuralRange)
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.DIRECT_STRUCTURAL, member.structuralDepth, 0);
 
-		if (!directlyFiltered.isEmpty())
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.DIRECT_STRUCTURAL, structuralDepth, 0);
-
-		if (range.contains("*"))
+		if (member.containsWildcard)
 			return null;
 
-		String canonicalRange = CldrLocaleData.canonicalLanguageTag(range);
-		String canonicalLocaleTag = CldrLocaleData.canonicalLanguageTag(localeTag);
+		boolean broadPositiveSemanticRange = member.weight > 0.0 && member.semanticDepth == 1;
 
-		if (canonicalLocaleTag.equalsIgnoreCase(canonicalRange))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, 0);
+		if (localeStatics.canonicalTag.equalsIgnoreCase(member.canonicalRange))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, member.semanticDepth, 0);
 
-		if (structurallyMatches(canonicalRange, canonicalLocaleTag))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, structuralDepth, 0);
+		if (structurallyMatches(requireNonNull(member.canonicalRangeSubtags), localeStatics.canonicalSubtags) &&
+				!broadPositiveSemanticRange)
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CANONICAL, member.semanticDepth, 0);
 
-		List<@NonNull Locale> fallbackLocales = CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(range));
+		String[] fallbackChainCanonicalTags = requireNonNull(member.fallbackChainCanonicalTags);
 
-		for (int index = 0; index < fallbackLocales.size(); ++index)
-			if (CldrLocaleData.equivalent(locale, fallbackLocales.get(index)))
-				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CLDR_FALLBACK, structuralDepth, index);
+		for (int index = 0; index < fallbackChainCanonicalTags.length; ++index)
+			if (localeStatics.canonicalTag.equalsIgnoreCase(fallbackChainCanonicalTags[index]))
+				return new LanguageRangeSpecificity(LanguageRangeMatchCategory.CLDR_FALLBACK, member.semanticDepth, index);
 
-		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(range);
-		Optional<@NonNull String> availableLanguageScript = CldrLocaleData.hasUndeterminedLanguage(localeTag)
-				? Optional.empty()
-				: CldrLocaleData.languageScriptForLikelySubtag(locale);
+		@Nullable String availableLanguageScript = localeStatics.undetermined ? null : localeStatics.likelyLanguageScript;
 
-		if (requestedLanguageScript.isPresent() && availableLanguageScript.isPresent() &&
-				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get()))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.LIKELY_SUBTAG, structuralDepth, 0);
+		if (member.requestedLikelyLanguageScript != null && availableLanguageScript != null &&
+				member.requestedLikelyLanguageScript.equalsIgnoreCase(availableLanguageScript))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.LIKELY_SUBTAG, member.recognizedDepth, 0);
 
-		String requestedPrimary = normalizedLanguageCode(range.split("-")[0]);
-		Optional<String> availablePrimary = LocaleUtils.normalizedLanguage(locale);
-
-		if (availablePrimary.isPresent() && availablePrimary.get().equalsIgnoreCase(requestedPrimary) &&
-				hasCompatibleLikelyScript(range, locale))
-			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.PRIMARY_LANGUAGE, structuralDepth, 0);
+		if (localeStatics.normalizedLanguage != null &&
+				localeStatics.normalizedLanguage.equalsIgnoreCase(member.requestedPrimary) &&
+				compatibleLikelyScripts(member.requestedLikelyLanguageScript, localeStatics.likelyLanguageScript))
+			return new LanguageRangeSpecificity(LanguageRangeMatchCategory.PRIMARY_LANGUAGE, member.semanticDepth, 0);
 
 		return null;
+	}
+
+	@NonNull
+	private static String canonicalLanguageRangeIdentity(@NonNull String range) {
+		requireNonNull(range);
+		return (range.contains("*") ? range : CldrLocaleData.canonicalLanguageTag(range))
+				.toLowerCase(Locale.ROOT);
+	}
+
+	@NonNull
+	private static String semanticLanguageRangeForDerivedMatching(@NonNull String range,
+																								boolean knownTag,
+																								boolean containsWildcard,
+																								@Nullable List<@NonNull LanguageRange> parsedEquivalentRanges) {
+		requireNonNull(range);
+
+		if (containsWildcard || knownTag)
+			return range;
+
+		String jdkLanguageTag = Locale.forLanguageTag(range).toLanguageTag();
+		String semanticRange = range;
+		boolean jdkSemanticRange =
+				semanticRange.equalsIgnoreCase(jdkLanguageTag);
+		boolean knownLanguageTag = false;
+		int constraintCount = 1;
+		boolean canonicalStable = canonicalLanguageRangeIdentity(semanticRange)
+				.equals(semanticRange.toLowerCase(Locale.ROOT));
+
+		// A validated LanguageRange can still expose JDK parser bugs. The original range remains the safe semantic
+		// boundary when its registered equivalences could not be established.
+		if (parsedEquivalentRanges != null)
+			for (LanguageRange equivalentRange : parsedEquivalentRanges) {
+				String candidateRange = equivalentRange.getRange();
+				boolean candidateJdkSemanticRange =
+						candidateRange.equalsIgnoreCase(jdkLanguageTag);
+				boolean candidateKnownLanguageTag =
+						CldrLocaleData.isKnownLanguageTag(candidateRange);
+				int candidateConstraintCount =
+						recognizedLanguageTagConstraintCountFor(candidateRange);
+				boolean candidateCanonicalStable =
+						canonicalLanguageRangeIdentity(candidateRange)
+								.equals(candidateRange.toLowerCase(Locale.ROOT));
+
+				if ((candidateJdkSemanticRange && !jdkSemanticRange) ||
+						(candidateJdkSemanticRange == jdkSemanticRange &&
+								((candidateKnownLanguageTag && !knownLanguageTag) ||
+										(candidateKnownLanguageTag == knownLanguageTag &&
+												(candidateConstraintCount > constraintCount ||
+														(candidateConstraintCount == constraintCount &&
+																candidateCanonicalStable && !canonicalStable)))))) {
+					semanticRange = candidateRange;
+					jdkSemanticRange = candidateJdkSemanticRange;
+					knownLanguageTag = candidateKnownLanguageTag;
+					constraintCount = candidateConstraintCount;
+					canonicalStable = candidateCanonicalStable;
+				}
+			}
+
+		return semanticRange;
+	}
+
+	private static int recognizedLanguageTagConstraintCountFor(@NonNull String range) {
+		requireNonNull(range);
+
+		if (!CldrLocaleData.isKnownLanguageTag(range))
+			return 1;
+
+		Locale locale = Locale.forLanguageTag(CldrLocaleData.canonicalLanguageTag(range));
+		int constraintCount = locale.getLanguage().isEmpty() ? 0 : 1;
+
+		if (!locale.getScript().isEmpty())
+			++constraintCount;
+		if (!locale.getCountry().isEmpty())
+			++constraintCount;
+
+		return Math.max(constraintCount, 1);
+	}
+
+	/**
+	 * Claims at most one unreserved locale for each specific heuristic range of the given category.
+	 * <p>
+	 * Candidates are pre-filtered to cells of exactly this category, so the per-range selection reduces to the
+	 * category's own tie-break: the former per-range mini-cascade's exact, canonical, and CLDR-fallback stages were
+	 * unreachable here by construction, because a locale in any of those relationships never classifies as a
+	 * likely-subtag or primary-language cell for the same range.
+	 */
+	private void assignPreferredSpecificHeuristicLocales(
+			@NonNull LanguageRangeMatchCategory category,
+			@NonNull List<@NonNull Integer> specificHeuristicRangeIndices,
+			@NonNull MemberStatics[] members,
+			@NonNull int[] semanticMemberIndicesByRepresentative,
+			@NonNull LanguageRangeSpecificity[][] cells,
+			@NonNull boolean[] localeReservedByAnchorOrSpecificHeuristic,
+			@NonNull Map<@NonNull Integer, @NonNull Locale> preferredLocalesBySpecificHeuristicRangeIndex) {
+		requireNonNull(category);
+		requireNonNull(specificHeuristicRangeIndices);
+		requireNonNull(members);
+		requireNonNull(semanticMemberIndicesByRepresentative);
+		requireNonNull(cells);
+		requireNonNull(localeReservedByAnchorOrSpecificHeuristic);
+		requireNonNull(preferredLocalesBySpecificHeuristicRangeIndex);
+
+		List<@NonNull Integer> orderedRangeIndices = new ArrayList<>(specificHeuristicRangeIndices);
+		orderedRangeIndices.sort((firstIndex, secondIndex) -> {
+			MemberStatics firstMember = members[semanticMemberIndicesByRepresentative[firstIndex]];
+			MemberStatics secondMember = members[semanticMemberIndicesByRepresentative[secondIndex]];
+			int firstDepth = category == LanguageRangeMatchCategory.LIKELY_SUBTAG
+					? firstMember.recognizedDepth
+					: firstMember.semanticDepth;
+			int secondDepth = category == LanguageRangeMatchCategory.LIKELY_SUBTAG
+					? secondMember.recognizedDepth
+					: secondMember.semanticDepth;
+			int depthComparison = Integer.compare(secondDepth, firstDepth);
+
+			if (depthComparison != 0)
+				return depthComparison;
+
+			int weightComparison = Double.compare(secondMember.weight, firstMember.weight);
+			return weightComparison != 0 ? weightComparison : Integer.compare(firstIndex, secondIndex);
+		});
+
+		for (Integer languageRangeIndex : orderedRangeIndices) {
+			if (preferredLocalesBySpecificHeuristicRangeIndex.containsKey(languageRangeIndex))
+				continue;
+
+			int heuristicMemberIndex = semanticMemberIndicesByRepresentative[languageRangeIndex];
+			List<@NonNull Locale> candidates = new ArrayList<>();
+
+			for (int localeIndex = 0; localeIndex < supportedLocaleStatics.size(); ++localeIndex) {
+				@Nullable LanguageRangeSpecificity specificity = cells[localeIndex][heuristicMemberIndex];
+
+				if (!localeReservedByAnchorOrSpecificHeuristic[localeIndex] &&
+						specificity != null && specificity.hasCategory(category))
+					candidates.add(sortedSupportedLocales.get(localeIndex));
+			}
+
+			String semanticRange = members[heuristicMemberIndex].semanticRange;
+			Optional<@NonNull Locale> preferredLocale = category == LanguageRangeMatchCategory.LIKELY_SUBTAG
+					? lookupMatchByLikelySubtag(semanticRange, candidates)
+					: preferredLocaleForRange(semanticRange, candidates);
+
+			if (!preferredLocale.isPresent())
+				continue;
+
+			Locale locale = preferredLocale.get();
+			preferredLocalesBySpecificHeuristicRangeIndex.put(languageRangeIndex, locale);
+			localeReservedByAnchorOrSpecificHeuristic[requireNonNull(supportedLocaleIndicesByLocale.get(locale))] = true;
+		}
 	}
 
 	private static int structuralConstraintCountFor(@NonNull String range) {
@@ -1903,8 +2244,13 @@ class DefaultStrings implements Strings {
 	private static boolean structurallyMatches(@NonNull String range, @NonNull String languageTag) {
 		requireNonNull(range);
 		requireNonNull(languageTag);
-		String[] rangeSubtags = range.split("-");
-		String[] tagSubtags = languageTag.split("-");
+		return structurallyMatches(range.split("-"), languageTag.split("-"));
+	}
+
+	/** Implements the extended-filtering algorithm in RFC 4647 section 3.3.2 over presplit subtags. */
+	private static boolean structurallyMatches(@NonNull String[] rangeSubtags, @NonNull String[] tagSubtags) {
+		requireNonNull(rangeSubtags);
+		requireNonNull(tagSubtags);
 
 		if (!"*".equals(rangeSubtags[0]) && !rangeSubtags[0].equalsIgnoreCase(tagSubtags[0]))
 			return false;
@@ -1953,14 +2299,27 @@ class DefaultStrings implements Strings {
 		return normalizedRange.toString();
 	}
 
-	private boolean hasCompatibleLikelyScript(@NonNull String requestedLanguageTag, @NonNull Locale availableLocale) {
+	private static boolean hasCompatibleLikelyScript(@NonNull String requestedLanguageTag, @NonNull Locale availableLocale) {
 		requireNonNull(requestedLanguageTag);
 		requireNonNull(availableLocale);
+		return compatibleLikelyScripts(
+				CldrLocaleData.languageScriptForLikelySubtag(requestedLanguageTag).orElse(null),
+				CldrLocaleData.languageScriptForLikelySubtag(availableLocale).orElse(null));
+	}
 
-		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(requestedLanguageTag);
-		Optional<String> availableLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(availableLocale);
-		return !requestedLanguageScript.isPresent() || !availableLanguageScript.isPresent() ||
-				requestedLanguageScript.get().equalsIgnoreCase(availableLanguageScript.get());
+	private static boolean matchesLikelyLanguageScript(@NonNull Locale requestedLocale, @NonNull Locale candidateLocale) {
+		requireNonNull(requestedLocale);
+		requireNonNull(candidateLocale);
+		return compatibleLikelyScripts(
+				CldrLocaleData.languageScriptForLikelySubtag(requestedLocale).orElse(null),
+				CldrLocaleData.languageScriptForLikelySubtag(candidateLocale).orElse(null));
+	}
+
+	/** Likely scripts are compatible when either side is unknown or both agree. */
+	private static boolean compatibleLikelyScripts(@Nullable String requestedLanguageScript,
+																								 @Nullable String availableLanguageScript) {
+		return requestedLanguageScript == null || availableLanguageScript == null ||
+				requestedLanguageScript.equalsIgnoreCase(availableLanguageScript);
 	}
 
 	@NonNull
@@ -2012,10 +2371,7 @@ class DefaultStrings implements Strings {
 
 		LinkedHashSet<@NonNull Locale> candidates = new LinkedHashSet<>();
 		candidates.addAll(CldrLocaleData.fallbackLocalesFor(locale));
-
-		List<@NonNull Locale> availableLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
-		availableLocales.sort(Comparator.comparing(Locale::toLanguageTag));
-		lookupMatchByLikelySubtag(locale.toLanguageTag(), availableLocales).ifPresent(candidates::add);
+		lookupMatchByLikelySubtag(locale.toLanguageTag(), sortedSupportedLocales).ifPresent(candidates::add);
 
 		LocaleUtils.normalizedLanguage(locale)
 				.map(getTiebreakerLocalesByLanguageCode()::get)
@@ -2118,16 +2474,6 @@ class DefaultStrings implements Strings {
 			return Optional.of(getFallbackLocale());
 
 		return Optional.of(candidates.get(0));
-	}
-
-	private boolean matchesLikelyLanguageScript(@NonNull Locale requestedLocale, @NonNull Locale candidateLocale) {
-		requireNonNull(requestedLocale);
-		requireNonNull(candidateLocale);
-
-		Optional<String> requestedLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(requestedLocale);
-		Optional<String> candidateLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(candidateLocale);
-		return !requestedLanguageScript.isPresent() || !candidateLanguageScript.isPresent() ||
-				requestedLanguageScript.get().equalsIgnoreCase(candidateLanguageScript.get());
 	}
 
 	@NonNull
@@ -2246,9 +2592,7 @@ class DefaultStrings implements Strings {
 	 */
 	@NonNull
 	public Set<@NonNull Locale> getSupportedLocales() {
-		List<@NonNull Locale> sortedLocales = new ArrayList<>(getLocalizedStringsByLocale().keySet());
-		sortedLocales.sort(Comparator.comparing(Locale::toLanguageTag));
-		return Collections.unmodifiableSet(new LinkedHashSet<>(sortedLocales));
+		return Collections.unmodifiableSet(new LinkedHashSet<>(sortedSupportedLocales));
 	}
 
 	/**
@@ -2520,29 +2864,125 @@ class DefaultStrings implements Strings {
 		@Nullable private Map<@NonNull String, @NonNull LocalizedString> getLocalizedStrings() { return localizedStrings; }
 	}
 
+	/**
+	 * Matching-invariant facts about one supported locale, computed once at construction because the supported set is
+	 * immutable. Locale-side classification then reduces to array and string comparisons instead of repeated CLDR
+	 * canonicalization and likely-subtag discovery.
+	 */
 	@Immutable
-	private static final class EffectiveLanguageRangeMatch {
-		@NonNull private final LanguageRange languageRange;
-		private final int languageRangeIndex;
-		@NonNull private final LanguageRangeSpecificity specificity;
-		@NonNull private final LocaleMatchType matchType;
-		private final double weight;
+	private static final class SupportedLocaleStatics {
+		@NonNull private final String languageTag;
+		@NonNull private final String[] tagSubtags;
+		@NonNull private final String canonicalTag;
+		@NonNull private final String[] canonicalSubtags;
+		private final boolean undetermined;
+		@Nullable private final String likelyLanguageScript;
+		@Nullable private final String normalizedLanguage;
 
-		private EffectiveLanguageRangeMatch(@NonNull LanguageRange languageRange,
-																int languageRangeIndex,
-																@NonNull LanguageRangeSpecificity specificity,
-																@NonNull LocaleMatchType matchType, double weight) {
-			this.languageRange = requireNonNull(languageRange);
-			this.languageRangeIndex = languageRangeIndex;
-			this.specificity = requireNonNull(specificity);
-			this.matchType = requireNonNull(matchType);
-			this.weight = weight;
+		private SupportedLocaleStatics(@NonNull Locale locale) {
+			requireNonNull(locale);
+			this.languageTag = locale.toLanguageTag();
+			this.tagSubtags = languageTag.split("-");
+			this.canonicalTag = CldrLocaleData.canonicalLanguageTag(languageTag);
+			this.canonicalSubtags = canonicalTag.split("-");
+			this.undetermined = CldrLocaleData.hasUndeterminedLanguage(languageTag);
+			this.likelyLanguageScript = CldrLocaleData.languageScriptForLikelySubtag(locale).orElse(null);
+			this.normalizedLanguage = LocaleUtils.normalizedLanguage(locale).orElse(null);
 		}
+	}
 
-		@NonNull private LanguageRange getLanguageRange() { return languageRange; }
-		private int getLanguageRangeIndex() { return languageRangeIndex; }
-		@NonNull private LocaleMatchType getMatchType() { return matchType; }
-		private double getWeight() { return weight; }
+	/**
+	 * Per-request facts about one language range member, computed once per match operation.
+	 * <p>
+	 * One {@link LanguageRange#parse(String)} expansion feeds both the JDK identity set and the semantic-range
+	 * election, and each derived CLDR lookup (canonical form, fallback chain, likely subtag) happens once per member
+	 * rather than once per (locale, member) cell. Derived lookups are skipped for wildcard, undetermined, and
+	 * private-use ranges, mirroring exactly the relationships classification can reach for them.
+	 */
+	@Immutable
+	private static final class MemberStatics {
+		@NonNull private final LanguageRange languageRange;
+		@NonNull private final String range;
+		private final double weight;
+		@NonNull private final Set<@NonNull String> identities;
+		private final boolean knownTag;
+		@NonNull private final String semanticRange;
+		@NonNull private final String canonicalIdentity;
+		@NonNull private final String structuralRange;
+		@NonNull private final String[] rangeSubtags;
+		private final int structuralDepth;
+		private final boolean privateUse;
+		private final boolean undetermined;
+		private final boolean containsWildcard;
+		private final boolean bareWildcard;
+		private final int recognizedDepth;
+		private final int semanticDepth;
+		@Nullable private final String canonicalRange;
+		@Nullable private final String[] canonicalRangeSubtags;
+		@Nullable private final String[] fallbackChainCanonicalTags;
+		@Nullable private final String requestedLikelyLanguageScript;
+		@Nullable private final String requestedPrimary;
+
+		private MemberStatics(@NonNull LanguageRange languageRange) {
+			this.languageRange = requireNonNull(languageRange);
+			this.range = languageRange.getRange();
+			this.weight = languageRange.getWeight();
+			this.containsWildcard = range.contains("*");
+			this.structuralRange = normalizedExtendedLanguageRange(range);
+			this.bareWildcard = "*".equals(structuralRange);
+			this.rangeSubtags = range.split("-");
+			this.structuralDepth = structuralConstraintCountFor(structuralRange);
+			this.privateUse = CldrLocaleData.isPrivateUseLanguageTag(range);
+			this.undetermined = CldrLocaleData.hasUndeterminedLanguage(range);
+			this.knownTag = CldrLocaleData.isKnownLanguageTag(range);
+
+			Set<@NonNull String> identities = new LinkedHashSet<>();
+			identities.add(range.toLowerCase(Locale.ROOT));
+			@Nullable List<@NonNull LanguageRange> parsedEquivalentRanges = null;
+
+			try {
+				parsedEquivalentRanges = LanguageRange.parse(range);
+
+				for (LanguageRange equivalentRange : parsedEquivalentRanges)
+					identities.add(equivalentRange.getRange().toLowerCase(Locale.ROOT));
+			} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
+				// The range already came from a validated LanguageRange instance. Retaining its direct identity is still
+				// safe if a particular JDK cannot re-expand an otherwise accepted form.
+			}
+
+			this.identities = identities;
+			this.semanticRange = semanticLanguageRangeForDerivedMatching(range, knownTag, containsWildcard,
+					parsedEquivalentRanges);
+			this.canonicalIdentity = canonicalLanguageRangeIdentity(semanticRange);
+			this.recognizedDepth = recognizedLanguageTagConstraintCountFor(semanticRange);
+
+			if (!containsWildcard && !undetermined && !privateUse) {
+				this.semanticDepth = structuralConstraintCountFor(normalizedExtendedLanguageRange(semanticRange));
+				String canonicalRange = CldrLocaleData.canonicalLanguageTag(semanticRange);
+				this.canonicalRange = canonicalRange;
+				this.canonicalRangeSubtags = canonicalRange.split("-");
+
+				List<@NonNull Locale> fallbackLocales =
+						CldrLocaleData.fallbackLocalesFor(Locale.forLanguageTag(semanticRange));
+				String[] fallbackChainCanonicalTags = new String[fallbackLocales.size()];
+
+				for (int index = 0; index < fallbackChainCanonicalTags.length; ++index)
+					fallbackChainCanonicalTags[index] =
+							CldrLocaleData.canonicalLanguageTag(fallbackLocales.get(index).toLanguageTag());
+
+				this.fallbackChainCanonicalTags = fallbackChainCanonicalTags;
+				this.requestedLikelyLanguageScript =
+						CldrLocaleData.languageScriptForLikelySubtag(semanticRange).orElse(null);
+				this.requestedPrimary = normalizedLanguageCode(semanticRange.split("-")[0]);
+			} else {
+				this.semanticDepth = 0;
+				this.canonicalRange = null;
+				this.canonicalRangeSubtags = null;
+				this.fallbackChainCanonicalTags = null;
+				this.requestedLikelyLanguageScript = null;
+				this.requestedPrimary = null;
+			}
+		}
 	}
 
 	@Immutable
@@ -2569,8 +3009,10 @@ class DefaultStrings implements Strings {
 	/**
 	 * Locale-range specificity ordered without additive score bands. Match category always outranks structural
 	 * depth, so even an arbitrarily long range cannot spill into another category. RFC 4647 ignores noninitial wildcard
-	 * subtags, so they are removed before categorization and cannot manufacture either depth or specificity. Fallback
-	 * distance is considered last, with a nearer fallback considered more specific.
+	 * subtags, so they are removed before categorization and cannot manufacture either depth or specificity.
+	 * Likely-subtag depth counts only a recognized language, script, and region, since variants and extensions do not
+	 * make a language-script heuristic more specific. Fallback distance is considered last, with a nearer fallback
+	 * considered more specific.
 	 */
 	@Immutable
 	private static final class LanguageRangeSpecificity implements Comparable<@NonNull LanguageRangeSpecificity> {
@@ -2587,6 +3029,24 @@ class DefaultStrings implements Strings {
 
 		private boolean isEligibleForExclusion() {
 			return category.isEligibleForExclusion();
+		}
+
+		private boolean isAnchor() {
+			return category.compareTo(LanguageRangeMatchCategory.LIKELY_SUBTAG) > 0;
+		}
+
+		private boolean isHeuristic() {
+			return category == LanguageRangeMatchCategory.LIKELY_SUBTAG ||
+					category == LanguageRangeMatchCategory.PRIMARY_LANGUAGE;
+		}
+
+		private boolean isSyntactic() {
+			return category == LanguageRangeMatchCategory.EXACT ||
+					category == LanguageRangeMatchCategory.DIRECT_STRUCTURAL;
+		}
+
+		private boolean hasCategory(@NonNull LanguageRangeMatchCategory category) {
+			return this.category == requireNonNull(category);
 		}
 
 		@Override

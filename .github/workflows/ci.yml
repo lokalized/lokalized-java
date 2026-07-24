@@ -51,6 +51,13 @@ jobs:
       - name: Verify
         run: mvn -B -ntp -Dmaven.javadoc.skip=true verify
 
+      # JAVA_TOOL_OPTIONS reaches Surefire's forked test JVM at startup; a Maven user property alone does not.
+      - name: Verify with ar-EG default locale
+        if: matrix.jdk == '21'
+        env:
+          JAVA_TOOL_OPTIONS: -Duser.language=ar -Duser.country=EG
+        run: mvn -B -ntp -Dmaven.javadoc.skip=true verify
+
   javadoc:
     name: Javadoc (JDK 26)
     runs-on: ubuntu-latest

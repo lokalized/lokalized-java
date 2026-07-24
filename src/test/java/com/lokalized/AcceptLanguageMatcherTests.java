@@ -52,8 +52,33 @@ public class AcceptLanguageMatcherTests {
 		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(""));
 		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(" \t\r\n"));
 		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("fr;q=invalid"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("-"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("--"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("en,-"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage("-,fr"));
 		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(
 				paddedHeader("fr", MAXIMUM_HEADER_CHARACTERS + 1)));
+	}
+
+	@Test
+	public void horizontalTabOptionalWhitespaceIsAccepted() {
+		Strings strings = strings();
+
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage("\tfr\t"));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage(
+				"\ten-US\t;\tq=0.2\t,\tfr\t;\tq=0.8\t"));
+	}
+
+	@Test
+	public void emptyListElementsAreIgnored() {
+		Strings strings = strings();
+
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage(",fr"));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage("fr,,en-US;q=0.9"));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage("en-US;q=0.9,,fr"));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage("fr,"));
+		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage("fr, \t ,en-US;q=0.9"));
+		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(",, \t ,"));
 	}
 
 	@Test
@@ -86,10 +111,11 @@ public class AcceptLanguageMatcherTests {
 	@Test
 	public void rawHeaderCharacterLimitIsInclusive() {
 		Strings strings = strings();
-		String atLimit = paddedHeader("fr", MAXIMUM_HEADER_CHARACTERS);
-		String overLimit = paddedHeader("fr", MAXIMUM_HEADER_CHARACTERS + 1);
+		String atLimit = paddedHeader(",\tfr\t,", MAXIMUM_HEADER_CHARACTERS);
+		String overLimit = paddedHeader(",\tfr\t,", MAXIMUM_HEADER_CHARACTERS + 1);
 
 		assertEquals(MAXIMUM_HEADER_CHARACTERS, atLimit.length());
+		assertEquals(MAXIMUM_HEADER_CHARACTERS + 1, overLimit.length());
 		assertEquals(FRENCH, strings.bestMatchForAcceptLanguage(atLimit));
 		assertEquals(FALLBACK_LOCALE, strings.bestMatchForAcceptLanguage(overLimit));
 	}

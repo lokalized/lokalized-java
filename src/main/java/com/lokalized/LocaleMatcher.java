@@ -102,8 +102,9 @@ public interface LocaleMatcher {
 	 * <p>
 	 * This is a fail-soft convenience for request handling. A missing, blank, malformed, or longer than 4,096 UTF-16
 	 * code-unit value returns the configured fallback locale. The length limit is applied before parsing so parser work
-	 * is bounded independently of the parsed-range limit. The configured fallback is also returned if parsing produces
-	 * more than {@link #MAXIMUM_LANGUAGE_RANGES} ranges, which can happen when {@link LanguageRange#parse(String)} adds
+	 * is bounded independently of the parsed-range limit. HTTP optional whitespace and empty list elements are
+	 * normalized before parsing. The configured fallback is also returned if parsing produces more than
+	 * {@link #MAXIMUM_LANGUAGE_RANGES} ranges, which can happen when {@link LanguageRange#parse(String)} adds
 	 * IANA-equivalent ranges. A valid parsed list is passed through whole; preferences are never truncated. Use
 	 * {@link #matchFor(List)} or {@link #bestMatchFor(List)} when language ranges have already been parsed and strict
 	 * limit enforcement is desired.
@@ -119,11 +120,16 @@ public interface LocaleMatcher {
 				acceptLanguage.trim().isEmpty())
 			return bestMatchFor(List.of());
 
+		String normalizedAcceptLanguage = normalizeAcceptLanguage(acceptLanguage);
+
+		if (normalizedAcceptLanguage.isEmpty())
+			return bestMatchFor(List.of());
+
 		List<@NonNull LanguageRange> languageRanges;
 
 		try {
-			languageRanges = LanguageRange.parse(acceptLanguage);
-		} catch (IllegalArgumentException exception) {
+			languageRanges = LanguageRange.parse(normalizedAcceptLanguage);
+		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
 			return bestMatchFor(List.of());
 		}
 
@@ -131,5 +137,49 @@ public interface LocaleMatcher {
 			return bestMatchFor(List.of());
 
 		return bestMatchFor(languageRanges);
+	}
+
+	/**
+	 * Converts RFC 9110 horizontal-tab whitespace to the space form understood by
+	 * {@link LanguageRange#parse(String)} and removes empty HTTP list elements.
+	 */
+	@NonNull
+	private static String normalizeAcceptLanguage(@NonNull String acceptLanguage) {
+		StringBuilder normalizedAcceptLanguage = new StringBuilder(acceptLanguage.length());
+		int memberStartIndex = 0;
+
+		for (int index = 0; index <= acceptLanguage.length(); ++index) {
+			if (index < acceptLanguage.length() && acceptLanguage.charAt(index) != ',')
+				continue;
+
+			int firstContentIndex = memberStartIndex;
+
+			while (firstContentIndex < index && isOptionalWhitespace(acceptLanguage.charAt(firstContentIndex)))
+				++firstContentIndex;
+
+			int contentEndIndex = index;
+
+			while (contentEndIndex > firstContentIndex &&
+					isOptionalWhitespace(acceptLanguage.charAt(contentEndIndex - 1)))
+				--contentEndIndex;
+
+			if (firstContentIndex < contentEndIndex) {
+				if (normalizedAcceptLanguage.length() > 0)
+					normalizedAcceptLanguage.append(',');
+
+				for (int contentIndex = firstContentIndex; contentIndex < contentEndIndex; ++contentIndex) {
+					char character = acceptLanguage.charAt(contentIndex);
+					normalizedAcceptLanguage.append(character == '\t' ? ' ' : character);
+				}
+			}
+
+			memberStartIndex = index + 1;
+		}
+
+		return normalizedAcceptLanguage.toString();
+	}
+
+	private static boolean isOptionalWhitespace(char character) {
+		return character == ' ' || character == '\t';
 	}
 }
