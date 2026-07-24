@@ -1713,6 +1713,8 @@ Suppose the Arabic translation for `Shipment` is `تم تجهيز {{code}}`. By 
 
 ```java
 String message = strings.get("Shipment", Map.of("code", "ACME-42"));
+// U+2068 FIRST STRONG ISOLATE begins bidirectional isolation around the caller-supplied value.
+// U+2069 POP DIRECTIONAL ISOLATE ends that bidirectional isolation.
 assertEquals("تم تجهيز \u2068ACME-42\u2069", message);
 ```
 
