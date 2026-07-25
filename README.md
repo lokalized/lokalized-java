@@ -40,6 +40,9 @@ assertEquals("I didn't read any books.", message);
 
 Lokalized has proudly powered production systems since 2017.
 
+**Note: this README provides a high-level overview of Lokalized.**<br/>
+**For details, please refer to the official documentation at [https://www.lokalized.com](https://www.lokalized.com).**
+
 ## Why Lokalized?
 
 * **Keep language rules out of application code:** locale-specific grammar and wording live with the translations instead of being scattered through conditionals
