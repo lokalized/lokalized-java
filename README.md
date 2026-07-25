@@ -56,6 +56,13 @@ Lokalized has proudly powered production systems since 2017.
 * Support for collation (JDK provides this)
 * Support for Java 8 and below; Lokalized is for Java 9+ only
 
+## Do Zero-Dependency Libraries Interest You?
+
+Similarly-flavored commercially-friendly OSS libraries are available.
+
+* [Pyranid](https://www.pyranid.com) - a modern JDBC interface that embraces SQL instead of hiding it behind an ORM
+* [Soklet](https://www.soklet.com) - a DI-friendly HTTP/1.1 server with support for virtual threads, Server-Sent Events, and Model Context Protocol
+
 ## License
 
 [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0)
@@ -109,24 +116,18 @@ Here is a Brazilian Portuguese (`pt-BR`) localized strings file which includes a
 ### 2. Create a Strings Instance
    
 ```java
-// Your fallback localized strings file, used in case no specific locale match is found.
 final Locale FALLBACK_LOCALE = Locale.forLanguageTag("pt-BR");
 
-// Creates a Strings instance which loads localized strings files from the given directory.
-// Normally you'll only need a single shared instance to support your entire application,
-// even for multitenant/concurrent usage, e.g. a Servlet container
+// Start the builder with the locale to use when no loaded locale matches.
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
-  // Looks in 'my-directory' for localized strings files
+  // Load localized strings files from the application directory.
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  // Provides Lokalized with the appropriate locale to use for fetching translations
+  // Match the current web request's locale to a loaded file.
   .localeSupplier((matcher) -> {
-    // "Smart" locale selection which queries the current web request for locale data.
-    // MyWebContext is a class you might write yourself, perhaps using a ThreadLocal internally		
     Locale locale = MyWebContext.getHttpServletRequest().getLocale();
-    // Lokalized gives you a matcher, which knows the most appropriate localized strings file to use.
-    // The matcher also supports language range sets, e.g. `Accept-Language` HTTP request header
     return matcher.bestMatchFor(locale);
   })
+  // Validate the configuration and create an immutable, thread-safe instance.
   .build();
 ```
 
