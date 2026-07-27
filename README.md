@@ -298,7 +298,7 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
 
 [`bestMatchFor(Locale)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.Locale)) and [`bestMatchFor(List<LanguageRange>)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) match requested locale preferences against the locales loaded from your localized strings files. Matching is deterministic and follows these broad rules:
 
-* An exact locale tag from a localized strings file wins before a CLDR-canonical-equivalent tag; deprecated and legacy aliases are then considered
+* An exact language tag from a localized strings file wins before a CLDR-canonical-equivalent tag; deprecated and legacy aliases are then considered
 * CLDR parent locales are considered before looser language-only matches. For example, `en-AU` can prefer a configured `en-001` file before `en`
 * Matching is script-aware when CLDR likely-subtag data can infer a script. For example, `zh-TW` can match `zh-Hant`, and `sr-Latn` is distinct from `sr-Cyrl`
 * The Norwegian macrolanguage tag `no` and Norwegian Bokmål tag `nb` bridge to each other as a compatibility fallback; exact files still win first
@@ -366,7 +366,7 @@ Some JAR creation tools omit directory entries, which makes their packages invis
 [`exhaustiveClasspathSearch(true)`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoadingOptions.Builder.html#exhaustiveClasspathSearch(java.lang.Boolean))
 only when you need to support such a JAR; this inspects every filesystem and JAR root
 visible to the classloader, including filesystem JARs referenced through manifest `Class-Path` entries. Localized strings
-files in multi-release JARs use the entry selected for the running Java version. A `.json` resource in a classpath package whose filename is not a valid locale tag is ignored
+files in multi-release JARs use the entry selected for the running Java version. A `.json` resource in a classpath package whose filename is not a valid language tag is ignored
 with a warning so an unrelated dependency cannot abort application startup. Filesystem loading remains strict and rejects
 the same filename, which catches mistakes in a localized strings directory owned by the application.
 
@@ -1185,7 +1185,7 @@ Values do not necessarily map exactly to the named number, e.g. in some language
 
 Lokalized provides a [`Cardinality`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html) type which encapsulates cardinal functionality.
 
-[`Cardinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#getSupportedLocaleTags()) returns the locale tags represented directly in the pinned CLDR cardinality-rule data. Concrete region- or script-qualified locales can also work through rule fallback; use [`Cardinality#supportedCardinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#supportedCardinalitiesForLocale(java.util.Locale)) to probe one.
+[`Cardinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#getSupportedLocaleTags()) returns the language tags represented directly in the pinned CLDR cardinality-rule data. Concrete region- or script-qualified languages can also work through rule fallback; use [`Cardinality#supportedCardinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#supportedCardinalitiesForLocale(java.util.Locale)) to probe one.
 
 You may programmatically determine cardinality using [`Cardinality#forNumber(Number number, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.util.Locale)) and [`Cardinality#forNumber(Number number, Integer visibleDecimalPlaces, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forNumber(java.lang.Number,java.lang.Integer,java.util.Locale)) as shown below.
 
@@ -1463,7 +1463,7 @@ assertEquals(Ordinality.OTHER, ordinality);
 
 [`Ordinality#forOperands(PluralOperands operands, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#forOperands(com.lokalized.PluralOperands,java.util.Locale)) is also available for advanced CLDR operand cases.
 
-[`Ordinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#getSupportedLocaleTags()) returns the locale tags represented directly in the pinned CLDR plural-rule data. Concrete region- or script-qualified locales can also work through rule fallback; use [`Ordinality#supportedOrdinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#supportedOrdinalitiesForLocale(java.util.Locale)) to probe one.
+[`Ordinality#getSupportedLocaleTags()`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#getSupportedLocaleTags()) returns the language tags represented directly in the pinned CLDR plural-rule data. Concrete region- or script-qualified languages can also work through rule fallback; use [`Ordinality#supportedOrdinalitiesForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#supportedOrdinalitiesForLocale(java.util.Locale)) to probe one.
 
 ## CLDR Data
 
