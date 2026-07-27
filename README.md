@@ -51,7 +51,7 @@ Lokalized has proudly powered production systems since 2017.
 * **Solve agreement problems many localization formats do not model directly:** a small but powerful expression language gives translators the freedom to author the natural, idiomatic phrasing each situation requires; [see how Lokalized compares](#comparing-localization-formats)
 * **Match locales predictably:** [`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) handles BCP 47 tags, CLDR parent locales, likely scripts, weighted `Accept-Language` preferences, and explicit tiebreakers deterministically
 * **Fail safely:** bounded loading and evaluation, explicit fallback policies, and structured diagnostics make malformed or incomplete translations observable
-* **Stay lightweight:** immutable, thread-safe design. **Lokalized requires no runtime dependencies.**
+* **Stay lightweight:** immutable, thread-safe design. **Lokalized requires no runtime dependencies**
 
 ## Non-Goals
 
@@ -121,16 +121,16 @@ Here is a Brazilian Portuguese (`pt-BR`) localized strings file which includes a
 ```java
 final Locale FALLBACK_LOCALE = Locale.forLanguageTag("pt-BR");
 
-// Start the builder with the locale to use when no loaded locale matches.
+// Start the builder with the locale to use when no loaded locale matches
 Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
-  // Load localized strings files from the application directory.
+  // Load localized strings files from the application directory
   .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
-  // Match the current web request's locale to a loaded file.
+  // Match the current web request's locale to a loaded file
   .localeSupplier((matcher) -> {
     Locale locale = MyWebContext.getHttpServletRequest().getLocale();
     return matcher.bestMatchFor(locale);
   })
-  // Validate the configuration and create an immutable, thread-safe instance.
+  // Validate the configuration and create an immutable, thread-safe instance
   .build();
 ```
 
@@ -185,7 +185,7 @@ final class LocalizedStrings {
 ### 3. Ask Strings Instance For Translations
 
 ```java
-// Lokalized knows how to map numbers to plural cardinalities per locale.
+// Lokalized knows how to map numbers to plural cardinalities per locale
 // That is, it understands that 3 means CARDINALITY_OTHER ("livros") in Brazilian Portuguese
 String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 3));
 assertEquals("Li 3 livros.", message);
@@ -260,9 +260,9 @@ Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
     Locale locale = MyWebContext.getHttpServletRequest().getLocale();
     return matcher.bestMatchFor(locale);
   })
-  // Declare a complete order for each language with multiple loaded locales.
+  // Declare a complete order for each language with multiple loaded locales
   // A request such as en-CA selects American English when no earlier
-  // exact, canonical, or CLDR-parent match resolves it.
+  // exact, canonical, or CLDR-parent match resolves it
   .tiebreakerLocalesByLanguageCode(Map.of(
     "en", List.of(Locale.forLanguageTag("en-US"), Locale.forLanguageTag("en-GB"))
   ))
@@ -1210,7 +1210,7 @@ cardinality = Cardinality.forNumber(new BigDecimal("1"), Locale.forLanguageTag("
 assertEquals(Cardinality.ONE, cardinality);
 
 // Using BigDecimal obviates the need to specify visible decimals
-// since they can be encoded directly in the number.
+// since they can be encoded directly in the number
 // We evaluate to Cardinality.OTHER, as expected
 cardinality = Cardinality.forNumber(new BigDecimal("1.0"), Locale.forLanguageTag("en"));
 assertEquals(Cardinality.OTHER, cardinality);
@@ -1285,7 +1285,7 @@ The plural form of the range is determined by examining the cardinality of its s
 You may programmatically determine a range's cardinality using [`Cardinality#forRange(Cardinality start, Cardinality end, Locale locale)`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#forRange(com.lokalized.Cardinality,com.lokalized.Cardinality,java.util.Locale)) as shown below.
 
 ```java
-// Latvian has a number of interesting range rules.
+// Latvian has a number of interesting range rules
 // ZERO-ZERO -> OTHER
 Cardinality cardinality = Cardinality.forRange(Cardinality.ZERO, Cardinality.ZERO, Locale.forLanguageTag("lv"));
 assertEquals(Cardinality.OTHER, cardinality);
@@ -1581,19 +1581,19 @@ TranslationResult result = strings.getResult(
 // Returned text, e.g. "Li 3 livros."
 String message = result.getTranslation();
 
-// Negotiated locale used to begin lookup, e.g. pt-PT.
+// Negotiated locale used to begin lookup, e.g. pt-PT
 Locale lookupLocale = result.getLookupLocale();
 
-// Locale that supplied the translation, e.g. Optional[pt-PT].
+// Locale that supplied the translation, e.g. Optional[pt-PT]
 Optional<Locale> resolvedLocale = result.getResolvedLocale();
 
-// Ordered locales actually tried, e.g. [pt-PT].
+// Ordered locales actually tried, e.g. [pt-PT]
 List<Locale> attemptedLocales = result.getAttemptedLocales();
 
-// Whether negotiation or per-key resolution fell back, e.g. false.
+// Whether negotiation or per-key resolution fell back, e.g. false
 Boolean usedFallback = result.isFallback();
 
-// Negotiation details when available, e.g. an exact pt-PT match.
+// Negotiation details when available, e.g. an exact pt-PT match
 Optional<LocaleMatchResult> localeMatch = result.getLocaleMatchResult();
 ```
 
@@ -1660,16 +1660,16 @@ The schema validates file structure, placeholder shapes, known language-form nam
 Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each `LocalizedStringLoader.load*` method accepts as an optional argument:
 
 ```java
-// Default: load successfully and emit no warning callbacks.
+// Default: load successfully and emit no warning callbacks
 Map<Locale, Set<LocalizedString>> strings = LocalizedStringLoader.loadFromClasspath("strings");
 
-// Receive structured warnings directly.
+// Receive structured warnings directly
 List<LocalizedStringWarning> warnings = new ArrayList<>();
 LocalizedStringLoader.loadFromClasspath("strings", warning -> {
   warnings.add(warning);
 });
 
-// Fail fast: treat any incomplete file as a load error (useful in tests/CI).
+// Fail fast: treat any incomplete file as a load error (useful in tests/CI)
 LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.throwException());
 ```
 
@@ -1717,8 +1717,8 @@ Suppose the Arabic translation for `Shipment` is `تم تجهيز {{code}}`. By 
 
 ```java
 String message = strings.get("Shipment", Map.of("code", "ACME-42"));
-// U+2068 FIRST STRONG ISOLATE begins bidirectional isolation around the caller-supplied value.
-// U+2069 POP DIRECTIONAL ISOLATE ends that bidirectional isolation.
+// U+2068 FIRST STRONG ISOLATE begins bidirectional isolation around the caller-supplied value
+// U+2069 POP DIRECTIONAL ISOLATE ends that bidirectional isolation
 assertEquals("تم تجهيز \u2068ACME-42\u2069", message);
 ```
 
