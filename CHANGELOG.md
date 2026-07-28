@@ -2,7 +2,7 @@
 
 All notable changes to Lokalized will be documented in this file.
 
-## 3.0.0-SNAPSHOT
+## 3.0.0 - 2026-07-27
 
 ### Breaking Changes
 
