@@ -777,7 +777,7 @@ CLDR defines four ordinal categories for English.
 
 ### Spanish Localized Strings File
 
-CLDR assigns Spanish only `ORDINALITY_OTHER`, so ordinal category selection does not vary by number. Spanish still has ordinal expressions; this example uses application-specific birthday wording instead of an ordinal-suffix map.
+CLDR assigns Spanish only [`ORDINALITY_OTHER`](https://javadoc.lokalized.com/com/lokalized/Ordinality.html#OTHER), so ordinal category selection does not vary by number. Spanish still has ordinal expressions; this example uses application-specific birthday wording instead of an ordinal-suffix map.
 
 ```json
 {
@@ -857,7 +857,7 @@ Lokalized supports these values:
 * [`GENDER_NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER)
 
 Some languages (e.g. Swedish, Danish, Dutch) collapse masculine and feminine into a common gender. Use
-`GENDER_COMMON` for that class (for example, Swedish `en` words) and `GENDER_NEUTER` for neuter (`ett` words).
+[`GENDER_COMMON`](https://javadoc.lokalized.com/com/lokalized/Gender.html#COMMON) for that class (for example, Swedish `en` words) and [`GENDER_NEUTER`](https://javadoc.lokalized.com/com/lokalized/Gender.html#NEUTER) for neuter (`ett` words).
 
 Lokalized provides a [`Gender`](https://javadoc.lokalized.com/com/lokalized/Gender.html) type which enumerates supported genders.
 
@@ -1351,7 +1351,7 @@ Lokalized supports these values:
 * [`PHONETIC_LUNAR`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#LUNAR)
 * [`PHONETIC_OTHER`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#OTHER)
 
-Lokalized provides a [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) type which enumerates supported phonetic categories. To use phonetics, supply a [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) when building [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) and use `PHONETIC_*` values in your translations file. The resolver receives both the term and its locale.
+Lokalized provides a [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) type which enumerates supported phonetic categories. To use phonetics, supply a [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) when building [`Strings`](https://javadoc.lokalized.com/com/lokalized/Strings.html) and use [`PHONETIC_*`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) values in your translations file. The resolver receives both the term and its locale.
 
 #### English Example
 
@@ -1561,7 +1561,7 @@ Only resolution failures carry a runtime cause.
 An evaluated expression-fragment predicate or selected-fragment interpolation failure is a resolution failure, so the
 default fallback policy stops; [`fallbackOnAnyFailure()`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html#fallbackOnAnyFailure())
 may continue to another locale. An expression-selected fragment always has a default `translation` and therefore
-cannot itself cause `NO_MATCHING_ALTERNATIVE`.
+cannot itself cause [`NO_MATCHING_ALTERNATIVE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#NO_MATCHING_ALTERNATIVE).
 
 Both [`returnKey()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#returnKey()) variants also handle runtime resolution failures by returning the interpolated key. Use [`throwException()`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html#throwException()) or a custom handler that throws on [`TranslationFailureReason.RESOLUTION_FAILURE`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#RESOLUTION_FAILURE) in development and test environments if you want broken placeholder rules, expressions, or custom resolvers to surface immediately.
 
@@ -1688,9 +1688,9 @@ All 4 are optional, with the stipulation that you must provide either a `transla
 
 A JSON Schema for localized strings files is packaged in the jar at `schema/lokalized-strings.schema.json` and is available at [src/main/resources/schema/lokalized-strings.schema.json](https://github.com/lokalized/lokalized-java/blob/master/src/main/resources/schema/lokalized-strings.schema.json).
 
-The schema validates file structure, placeholder shapes, known language-form names, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits `CARDINALITY_MANY`). Values that resolve to a missing form surface during resolution according to the configured failure handler.
+The schema validates file structure, placeholder shapes, known language-form names, and alternatives. It does not parse alternative expression syntax; Lokalized validates expression syntax when strings are loaded. Completeness of locale-specific cardinality and ordinality maps is not enforced at load time; an incomplete file still loads, but Lokalized emits a warning when a cardinality- or ordinality-driven placeholder omits a language form its locale requires per CLDR (for example, a Russian file that omits [`CARDINALITY_MANY`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#MANY)). Values that resolve to a missing form surface during resolution according to the configured failure handler.
 
-Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each `LocalizedStringLoader.load*` method accepts as an optional argument:
+Validation warnings are delivered to a [`LocalizedStringWarningHandler`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarningHandler.html), which each [`LocalizedStringLoader.load*`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringLoader.html#method-summary) method accepts as an optional argument:
 
 ```java
 // Default: load successfully and emit no warning callbacks
@@ -1706,7 +1706,7 @@ LocalizedStringLoader.loadFromClasspath("strings", warning -> {
 LocalizedStringLoader.loadFromClasspath("strings", LocalizedStringWarningHandler.throwException());
 ```
 
-Warnings are silently ignored when no handler is supplied. Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail (`getType()`, `getSource()`, optional `getLocale()`, optional `getKey()`, optional `getPlaceholder()`, and `getMissingLanguageForms()`) alongside a human-readable `getMessage()`. Resource-level warnings such as an invalid classpath locale filename omit locale, key, and placeholder context.
+Warnings are silently ignored when no handler is supplied. Each [`LocalizedStringWarning`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html) exposes structured detail ([`getType()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getType()), [`getSource()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getSource()), optional [`getLocale()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getLocale()), optional [`getKey()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getKey()), optional [`getPlaceholder()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getPlaceholder()), and [`getMissingLanguageForms()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getMissingLanguageForms())) alongside a human-readable [`getMessage()`](https://javadoc.lokalized.com/com/lokalized/LocalizedStringWarning.html#getMessage()). Resource-level warnings such as an invalid classpath locale filename omit locale, key, and placeholder context.
 
 ### Commentary
 
@@ -1910,8 +1910,8 @@ numeric [`PluralOperands`](https://javadoc.lokalized.com/com/lokalized/PluralOpe
 and other [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html)
 operands are phonetic inputs: Lokalized resolves them through your
 [`PhoneticResolver`](https://javadoc.lokalized.com/com/lokalized/PhoneticResolver.html) for comparison with
-`PHONETIC_*` constants or explicit [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) values. They are not numeric values or general-purpose string literals,
-and two raw `CharSequence` placeholders cannot be compared for textual equality. Missing, null, and incompatible
+[`PHONETIC_*`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) constants or explicit [`Phonetic`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html) values. They are not numeric values or general-purpose string literals,
+and two raw [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html) placeholders cannot be compared for textual equality. Missing, null, and incompatible
 operands are resolution failures, not implicit non-matches.
 
 Use language-form definitions for grammatical categories and expression fragments for exact, threshold, or compound
@@ -2118,7 +2118,17 @@ Comparison operators bind more tightly than `&&`, which binds more tightly than 
 Expressions ignore ASCII space, horizontal tab, carriage return, line feed, and form feed between tokens. Other
 Unicode whitespace and separator characters are rejected rather than silently skipped.
 
-Built-in language-form constants are reserved in alternative expressions. A token like `CARDINALITY_ONE`, `GENDER_MASCULINE`, `CASE_DATIVE`, `DEFINITENESS_DEFINITE`, `CLASSIFIER_PERSON`, `FORMALITY_FORMAL`, `CLUSIVITY_INCLUSIVE`, `ANIMACY_ANIMATE`, or `PHONETIC_VOWEL` is parsed as a constant, not as a placeholder variable. Placeholder names may not use built-in constant names.
+Built-in language-form constants are reserved in alternative expressions. A token like
+[`CARDINALITY_ONE`](https://javadoc.lokalized.com/com/lokalized/Cardinality.html#ONE),
+[`GENDER_MASCULINE`](https://javadoc.lokalized.com/com/lokalized/Gender.html#MASCULINE),
+[`CASE_DATIVE`](https://javadoc.lokalized.com/com/lokalized/GrammaticalCase.html#DATIVE),
+[`DEFINITENESS_DEFINITE`](https://javadoc.lokalized.com/com/lokalized/Definiteness.html#DEFINITE),
+[`CLASSIFIER_PERSON`](https://javadoc.lokalized.com/com/lokalized/Classifier.html#PERSON),
+[`FORMALITY_FORMAL`](https://javadoc.lokalized.com/com/lokalized/Formality.html#FORMAL),
+[`CLUSIVITY_INCLUSIVE`](https://javadoc.lokalized.com/com/lokalized/Clusivity.html#INCLUSIVE),
+[`ANIMACY_ANIMATE`](https://javadoc.lokalized.com/com/lokalized/Animacy.html#ANIMATE), or
+[`PHONETIC_VOWEL`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html#VOWEL) is parsed as a constant, not as a
+placeholder variable. Placeholder names may not use built-in constant names.
 
 #### What Expressions Currently Support
 
@@ -2129,7 +2139,7 @@ Built-in language-form constants are reserved in alternative expressions. A toke
 
 * The unary `!` operator
 * String literals, Boolean literals, or explicit `null` operands
-* Textual equality between two raw `CharSequence` placeholder values; compare phonetic input with `PHONETIC_*`
+* Textual equality between two raw [`CharSequence`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/CharSequence.html) placeholder values; compare phonetic input with [`PHONETIC_*`](https://javadoc.lokalized.com/com/lokalized/Phonetic.html)
 * Functions or expressions that return arbitrary values
 * A cardinality range construct ([to be added in a future release](https://github.com/lokalized/lokalized-java/issues/16))
 
@@ -2149,7 +2159,12 @@ Set<String> missingFrenchKeys =
   strings.getMissingKeys(Locale.forLanguageTag("en"), Locale.forLanguageTag("fr"));
 ```
 
-`getKeysForLocale(Locale)` and `getMissingKeys(Locale sourceLocale, Locale targetLocale)` are intentionally strict: inspected locales must be supported, and unsupported locales throw `IllegalArgumentException`. Use `getSupportedLocales()` first when you need to probe availability.
+[`getKeysForLocale(Locale)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#getKeysForLocale(java.util.Locale)) and
+[`getMissingKeys(Locale sourceLocale, Locale targetLocale)`](https://javadoc.lokalized.com/com/lokalized/Strings.html#getMissingKeys(java.util.Locale,java.util.Locale))
+are intentionally strict: inspected locales must be supported, and unsupported locales throw
+[`IllegalArgumentException`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/lang/IllegalArgumentException.html).
+Use [`getSupportedLocales()`](https://javadoc.lokalized.com/com/lokalized/Strings.html#getSupportedLocales()) first when
+you need to probe availability.
 
 ## Keying Strategy
 
