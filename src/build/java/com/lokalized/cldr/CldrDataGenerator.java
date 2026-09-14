@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 
 import static java.lang.String.format;
 
@@ -109,6 +110,8 @@ public final class CldrDataGenerator {
     private final Path localeOutputPath;
     private final Path conformanceOutputPath;
     private final Path jsonOutputPath;
+    private final Path localeDataJsonOutputPath;
+    private final Path conformanceVectorsJsonOutputPath;
 
     private Generator(Path projectRoot) {
       this.cldrRoot = projectRoot.resolve("src/test/resources/cldr").resolve(CLDR_VERSION);
@@ -116,6 +119,8 @@ public final class CldrDataGenerator {
       this.localeOutputPath = projectRoot.resolve("src/main/java/com/lokalized/GeneratedCldrLocaleData.java");
       this.conformanceOutputPath = projectRoot.resolve("src/test/java/com/lokalized/GeneratedCldrConformanceData.java");
       this.jsonOutputPath = projectRoot.resolve("src/build/resources/cldr/cldr-plural-data.json");
+      this.localeDataJsonOutputPath = projectRoot.resolve("src/build/resources/cldr/cldr-locale-data.json");
+      this.conformanceVectorsJsonOutputPath = projectRoot.resolve("src/build/resources/cldr/cldr-conformance-vectors.json");
     }
 
     private void generate(boolean check) throws Exception {
@@ -143,6 +148,9 @@ public final class CldrDataGenerator {
       writeOrVerify(localeOutputPath, localeSourceFor(localeData), check);
       writeOrVerify(conformanceOutputPath, conformanceSourceFor(cardinalRuleGroups, ordinalRuleGroups, cardinalRangeGroups), check);
       writeOrVerify(jsonOutputPath, pluralDataJsonFor(cardinalRuleGroups, ordinalRuleGroups, cardinalRangeGroups), check);
+      writeOrVerify(localeDataJsonOutputPath, localeDataJsonFor(localeData), check);
+      writeOrVerify(conformanceVectorsJsonOutputPath,
+          conformanceVectorsJsonFor(cardinalRuleGroups, ordinalRuleGroups, cardinalRangeGroups), check);
     }
 
     private List<LocaleRules> localeRulesFor(String resourceName) {
@@ -724,6 +732,202 @@ public final class CldrDataGenerator {
 
       Files.createDirectories(outputPath.getParent());
       Files.write(outputPath, content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // The language-neutral JSON artifacts below are emitted as RFC 8785 JCS: object members are
+    // sorted by UTF-16 code unit, there is no insignificant whitespace, and there is no trailing
+    // newline. Non-JVM consumers hash these bytes, so the canonical form must not drift.
+    //
+    // cldr-plural-data.json deliberately keeps its original pretty-printed form: lokalized.com pins
+    // its SHA-256 and rejects a changed formatVersion, so it is not converted here.
+
+    private String localeDataJsonFor(LocaleData localeData) {
+      Map<String, String> aliases = new LinkedHashMap<>();
+      aliases.put("language", canonicalPairArray(localeData.getLanguageAliases()));
+      aliases.put("script", canonicalPairArray(localeData.getScriptAliases()));
+      aliases.put("region", canonicalPairArray(localeData.getRegionAliases()));
+      aliases.put("variant", canonicalPairArray(localeData.getVariantAliases()));
+
+      Map<String, String> validity = new LinkedHashMap<>();
+      validity.put("languages", canonicalStringArray(localeData.getValidLanguages()));
+      validity.put("scripts", canonicalStringArray(localeData.getValidScripts()));
+      validity.put("regions", canonicalStringArray(localeData.getValidRegions()));
+      validity.put("variants", canonicalStringArray(localeData.getValidVariants()));
+
+      Map<String, String> root = new LinkedHashMap<>();
+      root.put("formatVersion", "1");
+      root.put("cldrVersion", canonicalString(CLDR_VERSION));
+      root.put("aliases", canonicalObject(aliases));
+      // Full language-script-region triples. Row absence and a present Latn row are distinct, and
+      // preferredRegionAlias reads the maximized region, so no component may be projected away here.
+      root.put("likelySubtags", canonicalPairArray(localeData.getLikelySubtags()));
+      root.put("parentLocales", canonicalPairArray(localeData.getParentLocales()));
+      root.put("rightToLeftScripts", canonicalStringArray(localeData.getRightToLeftScripts()));
+      root.put("validity", canonicalObject(validity));
+
+      return canonicalObject(root);
+    }
+
+    private String conformanceVectorsJsonFor(List<LocaleRuleGroup> cardinalRuleGroups,
+                                             List<LocaleRuleGroup> ordinalRuleGroups,
+                                             List<LocaleRangeGroup> cardinalRangeGroups) {
+      Map<String, String> root = new LinkedHashMap<>();
+      root.put("formatVersion", "1");
+      root.put("cldrVersion", canonicalString(CLDR_VERSION));
+      root.put("cardinalRuleGroups", canonicalRuleGroupArray(cardinalRuleGroups));
+      root.put("ordinalRuleGroups", canonicalRuleGroupArray(ordinalRuleGroups));
+      root.put("cardinalRangeGroups", canonicalRangeGroupArray(cardinalRangeGroups));
+
+      return canonicalObject(root);
+    }
+
+    private String canonicalRuleGroupArray(List<LocaleRuleGroup> ruleGroups) {
+      List<String> groups = new ArrayList<>(ruleGroups.size());
+
+      for (LocaleRuleGroup ruleGroup : ruleGroups) {
+        List<String> rules = new ArrayList<>(ruleGroup.getRules().size());
+
+        for (Rule rule : ruleGroup.getRules()) {
+          Map<String, String> member = new LinkedHashMap<>();
+          member.put("count", canonicalString(rule.getCount()));
+          member.put("condition", canonicalString(rule.getCondition()));
+          // The expanded conformance corpus, not the display examples in cldr-plural-data.json:
+          // those drop compact-exponent tokens and keep only the endpoints of sample ranges.
+          member.put("samples", canonicalStringArray(rule.getConformanceSamples()));
+          rules.add(canonicalObject(member));
+        }
+
+        Map<String, String> group = new LinkedHashMap<>();
+        group.put("locales", canonicalPublicLocaleArray(ruleGroup.getLocales()));
+        group.put("rules", canonicalRawArray(rules));
+        groups.add(canonicalObject(group));
+      }
+
+      return canonicalRawArray(groups);
+    }
+
+    private String canonicalRangeGroupArray(List<LocaleRangeGroup> rangeGroups) {
+      List<String> groups = new ArrayList<>(rangeGroups.size());
+
+      for (LocaleRangeGroup rangeGroup : rangeGroups) {
+        List<String> ranges = new ArrayList<>(rangeGroup.getRangeRules().size());
+
+        for (RangeRule rangeRule : rangeGroup.getRangeRules()) {
+          Map<String, String> member = new LinkedHashMap<>();
+          member.put("start", canonicalString(rangeRule.getStart()));
+          member.put("end", canonicalString(rangeRule.getEnd()));
+          member.put("result", canonicalString(rangeRule.getResult()));
+          ranges.add(canonicalObject(member));
+        }
+
+        Map<String, String> group = new LinkedHashMap<>();
+        group.put("locales", canonicalPublicLocaleArray(rangeGroup.getLocales()));
+        group.put("ranges", canonicalRawArray(ranges));
+        groups.add(canonicalObject(group));
+      }
+
+      return canonicalRawArray(groups);
+    }
+
+    private String canonicalObject(Map<String, String> membersByName) {
+      StringBuilder json = new StringBuilder("{");
+      boolean first = true;
+
+      // TreeMap sorts by String.compareTo, which is UTF-16 code-unit order as JCS requires.
+      for (Map.Entry<String, String> member : new TreeMap<>(membersByName).entrySet()) {
+        if (!first)
+          json.append(",");
+
+        first = false;
+        json.append(canonicalString(member.getKey())).append(":").append(member.getValue());
+      }
+
+      return json.append("}").toString();
+    }
+
+    private String canonicalPairArray(List<StringPair> pairs) {
+      List<String> members = new ArrayList<>(pairs.size());
+
+      for (StringPair pair : pairs) {
+        Map<String, String> member = new LinkedHashMap<>();
+        member.put("from", canonicalString(pair.getKey()));
+        member.put("to", canonicalString(pair.getValue()));
+        members.add(canonicalObject(member));
+      }
+
+      return canonicalRawArray(members);
+    }
+
+    private String canonicalStringArray(List<String> values) {
+      List<String> members = new ArrayList<>(values.size());
+
+      for (String value : values)
+        members.add(canonicalString(value));
+
+      return canonicalRawArray(members);
+    }
+
+    private String canonicalPublicLocaleArray(List<String> locales) {
+      List<String> members = new ArrayList<>(locales.size());
+
+      for (String locale : locales)
+        members.add(canonicalString(publicLocale(locale)));
+
+      return canonicalRawArray(members);
+    }
+
+    /** Joins already-serialized JSON values. Array order is schema-significant and never sorted. */
+    private String canonicalRawArray(List<String> serializedValues) {
+      StringBuilder json = new StringBuilder("[");
+
+      for (int i = 0; i < serializedValues.size(); ++i) {
+        if (i > 0)
+          json.append(",");
+
+        json.append(serializedValues.get(i));
+      }
+
+      return json.append("]").toString();
+    }
+
+    private String canonicalString(String value) {
+      StringBuilder json = new StringBuilder(value.length() + 2);
+      json.append('"');
+
+      for (int i = 0; i < value.length(); ++i) {
+        char character = value.charAt(i);
+
+        switch (character) {
+          case '\\':
+            json.append("\\\\");
+            break;
+          case '"':
+            json.append("\\\"");
+            break;
+          case '\b':
+            json.append("\\b");
+            break;
+          case '\f':
+            json.append("\\f");
+            break;
+          case '\n':
+            json.append("\\n");
+            break;
+          case '\r':
+            json.append("\\r");
+            break;
+          case '\t':
+            json.append("\\t");
+            break;
+          default:
+            if (character < 0x20)
+              json.append(format("\\u%04x", (int) character));
+            else
+              json.append(character);
+        }
+      }
+
+      return json.append('"').toString();
     }
 
     private String localeSourceFor(LocaleData localeData) {
