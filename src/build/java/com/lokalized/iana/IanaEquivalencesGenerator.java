@@ -104,8 +104,30 @@ public final class IanaEquivalencesGenerator {
 		}
 	}
 
+	/**
+	 * The SHA-256 of a file's bytes, lowercase hex.
+	 * <p>
+	 * {@code String.format("%02x")} per byte rather than any of the newer helpers: this module
+	 * targets Java 9, where {@code HexFormat} (17) does not exist.
+	 */
+	private static String sha256(Path path) {
+		try {
+			byte[] digest = java.security.MessageDigest.getInstance("SHA-256")
+					.digest(Files.readAllBytes(path));
+			StringBuilder hex = new StringBuilder(digest.length * 2);
+			for (byte b : digest)
+				hex.append(String.format("%02x", b));
+			return hex.toString();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		} catch (java.security.NoSuchAlgorithmException e) {
+			throw new IllegalStateException("SHA-256 is required by every Java platform", e);
+		}
+	}
+
 	private static String generate(Path root) {
 		String registry = read(root.resolve(REGISTRY));
+		String registrySha256 = sha256(root.resolve(REGISTRY));
 		Map<String, List<String>> jdkClosure = readJdkClosure(root.resolve(JDK_CLOSURE));
 
 		Matcher fileDate = Pattern.compile("^File-Date:\\s*(\\d{4}-\\d{2}-\\d{2})", Pattern.MULTILINE).matcher(registry);
@@ -114,7 +136,7 @@ public final class IanaEquivalencesGenerator {
 			throw new IllegalStateException(REGISTRY + " carries no File-Date header");
 
 		Map<String, List<String>> closure = registryClosure(registry);
-		return emit(root, fileDate.group(1), closure, jdkClosure);
+		return emit(root, fileDate.group(1), registrySha256, closure, jdkClosure);
 	}
 
 	/**
@@ -296,7 +318,8 @@ public final class IanaEquivalencesGenerator {
 	 * thing being generated is Java: as a resource it can be read, reviewed and syntax-highlighted as
 	 * the code it becomes, and this class stays about the derivation rather than about quoting.
 	 */
-	private static String emit(Path root, String fileDate, Map<String, List<String>> closure,
+	private static String emit(Path root, String fileDate, String registrySha256,
+			Map<String, List<String>> closure,
 															 Map<String, List<String>> jdkClosure) {
 		List<String> entries = new ArrayList<>();
 
@@ -325,6 +348,7 @@ public final class IanaEquivalencesGenerator {
 
 		return read(root.resolve(TEMPLATE))
 				.replace("${FILE_DATE}", fileDate)
+				.replace("${REGISTRY_SHA256}", registrySha256)
 				.replace("${KEY_COUNT}", String.valueOf(closure.size()))
 				.replace("${CLASS_COUNT}", String.valueOf(classes))
 				.replace("${ENTRIES}", String.join(",\n", entries));

@@ -39,6 +39,16 @@ final class IanaLanguageEquivalents {
 	static final String REGISTRY_FILE_DATE = "2026-09-17";
 
 	/**
+	 * The SHA-256 of that snapshot's bytes.
+	 * <p>
+	 * A {@code File-Date} names a registry RELEASE; it does not identify the bytes. Two fetches
+	 * stamped with the same date, or a snapshot edited after fetching, are indistinguishable by
+	 * date alone — so the digest travels beside it and downstream consumers of this table can
+	 * record which snapshot it actually came from rather than which one it claims.
+	 */
+	static final String REGISTRY_SHA256 = "755fad43283be7b41ebe3c89ad054b6eaf928f404f9c0edb74799e0eab74beb1";
+
+	/**
 	 * Lowercased subtag to the OTHER members of its equivalence class, from the pinned registry.
 	 * Generated; do not edit by hand.
 	 */
