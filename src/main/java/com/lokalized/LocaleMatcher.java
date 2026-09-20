@@ -128,7 +128,7 @@ public interface LocaleMatcher {
 		List<@NonNull LanguageRange> languageRanges;
 
 		try {
-			languageRanges = LanguageRange.parse(normalizedAcceptLanguage);
+			languageRanges = IanaLanguageEquivalents.parse(normalizedAcceptLanguage);
 		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
 			return bestMatchFor(List.of());
 		}

@@ -1,0 +1,810 @@
+# The JDK equivalence closure, one class per line: KEY then Locale.LanguageRange.parse(KEY).
+# Pinned from lokalized-spec generated/iana-language-range-equivalents.json (OpenJDK 21.0.11).
+# Vendored rather than recovered by calling parse() here, so generation does not depend on the
+# generating JDK -- which is the exact problem this artifact exists to remove.
+aam aam aas
+aao aao ar-aao
+aas aas aam
+abh abh ar-abh
+abv abv ar-abv
+acm acm ar-acm
+acn acn xia
+acq acq ar-acq
+acw acw ar-acw
+acx acx ar-acx
+acy acy ar-acy
+adf adf ar-adf
+adp adp dz
+ads ads sgn-ads
+adx adx pcr
+aeb aeb ar-aeb ajt
+aec aec ar-aec
+aed aed sgn-aed
+aen aen sgn-aen
+afb afb ar-afb
+afg afg sgn-afg
+ajp ajp ar-apc ar-ajp apc
+ajs ajs sgn-ajs
+ajt ajt ar-aeb aeb
+ami ami i-ami
+aog aog myd
+apc apc ar-apc ar-ajp ajp
+apd apd ar-apd
+ar-aao ar-aao aao
+ar-abh ar-abh abh
+ar-abv ar-abv abv
+ar-acm ar-acm acm
+ar-acq ar-acq acq
+ar-acw ar-acw acw
+ar-acx ar-acx acx
+ar-acy ar-acy acy
+ar-adf ar-adf adf
+ar-aeb ar-aeb ajt aeb
+ar-aec ar-aec aec
+ar-afb ar-afb afb
+ar-ajp ar-ajp ar-apc ajp apc
+ar-apc ar-apc ar-ajp ajp apc
+ar-apd ar-apd apd
+ar-arb ar-arb arb
+ar-arq ar-arq arq
+ar-ars ar-ars ars
+ar-ary ar-ary ary
+ar-arz ar-arz arz
+ar-auz ar-auz auz
+ar-avl ar-avl avl
+ar-ayh ar-ayh ayh
+ar-ayl ar-ayl ayl
+ar-ayn ar-ayn ayn
+ar-ayp ar-ayp ayp
+ar-bbz ar-bbz bbz
+ar-de ar-de ar-dd
+ar-fr ar-fr ar-fx
+ar-pga ar-pga pga
+ar-shu ar-shu shu
+ar-ssh ar-ssh ssh
+ar-tl ar-tl ar-tp
+arb arb ar-arb
+arq arq ar-arq
+ars ars ar-ars
+art-lojban art-lojban jbo
+ary ary ar-ary
+arz arz ar-arz
+asd asd snz
+ase ase sgn-us sgn-ase
+asf asf sgn-asf
+asp asp sgn-asp
+asq asq sgn-asq
+asw asw sgn-asw
+aue aue ktz
+auz auz ar-auz
+avl avl ar-avl
+ayh ayh ar-ayh
+ayl ayl ar-ayl
+ayn ayn ar-ayn
+ayp ayp ar-ayp
+ayx ayx nun
+bbz bbz ar-bbz
+bcg bcg bgm
+bfi bfi sgn-gb sgn-bfi
+bfk bfk sgn-bfk
+bfy bfy ppa
+bgm bgm bcg
+bic bic bir
+bir bir bic
+bjd bjd drl
+bjn bjn ms-bjn
+blg blg snb iba
+bmf bmf krm
+bnn bnn i-bnn
+bog bog sgn-bog
+bpp bpp nxu
+bqn bqn sgn-bqn
+bqy bqy sgn-bqy
+btj btj ms-btj
+bve bve ms-bve
+bvl bvl sgn-bvl
+bvu bvu ms-bvu
+bzs bzs sgn-br sgn-bzs
+cax cax xba
+cbr cbr nom
+ccq ccq ybd rki
+cdo cdo zh-cdo
+cds cds sgn-cds
+cir cir meg
+cjr cjr mom
+cjy cjy zh-cjy
+cka cka cmr
+cmk cmk xch
+cmn cmn zh-guoyu zh-cmn
+cmn-de cmn-de zh-guoyu-dd zh-guoyu-de zh-cmn-dd zh-cmn-de cmn-dd
+cmn-fr cmn-fr zh-guoyu-fx zh-guoyu-fr zh-cmn-fx zh-cmn-fr cmn-fx
+cmn-hans cmn-hans zh-cmn-hans
+cmn-hant cmn-hant zh-cmn-hant
+cmn-tl cmn-tl zh-guoyu-tp zh-guoyu-tl zh-cmn-tp zh-cmn-tl cmn-tp
+cmr cmr cka
+cnp cnp zh-cnp
+coa coa ms-coa
+coy coy nts pij
+cpx cpx zh-cpx
+cqu cqu quh
+crr crr pmk
+csc csc sgn-csc
+csd csd sgn-csd
+cse cse sgn-cse
+csf csf sgn-csf
+csg csg sgn-csg
+csl csl sgn-csl
+csn csn sgn-co sgn-csn
+csp csp zh-csp
+csq csq sgn-csq
+csr csr sgn-csr
+csx csx sgn-csx
+czh czh zh-czh
+czo czo zh-czo
+dek dek sqm
+dev dev gav
+dif dif dit
+dit dit dif
+dmw dmw xrq
+doq doq sgn-doq
+drh drh khk
+drl drl bjd
+drr drr gli kzk
+drw drw tnf prs
+dse dse sgn-nl sgn-dse
+dsl dsl sgn-dk sgn-dsl
+dsz dsz sgn-dsz
+dtp dtp tdu kzt kzj ktr
+dup dup ms-dup
+duz duz guv
+dz dz adp
+ecs ecs sgn-ecs
+ehs ehs sgn-ehs
+eko eko nte
+ema ema uok
+en-gb-oed en-gb-oed en-gb-oxendict
+en-gb-oxendict en-gb-oxendict en-gb-oed
+esl esl sgn-esl
+esn esn sgn-esn
+eso eso sgn-eso
+eth eth sgn-eth
+fcs fcs sgn-fcs
+fse fse sgn-fse
+fsl fsl sgn-fx sgn-fr sgn-fsl
+fss fss sgn-fss
+gal gal ilw
+gan gan zh-gan
+gav gav dev
+gdj gdj kvs
+gds gds sgn-gds
+gfx gfx oun mwj vaj
+ggn ggn gvr
+gli gli drr kzk
+gom gom kok-gom
+gse gse sgn-gse
+gsg gsg sgn-dd sgn-de sgn-gsg
+gsm gsm sgn-gsm
+gss gss sgn-gr sgn-gss
+gti gti nyc
+gu gu prp
+gus gus sgn-gus
+guv guv duz
+gvr gvr ggn
+hab hab sgn-hab
+haf haf sgn-haf
+hak hak zh-hakka i-hak zh-hak
+hds hds sgn-hds
+he he iw
+hji hji ms-hji
+hks hks sgn-hks
+hle hle sca
+hnm hnm zh-hnm
+hos hos sgn-hos
+hps hps sgn-hps
+hrr hrr jal
+hsh hsh sgn-hsh
+hsl hsl sgn-hsl
+hsn hsn zh-xiang zh-hsn
+huw huw pmc
+i-ami i-ami ami
+i-bnn i-bnn bnn
+i-de i-de i-dd
+i-fr i-fr i-fx
+i-hak i-hak zh-hakka zh-hak hak
+i-klingon i-klingon tlh
+i-lux i-lux lb
+i-navajo i-navajo nv
+i-pwn i-pwn pwn
+i-tao i-tao tao
+i-tay i-tay tay
+i-tl i-tl i-tp
+i-tsu i-tsu tsu
+iba iba snb blg
+ibi ibi opa
+icl icl sgn-icl
+id id in
+iks iks sgn-iks
+ils ils sgn-ils
+ilw ilw gal
+in in id
+inl inl sgn-inl
+ins ins sgn-ins
+ise ise sgn-it sgn-ise
+isg isg sgn-ie sgn-isg
+isr isr sgn-isr
+iw iw he
+jak jak ms-jak
+jal jal hrr
+jax jax ms-jax
+jbo jbo art-lojban
+jcs jcs sgn-jcs
+jeg jeg thx skk oyb
+jhs jhs sgn-jhs
+ji ji yi
+jks jks sgn-jks
+jls jls sgn-jls
+jos jos sgn-jos
+jsl jsl sgn-jp sgn-jsl
+jus jus sgn-jus
+jv jv jw
+jw jw jv
+kak kak tne
+kdz kdz ncp
+kgc kgc tdf
+kgh kgh kml
+kgi kgi sgn-kgi
+kgm kgm plu
+khk khk drh
+kjh kjh zkb
+kmb kmb smd
+kml kml kgh
+knn knn kok-knn
+koj koj kwv
+kok-de kok-de kok-dd
+kok-fr kok-fr kok-fx
+kok-gom kok-gom gom
+kok-knn kok-knn knn
+kok-tl kok-tl kok-tp
+krm krm bmf
+kru kru kxl
+ksp ksp lak
+ktr ktr tdu kzt kzj dtp
+ktz ktz aue
+kvb kvb ms-kvb
+kvk kvk sgn-kvk
+kvr kvr ms-kvr
+kvs kvs gdj
+kwq kwq yam
+kwv kwv koj
+kxd kxd ms-kxd
+kxe kxe tvd
+kxl kxl kru
+kxr kxr pat
+kzj kzj tdu kzt ktr dtp
+kzk kzk gli drr
+kzt kzt tdu kzj ktr dtp
+lak lak ksp
+lb lb i-lux
+lbs lbs sgn-lbs
+lce lce ms-lce
+lcf lcf ms-lcf
+lcq lcq ppr
+lgs lgs sgn-lgs
+lii lii raq
+liw liw ms-liw
+llo llo ngt
+lls lls sgn-lls
+lmm lmm rmx
+lrr lrr yma
+lsb lsb sgn-lsb
+lsc lsc sgn-lsc
+lsg lsg sgn-lsg
+lsl lsl sgn-lsl
+lsn lsn sgn-lsn
+lso lso sgn-lso
+lsp lsp sgn-lsp
+lst lst sgn-lst
+lsv lsv sgn-lsv
+lsw lsw sgn-lsw
+lsy lsy sgn-lsy
+ltg ltg lv-ltg
+luh luh zh-luh
+lv-ltg lv-ltg ltg
+lv-lvs lv-lvs lvs
+lvs lvs lv-lvs
+lws lws sgn-lws
+lzh lzh zh-lzh
+max max ms-max
+mdl mdl sgn-mdl
+meg meg cir
+meo meo ms-meo
+mfa mfa ms-mfa
+mfb mfb ms-mfb
+mfs mfs sgn-mx sgn-mfs
+min min ms-min
+mnp mnp zh-mnp
+mo mo ro
+mom mom cjr
+mqg mqg ms-mqg
+mre mre sgn-mre
+mry mry myt mst
+ms-bjn ms-bjn bjn
+ms-btj ms-btj btj
+ms-bve ms-bve bve
+ms-bvu ms-bvu bvu
+ms-coa ms-coa coa
+ms-de ms-de ms-dd
+ms-dup ms-dup dup
+ms-fr ms-fr ms-fx
+ms-hji ms-hji hji
+ms-jak ms-jak jak
+ms-jax ms-jax jax
+ms-kvb ms-kvb kvb
+ms-kvr ms-kvr kvr
+ms-kxd ms-kxd kxd
+ms-lce ms-lce lce
+ms-lcf ms-lcf lcf
+ms-liw ms-liw liw
+ms-max ms-max max
+ms-meo ms-meo meo
+ms-mfa ms-mfa mfa
+ms-mfb ms-mfb mfb
+ms-min ms-min min
+ms-mqg ms-mqg mqg
+ms-msi ms-msi msi
+ms-mui ms-mui mui
+ms-orn ms-orn orn
+ms-ors ms-ors ors
+ms-pel ms-pel pel
+ms-pse ms-pse pse
+ms-tl ms-tl ms-tp
+ms-tmw ms-tmw tmw
+ms-urk ms-urk urk
+ms-vkk ms-vkk vkk
+ms-vkt ms-vkt vkt
+ms-xmm ms-xmm xmm
+ms-zlm ms-zlm zlm
+ms-zmi ms-zmi zmi
+ms-zsm ms-zsm zsm
+msd msd sgn-msd
+msi msi ms-msi
+msr msr sgn-msr
+mst mst myt mry
+mtm mtm ymt
+mui mui ms-mui
+mwj mwj oun gfx vaj
+myd myd aog
+myt myt mst mry
+mzc mzc sgn-mzc
+mzg mzg sgn-mzg
+mzy mzy sgn-mzy
+nad nad xny
+nan nan zh-min-nan zh-nan
+nb nb no-bok
+nbr nbr nns
+nbs nbs sgn-nbs
+ncp ncp kdz
+ncs ncs sgn-ni sgn-ncs
+ngt ngt llo
+ngv ngv nnx
+nn nn no-nyn
+nns nns nbr
+nnx nnx ngv
+no-bok no-bok nb
+no-de no-de no-dd
+no-fr no-fr no-fx
+no-nyn no-nyn nn
+no-tl no-tl no-tp
+nom nom cbr
+nsi nsi sgn-nsi
+nsl nsl sgn-no sgn-nsl
+nsp nsp sgn-nsp
+nsr nsr sgn-nsr
+nte nte eko
+nts nts coy pij
+nun nun ayx
+nv nv i-navajo
+nxu nxu bpp
+nyc nyc gti
+nzs nzs sgn-nzs
+okl okl sgn-okl
+ola ola thw
+opa opa ibi
+orn orn ms-orn
+ors ors ms-ors
+oun oun mwj gfx vaj
+oyb oyb thx skk jeg
+pat pat kxr
+pcr pcr adx
+pel pel ms-pel
+pga pga ar-pga
+pgz pgz sgn-pgz
+phr phr pmu
+pij pij nts coy
+pks pks sgn-pks
+plu plu kgm
+pmc pmc huw
+pmk pmk crr
+pmu pmu phr
+ppa ppa bfy
+ppr ppr lcq
+prl prl sgn-prl
+prp prp gu
+prs prs tnf drw
+prt prt pry
+pry pry prt
+prz prz sgn-prz
+psc psc sgn-psc
+psd psd sgn-psd
+pse pse ms-pse
+psg psg sgn-psg
+psl psl sgn-psl
+pso pso sgn-pso
+psp psp sgn-psp
+psr psr sgn-pt sgn-psr
+pub pub puz
+puz puz pub
+pwn pwn i-pwn
+pys pys sgn-pys
+quh quh cqu
+raq raq lii
+ras ras tie
+rib rib sgn-rib
+rki rki ybd ccq
+rms rms sgn-rms
+rmx rmx lmm
+rnb rnb sgn-rnb
+ro ro mo
+rsi rsi sgn-rsi
+rsl rsl sgn-rsl
+rsm rsm sgn-rsm
+rsn rsn sgn-rsn
+sca sca hle
+scv scv zir
+sdl sdl sgn-sdl
+sfb sfb sgn-be-fx sgn-be-fr sgn-sfb
+sfs sfs sgn-za sgn-sfs
+sgg sgg sgn-ch-dd sgn-ch-de sgn-sgg
+sgn-ads sgn-ads ads
+sgn-aed sgn-aed aed
+sgn-aen sgn-aen aen
+sgn-afg sgn-afg afg
+sgn-ajs sgn-ajs ajs
+sgn-ase sgn-ase sgn-us ase
+sgn-asf sgn-asf asf
+sgn-asp sgn-asp asp
+sgn-asq sgn-asq asq
+sgn-asw sgn-asw asw
+sgn-be-fr sgn-be-fr sgn-sfb sfb sgn-be-fx
+sgn-be-nl sgn-be-nl sgn-vgt vgt
+sgn-bfi sgn-bfi sgn-gb bfi
+sgn-bfk sgn-bfk bfk
+sgn-bog sgn-bog bog
+sgn-bqn sgn-bqn bqn
+sgn-bqy sgn-bqy bqy
+sgn-br sgn-br sgn-bzs bzs
+sgn-bvl sgn-bvl bvl
+sgn-bzs sgn-bzs sgn-br bzs
+sgn-cds sgn-cds cds
+sgn-ch-de sgn-ch-de sgn-sgg sgg sgn-ch-dd
+sgn-co sgn-co sgn-csn csn
+sgn-csc sgn-csc csc
+sgn-csd sgn-csd csd
+sgn-cse sgn-cse cse
+sgn-csf sgn-csf csf
+sgn-csg sgn-csg csg
+sgn-csl sgn-csl csl
+sgn-csn sgn-csn sgn-co csn
+sgn-csq sgn-csq csq
+sgn-csr sgn-csr csr
+sgn-csx sgn-csx csx
+sgn-de sgn-de sgn-gsg gsg sgn-dd
+sgn-dk sgn-dk sgn-dsl dsl
+sgn-doq sgn-doq doq
+sgn-dse sgn-dse sgn-nl dse
+sgn-dsl sgn-dsl sgn-dk dsl
+sgn-dsz sgn-dsz dsz
+sgn-ecs sgn-ecs ecs
+sgn-ehs sgn-ehs ehs
+sgn-es sgn-es sgn-ssp ssp
+sgn-esl sgn-esl esl
+sgn-esn sgn-esn esn
+sgn-eso sgn-eso eso
+sgn-eth sgn-eth eth
+sgn-fcs sgn-fcs fcs
+sgn-fr sgn-fr sgn-fsl fsl sgn-fx
+sgn-fse sgn-fse fse
+sgn-fsl sgn-fsl sgn-fx sgn-fr fsl
+sgn-fss sgn-fss fss
+sgn-gb sgn-gb sgn-bfi bfi
+sgn-gds sgn-gds gds
+sgn-gr sgn-gr sgn-gss gss
+sgn-gse sgn-gse gse
+sgn-gsg sgn-gsg sgn-dd sgn-de gsg
+sgn-gsm sgn-gsm gsm
+sgn-gss sgn-gss sgn-gr gss
+sgn-gus sgn-gus gus
+sgn-hab sgn-hab hab
+sgn-haf sgn-haf haf
+sgn-hds sgn-hds hds
+sgn-hks sgn-hks hks
+sgn-hos sgn-hos hos
+sgn-hps sgn-hps hps
+sgn-hsh sgn-hsh hsh
+sgn-hsl sgn-hsl hsl
+sgn-icl sgn-icl icl
+sgn-ie sgn-ie sgn-isg isg
+sgn-iks sgn-iks iks
+sgn-ils sgn-ils ils
+sgn-inl sgn-inl inl
+sgn-ins sgn-ins ins
+sgn-ise sgn-ise sgn-it ise
+sgn-isg sgn-isg sgn-ie isg
+sgn-isr sgn-isr isr
+sgn-it sgn-it sgn-ise ise
+sgn-jcs sgn-jcs jcs
+sgn-jhs sgn-jhs jhs
+sgn-jks sgn-jks jks
+sgn-jls sgn-jls jls
+sgn-jos sgn-jos jos
+sgn-jp sgn-jp sgn-jsl jsl
+sgn-jsl sgn-jsl sgn-jp jsl
+sgn-jus sgn-jus jus
+sgn-kgi sgn-kgi kgi
+sgn-kvk sgn-kvk kvk
+sgn-lbs sgn-lbs lbs
+sgn-lgs sgn-lgs lgs
+sgn-lls sgn-lls lls
+sgn-lsb sgn-lsb lsb
+sgn-lsc sgn-lsc lsc
+sgn-lsg sgn-lsg lsg
+sgn-lsl sgn-lsl lsl
+sgn-lsn sgn-lsn lsn
+sgn-lso sgn-lso lso
+sgn-lsp sgn-lsp lsp
+sgn-lst sgn-lst lst
+sgn-lsv sgn-lsv lsv
+sgn-lsw sgn-lsw lsw
+sgn-lsy sgn-lsy lsy
+sgn-lws sgn-lws lws
+sgn-mdl sgn-mdl mdl
+sgn-mfs sgn-mfs sgn-mx mfs
+sgn-mre sgn-mre mre
+sgn-msd sgn-msd msd
+sgn-msr sgn-msr msr
+sgn-mx sgn-mx sgn-mfs mfs
+sgn-mzc sgn-mzc mzc
+sgn-mzg sgn-mzg mzg
+sgn-mzy sgn-mzy mzy
+sgn-nbs sgn-nbs nbs
+sgn-ncs sgn-ncs sgn-ni ncs
+sgn-ni sgn-ni sgn-ncs ncs
+sgn-nl sgn-nl sgn-dse dse
+sgn-no sgn-no sgn-nsl nsl
+sgn-nsi sgn-nsi nsi
+sgn-nsl sgn-nsl sgn-no nsl
+sgn-nsp sgn-nsp nsp
+sgn-nsr sgn-nsr nsr
+sgn-nzs sgn-nzs nzs
+sgn-okl sgn-okl okl
+sgn-pgz sgn-pgz pgz
+sgn-pks sgn-pks pks
+sgn-prl sgn-prl prl
+sgn-prz sgn-prz prz
+sgn-psc sgn-psc psc
+sgn-psd sgn-psd psd
+sgn-psg sgn-psg psg
+sgn-psl sgn-psl psl
+sgn-pso sgn-pso pso
+sgn-psp sgn-psp psp
+sgn-psr sgn-psr sgn-pt psr
+sgn-pt sgn-pt sgn-psr psr
+sgn-pys sgn-pys pys
+sgn-rib sgn-rib rib
+sgn-rms sgn-rms rms
+sgn-rnb sgn-rnb rnb
+sgn-rsi sgn-rsi rsi
+sgn-rsl sgn-rsl rsl
+sgn-rsm sgn-rsm rsm
+sgn-rsn sgn-rsn rsn
+sgn-sdl sgn-sdl sdl
+sgn-se sgn-se sgn-swl swl
+sgn-sfb sgn-sfb sgn-be-fx sgn-be-fr sfb
+sgn-sfs sgn-sfs sgn-za sfs
+sgn-sgg sgn-sgg sgn-ch-dd sgn-ch-de sgg
+sgn-sgx sgn-sgx sgx
+sgn-slf sgn-slf slf
+sgn-sls sgn-sls sls
+sgn-sqk sgn-sqk sqk
+sgn-sqs sgn-sqs sqs
+sgn-sqx sgn-sqx sqx
+sgn-ssp sgn-ssp sgn-es ssp
+sgn-ssr sgn-ssr ssr
+sgn-svk sgn-svk svk
+sgn-swl sgn-swl sgn-se swl
+sgn-syy sgn-syy syy
+sgn-szs sgn-szs szs
+sgn-tl sgn-tl sgn-tp
+sgn-tse sgn-tse tse
+sgn-tsm sgn-tsm tsm
+sgn-tsq sgn-tsq tsq
+sgn-tss sgn-tss tss
+sgn-tsy sgn-tsy tsy
+sgn-tza sgn-tza tza
+sgn-ugn sgn-ugn ugn
+sgn-ugy sgn-ugy ugy
+sgn-ukl sgn-ukl ukl
+sgn-uks sgn-uks uks
+sgn-us sgn-us sgn-ase ase
+sgn-vgt sgn-vgt sgn-be-nl vgt
+sgn-vsi sgn-vsi vsi
+sgn-vsl sgn-vsl vsl
+sgn-vsv sgn-vsv vsv
+sgn-wbs sgn-wbs wbs
+sgn-xki sgn-xki xki
+sgn-xml sgn-xml xml
+sgn-xms sgn-xms xms
+sgn-yds sgn-yds yds
+sgn-ygs sgn-ygs ygs
+sgn-yhs sgn-yhs yhs
+sgn-ysl sgn-ysl ysl
+sgn-ysm sgn-ysm ysm
+sgn-za sgn-za sgn-sfs sfs
+sgn-zib sgn-zib zib
+sgn-zsl sgn-zsl zsl
+sgx sgx sgn-sgx
+shu shu ar-shu
+sjc sjc zh-sjc
+skk skk thx jeg oyb
+slf slf sgn-slf
+sls sls sgn-sls
+smd smd kmb
+snb snb blg iba
+snz snz asd
+sqk sqk sgn-sqk
+sqm sqm dek
+sqs sqs sgn-sqs
+sqx sqx sgn-sqx
+sr-de sr-de sr-dd
+sr-fr sr-fr sr-fx
+sr-tl sr-tl sr-tp
+ssh ssh ar-ssh
+ssp ssp sgn-es sgn-ssp
+ssr ssr sgn-ssr
+svk svk sgn-svk
+sw-cd sw-cd sw-zr
+sw-de sw-de sw-dd
+sw-fr sw-fr sw-fx
+sw-swc sw-swc swc
+sw-swh sw-swh swh
+sw-tl sw-tl sw-tp
+swc swc sw-swc
+swh swh sw-swh
+swl swl sgn-se sgn-swl
+syy syy sgn-syy
+szd szd umi
+szs szs sgn-szs
+taj taj tsf
+tao tao i-tao
+tay tay i-tay
+tdf tdf kgc
+tdg tdg tmk
+tdu tdu kzt kzj ktr dtp
+thc thc tpo
+thw thw ola
+thx thx skk jeg oyb
+tie tie ras
+tkk tkk twm
+tlh tlh i-klingon
+tlw tlw weo
+tmk tmk tdg
+tmp tmp tyj
+tmw tmw ms-tmw
+tne tne kak
+tnf tnf drw prs
+tpn tpn tpw
+tpo tpo thc
+tpw tpw tpn
+tse tse sgn-tse
+tsf tsf taj
+tsm tsm sgn-tsm
+tsq tsq sgn-tsq
+tss tss sgn-tss
+tsu tsu i-tsu
+tsy tsy sgn-tsy
+tvd tvd kxe
+twm twm tkk
+tyj tyj tmp
+tza tza sgn-tza
+ugn ugn sgn-ugn
+ugy ugy sgn-ugy
+ukl ukl sgn-ukl
+uks uks sgn-uks
+umi umi szd
+und-alalc97 und-alalc97 und-heploc
+und-hepburn-heploc und-hepburn-heploc und-hepburn-alalc97
+uok uok ema
+urk urk ms-urk
+uz-de uz-de uz-dd
+uz-fr uz-fr uz-fx
+uz-tl uz-tl uz-tp
+uz-uzn uz-uzn uzn
+uz-uzs uz-uzs uzs
+uzn uzn uz-uzn
+uzs uzs uz-uzs
+vaj vaj oun mwj gfx
+vgt vgt sgn-be-nl sgn-vgt
+vkk vkk ms-vkk
+vkt vkt ms-vkt
+vsi vsi sgn-vsi
+vsl vsl sgn-vsl
+vsv vsv sgn-vsv
+waw waw xkh
+wbs wbs sgn-wbs
+weo weo tlw
+wuu wuu zh-wuu
+xba xba cax
+xch xch cmk
+xia xia acn
+xkh xkh waw
+xki xki sgn-xki
+xml xml sgn-xml
+xmm xmm ms-xmm
+xms xms sgn-xms
+xny xny nad
+xrq xrq dmw
+xss xss zko
+yam yam kwq
+ybd ybd ccq rki
+yds yds sgn-yds
+ygs ygs sgn-ygs
+yhs yhs sgn-yhs
+yi yi ji
+yma yma lrr
+ymt ymt mtm
+yos yos zom
+ysl ysl sgn-ysl
+ysm ysm sgn-ysm
+yue yue zh-yue
+yue-de yue-de zh-yue-dd zh-yue-de yue-dd
+yue-fr yue-fr zh-yue-fx zh-yue-fr yue-fx
+yue-tl yue-tl zh-yue-tp zh-yue-tl yue-tp
+yug yug yuu
+yuu yuu yug
+zh-cdo zh-cdo cdo
+zh-cjy zh-cjy cjy
+zh-cmn zh-cmn zh-guoyu cmn
+zh-cmn-hans zh-cmn-hans cmn-hans
+zh-cmn-hant zh-cmn-hant cmn-hant
+zh-cnp zh-cnp cnp
+zh-cpx zh-cpx cpx
+zh-csp zh-csp csp
+zh-czh zh-czh czh
+zh-czo zh-czo czo
+zh-de zh-de zh-dd
+zh-fr zh-fr zh-fx
+zh-gan zh-gan gan
+zh-guoyu zh-guoyu zh-cmn cmn
+zh-hak zh-hak zh-hakka i-hak hak
+zh-hakka zh-hakka i-hak zh-hak hak
+zh-hnm zh-hnm hnm
+zh-hsn zh-hsn zh-xiang hsn
+zh-luh zh-luh luh
+zh-lzh zh-lzh lzh
+zh-min-nan zh-min-nan zh-nan nan
+zh-mnp zh-mnp mnp
+zh-nan zh-nan zh-min-nan nan
+zh-sjc zh-sjc sjc
+zh-tl zh-tl zh-tp
+zh-wuu zh-wuu wuu
+zh-xiang zh-xiang zh-hsn hsn
+zh-yue zh-yue yue
+zib zib sgn-zib
+zir zir scv
+zkb zkb kjh
+zko zko xss
+zlm zlm ms-zlm
+zmi zmi ms-zmi
+zom zom yos
+zsl zsl sgn-zsl
+zsm zsm ms-zsm

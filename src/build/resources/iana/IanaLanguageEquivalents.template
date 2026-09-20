@@ -1,0 +1,221 @@
+package com.lokalized;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Locale.LanguageRange;
+import java.util.Map;
+import java.util.Set;
+
+import static java.util.Objects.requireNonNull;
+
+/**
+ * IANA language-range equivalences, sourced from a pinned Language Subtag Registry snapshot rather
+ * than from the running JDK.
+ * <p>
+ * <strong>Why this exists.</strong> {@link LanguageRange#parse(String)} expands a range using an
+ * equivalence table baked into the JDK, and that table moves between JDK releases. Measured: the
+ * same unmodified Lokalized jar answers {@code Accept-Language: yol} with the {@code en} catalog on
+ * a JDK whose bundled registry is stamped 2025-05-15 and with the {@code enm} catalog on one
+ * stamped 2026-05-05. A library whose selected catalog depends on the consumer's JVM is not
+ * reproducible, and no existing test could see it, because every test runs on a single JDK.
+ * <p>
+ * This pins the LANGUAGE half of that table to registry {@code File-Date: 2026-09-17} —
+ * ${KEY_COUNT} keys across ${CLASS_COUNT} equivalence classes — so the answer is a function of the
+ * library rather than of the platform.
+ * <p>
+ * <strong>What it deliberately does not change.</strong> Region and variant substitution stays the
+ * JDK's, reproduced below in the JDK's own iteration order. That behaviour is a house dialect
+ * rather than registry content — it expands {@code de-DE} to {@code de-dd}, resurrecting a region
+ * deprecated in 1990, and the registry states no such mapping — but it is long-standing observable
+ * behaviour and is inert in practice, so changing it would move answers for existing callers to no
+ * measurable benefit. Pinning the ORDER is itself a correction: which substitution applies when two
+ * are applicable was previously decided by {@code java.util.HashMap} iteration order.
+ */
+final class IanaLanguageEquivalents {
+	/** The pinned registry snapshot this table was generated from. */
+	static final String REGISTRY_FILE_DATE = "${FILE_DATE}";
+
+	/**
+	 * Lowercased subtag to the OTHER members of its equivalence class, from the pinned registry.
+	 * Generated; do not edit by hand.
+	 */
+	private static final Map<String, List<String>> LANGUAGE_EQUIVALENTS = Map.ofEntries(
+${ENTRIES});
+
+	/**
+	 * The JDK's {@code sun.util.locale.LocaleEquivalentMaps.regionVariantEquivMap}, in the order
+	 * that JDK's {@code HashMap} happens to iterate it. Declared rather than iterated, because that
+	 * order decides which substitution applies when two are applicable and is otherwise unspecified.
+	 */
+	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = List.of(
+			new String[] { "-bu", "-mm" }, new String[] { "-tl", "-tp" }, new String[] { "-zr", "-cd" },
+			new String[] { "-tp", "-tl" }, new String[] { "-dd", "-de" }, new String[] { "-mm", "-bu" },
+			new String[] { "-cd", "-zr" }, new String[] { "-de", "-dd" }, new String[] { "-heploc", "-alalc97" },
+			new String[] { "-alalc97", "-heploc" }, new String[] { "-yd", "-ye" }, new String[] { "-fr", "-fx" },
+			new String[] { "-ye", "-yd" }, new String[] { "-fx", "-fr" });
+
+	/** {@code LanguageRange}'s MAX_WEIGHT and MIN_WEIGHT, which it does not expose. */
+	private static final double MAXIMUM_WEIGHT = 1.0;
+	private static final double MINIMUM_WEIGHT = 0.0;
+
+	private IanaLanguageEquivalents() {}
+
+	/**
+	 * Parses an {@code Accept-Language} field value, expanding equivalences from the pinned registry.
+	 * <p>
+	 * This is {@code Locale.LanguageRange.parse}'s algorithm with ONE substitution: the language
+	 * equivalence table. Everything else is reproduced because it is observable — the normalisation,
+	 * Java's comma splitting (which drops trailing empty members and keeps interior ones), the
+	 * {@code ;q=} weight grammar, the WEIGHT-ORDERED STABLE INSERTION, first-wins de-duplication, and
+	 * the insertion of each derived range immediately after its original, which is why an equivalence
+	 * class appears in reverse insertion order.
+	 * <p>
+	 * <strong>The range grammar and the weight bound stay the JDK's, deliberately.</strong>
+	 * {@code new LanguageRange(range, weight)} validates both and expands NOTHING — verified rather
+	 * than assumed: the constructor returns {@code iw} for {@code iw} and {@code de-de} for
+	 * {@code de-DE}, where {@code parse} returns two ranges for each. Reimplementing the grammar
+	 * would be a second thing to keep faithful for no benefit.
+	 */
+	static List<LanguageRange> parse(String ranges) {
+		requireNonNull(ranges);
+
+		String normalized = ranges.replace(" ", "").toLowerCase(Locale.ROOT);
+
+		if (normalized.startsWith("accept-language:"))
+			normalized = normalized.substring("accept-language:".length());
+
+		List<LanguageRange> list = new ArrayList<>();
+		Set<String> seen = new LinkedHashSet<>();
+
+		for (String member : normalized.split(",")) {
+			String range = member;
+			double weight = MAXIMUM_WEIGHT;
+			int weightIndex = member.indexOf(";q=");
+
+			if (weightIndex != -1) {
+				range = member.substring(0, weightIndex);
+				String text = member.substring(weightIndex + 3);
+
+				try {
+					weight = Double.parseDouble(text);
+				} catch (NumberFormatException exception) {
+					throw new IllegalArgumentException("weight=\"" + text + "\" for language range \"" + range + "\"");
+				}
+
+				if (weight < MINIMUM_WEIGHT || weight > MAXIMUM_WEIGHT)
+					throw new IllegalArgumentException("weight=" + weight + " for language range \"" + range
+							+ "\". It must be between " + MINIMUM_WEIGHT + " and " + MAXIMUM_WEIGHT + ".");
+			}
+
+			if (seen.contains(range))
+				continue;
+
+			// The JDK's own grammar check and its own refusal, without its equivalence table.
+			LanguageRange parsed = new LanguageRange(range, weight);
+
+			int index = list.size();
+
+			for (int position = 0; position < list.size(); ++position)
+				if (list.get(position).getWeight() < weight) {
+					index = position;
+					break;
+				}
+
+			list.add(index, parsed);
+			seen.add(range);
+
+			for (String equivalent : expansionsFor(range))
+				if (seen.add(equivalent))
+					list.add(index + 1, new LanguageRange(equivalent, weight));
+		}
+
+		return Collections.unmodifiableList(list);
+	}
+
+
+	/** Insertion-ordered expansions for one range: the region/variant arm, then each language arm. */
+	private static List<String> expansionsFor(String range) {
+		List<String> expansions = new ArrayList<>();
+
+		String regionVariant = equivalentForRegionAndVariant(range);
+		if (regionVariant != null)
+			expansions.add(regionVariant);
+
+		for (String equivalent : equivalentsForLanguage(range)) {
+			expansions.add(equivalent);
+			String nested = equivalentForRegionAndVariant(equivalent);
+			if (nested != null)
+				expansions.add(nested);
+		}
+
+		return expansions;
+	}
+
+	/** The longest registry-known prefix of the range, with the remainder carried across. */
+	private static List<String> equivalentsForLanguage(String range) {
+		String prefix = range;
+
+		while (!prefix.isEmpty()) {
+			List<String> equivalenceClass = LANGUAGE_EQUIVALENTS.get(prefix);
+
+			if (equivalenceClass != null) {
+				String suffix = range.substring(prefix.length());
+				List<String> equivalents = new ArrayList<>(equivalenceClass.size());
+
+				for (String equivalent : equivalenceClass)
+					equivalents.add(equivalent + suffix);
+
+				return equivalents;
+			}
+
+			int index = prefix.lastIndexOf('-');
+			if (index == -1)
+				break;
+
+			prefix = prefix.substring(0, index);
+		}
+
+		return List.of();
+	}
+
+	/**
+	 * {@code sun.util.locale.LocaleMatcher#getEquivalentForRegionAndVariant}, reproduced including its
+	 * substring semantics: the subtag may sit anywhere in the range provided it ends at the range's
+	 * end or at a hyphen and is not inside a singleton extension.
+	 */
+	private static String equivalentForRegionAndVariant(String range) {
+		int keyIndex = extensionKeyIndex(range);
+
+		for (String[] pair : REGION_VARIANT_EQUIVALENTS) {
+			int index = range.indexOf(pair[0]);
+			if (index == -1)
+				continue;
+			if (keyIndex != Integer.MIN_VALUE && index > keyIndex)
+				continue;
+
+			int end = index + pair[0].length();
+			if (range.length() == end || range.charAt(end) == '-')
+				return range.substring(0, index) + pair[1] + range.substring(end);
+		}
+
+		return null;
+	}
+
+	/** {@code LocaleMatcher#getExtentionKeyIndex}, misspelling and all. */
+	private static int extensionKeyIndex(String range) {
+		int index = Integer.MIN_VALUE;
+
+		for (int position = 1; position < range.length(); ++position)
+			if (range.charAt(position) == '-') {
+				if (position - index == 2)
+					return index;
+				index = position;
+			}
+
+		return Integer.MIN_VALUE;
+	}
+
+}

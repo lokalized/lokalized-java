@@ -2164,7 +2164,7 @@ class DefaultStrings implements Strings {
 		requireNonNull(identities);
 
 		try {
-			for (LanguageRange equivalentRange : LanguageRange.parse(range))
+			for (LanguageRange equivalentRange : IanaLanguageEquivalents.parse(range))
 				identities.add(equivalentRange.getRange().toLowerCase(Locale.ROOT));
 		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
 			// The range already came from a validated LanguageRange instance. Retaining identities established by the

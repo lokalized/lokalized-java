@@ -71,6 +71,24 @@ authorization of the copyright holder.
 
 SPDX-License-Identifier: Unicode-3.0
 
+## IANA Language Subtag Registry
+
+Lokalized includes a generated language-range equivalence table derived from the IANA Language
+Subtag Registry, the registry BCP 47 defines and RFC 5646 section 3 describes.
+
+Source:
+
+* https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry
+
+The pinned snapshot is stored at `src/build/resources/iana/language-subtag-registry.txt` and carries
+its own `File-Date: 2026-09-17` header. It is a build input and is not packaged into the released
+artifact; what ships is `com.lokalized.IanaLanguageEquivalents`, generated from it by
+`src/build/java/com/lokalized/iana/IanaEquivalencesGenerator.java`, which records the snapshot's
+File-Date in its own source.
+
+The registry is a public IANA registry maintained under BCP 47; its records are factual data rather
+than a licensed work, and no licence text accompanies the file.
+
 ## minimal-json
 
 Lokalized embeds the minimal-json library.

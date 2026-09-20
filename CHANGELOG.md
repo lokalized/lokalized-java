@@ -2,6 +2,38 @@
 
 All notable changes to Lokalized will be documented in this file.
 
+## 3.1.0 - unreleased
+
+### Changed
+
+- **Language-range equivalences now come from a pinned IANA Language Subtag Registry snapshot
+  (`File-Date: 2026-09-17`) rather than from the running JDK.** `Locale.LanguageRange.parse`
+  expands ranges using a registry table baked into the JVM, and that table moves between releases:
+  the same Lokalized jar answered `Accept-Language: yol` with the `en` catalog on one JDK and the
+  `enm` catalog on another. Selected catalogs no longer depend on which JVM a deployment runs.
+- Region and variant substitution is unchanged and still matches the JDK exactly, including its
+  ordering, which was previously decided by `HashMap` iteration order.
+
+### Where the new table applies, and where it does not
+
+The registry table is consulted in two places, both inside the library: `bestMatchForAcceptLanguage`,
+which parses a raw `Accept-Language` field value, and the identity derivation behind `matchFor`. A
+caller who builds a `List<LanguageRange>` themselves with `java.util.Locale.LanguageRange.parse`
+still gets the JDK's expansion in that list — the JDK's table is unchanged and Lokalized does not
+replace it. The difference is observable: a range list built by the caller reports the match as
+`CANONICAL` against the range it was given, where a header parsed by the library reports `EXACT`
+against the equivalent it added.
+
+### Effect on callers
+
+Ranges naming a language deprecated after a given JDK's bundled registry snapshot now resolve to
+their preferred form. Measured against the full 115,491-range probe space, this build differs from
+JDK 21's `LanguageRange.parse` on exactly **14 ranges**, every one of them a genuine equivalence-
+table difference across six pairs: `bh`/`bih`, `enm`/`yol`, `mgp`/`mrd`, `mrh`/`shl`, `dyl`/`sgn-dyl`
+and `zhk`/`sgn-zhk`, with `bh` and `bih` counted in both letter cases the probe space carries.
+Nothing else moves — no range changes the ORDER of its equivalents, none is refused that was
+previously accepted, and none accepted that was previously refused.
+
 ## 3.0.0 - 2026-07-27
 
 ### Breaking Changes
