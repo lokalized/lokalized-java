@@ -63,15 +63,27 @@ public class IanaEquivalencesGeneratorTests {
   }
 
   @Test
-  public void everythingTheJdkAlreadyKnewIsUnchanged() {
+  public void whatJdk17AndLaterAlreadyAnsweredIsUnchanged() {
     // THE OTHER HALF, and without it the test above is satisfied by a table that resolves the four
-    // and mangles everything else. These are equivalences both the registry and every supported
-    // JDK carry, including a region substitution that is deliberately still the JDK's.
-    assertEquals(LanguageRange.parse("iw"), IanaLanguageEquivalents.parse("iw"));
-    assertEquals(LanguageRange.parse("zh-cmn"), IanaLanguageEquivalents.parse("zh-cmn"));
-    assertEquals(LanguageRange.parse("sgn-be-fr"), IanaLanguageEquivalents.parse("sgn-be-fr"));
-    assertEquals(LanguageRange.parse("de-DE"), IanaLanguageEquivalents.parse("de-DE"));
-    assertEquals(LanguageRange.parse("en-US,fr;q=0.5"), IanaLanguageEquivalents.parse("en-US,fr;q=0.5"));
+    // and mangles everything else. These are what `LanguageRange.parse` answers on JDK 17, 21, 25, 26 and
+    // 27 (measured; JDK 11 was not, though CI's JDK 11 leg passed the comparison this replaced),
+    // including a region substitution that is deliberately still the JDK's.
+    //
+    // PINNED AS LITERALS, NOT COMPARED WITH THE RUNNING JDK. This test used to assert equality with
+    // `LanguageRange.parse` on whatever JDK ran it, on the premise that every supported JDK carries
+    // these equivalences. JDK 9, the supported floor, does not: its parse answers `sgn-be-fr` without
+    // `sgn-sfb`, and it differs from this table on 646 of its 781 tags, 592 of them expanding to
+    // nothing at all (measured 2026-09-23 on Zulu 9.0.7.1, where this test was the only failure in the
+    // build). The table answers the same on every JDK, which is the point of it, so the expected
+    // answers are the table's, measured identical on JDK 9, 17, 21 and 27.
+    assertEquals(List.of(new LanguageRange("iw"), new LanguageRange("he")), IanaLanguageEquivalents.parse("iw"));
+    assertEquals(List.of(new LanguageRange("zh-cmn"), new LanguageRange("zh-guoyu"), new LanguageRange("cmn")),
+        IanaLanguageEquivalents.parse("zh-cmn"));
+    assertEquals(List.of(new LanguageRange("sgn-be-fr"), new LanguageRange("sgn-sfb"), new LanguageRange("sfb"),
+        new LanguageRange("sgn-be-fx")), IanaLanguageEquivalents.parse("sgn-be-fr"));
+    assertEquals(List.of(new LanguageRange("de-de"), new LanguageRange("de-dd")), IanaLanguageEquivalents.parse("de-DE"));
+    assertEquals(List.of(new LanguageRange("en-us"), new LanguageRange("fr", 0.5)),
+        IanaLanguageEquivalents.parse("en-US,fr;q=0.5"));
   }
 
   @Test

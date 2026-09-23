@@ -51,6 +51,18 @@ and `zhk`/`sgn-zhk`, with `bh` and `bih` counted in both letter cases the probe 
 Nothing else moves — no range changes the ORDER of its equivalents, none is refused that was
 previously accepted, and none accepted that was previously refused.
 
+How much moves depends on the JDK a deployment ran 3.0.0 on, because 3.0.0's answers were that JDK's.
+Measured over the table's 781 tags, the new default differs from the JDK's own `LanguageRange.parse` on
+12 tags on JDK 17, 21, 25 and 26 (the six pairs above), on 6 on JDK 27 (`bh`/`bih`, `mgp`/`mrd`,
+`mrh`/`shl`), and on **646 on JDK 9**. JDK 9's table omits most of the registry's extlang records: it carries
+the equivalence for 4 of the 258 (`zh-cmn`, `zh-gan`, `zh-wuu` and `zh-yue`, which are also
+registered as redundant tags) where JDK 17 carries 256, counting a record as carried when parsing its
+prefixed form (`ar-aeb`) yields its bare subtag (`aeb`). So it expands `aeb` to nothing where the registry gives `ar-aeb` and `ajt`:
+592 of the 646 tags gain equivalents where JDK 9 gave none, and one, `cmn`, keeps the same
+equivalents in a different order (`cmn`, `zh-guoyu`, `zh-cmn` where JDK 9 answers `cmn`, `zh-cmn`,
+`zh-guoyu`). JDK 11 was not measured. A deployment that must keep 3.0.0's answers on its current JDK
+can select `LanguageRangeEquivalents.JDK`.
+
 ### Build
 
 - The generator derives the whole equivalence table from the registry snapshot alone, including each

@@ -21,6 +21,7 @@ import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.PlaceholderDefinition;
 import org.jspecify.annotations.NonNull;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.concurrent.ThreadSafe;
@@ -39,6 +40,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,11 +48,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.lokalized.Diagnostics.format;
 import static java.util.Objects.requireNonNull;
@@ -69,6 +74,40 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 @ThreadSafe
 public class LocalizedStringLoaderTests {
+  /**
+   * Directories this test created, deleted after it runs.
+   * <p>
+   * {@code deleteOnExit()} cannot do this: it deletes a directory only if it is EMPTY when the JVM exits,
+   * and these hold the files the test wrote into them. Measured 2026-09-23: every run of this class left 49
+   * directories in the system temp folder, and 238 runs had accumulated there.
+   */
+  private final ConcurrentLinkedQueue<Path> temporaryDirectories = new ConcurrentLinkedQueue<>();
+
+  private Path createTemporaryDirectory(@NonNull String prefix) throws IOException {
+    requireNonNull(prefix);
+
+    Path directory = Files.createTempDirectory(prefix);
+    temporaryDirectories.add(directory);
+    return directory;
+  }
+
+  @AfterEach
+  public void deleteTemporaryDirectories() throws IOException {
+    Path directory;
+
+    // Deepest first, and without following links: a dangling symlink a test planted is deleted as a link.
+    while ((directory = temporaryDirectories.poll()) != null) {
+      List<Path> paths;
+
+      try (Stream<Path> walk = Files.walk(directory)) {
+        paths = walk.sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+      }
+
+      for (Path path : paths)
+        Files.deleteIfExists(path);
+    }
+  }
+
 	@Test
 	public void loadingOptionsHaveValueSemanticsAndCopyBuilder() {
 		LocalizedStringLoadingOptions defaults = LocalizedStringLoadingOptions.defaults();
@@ -127,8 +166,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testIncompletePluralMapWarnsButStillLoads() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     // Russian requires CARDINALITY_MANY; this file omits it.
     String incompleteRussian = "{\n" +
@@ -204,8 +242,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testIncompleteOrdinalMapWarnsButStillLoads() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     // English ordinals require ONE, TWO, FEW, and OTHER; this file omits TWO and FEW.
     String incompleteEnglish = "{\n" +
@@ -268,8 +305,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsNonJreTagsAndCase() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Path lowercaseRegion = tempDirectory.resolve("en-gb");
     Path privateUse = tempDirectory.resolve("x-private");
@@ -285,8 +321,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsCldrAliasLocaleFileNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("mo.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("sh.json"), "{\"hi\":\"there\"}".getBytes(StandardCharsets.UTF_8));
@@ -303,8 +338,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingJsonExtension() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Path jsonFile = tempDirectory.resolve("en-US.json");
     Files.write(jsonFile, "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
@@ -316,8 +350,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingJsonExtensionCaseInsensitive() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Path jsonFile = tempDirectory.resolve("en-US.JSON");
     Files.write(jsonFile, "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
@@ -329,8 +362,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingStripsUtf8Bom() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"), "\uFEFF{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
 
@@ -341,8 +373,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsBlankAndBomOnlyLocalizedStringsFiles() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings-blank");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings-blank");
 
     Files.write(tempDirectory.resolve("en"), " \t\r\n".getBytes(StandardCharsets.UTF_8));
     assertThrows(LocalizedStringLoadingException.class,
@@ -355,8 +386,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsStructurallyInvalidLanguageTags() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings-invalid-tag");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings-invalid-tag");
     Files.write(tempDirectory.resolve("en-a.json"), "{}".getBytes(StandardCharsets.UTF_8));
 
     LocalizedStringLoadingException exception = assertThrows(LocalizedStringLoadingException.class,
@@ -368,8 +398,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsMalformedUtf8() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings-invalid-utf8");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings-invalid-utf8");
     byte[] invalidUtf8 = new byte[]{'{', '"', 'k', '"', ':', '"', (byte) 0xC3, 0x28, '"', '}'};
     Files.write(tempDirectory.resolve("en"), invalidUtf8);
 
@@ -518,8 +547,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemDiscoveryBudgetCountsEveryDirectChildAndAcceptsExactLimit() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-discovery-budget");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-discovery-budget");
     Files.write(tempDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("notes.txt"), "not localized strings".getBytes(StandardCharsets.UTF_8));
     LocalizedStringLoadingOptions exactLimit = LocalizedStringLoadingOptions.builder()
@@ -570,8 +598,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingEnforcesAggregateLimits() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-aggregate-limits");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-aggregate-limits");
     String englishLocalizedStringsFile = "{\"hello\":\"world\"}";
     String frenchLocalizedStringsFile = "{\"goodbye\":\"world\"}";
     Files.write(tempDirectory.resolve("en.json"), englishLocalizedStringsFile.getBytes(StandardCharsets.UTF_8));
@@ -678,8 +705,7 @@ public class LocalizedStringLoaderTests {
 
 	@Test
 	public void testTranslationNodeLimitIsReservedBeforeLocalizedStringsEntryValidation() throws IOException {
-		Path tempDirectory = Files.createTempDirectory("lokalized-translation-node-limit");
-		tempDirectory.toFile().deleteOnExit();
+		Path tempDirectory = createTemporaryDirectory("lokalized-translation-node-limit");
 		Files.write(tempDirectory.resolve("en.json"),
 				"{\"first\":\"ok\",\"second\":{\"translation\":null}}".getBytes(StandardCharsets.UTF_8));
 		LocalizedStringLoadingOptions oneTranslationNode = LocalizedStringLoadingOptions.builder()
@@ -693,8 +719,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingEnforcesAggregateWarningLimit() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-warning-limit");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-warning-limit");
     String incompleteRussian = "{\"books\":{\"translation\":\"{{books}}\",\"placeholders\":{\"books\":{" +
         "\"value\":\"count\",\"translations\":{\"CARDINALITY_ONE\":\"книга\"," +
         "\"CARDINALITY_OTHER\":\"книг\"}}}}}";
@@ -1003,8 +1028,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsUndeterminedLanguageTags() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-undetermined-language");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-undetermined-language");
     Files.write(tempDirectory.resolve("und.json"), "{\"root\":\"value\"}".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("und-Latn.json"), "{\"latin\":\"value\"}".getBytes(StandardCharsets.UTF_8));
 
@@ -1048,8 +1072,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingSkipsDirectories() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.createDirectory(tempDirectory.resolve("en"));
     Files.write(tempDirectory.resolve("en-GB"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
@@ -1062,8 +1085,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingSkipsNonLocaleNonJsonFiles() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("NOTES"), "Not a localized strings file.".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("en"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
@@ -1076,8 +1098,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingSkipsHiddenJsonSidecars() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("._en.json"), "{}".getBytes(StandardCharsets.UTF_8));
     Files.write(tempDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
@@ -1090,8 +1111,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsInvalidJsonLocaleFileNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en_US.json"), "{}".getBytes(StandardCharsets.UTF_8));
 
@@ -1105,8 +1125,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsUnknownJsonLocaleFileNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("template.json"), "{}".getBytes(StandardCharsets.UTF_8));
 
@@ -1120,8 +1139,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsUnknownCldrScriptJsonLocaleFileNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en-Abcd.json"), "{}".getBytes(StandardCharsets.UTF_8));
 
@@ -1135,8 +1153,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsDuplicateKeys() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         "{\"hello\":\"world\",\"hello\":\"again\"}".getBytes(StandardCharsets.UTF_8));
@@ -1148,8 +1165,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsInvalidAlternativeExpressions() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount = 1\":{\"translation\":\"Hi\"}}]}}")
@@ -1162,8 +1178,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsAlternativeExpressionsWithMissingOperands() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount ==\":{\"translation\":\"Hi\"}}]}}")
@@ -1176,8 +1191,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsChainedAlternativeComparisons() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount == pageCount == chapterCount\":{\"translation\":\"Hi\"}}]}}")
@@ -1194,8 +1208,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsBareBooleanAlternativeOperands() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"bookCount && pageCount\":{\"translation\":\"Hi\"}}]}}")
@@ -1210,8 +1223,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsEmptyAlternativeExpressions() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"\":{\"translation\":\"Hi\"}}]}}")
@@ -1226,8 +1238,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsOversizedAlternativeExpressions() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         format("{\"Hello\":{\"translation\":\"Hello\",\"alternatives\":[{\"%s\":{\"translation\":\"Hi\"}}]}}",
@@ -1242,8 +1253,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsMalformedSimpleTranslationPlaceholders() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         "{\"Hello\":\"Hello {{ name }}\"}".getBytes(StandardCharsets.UTF_8));
@@ -1258,8 +1268,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsUnclosedTranslationPlaceholders() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello {{name\"}}")
@@ -1274,8 +1283,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAllowsEscapedLiteralMustaches() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         "{\"Hello\":\"Literal \\\\{{ name }} and {{name}}\"}".getBytes(StandardCharsets.UTF_8));
@@ -1287,8 +1295,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsInvalidJson() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"), "{".getBytes(StandardCharsets.UTF_8));
 
@@ -1299,8 +1306,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsInvalidJsonWithLocation() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"), ("{\n" +
         "  \"hello\":\n" +
@@ -1315,8 +1321,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsInvalidPlaceholderNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholders\":{\"1st\":{\"value\":\"name\",\"translations\":{\"CARDINALITY_ONE\":\"one\"}}}}}")
@@ -1329,8 +1334,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsUnicodePlaceholderNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello {{имя}}\":{\"translation\":\"Hello {{имя}} {{नाम}} {{книги}}\",\"placeholders\":{" +
@@ -1347,8 +1351,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsUnknownLocalizedStringObjectFields() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         "{\"Hello\":{\"translation\":\"Hello\",\"notes\":\"unexpected\"}}".getBytes(StandardCharsets.UTF_8));
@@ -1362,8 +1365,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsUnknownPlaceholderFields() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\"," +
@@ -1420,8 +1422,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsReservedPlaceholderNames() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello {{CARDINALITY_ONE}}\",\"placeholders\":{\"CARDINALITY_ONE\":{\"value\":\"count\",\"translations\":{" +
@@ -1438,8 +1439,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsReservedTranslationPlaceholderReferences() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         "{\"Hello\":{\"translation\":\"Hello {{GENDER_MASCULINE}}\"}}"
@@ -1455,8 +1455,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsMalformedLanguageFormTranslationPlaceholders() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\",\"translations\":{" +
@@ -1473,8 +1472,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsMissingPlaceholderTranslations() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello {{name}}\",\"placeholders\":{\"name\":{\"value\":\"name\"}}}}")
@@ -1487,8 +1485,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsIncompleteCardinalityTranslations() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("ru"),
         ("{\"I read {{bookCount}} books\":{\"translation\":\"{{bookCount}} {{books}}\",\"placeholders\":{\"books\":{\"value\":\"bookCount\",\"translations\":{" +
@@ -1503,8 +1500,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingAcceptsIncompleteOrdinalityTranslations() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Birthday\":{\"translation\":\"{{year}}{{suffix}}\",\"placeholders\":{\"suffix\":{\"value\":\"year\",\"translations\":{" +
@@ -1519,8 +1515,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testFilesystemLoadingRejectsNestedDuplicateObjectMembers() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-strings");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-strings");
 
     Files.write(tempDirectory.resolve("en"),
         ("{\"Hello\":{\"translation\":\"Hello {{books}}\",\"placeholders\":{\"books\":{\"value\":\"count\",\"translations\":{" +
@@ -1643,8 +1638,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExhaustiveClasspathLoadingFollowsManifestClasspath() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-manifest-classpath");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-manifest-classpath");
     Path localizedStringsFilesJar = tempDirectory.resolve("localized-strings-files.jar");
     Path applicationJar = tempDirectory.resolve("application.jar");
     writeJarEntryWithoutDirectory(localizedStringsFilesJar, "strings/en.json", "{\"hello\":\"world\"}");
@@ -1674,8 +1668,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExhaustiveClasspathLoadingSkipsUnusableManifestClasspathEntries() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-unusable-manifest-classpath");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-unusable-manifest-classpath");
     Path localizedStringsFilesJar = tempDirectory.resolve("localized-strings-files.jar");
     Path applicationJar = tempDirectory.resolve("application.jar");
     writeJarEntryWithoutDirectory(localizedStringsFilesJar, "strings/en.json", "{\"hello\":\"world\"}");
@@ -1789,8 +1782,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testClasspathLoadingWrapsMalformedPrimaryPackageUrl() throws IOException {
-    Path classpathRoot = Files.createTempDirectory("lokalized-malformed-package-url");
-    classpathRoot.toFile().deleteOnExit();
+    Path classpathRoot = createTemporaryDirectory("lokalized-malformed-package-url");
     URL malformedPackageUrl = new URL(classpathRoot.toUri().toURL().toExternalForm() + "?query");
     ClassLoader classLoader = new ClassLoader(null) {
       @Override
@@ -1808,8 +1800,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExhaustiveClasspathLoadingWrapsMalformedPrimaryRootUrl() throws IOException {
-    Path classpathRoot = Files.createTempDirectory("lokalized-malformed-root-url");
-    classpathRoot.toFile().deleteOnExit();
+    Path classpathRoot = createTemporaryDirectory("lokalized-malformed-root-url");
     URL malformedRootUrl = new URL(classpathRoot.toUri().toURL().toExternalForm() + "?query");
     LocalizedStringLoadingOptions loadingOptions = LocalizedStringLoadingOptions.builder()
         .exhaustiveClasspathSearch(true)
@@ -2043,8 +2034,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExplodedClasspathFiltersNamesBeforeResolvingRealPaths() throws IOException {
-    Path classpathRoot = Files.createTempDirectory("lokalized-exploded-classpath");
-    classpathRoot.toFile().deleteOnExit();
+    Path classpathRoot = createTemporaryDirectory("lokalized-exploded-classpath");
     Path stringsDirectory = Files.createDirectories(classpathRoot.resolve("strings"));
     Files.write(stringsDirectory.resolve("en.json"), "{\"hello\":\"world\"}".getBytes(StandardCharsets.UTF_8));
     Files.createSymbolicLink(stringsDirectory.resolve("notes.txt"), stringsDirectory.resolve("missing-notes"));
@@ -2064,8 +2054,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExplodedClasspathFailsSafelyForDanglingLocalizedStringsSymlink() throws IOException {
-    Path classpathRoot = Files.createTempDirectory("lokalized-dangling-classpath-resource");
-    classpathRoot.toFile().deleteOnExit();
+    Path classpathRoot = createTemporaryDirectory("lokalized-dangling-classpath-resource");
     Path stringsDirectory = Files.createDirectories(classpathRoot.resolve("strings"));
     Path localizedStringsFile = stringsDirectory.resolve("en.json");
     Files.createSymbolicLink(localizedStringsFile, stringsDirectory.resolve("missing-en.json"));
@@ -2130,8 +2119,7 @@ public class LocalizedStringLoaderTests {
 
   @Test
   public void testExhaustiveDiscoveryBudgetIncludesRootsManifestsAndJarEntries() throws IOException {
-    Path tempDirectory = Files.createTempDirectory("lokalized-exhaustive-discovery-budget");
-    tempDirectory.toFile().deleteOnExit();
+    Path tempDirectory = createTemporaryDirectory("lokalized-exhaustive-discovery-budget");
     Path localizedStringsJar = tempDirectory.resolve("localized-strings.jar");
     Path applicationJar = tempDirectory.resolve("application.jar");
     writeJarEntryWithoutDirectory(localizedStringsJar, "strings/en.json", "{\"hello\":\"world\"}");
