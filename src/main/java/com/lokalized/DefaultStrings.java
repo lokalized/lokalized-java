@@ -71,6 +71,8 @@ class DefaultStrings implements Strings {
 	private static final PhoneticResolver DEFAULT_PHONETIC_RESOLVER;
 	@NonNull
 	private static final BidiIsolation DEFAULT_BIDI_ISOLATION;
+	@NonNull
+	private static final LanguageRangeEquivalents DEFAULT_LANGUAGE_RANGE_EQUIVALENTS;
 
 	static {
 		DEFAULT_PHONETIC_RESOLVER = (term, locale) -> {
@@ -78,6 +80,7 @@ class DefaultStrings implements Strings {
 					PhoneticResolver.class.getSimpleName(), Strings.class.getSimpleName()));
 		};
 		DEFAULT_BIDI_ISOLATION = BidiIsolation.RTL_LOCALES;
+		DEFAULT_LANGUAGE_RANGE_EQUIVALENTS = LanguageRangeEquivalents.IANA_REGISTRY;
 	}
 
 	@NonNull
@@ -104,6 +107,8 @@ class DefaultStrings implements Strings {
 	private final PhoneticResolver phoneticResolver;
 	@NonNull
 	private final BidiIsolation bidiIsolation;
+	@NonNull
+	private final LanguageRangeEquivalents languageRangeEquivalents;
 
 	/**
 	 * Cache of localized strings by key by locale.
@@ -245,6 +250,30 @@ class DefaultStrings implements Strings {
 																 @Nullable BidiIsolation bidiIsolation,
 																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
 																 @Nullable TranslationRuntimeLimits runtimeLimits) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, localeMatchSupplier, tiebreakerLocalesByLanguageCode,
+				translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with either a locale or locale-match supplier and a language-range
+	 * equivalence source.
+	 *
+	 * @param languageRangeEquivalents source of IANA language-range equivalences, may be null (defaults to
+	 *                                 {@link LanguageRangeEquivalents#IANA_REGISTRY})
+	 * @since 3.1.0
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+														 @NonNull Supplier<@NonNull Map<@NonNull Locale,
+																 ? extends @NonNull Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+															 @Nullable Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
+															 @Nullable Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier,
+												 @Nullable Map<@NonNull String, @NonNull List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+																 @Nullable TranslationFailureHandler translationFailureHandler,
+																 @Nullable PhoneticResolver phoneticResolver,
+																 @Nullable BidiIsolation bidiIsolation,
+																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
+																 @Nullable TranslationRuntimeLimits runtimeLimits,
+																 @Nullable LanguageRangeEquivalents languageRangeEquivalents) {
 		LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
 
 		if (localizedStringSupplier == null)
@@ -475,6 +504,9 @@ class DefaultStrings implements Strings {
 				: translationFallbackPolicy;
 		this.runtimeLimits = runtimeLimits == null ? TranslationRuntimeLimits.defaults() : runtimeLimits;
 		this.bidiIsolation = bidiIsolation == null ? DEFAULT_BIDI_ISOLATION : bidiIsolation;
+		this.languageRangeEquivalents = languageRangeEquivalents == null
+				? DEFAULT_LANGUAGE_RANGE_EQUIVALENTS
+				: languageRangeEquivalents;
 		this.stringInterpolator = new StringInterpolator();
 		this.phoneticResolver = phoneticResolver == null ? DEFAULT_PHONETIC_RESOLVER : phoneticResolver;
 		this.expressionEvaluator = new ExpressionEvaluator(null, this.phoneticResolver, this.runtimeLimits);
@@ -1532,6 +1564,18 @@ class DefaultStrings implements Strings {
 		return matchFor(locale).getLocale().orElse(getFallbackLocale());
 	}
 
+	/**
+	 * {@inheritDoc}
+	 * <p>
+	 * Equivalents come from this instance's configured {@link LanguageRangeEquivalents}.
+	 */
+	@NonNull
+	@Override
+	public List<@NonNull LanguageRange> parseLanguageRanges(@NonNull String ranges) {
+		requireNonNull(ranges);
+		return parseLanguageRanges(ranges, getLanguageRangeEquivalents());
+	}
+
 	@NonNull
 	@Override
 	public Locale bestMatchFor(@NonNull List<@NonNull LanguageRange> languageRanges) {
@@ -1565,15 +1609,16 @@ class DefaultStrings implements Strings {
 		MemberStatics[] members = new MemberStatics[memberCount];
 
 		for (int memberIndex = 0; memberIndex < memberCount; ++memberIndex)
-			members[memberIndex] = new MemberStatics(sortedLanguageRanges.get(memberIndex));
+			members[memberIndex] = new MemberStatics(sortedLanguageRanges.get(memberIndex), getLanguageRangeEquivalents());
 
-		// LanguageRange.parse may add IANA-equivalent aliases (for example he/iw). Treat equivalent aliases and
+		// Parsing may add IANA-equivalent aliases (for example he/iw). Treat equivalent aliases and
 		// programmatic duplicates as one preference group so repetition cannot consume multiple heuristic locales.
 		// Equal-weight aliases remain active for syntactic diagnostics; lower-weight duplicates are dominated by the
 		// group maximum. Each range joins the first directly equivalent representative only — never through a
-		// nonrepresentative alias: the JDK maps nsl to sgn-NO while CLDR maps sgn-NO to nsi, and a transitive union
-		// would incorrectly collapse the distinct nsl and nsi preferences. Because members only ever join a range that
-		// is itself a representative, representative chains never exceed depth one and need no flattening.
+		// nonrepresentative alias: the IANA table, bundled or the JDK's, maps nsl to sgn-NO while CLDR maps sgn-NO to
+		// nsi, and a transitive union would incorrectly collapse the distinct nsl and nsi preferences. Because members
+		// only ever join a range that is itself a representative, representative chains never exceed depth one and need
+		// no flattening.
 		int[] representativeIndices = new int[memberCount];
 		boolean[] activeMembers = new boolean[memberCount];
 
@@ -1626,8 +1671,8 @@ class DefaultStrings implements Strings {
 
 		// Classify every (locale, member) relationship once; every later phase is a pure pass over these cells.
 		// Parser-added aliases remain interchangeable for exact and direct structural matches. Derived CLDR/canonical
-		// relationships come from one semantic member, however, because the JDK's IANA alias table can conflict with
-		// CLDR (and an extlang form such as ar-ary can otherwise infer ar-EG).
+		// relationships come from one semantic member, however, because the IANA alias table, bundled or the JDK's, can
+		// conflict with CLDR (and an extlang form such as ar-ary can otherwise infer ar-EG).
 		int localeCount = supportedLocaleStatics.size();
 		LanguageRangeSpecificity[][] cells = new LanguageRangeSpecificity[localeCount][memberCount];
 
@@ -2043,8 +2088,9 @@ class DefaultStrings implements Strings {
 		if (member.containsWildcard)
 			return null;
 
-		// A parser materializes IANA-equivalent ranges as independent members on newer JDKs. Preserve the same anchor
-		// on older runtimes when the equivalent identity was supplied by the lossless extlang fallback instead.
+		// A parser materializes IANA-equivalent ranges as independent members: always with the bundled registry, and on
+		// newer JDKs with the JDK's table. Preserve the same anchor on older runtimes when the equivalent identity was
+		// supplied by the lossless extlang fallback instead.
 		for (String identity : member.identities)
 			if (!identity.equalsIgnoreCase(member.range) &&
 					localeStatics.languageTag.equalsIgnoreCase(identity))
@@ -2091,11 +2137,13 @@ class DefaultStrings implements Strings {
 	 * Returns the BCP 47 extlang form materialized by {@link Locale#forLanguageTag(String)}, when that conversion is
 	 * lossless and the resulting tag is present in Lokalized's bundled CLDR data.
 	 * <p>
-	 * Older JDKs carry older IANA equivalence tables, so {@link LanguageRange#parse(String)} on Java 9 does not add
-	 * aliases such as {@code ar-ary -> ary}, {@code zh-cdo-CN -> cdo-CN}, or {@code sgn-nsl -> nsl}. The locale parser
-	 * has understood the BCP 47 extlang shape throughout Lokalized's supported runtime range, however. Restricting this
-	 * fallback to a syntactic extlang and a known, losslessly materialized tag avoids treating lossy conversions such
-	 * as {@code sgn-be-fx -> sgn-BE} as semantic aliases.
+	 * Older JDKs carry older IANA equivalence tables, so under {@link LanguageRangeEquivalents#JDK},
+	 * {@link LanguageRange#parse(String)} on Java 9 does not add aliases such as {@code ar-ary -> ary},
+	 * {@code zh-cdo-CN -> cdo-CN}, or {@code sgn-nsl -> nsl}; the bundled registry table used by
+	 * {@link LanguageRangeEquivalents#IANA_REGISTRY} does. The locale parser has understood the BCP 47 extlang shape
+	 * throughout Lokalized's supported runtime range, however. Restricting this fallback to a syntactic extlang and a
+	 * known, losslessly materialized tag avoids treating lossy conversions such as {@code sgn-be-fx -> sgn-BE} as
+	 * semantic aliases.
 	 */
 	@Nullable
 	private static String extlangEquivalentLanguageRangeFor(@NonNull String range) {
@@ -2138,37 +2186,64 @@ class DefaultStrings implements Strings {
 	}
 
 	/**
-	 * Builds the direct IANA identity set for a range, supplementing an older JDK's registry with a lossless extlang
-	 * identity and the aliases that the same JDK already knows for that identity.
+	 * Builds the direct IANA identity set for a range from the configured equivalence source, supplementing an older
+	 * JDK's registry with a lossless extlang identity and the aliases that the same source knows for that identity.
 	 */
 	@NonNull
-	private static Set<@NonNull String> languageRangeIdentitiesFor(@NonNull String range) {
+	private static Set<@NonNull String> languageRangeIdentitiesFor(@NonNull String range,
+																																 @NonNull LanguageRangeEquivalents languageRangeEquivalents) {
 		requireNonNull(range);
+		requireNonNull(languageRangeEquivalents);
 		Set<@NonNull String> identities = new LinkedHashSet<>();
 		identities.add(range.toLowerCase(Locale.ROOT));
-		addParsedLanguageRangeIdentities(range, identities);
+		addParsedLanguageRangeIdentities(range, identities, languageRangeEquivalents);
 
 		@Nullable String extlangEquivalentRange = extlangEquivalentLanguageRangeFor(range);
 
 		if (extlangEquivalentRange != null) {
 			identities.add(extlangEquivalentRange.toLowerCase(Locale.ROOT));
-			addParsedLanguageRangeIdentities(extlangEquivalentRange, identities);
+			addParsedLanguageRangeIdentities(extlangEquivalentRange, identities, languageRangeEquivalents);
 		}
 
 		return identities;
 	}
 
 	private static void addParsedLanguageRangeIdentities(@NonNull String range,
-																											 @NonNull Set<@NonNull String> identities) {
+																											 @NonNull Set<@NonNull String> identities,
+																											 @NonNull LanguageRangeEquivalents languageRangeEquivalents) {
 		requireNonNull(range);
 		requireNonNull(identities);
+		requireNonNull(languageRangeEquivalents);
 
 		try {
-			for (LanguageRange equivalentRange : IanaLanguageEquivalents.parse(range))
+			for (LanguageRange equivalentRange : parseLanguageRanges(range, languageRangeEquivalents))
 				identities.add(equivalentRange.getRange().toLowerCase(Locale.ROOT));
 		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
 			// The range already came from a validated LanguageRange instance. Retaining identities established by the
 			// other bounded probes is still safe if a particular JDK cannot re-expand an otherwise accepted form.
+		}
+	}
+
+	/**
+	 * Parses language ranges, taking IANA equivalents from the given source.
+	 * <p>
+	 * Both arms share {@link LanguageRange#parse(String)}'s grammar, weights, ordering, and exceptions; they differ only
+	 * in the equivalence table consulted.
+	 */
+	@NonNull
+	private static List<@NonNull LanguageRange> parseLanguageRanges(@NonNull String ranges,
+																																	@NonNull LanguageRangeEquivalents languageRangeEquivalents) {
+		requireNonNull(ranges);
+		requireNonNull(languageRangeEquivalents);
+
+		switch (languageRangeEquivalents) {
+			case IANA_REGISTRY:
+				return IanaLanguageEquivalents.parse(ranges);
+			case JDK:
+				return Collections.unmodifiableList(LanguageRange.parse(ranges));
+			default:
+				throw new IllegalStateException(format("Unexpected %s value: %s",
+						LanguageRangeEquivalents.class.getSimpleName(), languageRangeEquivalents));
 		}
 	}
 
@@ -2853,6 +2928,17 @@ class DefaultStrings implements Strings {
 	}
 
 	/**
+	 * Gets the source of IANA language-range equivalences used when parsing and matching language ranges.
+	 *
+	 * @return the language-range equivalence source, not null
+	 * @since 3.1.0
+	 */
+	@NonNull
+	public LanguageRangeEquivalents getLanguageRangeEquivalents() {
+		return languageRangeEquivalents;
+	}
+
+	/**
 	 * Gets our "master" cache of localized strings by key by locale.
 	 *
 	 * @return the cache of localized strings by key by locale, not null
@@ -3029,8 +3115,10 @@ class DefaultStrings implements Strings {
 		@Nullable private final String requestedLikelyLanguageScript;
 		@Nullable private final String requestedPrimary;
 
-		private MemberStatics(@NonNull LanguageRange languageRange) {
+		private MemberStatics(@NonNull LanguageRange languageRange,
+													@NonNull LanguageRangeEquivalents languageRangeEquivalents) {
 			this.languageRange = requireNonNull(languageRange);
+			requireNonNull(languageRangeEquivalents);
 			this.range = languageRange.getRange();
 			this.weight = languageRange.getWeight();
 			this.containsWildcard = range.contains("*");
@@ -3042,7 +3130,7 @@ class DefaultStrings implements Strings {
 			this.undetermined = CldrLocaleData.hasUndeterminedLanguage(range);
 			this.knownTag = CldrLocaleData.isKnownLanguageTag(range);
 
-			this.identities = languageRangeIdentitiesFor(range);
+			this.identities = languageRangeIdentitiesFor(range, languageRangeEquivalents);
 			this.semanticRange = semanticLanguageRangeForDerivedMatching(range, knownTag, containsWildcard,
 					identities);
 			this.canonicalIdentity = canonicalLanguageRangeIdentity(semanticRange);

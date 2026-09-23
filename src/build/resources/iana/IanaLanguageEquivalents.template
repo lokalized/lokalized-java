@@ -1,7 +1,27 @@
+/*
+ * Copyright 2017-2022 Product Mog LLC, 2022-2026 Revetware LLC.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * This generated source contains data derived from the IANA Language Subtag Registry
+ * (File-Date ${FILE_DATE}). See THIRD-PARTY-NOTICES.md.
+ */
+
 package com.lokalized;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -22,17 +42,25 @@ import static java.util.Objects.requireNonNull;
  * stamped 2026-05-05. A library whose selected catalog depends on the consumer's JVM is not
  * reproducible, and no existing test could see it, because every test runs on a single JDK.
  * <p>
- * This pins the LANGUAGE half of that table to registry {@code File-Date: 2026-09-17} —
+ * This pins the LANGUAGE half of that table to registry {@code File-Date: ${FILE_DATE}} —
  * ${KEY_COUNT} keys across ${CLASS_COUNT} equivalence classes — so the answer is a function of the
- * library rather than of the platform.
+ * library rather than of the platform. It is what {@link LanguageRangeEquivalents#IANA_REGISTRY},
+ * the default, selects; {@link LanguageRangeEquivalents#JDK} bypasses it for the running JDK's
+ * {@code LanguageRange#parse(String)}.
  * <p>
- * <strong>What it deliberately does not change.</strong> Region and variant substitution stays the
- * JDK's, reproduced below in the JDK's own iteration order. That behaviour is a house dialect
- * rather than registry content — it expands {@code de-DE} to {@code de-dd}, resurrecting a region
- * deprecated in 1990, and the registry states no such mapping — but it is long-standing observable
- * behaviour and is inert in practice, so changing it would move answers for existing callers to no
- * measurable benefit. Pinning the ORDER is itself a correction: which substitution applies when two
- * are applicable was previously decided by {@code java.util.HashMap} iteration order.
+ * Every datum below is generated from the registry snapshot by
+ * {@code src/build/java/com/lokalized/iana/IanaEquivalencesGenerator.java}, which states the rules:
+ * class membership from {@code Preferred-Value} and extlang records, each class's member order from
+ * which member has no {@code Preferred-Value} and the record order of the rest, and the region/variant
+ * substitutions from the registry's region and variant records.
+ * <p>
+ * <strong>What it deliberately does not change.</strong> Region and variant substitution keeps the
+ * JDK's semantics, including the order JDK 21 tries the substitutions in. That behaviour is a house
+ * dialect rather than registry content — it expands {@code de-DE} to {@code de-dd}, resurrecting a
+ * region deprecated in 1990, and the registry states no such mapping — but it is long-standing
+ * observable behaviour and is inert in practice, so changing it would move answers for existing
+ * callers to no measurable benefit. Pinning the ORDER is itself a correction: which substitution
+ * applies when two are applicable was previously decided by {@code java.util.HashMap} iteration order.
  */
 final class IanaLanguageEquivalents {
 	/** The pinned registry snapshot this table was generated from. */
@@ -51,21 +79,33 @@ final class IanaLanguageEquivalents {
 	/**
 	 * Lowercased subtag to the OTHER members of its equivalence class, from the pinned registry.
 	 * Generated; do not edit by hand.
+	 * <p>
+	 * Filled by plain {@code put} calls in the static initializer rather than one
+	 * {@code Map.ofEntries(...)} expression. The table is the same either way; the difference is
+	 * javac's: type inference over a single varargs call with ${KEY_COUNT} generic arguments took
+	 * minutes, and these calls take well under a second. The calls are split across several methods
+	 * so no one method approaches the JVM's 64 KB code-size limit as the registry grows.
 	 */
-	private static final Map<String, List<String>> LANGUAGE_EQUIVALENTS = Map.ofEntries(
-${ENTRIES});
+	private static final Map<String, List<String>> LANGUAGE_EQUIVALENTS;
+
+	static {
+		Map<String, List<String>> languageEquivalents = new HashMap<>(${MAP_CAPACITY});
+${INITIALIZER_CALLS}
+		LANGUAGE_EQUIVALENTS = Collections.unmodifiableMap(languageEquivalents);
+	}
 
 	/**
-	 * The JDK's {@code sun.util.locale.LocaleEquivalentMaps.regionVariantEquivMap}, in the order
-	 * that JDK's {@code HashMap} happens to iterate it. Declared rather than iterated, because that
-	 * order decides which substitution applies when two are applicable and is otherwise unspecified.
+	 * The ${REGION_VARIANT_COUNT} region and variant substitutions, as {@code {from, to}} pairs in the order
+	 * they are tried.
+	 * <p>
+	 * Generated from the registry's region and variant records that carry a {@code Preferred-Value},
+	 * in both directions — the set the JDK keeps in
+	 * {@code sun.util.locale.LocaleEquivalentMaps.regionVariantEquivMap}. The order is the one JDK 21's
+	 * {@code HashMap} iterates that map in, computed by the generator rather than read from a JDK, and
+	 * it matters: it decides which substitution applies when a range contains two.
 	 */
 	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = List.of(
-			new String[] { "-bu", "-mm" }, new String[] { "-tl", "-tp" }, new String[] { "-zr", "-cd" },
-			new String[] { "-tp", "-tl" }, new String[] { "-dd", "-de" }, new String[] { "-mm", "-bu" },
-			new String[] { "-cd", "-zr" }, new String[] { "-de", "-dd" }, new String[] { "-heploc", "-alalc97" },
-			new String[] { "-alalc97", "-heploc" }, new String[] { "-yd", "-ye" }, new String[] { "-fr", "-fx" },
-			new String[] { "-ye", "-yd" }, new String[] { "-fx", "-fr" });
+${REGION_VARIANT_ENTRIES});
 
 	/** {@code LanguageRange}'s MAX_WEIGHT and MIN_WEIGHT, which it does not expose. */
 	private static final double MAXIMUM_WEIGHT = 1.0;
@@ -228,4 +268,8 @@ ${ENTRIES});
 		return Integer.MIN_VALUE;
 	}
 
-}
+	/** One table row; {@code List.of} copies the array, so the stored list is immutable. */
+	private static void put(Map<String, List<String>> map, String key, String... equivalents) {
+		map.put(key, List.of(equivalents));
+	}
+${INITIALIZER_METHODS}}

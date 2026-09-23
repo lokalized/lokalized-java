@@ -7,22 +7,39 @@ All notable changes to Lokalized will be documented in this file.
 ### Changed
 
 - **Language-range equivalences now come from a pinned IANA Language Subtag Registry snapshot
-  (`File-Date: 2026-09-17`) rather than from the running JDK.** `Locale.LanguageRange.parse`
+  (`File-Date: 2026-09-17`) rather than from the running JDK, by default.** `Locale.LanguageRange.parse`
   expands ranges using a registry table baked into the JVM, and that table moves between releases:
   the same Lokalized jar answered `Accept-Language: yol` with the `en` catalog on one JDK and the
-  `enm` catalog on another. Selected catalogs no longer depend on which JVM a deployment runs.
+  `enm` catalog on another. By default, the equivalents Lokalized applies no longer depend on which JVM
+  a deployment runs.
 - Region and variant substitution is unchanged and still matches the JDK exactly, including its
   ordering, which was previously decided by `HashMap` iteration order.
 
+### Added
+
+- [`LanguageRangeEquivalents`](https://javadoc.lokalized.com/com/lokalized/LanguageRangeEquivalents.html),
+  which selects where equivalences come from: `IANA_REGISTRY` (the default) uses the bundled registry
+  snapshot, and `JDK` uses the running JDK's table through `Locale.LanguageRange.parse`, as 3.0.0 did.
+- [`Strings.Builder.languageRangeEquivalents(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#languageRangeEquivalents(com.lokalized.LanguageRangeEquivalents))
+  configures it per `Strings` instance; `null` means the default.
+- [`LocaleMatcher.parseLanguageRanges(String)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#parseLanguageRanges(java.lang.String)),
+  a public parser with `Locale.LanguageRange.parse`'s grammar, result order, and exceptions that takes
+  its equivalents from the bundled registry. A `Strings` instance overrides it to honor its configured
+  `LanguageRangeEquivalents`, and `bestMatchForAcceptLanguage` now parses through it, so one setting
+  governs every place Lokalized parses ranges. It is a default method, so adding it is binary
+  compatible with existing `LocaleMatcher` and `Strings` implementations, which inherit the registry parse.
+
 ### Where the new table applies, and where it does not
 
-The registry table is consulted in two places, both inside the library: `bestMatchForAcceptLanguage`,
-which parses a raw `Accept-Language` field value, and the identity derivation behind `matchFor`. A
-caller who builds a `List<LanguageRange>` themselves with `java.util.Locale.LanguageRange.parse`
-still gets the JDK's expansion in that list — the JDK's table is unchanged and Lokalized does not
-replace it. The difference is observable: a range list built by the caller reports the match as
-`CANONICAL` against the range it was given, where a header parsed by the library reports `EXACT`
-against the equivalent it added.
+Under the default `IANA_REGISTRY` setting, the registry table is consulted in three places:
+`parseLanguageRanges`, `bestMatchForAcceptLanguage`, which parses a raw `Accept-Language` field value
+through it, and the identity derivation behind `matchFor`. A caller who builds a `List<LanguageRange>`
+themselves with `java.util.Locale.LanguageRange.parse` still gets the JDK's expansion in that list —
+the JDK's table is unchanged and Lokalized does not replace it — so parse with
+`strings.parseLanguageRanges(...)` instead. The difference is observable: a range list built with the
+JDK's parser reports the match as `CANONICAL` against the range it was given, where a list parsed by
+Lokalized reports `EXACT` against the equivalent it added. With the `JDK` setting, all three places use
+the running JDK's table.
 
 ### Effect on callers
 
@@ -33,6 +50,14 @@ table difference across six pairs: `bh`/`bih`, `enm`/`yol`, `mgp`/`mrd`, `mrh`/`
 and `zhk`/`sgn-zhk`, with `bh` and `bih` counted in both letter cases the probe space carries.
 Nothing else moves — no range changes the ORDER of its equivalents, none is refused that was
 previously accepted, and none accepted that was previously refused.
+
+### Build
+
+- The generator derives the whole equivalence table from the registry snapshot alone, including each
+  class's member order and the region/variant substitutions and their order; the JDK-recorded closure
+  it previously read is removed. The generated table is unchanged, key for key and member for member.
+- The generated table is now filled by plain `put` calls rather than one `Map.ofEntries(...)`
+  expression, which javac took about 400 seconds to compile; the same table now compiles in under a second.
 
 ## 3.0.0 - 2026-07-27
 

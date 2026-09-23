@@ -43,8 +43,11 @@ public interface LocaleMatcher {
 	/**
 	 * Maximum number of parsed language ranges accepted by one matching operation: 32.
 	 * <p>
-	 * {@link LanguageRange#parse(String)} may add IANA-equivalent ranges, so this limit applies to the returned list,
-	 * not the number of comma-separated ranges in the source header.
+	 * Parsing a header, whether with {@link #parseLanguageRanges(String)} or {@link LanguageRange#parse(String)}, may
+	 * add IANA-equivalent ranges, so this limit applies to the parsed list, not the number of comma-separated ranges in
+	 * the source header. The two parsers can add different equivalents, and {@link LanguageRange#parse(String)} adds
+	 * whatever the running JDK's table holds, so the same header can be within the limit under one and over it under
+	 * the other.
 	 *
 	 * @since 3.0.0
 	 */
@@ -103,11 +106,11 @@ public interface LocaleMatcher {
 	 * This is a fail-soft convenience for request handling. A missing, blank, malformed, or longer than 4,096 UTF-16
 	 * code-unit value returns the configured fallback locale. The length limit is applied before parsing so parser work
 	 * is bounded independently of the parsed-range limit. HTTP optional whitespace and empty list elements are
-	 * normalized before parsing. The configured fallback is also returned if parsing produces more than
-	 * {@link #MAXIMUM_LANGUAGE_RANGES} ranges, which can happen when {@link LanguageRange#parse(String)} adds
-	 * IANA-equivalent ranges. A valid parsed list is passed through whole; preferences are never truncated. Use
-	 * {@link #matchFor(List)} or {@link #bestMatchFor(List)} when language ranges have already been parsed and strict
-	 * limit enforcement is desired.
+	 * normalized before parsing, and the value is then parsed with {@link #parseLanguageRanges(String)}. The configured
+	 * fallback is also returned if parsing produces more than {@link #MAXIMUM_LANGUAGE_RANGES} ranges, which can happen
+	 * when parsing adds IANA-equivalent ranges. A valid parsed list is passed through whole; preferences are never
+	 * truncated. Use {@link #matchFor(List)} or {@link #bestMatchFor(List)} when language ranges have already been
+	 * parsed and strict limit enforcement is desired.
 	 *
 	 * @param acceptLanguage raw, already-combined {@code Accept-Language} field value, or null if absent
 	 * @return the best-matching locale, or the configured fallback for unusable input, not null
@@ -128,7 +131,7 @@ public interface LocaleMatcher {
 		List<@NonNull LanguageRange> languageRanges;
 
 		try {
-			languageRanges = IanaLanguageEquivalents.parse(normalizedAcceptLanguage);
+			languageRanges = parseLanguageRanges(normalizedAcceptLanguage);
 		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
 			return bestMatchFor(List.of());
 		}
@@ -140,8 +143,40 @@ public interface LocaleMatcher {
 	}
 
 	/**
+	 * Parses a language-range list, such as an {@code Accept-Language} field value, adding IANA-equivalent ranges.
+	 * <p>
+	 * The grammar, weights, result order, de-duplication, and exceptions are those of {@link LanguageRange#parse(String)}:
+	 * spaces are removed, the value is lowercased, an {@code accept-language:} prefix is dropped, members are separated by
+	 * commas, and each member may carry a {@code ;q=} weight. Only the source of the added equivalent ranges differs. This
+	 * default takes them from the IANA Language Subtag Registry snapshot bundled in Lokalized
+	 * ({@link LanguageRangeEquivalents#IANA_REGISTRY}), so the equivalents it adds are the same on every JDK, where
+	 * {@link LanguageRange#parse(String)} uses the running JDK's table. A {@link Strings} instance uses the source
+	 * configured with {@link Strings.Builder#languageRangeEquivalents(LanguageRangeEquivalents)}.
+	 * <p>
+	 * Unlike {@link #bestMatchForAcceptLanguage(String)}, this method is strict: it applies no length limit, rejects an
+	 * empty value, horizontal tabs, and empty list elements other than trailing ones instead of normalizing them, and
+	 * propagates every failure. It does not enforce {@link #MAXIMUM_LANGUAGE_RANGES}; {@link #matchFor(List)} and
+	 * {@link #bestMatchFor(List)} reject a longer list.
+	 *
+	 * @param ranges comma-separated language ranges, optionally weighted, not null
+	 * @return the parsed ranges and their equivalents in descending weight order, as an unmodifiable list, not null
+	 * @throws NullPointerException      if {@code ranges} is null
+	 * @throws IllegalArgumentException  if a language range or weight is ill-formed, or a weight is not between
+	 *                                   {@code 0.0} and {@code 1.0}
+	 * @throws IndexOutOfBoundsException if a language range consists only of hyphens and the running JDK's
+	 *                                   {@link LanguageRange} constructor rejects it this way, as it does on JDK 17
+	 *                                   and 21 (JDK 25 through 27 throw {@link IllegalArgumentException} instead);
+	 *                                   {@link LanguageRange#parse(String)} fails the same way on each JDK
+	 * @since 3.1.0
+	 */
+	@NonNull
+	default List<@NonNull LanguageRange> parseLanguageRanges(@NonNull String ranges) {
+		return IanaLanguageEquivalents.parse(ranges);
+	}
+
+	/**
 	 * Converts RFC 9110 horizontal-tab whitespace to the space form understood by
-	 * {@link LanguageRange#parse(String)} and removes empty HTTP list elements.
+	 * {@link #parseLanguageRanges(String)} and removes empty HTTP list elements.
 	 */
 	@NonNull
 	private static String normalizeAcceptLanguage(@NonNull String acceptLanguage) {

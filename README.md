@@ -341,14 +341,47 @@ Norwegian Nynorsk (`nn`) is independent and does not participate in this bridge.
 
 [`LocaleMatcher`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html) accepts at most
 [`32` parsed language ranges](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#MAXIMUM_LANGUAGE_RANGES)
-per call to bound matching work. This count applies to the list returned by
-[`LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String)),
-which may add IANA-equivalent ranges beyond those written in the header.
+per call to bound matching work. This count applies to the parsed list, which may hold IANA-equivalent ranges beyond
+those written in the header (see [IANA language-range equivalents](#iana-language-range-equivalents) below).
 [`TranslationOptions`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html) enforces the same limit when
 the options are constructed, before a lookup begins. The raw-header convenience method above bounds input at 4,096
 UTF-16 code units before parsing and uses the configured fallback for missing, blank, malformed, or over-limit values;
 it never truncates preferences. [`bestMatchFor(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#bestMatchFor(java.util.List)) always returns a locale and uses the configured fallback when
 nothing is acceptable.
+
+#### IANA language-range equivalents
+
+Parsing a header adds the ranges the IANA Language Subtag Registry declares equivalent, so a request for `iw` also
+considers `he`. By default Lokalized takes these equivalents from the
+registry snapshot it bundles (`File-Date: 2026-09-17`), so they are the same on every JDK: a request for `yol` also considers `enm`
+even on a JDK whose own table does not say so.
+[`LanguageRange.parse(...)`](https://docs.oracle.com/en/java/javase/26/docs/api/java.base/java/util/Locale.LanguageRange.html#parse(java.lang.String))
+uses the table bundled in the running JDK instead, which differs between JDK releases, so when your application parses a
+header itself, use [`parseLanguageRanges(...)`](https://javadoc.lokalized.com/com/lokalized/LocaleMatcher.html#parseLanguageRanges(java.lang.String)).
+It has the same grammar, result order, and exceptions as `LanguageRange.parse(...)`:
+
+```java
+List<LanguageRange> languageRanges = strings.parseLanguageRanges("pt-PT,pt;q=0.8");
+Locale locale = strings.bestMatchFor(languageRanges);
+```
+
+The table can change which locale a request selects, and which headers exceed the 32-range limit. To keep
+Lokalized 3.0.0's behavior of using the running JDK's table, configure
+[`languageRangeEquivalents(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#languageRangeEquivalents(com.lokalized.LanguageRangeEquivalents))
+with [`LanguageRangeEquivalents.JDK`](https://javadoc.lokalized.com/com/lokalized/LanguageRangeEquivalents.html#JDK).
+The setting governs `parseLanguageRanges(...)`, `bestMatchForAcceptLanguage(...)`, and the equivalents matching
+recognizes for each requested range; `null` or no call means the default,
+[`LanguageRangeEquivalents.IANA_REGISTRY`](https://javadoc.lokalized.com/com/lokalized/LanguageRangeEquivalents.html#IANA_REGISTRY).
+
+```java
+Strings strings = Strings.withFallbackLocale(FALLBACK_LOCALE)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromFilesystem(Paths.get("my-directory")))
+  .localeSupplier((matcher) -> matcher.bestMatchForAcceptLanguage(
+    MyWebContext.getCombinedAcceptLanguageHeader()))
+  // Use the running JDK's equivalence table, as Lokalized 3.0.0 did
+  .languageRangeEquivalents(LanguageRangeEquivalents.JDK)
+  .build();
+```
 
 ## Loading Localized Strings
 
@@ -1608,7 +1641,7 @@ only when the caller also needs diagnostics:
 TranslationResult result = strings.getResult(
   "I read {{bookCount}} books.",
   Map.of("bookCount", 3),
-  TranslationOptions.forLanguageRanges(LanguageRange.parse("pt-PT,pt;q=0.8"))
+  TranslationOptions.forLanguageRanges(strings.parseLanguageRanges("pt-PT,pt;q=0.8"))
 );
 
 // Returned text, e.g. "Li 3 livros."

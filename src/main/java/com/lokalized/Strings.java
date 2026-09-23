@@ -243,6 +243,8 @@ public interface Strings extends LocaleMatcher {
 		private PhoneticResolver phoneticResolver;
 		@Nullable
 		private BidiIsolation bidiIsolation;
+		@Nullable
+		private LanguageRangeEquivalents languageRangeEquivalents;
 
 		/**
 		 * Constructs a strings builder with a default locale.
@@ -411,6 +413,27 @@ public interface Strings extends LocaleMatcher {
 		}
 
 		/**
+		 * Applies the source of IANA language-range equivalences, such as the {@code he}/{@code iw} pair, for this instance.
+		 * <p>
+		 * The source governs {@link LocaleMatcher#parseLanguageRanges(String)}, {@link LocaleMatcher#bestMatchForAcceptLanguage(String)},
+		 * and the equivalences locale matching recognizes for each requested range, so it can change which loaded locale a
+		 * request selects. {@link LanguageRangeEquivalents#IANA_REGISTRY} uses the IANA Language Subtag Registry snapshot
+		 * bundled in Lokalized and supplies the same equivalents on every JDK; {@link LanguageRangeEquivalents#JDK} uses
+		 * the running JDK's table, as Lokalized 3.0.0 did. A range list parsed by the caller with
+		 * {@link java.util.Locale.LanguageRange#parse(String)} carries the JDK's equivalents whatever this is set to; parse
+		 * it with {@link LocaleMatcher#parseLanguageRanges(String)} to apply this setting.
+		 *
+		 * @param languageRangeEquivalents equivalence source, may be null (defaults to {@link LanguageRangeEquivalents#IANA_REGISTRY})
+		 * @return this builder instance, useful for chaining. not null
+		 * @since 3.1.0
+		 */
+		@NonNull
+		public Builder languageRangeEquivalents(@Nullable LanguageRangeEquivalents languageRangeEquivalents) {
+			this.languageRangeEquivalents = languageRangeEquivalents;
+			return this;
+		}
+
+		/**
 		 * Constructs a {@link Strings} instance.
 		 *
 		 * @return a {@link Strings} instance, not null
@@ -426,7 +449,8 @@ public interface Strings extends LocaleMatcher {
 		public Strings build() {
 			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, localeMatchSupplier,
 					tiebreakerLocalesByLanguageCode,
-					translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits);
+					translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits,
+					languageRangeEquivalents);
 		}
 	}
 }
