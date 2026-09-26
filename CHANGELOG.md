@@ -2,7 +2,7 @@
 
 All notable changes to Lokalized will be documented in this file.
 
-## 3.1.0 - unreleased
+## 3.1.0 - 2026-09-26
 
 ### Changed
 

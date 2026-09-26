@@ -76,13 +76,13 @@ Similarly-flavored commercially-friendly OSS libraries are available.
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>3.0.0</version>
+  <version>3.1.0</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven or Gradle, you can drop [**lokalized-3.0.0.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.0.0/lokalized-3.0.0.jar) directly into your project. No other dependencies are required.
+If you don't use Maven or Gradle, you can drop [**lokalized-3.1.0.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.1.0/lokalized-3.1.0.jar) directly into your project. No other dependencies are required.
 
 ## Getting Started
 
