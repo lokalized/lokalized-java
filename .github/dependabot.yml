@@ -6,10 +6,22 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    # One pull request per week for everything Maven, rather than one per plugin.
+    groups:
+      maven:
+        patterns: ["*"]
+    ignore:
+      # JUnit 6 needs Java 17 to run tests, and Lokalized builds and tests on Java 9 and later.
+      - dependency-name: "org.junit.jupiter:*"
+        update-types: ["version-update:semver-major"]
 
-  # Keep GitHub Actions current.
+  # Keep GitHub Actions current. Workflows pin each action to a commit with its version in a comment,
+  # which Dependabot updates together.
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
+    groups:
+      github-actions:
+        patterns: ["*"]
