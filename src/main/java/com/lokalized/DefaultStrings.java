@@ -22,6 +22,7 @@ import com.lokalized.LocalizedString.ExpressionTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslation;
 import com.lokalized.LocalizedString.LanguageFormTranslationRange;
 import com.lokalized.LocalizedString.PlaceholderDefinition;
+import com.lokalized.TranslationFallbackEvent.PrecedingFailure;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
@@ -95,6 +96,8 @@ class DefaultStrings implements Strings {
 	private final TranslationFailureHandler translationFailureHandler;
 	@NonNull
 	private final TranslationFallbackPolicy translationFallbackPolicy;
+	@Nullable
+	private final TranslationFallbackObserver translationFallbackObserver;
 	@NonNull
 	private final TranslationRuntimeLimits runtimeLimits;
 	@NonNull
@@ -274,6 +277,41 @@ class DefaultStrings implements Strings {
 																 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
 																 @Nullable TranslationRuntimeLimits runtimeLimits,
 																 @Nullable LanguageRangeEquivalents languageRangeEquivalents) {
+		this(fallbackLocale, localizedStringSupplier, localeSupplier, localeMatchSupplier, tiebreakerLocalesByLanguageCode,
+				translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits,
+				languageRangeEquivalents, null);
+	}
+
+	/**
+	 * Constructs a localized string provider with optional observation of successful locale fallback.
+	 *
+	 * @param fallbackLocale locale used when other candidates cannot supply a translation, not null
+	 * @param localizedStringSupplier localized string catalogs, not null
+	 * @param localeSupplier requested locale supplier, mutually exclusive with localeMatchSupplier
+	 * @param localeMatchSupplier negotiated locale supplier, mutually exclusive with localeSupplier
+	 * @param tiebreakerLocalesByLanguageCode candidate order within each language, may be null
+	 * @param translationFailureHandler final failure handler, may be null to return the key
+	 * @param phoneticResolver phonetic category resolver, may be null to use the fail-fast default
+	 * @param bidiIsolation bidirectional isolation policy, may be null to use the default
+	 * @param translationFallbackPolicy candidate continuation policy, may be null to use the safe default
+	 * @param runtimeLimits construction and evaluation limits, may be null to use defaults
+	 * @param languageRangeEquivalents language-range equivalence source, may be null to use the IANA registry
+	 * @param translationFallbackObserver successful fallback observer, may be null to disable observation
+	 * @since 3.1.1
+	 */
+	protected DefaultStrings(@NonNull Locale fallbackLocale,
+			@NonNull Supplier<@NonNull Map<@NonNull Locale,
+					? extends @NonNull Iterable<@NonNull LocalizedString>>> localizedStringSupplier,
+			@Nullable Function<@NonNull LocaleMatcher, @NonNull Locale> localeSupplier,
+			@Nullable Function<@NonNull LocaleMatcher, @NonNull LocaleMatchResult> localeMatchSupplier,
+			@Nullable Map<@NonNull String, @NonNull List<@NonNull Locale>> tiebreakerLocalesByLanguageCode,
+			@Nullable TranslationFailureHandler translationFailureHandler,
+			@Nullable PhoneticResolver phoneticResolver,
+			@Nullable BidiIsolation bidiIsolation,
+			@Nullable TranslationFallbackPolicy translationFallbackPolicy,
+			@Nullable TranslationRuntimeLimits runtimeLimits,
+			@Nullable LanguageRangeEquivalents languageRangeEquivalents,
+			@Nullable TranslationFallbackObserver translationFallbackObserver) {
 		LocaleUtils.requireWellFormed(fallbackLocale, "Fallback locale");
 
 		if (localizedStringSupplier == null)
@@ -503,6 +541,7 @@ class DefaultStrings implements Strings {
 				? TranslationFallbackPolicy.fallbackOnMissingTranslationOrNoMatchingAlternative()
 				: translationFallbackPolicy;
 		this.runtimeLimits = runtimeLimits == null ? TranslationRuntimeLimits.defaults() : runtimeLimits;
+		this.translationFallbackObserver = translationFallbackObserver;
 		this.bidiIsolation = bidiIsolation == null ? DEFAULT_BIDI_ISOLATION : bidiIsolation;
 		this.languageRangeEquivalents = languageRangeEquivalents == null
 				? DEFAULT_LANGUAGE_RANGE_EQUIVALENTS
@@ -716,6 +755,8 @@ class DefaultStrings implements Strings {
 		TranslationFailureHandler translationFailureHandler = options.getTranslationFailureHandler().orElse(getTranslationFailureHandler());
 		TranslationFallbackPolicy translationFallbackPolicy = options.getTranslationFallbackPolicy()
 				.orElse(getTranslationFallbackPolicy());
+		TranslationFallbackObserver translationFallbackObserver = options.getTranslationFallbackObserver()
+				.orElse(getTranslationFallbackObserver());
 		// All locale candidates, failure reporting, and interpolation must observe one coherent caller-input snapshot.
 		Map<@NonNull String, @Nullable Object> contextSnapshot = new HashMap<>(placeholders);
 
@@ -727,6 +768,8 @@ class DefaultStrings implements Strings {
 		boolean noMatchingAlternativeEncountered = false;
 		List<@NonNull LocaleFallbackCandidate> fallbackCandidates = localeFallbackCandidates(locale);
 		List<@NonNull Locale> attemptedLocales = new ArrayList<>(fallbackCandidates.size());
+		List<@NonNull PrecedingFailure> precedingFailures = translationFallbackObserver == null
+				? null : new ArrayList<>(fallbackCandidates.size());
 
 		for (int candidateIndex = 0; candidateIndex < fallbackCandidates.size(); ++candidateIndex) {
 			LocaleFallbackCandidate fallbackCandidate = fallbackCandidates.get(candidateIndex);
@@ -735,21 +778,20 @@ class DefaultStrings implements Strings {
 			@Nullable Map<@NonNull String, @NonNull LocalizedString> localizedStrings = fallbackCandidate.getLocalizedStrings();
 			TranslationFailureReason attemptFailureReason = TranslationFailureReason.MISSING_TRANSLATION;
 			@Nullable Throwable attemptCause = null;
+			Optional<String> translation = Optional.empty();
 
 			if (localizedStrings != null) {
 				LocalizedString localizedString = localizedStrings.get(key);
 
 				if (localizedString != null) {
 					try {
-						Optional<String> translation = getInternal(key, localizedString, Collections.emptyMap(),
+						translation = getInternal(key, localizedString, Collections.emptyMap(),
 								immutableContext, candidateLocale, bidiIsolation, key);
 
-						if (translation.isPresent())
-							return new TranslationResult(key, translation.get(), locale, localeMatchResult, candidateLocale, attemptedLocales,
-									TranslationResultStatus.TRANSLATED, null, null);
-
-						attemptFailureReason = TranslationFailureReason.NO_MATCHING_ALTERNATIVE;
-						noMatchingAlternativeEncountered = true;
+						if (!translation.isPresent()) {
+							attemptFailureReason = TranslationFailureReason.NO_MATCHING_ALTERNATIVE;
+							noMatchingAlternativeEncountered = true;
+						}
 					} catch (RuntimeException e) {
 						attemptFailureReason = TranslationFailureReason.RESOLUTION_FAILURE;
 						attemptCause = e;
@@ -759,6 +801,20 @@ class DefaultStrings implements Strings {
 					}
 				}
 			}
+
+			if (translation.isPresent()) {
+				TranslationResult translationResult = new TranslationResult(key, translation.get(), locale, localeMatchResult,
+						candidateLocale, attemptedLocales, TranslationResultStatus.TRANSLATED, null, null);
+
+				// Observer exceptions propagate without entering the translation resolution failure channel
+				if (translationFallbackObserver != null && !precedingFailures.isEmpty())
+					translationFallbackObserver.observe(new TranslationFallbackEvent(translationResult, precedingFailures));
+
+				return translationResult;
+			}
+
+			if (precedingFailures != null)
+				precedingFailures.add(new PrecedingFailure(candidateLocale, attemptFailureReason, attemptCause));
 
 			if (candidateIndex + 1 >= fallbackCandidates.size())
 				break;
@@ -2905,6 +2961,17 @@ class DefaultStrings implements Strings {
 	@NonNull
 	public TranslationFallbackPolicy getTranslationFallbackPolicy() {
 		return translationFallbackPolicy;
+	}
+
+	/**
+	 * Gets the observer notified when a later locale candidate supplies a translation.
+	 *
+	 * @return successful fallback observer, or null when disabled
+	 * @since 3.1.1
+	 */
+	@Nullable
+	public TranslationFallbackObserver getTranslationFallbackObserver() {
+		return translationFallbackObserver;
 	}
 
 	/**

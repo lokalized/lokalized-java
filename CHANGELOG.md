@@ -2,6 +2,22 @@
 
 All notable changes to Lokalized will be documented in this file.
 
+## 3.1.1 - 2026-10-01
+
+### Added
+
+- `TranslationFallbackObserver` and `TranslationFallbackEvent` for observing successful per-key locale fallback,
+  matching the JavaScript API's event fields and invocation rules. Events include every preceding candidate's locale,
+  failure reason, and optional runtime cause, in attempt order.
+- `Strings.Builder.translationFallbackObserver(...)` configures an instance observer;
+  `TranslationOptions.Builder.translationFallbackObserver(...)` replaces it for one lookup. Null per-call values
+  inherit the instance observer.
+- The observer is called once, synchronously, after a later candidate succeeds and before lookup returns. First-candidate
+  success, negotiation-only fallback, and final lookup failure do not notify it. Observer exceptions propagate directly
+  without entering translation failure handling or causing further locale attempts.
+
+Existing constructor signatures are retained, and observation is disabled by default.
+
 ## 3.1.0 - 2026-09-26
 
 ### Changed

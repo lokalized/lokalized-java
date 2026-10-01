@@ -36,8 +36,8 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * These options override the defaults configured on a {@link Strings} instance for a single lookup.
  * Instances are structurally immutable and safe to share. A configured {@link TranslationFailureHandler} or
- * {@link TranslationFallbackPolicy} may be invoked concurrently when the same options are used by concurrent
- * lookups; application-supplied implementations must therefore be thread-safe.
+ * {@link TranslationFallbackPolicy} or {@link TranslationFallbackObserver} may be invoked concurrently when the same
+ * options are used by concurrent lookups; application-supplied implementations must therefore be thread-safe.
  *
  * @author <a href="https://revetkn.com">Mark Allen</a>
  * @since 3.0.0
@@ -48,7 +48,7 @@ public final class TranslationOptions {
 	private static final TranslationOptions NONE;
 
 	static {
-		NONE = new TranslationOptions(null, null, null, null, null);
+		NONE = new TranslationOptions(null, null, null, null, null, null);
 	}
 
 	@Nullable
@@ -61,12 +61,15 @@ public final class TranslationOptions {
 	private final TranslationFailureHandler translationFailureHandler;
 	@Nullable
 	private final TranslationFallbackPolicy translationFallbackPolicy;
+	@Nullable
+	private final TranslationFallbackObserver translationFallbackObserver;
 
 	private TranslationOptions(@Nullable Locale locale,
 														 @Nullable List<@NonNull LanguageRange> languageRanges,
 														 @Nullable BidiIsolation bidiIsolation,
 														 @Nullable TranslationFailureHandler translationFailureHandler,
-														 @Nullable TranslationFallbackPolicy translationFallbackPolicy) {
+														 @Nullable TranslationFallbackPolicy translationFallbackPolicy,
+														 @Nullable TranslationFallbackObserver translationFallbackObserver) {
 		if (locale != null && languageRanges != null)
 			throw new IllegalArgumentException("Specify either locale or languageRanges, not both");
 
@@ -75,6 +78,7 @@ public final class TranslationOptions {
 		this.bidiIsolation = bidiIsolation;
 		this.translationFailureHandler = translationFailureHandler;
 		this.translationFallbackPolicy = translationFallbackPolicy;
+		this.translationFallbackObserver = translationFallbackObserver;
 	}
 
 	/**
@@ -179,6 +183,19 @@ public final class TranslationOptions {
 	}
 
 	/**
+	 * Gets the successful fallback observer override, if configured.
+	 * <p>
+	 * The observer may be invoked concurrently when these options are shared and must be thread-safe.
+	 *
+	 * @return configured fallback observer, or empty to use the instance observer, not null
+	 * @since 3.1.1
+	 */
+	@NonNull
+	public Optional<@NonNull TranslationFallbackObserver> getTranslationFallbackObserver() {
+		return Optional.ofNullable(translationFallbackObserver);
+	}
+
+	/**
 	 * Creates a builder initialized with this instance's values.
 	 *
 	 * @return the builder, not null
@@ -190,7 +207,8 @@ public final class TranslationOptions {
 				.languageRanges(languageRanges)
 				.bidiIsolation(bidiIsolation)
 				.translationFailureHandler(translationFailureHandler)
-				.translationFallbackPolicy(translationFallbackPolicy);
+				.translationFallbackPolicy(translationFallbackPolicy)
+				.translationFallbackObserver(translationFallbackObserver);
 	}
 
 	/**
@@ -218,6 +236,9 @@ public final class TranslationOptions {
 		if (translationFallbackPolicy != null)
 			components.add("translationFallbackPolicy=" + translationFallbackPolicy);
 
+		if (translationFallbackObserver != null)
+			components.add("translationFallbackObserver=" + translationFallbackObserver);
+
 		return Diagnostics.format("%s{%s}", getClass().getSimpleName(), String.join(", ", components));
 	}
 
@@ -240,7 +261,8 @@ public final class TranslationOptions {
 				&& Objects.equals(languageRanges, translationOptions.languageRanges)
 				&& Objects.equals(bidiIsolation, translationOptions.bidiIsolation)
 				&& Objects.equals(translationFailureHandler, translationOptions.translationFailureHandler)
-				&& Objects.equals(translationFallbackPolicy, translationOptions.translationFallbackPolicy);
+				&& Objects.equals(translationFallbackPolicy, translationOptions.translationFallbackPolicy)
+				&& Objects.equals(translationFallbackObserver, translationOptions.translationFallbackObserver);
 	}
 
 	/**
@@ -250,7 +272,8 @@ public final class TranslationOptions {
 	 */
 	@Override
 	public int hashCode() {
-		return Objects.hash(locale, languageRanges, bidiIsolation, translationFailureHandler, translationFallbackPolicy);
+		int hash = Objects.hash(locale, languageRanges, bidiIsolation, translationFailureHandler, translationFallbackPolicy);
+		return translationFallbackObserver == null ? hash : 31 * hash + translationFallbackObserver.hashCode();
 	}
 
 	@NonNull
@@ -291,6 +314,8 @@ public final class TranslationOptions {
 		private TranslationFailureHandler translationFailureHandler;
 		@Nullable
 		private TranslationFallbackPolicy translationFallbackPolicy;
+		@Nullable
+		private TranslationFallbackObserver translationFallbackObserver;
 
 		private Builder() {
 			// Use TranslationOptions.builder()
@@ -376,6 +401,23 @@ public final class TranslationOptions {
 		}
 
 		/**
+		 * Applies a successful fallback observer override for this lookup.
+		 * <p>
+		 * A non-null observer replaces the instance observer. Null means to inherit the instance observer; to suppress
+		 * its effects for one lookup, supply a no-op observer. Observers may be invoked concurrently and must be
+		 * thread-safe. Observer exceptions propagate directly to the caller.
+		 *
+		 * @param translationFallbackObserver successful fallback observer, may be null to use the instance observer
+		 * @return this builder, not null
+		 * @since 3.1.1
+		 */
+		@NonNull
+		public Builder translationFallbackObserver(@Nullable TranslationFallbackObserver translationFallbackObserver) {
+			this.translationFallbackObserver = translationFallbackObserver;
+			return this;
+		}
+
+		/**
 		 * Constructs a {@link TranslationOptions} instance.
 		 *
 		 * @return translation options, not null
@@ -383,11 +425,11 @@ public final class TranslationOptions {
 		@NonNull
 		public TranslationOptions build() {
 			if (locale == null && languageRanges == null && bidiIsolation == null && translationFailureHandler == null &&
-					translationFallbackPolicy == null)
+					translationFallbackPolicy == null && translationFallbackObserver == null)
 				return TranslationOptions.none();
 
 			return new TranslationOptions(locale, languageRanges, bidiIsolation, translationFailureHandler,
-					translationFallbackPolicy);
+					translationFallbackPolicy, translationFallbackObserver);
 		}
 	}
 }

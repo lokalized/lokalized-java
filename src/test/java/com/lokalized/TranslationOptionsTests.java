@@ -27,6 +27,8 @@ import java.util.Locale.LanguageRange;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -76,6 +78,21 @@ public class TranslationOptionsTests {
 		assertEquals(2, options.getLanguageRanges().orElseThrow(AssertionError::new).size());
 		assertThrows(UnsupportedOperationException.class,
 				() -> options.getLanguageRanges().orElseThrow(AssertionError::new).add(new LanguageRange("fr")));
+	}
+
+	@Test
+	public void observerOptionsHaveValueSemanticsAndSurviveToBuilder() {
+		TranslationFallbackObserver translationFallbackObserver = translationFallbackEvent -> {};
+		TranslationOptions options = TranslationOptions.builder().translationFallbackObserver(translationFallbackObserver).build();
+		TranslationOptions copy = options.toBuilder().build();
+		assertSame(translationFallbackObserver, options.getTranslationFallbackObserver().get());
+		assertSame(translationFallbackObserver, copy.getTranslationFallbackObserver().get());
+		assertEquals(options, copy);
+		assertEquals(options.hashCode(), copy.hashCode());
+		assertNotEquals(TranslationOptions.none(), options);
+		assertNotEquals(options, options.toBuilder().translationFallbackObserver(translationFallbackEvent -> {}).build());
+		assertTrue(options.toString().contains("translationFallbackObserver="));
+		assertSame(TranslationOptions.none(), options.toBuilder().translationFallbackObserver(null).build());
 	}
 
 	@Test

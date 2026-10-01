@@ -76,13 +76,13 @@ Similarly-flavored commercially-friendly OSS libraries are available.
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>3.1.0</version>
+  <version>3.1.1</version>
 </dependency>
 ```
 
 ## Direct Download
 
-If you don't use Maven or Gradle, you can drop [**lokalized-3.1.0.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.1.0/lokalized-3.1.0.jar) directly into your project. No other dependencies are required.
+If you don't use Maven or Gradle, you can drop [**lokalized-3.1.1.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.1.1/lokalized-3.1.1.jar) directly into your project. No other dependencies are required.
 
 ## Getting Started
 
@@ -488,12 +488,16 @@ String message = strings.get(
 
 Per-invocation options can supply a locale, language ranges, bidi isolation behavior,
 [`TranslationFallbackPolicy`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackPolicy.html), or
-[`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html). Locale and
+[`TranslationFailureHandler`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureHandler.html), or
+[`TranslationFallbackObserver`](https://javadoc.lokalized.com/com/lokalized/TranslationFallbackObserver.html). Locale and
 language-range options bypass the configured
 [`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
 or [`localeMatchSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeMatchSupplier(java.util.function.Function))
 for that call. Lokalized still applies the same matching, tiebreakers, and fallback behavior
 using the preference you supplied.
+
+A per-call fallback observer replaces the instance observer. An omitted or null observer inherits the instance
+observer; supply a no-op observer to suppress its effects for one lookup.
 
 ## Runtime Safety Limits
 
@@ -1583,6 +1587,34 @@ Global policies are configured with
 [`Strings.Builder.translationFallbackPolicy(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#translationFallbackPolicy(com.lokalized.TranslationFallbackPolicy));
 [`TranslationOptions.Builder.translationFallbackPolicy(...)`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.Builder.html#translationFallbackPolicy(com.lokalized.TranslationFallbackPolicy))
 overrides it for one lookup. Custom policies and handlers may be called concurrently and must be thread-safe.
+
+### Observing Successful Fallback
+
+Since 3.1.1, `translationFallbackObserver` reports when an earlier locale candidate fails and a later candidate supplies
+the translation. It receives a `TranslationFallbackEvent` with the key, lookup locale, locale-match result, attempted
+locales, resolved locale, and each preceding candidate's failure reason and optional cause, in attempt order.
+
+```java
+Strings strings = Strings.withFallbackLocale(Locale.ENGLISH)
+  .localizedStringSupplier(() -> LocalizedStringLoader.loadFromClasspath("strings"))
+  .localeSupplier(matcher -> Locale.FRENCH)
+  .translationFallbackObserver(translationFallbackEvent -> {
+    // Record translations supplied by another locale
+    metrics.recordFallback(translationFallbackEvent.getKey(), translationFallbackEvent.getResolvedLocale());
+  })
+  .build();
+```
+
+The observer runs once, synchronously, before the successful lookup returns. It does not run when the first candidate
+succeeds, when negotiation alone selects a fallback locale, or when lookup ultimately fails. Observer exceptions
+propagate directly to the caller and do not trigger further locale attempts or the translation failure handler.
+
+Configure it on `Strings.Builder` or override it through `TranslationOptions.Builder.translationFallbackObserver(...)`.
+Observers shared by concurrent lookups must be thread-safe. Events and their lists are structurally immutable; runtime
+causes are exposed by reference. Events contain no rendered translation or caller placeholder values, and diagnostic
+string representations omit throwable messages. The event fields and invocation rules match the JavaScript API.
+
+### Failure Reasons
 
 Failure reasons distinguish a key that is absent from every attempted candidate locale
 ([`MISSING_TRANSLATION`](https://javadoc.lokalized.com/com/lokalized/TranslationFailureReason.html#MISSING_TRANSLATION)),

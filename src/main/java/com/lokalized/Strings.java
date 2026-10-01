@@ -146,6 +146,8 @@ public interface Strings extends LocaleMatcher {
 	 * <p>
 	 * A handler response that throws still throws; successful translations and return-key/return-string responses are
 	 * represented by the returned result.
+	 * A configured {@link TranslationFallbackObserver} runs once before a successful fallback result is returned;
+	 * observer exceptions propagate directly to the caller.
 	 * <p>
 	 * The supplied map is shallow-copied once before the first locale candidate is attempted. Alternative predicates,
 	 * language-form selectors, failure reporting, and every fallback candidate observe that same snapshot. Generated
@@ -237,6 +239,8 @@ public interface Strings extends LocaleMatcher {
 		private TranslationFailureHandler translationFailureHandler;
 		@Nullable
 		private TranslationFallbackPolicy translationFallbackPolicy;
+		@Nullable
+		private TranslationFallbackObserver translationFallbackObserver;
 		@Nullable
 		private TranslationRuntimeLimits runtimeLimits;
 		@Nullable
@@ -379,6 +383,22 @@ public interface Strings extends LocaleMatcher {
 		}
 
 		/**
+		 * Applies an observer for translations supplied by a later locale candidate after earlier candidates failed.
+		 * <p>
+		 * The observer runs once before a successful lookup returns. It may be invoked concurrently and must be
+		 * thread-safe. Observer exceptions propagate directly to the caller.
+		 *
+		 * @param translationFallbackObserver successful fallback observer, may be null to disable observation
+		 * @return this builder, not null
+		 * @since 3.1.1
+		 */
+		@NonNull
+		public Builder translationFallbackObserver(@Nullable TranslationFallbackObserver translationFallbackObserver) {
+			this.translationFallbackObserver = translationFallbackObserver;
+			return this;
+		}
+
+		/**
 		 * Applies safety limits to localized strings construction and translation evaluation.
 		 * <p>
 		 * Expression limits apply to both whole-message alternatives and
@@ -450,7 +470,7 @@ public interface Strings extends LocaleMatcher {
 			return new DefaultStrings(fallbackLocale, localizedStringSupplier, localeSupplier, localeMatchSupplier,
 					tiebreakerLocalesByLanguageCode,
 					translationFailureHandler, phoneticResolver, bidiIsolation, translationFallbackPolicy, runtimeLimits,
-					languageRangeEquivalents);
+					languageRangeEquivalents, translationFallbackObserver);
 		}
 	}
 }
