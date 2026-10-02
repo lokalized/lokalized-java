@@ -104,7 +104,7 @@ ${INITIALIZER_CALLS}
 	 * {@code HashMap} iterates that map in, computed by the generator rather than read from a JDK, and
 	 * it matters: it decides which substitution applies when a range contains two.
 	 */
-	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = List.of(
+	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = ImmutableCollections.listOf(
 ${REGION_VARIANT_ENTRIES});
 
 	/** {@code LanguageRange}'s MAX_WEIGHT and MIN_WEIGHT, which it does not expose. */
@@ -228,7 +228,7 @@ ${REGION_VARIANT_ENTRIES});
 			prefix = prefix.substring(0, index);
 		}
 
-		return List.of();
+		return ImmutableCollections.listOf();
 	}
 
 	/**
@@ -268,8 +268,8 @@ ${REGION_VARIANT_ENTRIES});
 		return Integer.MIN_VALUE;
 	}
 
-	/** One table row; {@code List.of} copies the array, so the stored list is immutable. */
+	/** One table row; {@code ImmutableCollections.listOf} copies the array, so the stored list is immutable. */
 	private static void put(Map<String, List<String>> map, String key, String... equivalents) {
-		map.put(key, List.of(equivalents));
+		map.put(key, ImmutableCollections.listOf(equivalents));
 	}
 ${INITIALIZER_METHODS}}

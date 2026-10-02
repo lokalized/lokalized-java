@@ -2,6 +2,28 @@
 
 All notable changes to Lokalized will be documented in this file.
 
+## 3.1.2 - 2026-10-02
+
+### Added
+
+- Android 8.0 (API 26) and later integration using the existing Java artifact without
+  additional runtime dependencies or core library desugaring. The Android example
+  shares asset-loaded translations across activities, refreshes an app-wide locale
+  from UI lifecycle callbacks, and includes debug/minified device tests. Per-call
+  locale overrides remain available for fine-grained control.
+- CI coverage for the Android example on API 26 and API 35.
+
+### Fixed
+
+- Replaced Java 9 collection factories internally with immutable collection snapshots
+  that run on Android API 26 without a desugaring library.
+- Packaged narrow R8 consumer rules for optional compile-time annotations, allowing
+  Android release shrinking without installing annotation dependencies at runtime.
+- Removed hard links to JVM-only `JarFile` multi-release APIs and `Runtime.Version`
+  from the runtime JAR. Desktop classpath loading retains the JVM's multi-release
+  selection and runtime overrides; Android asset/raw-resource parsing uses the existing
+  `InputStream` API. Public APIs and the Java 9 baseline are unchanged.
+
 ## 3.1.1 - 2026-10-01
 
 ### Added

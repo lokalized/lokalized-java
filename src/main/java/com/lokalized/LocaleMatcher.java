@@ -65,7 +65,7 @@ public interface LocaleMatcher {
 	@NonNull
 	default LocaleMatchResult matchFor(@NonNull Locale locale) {
 		LocaleUtils.requireWellFormed(locale, "Requested locale");
-		return matchFor(List.of(new LanguageRange(locale.toLanguageTag())));
+		return matchFor(ImmutableCollections.listOf(new LanguageRange(locale.toLanguageTag())));
 	}
 
 	/**
@@ -121,23 +121,23 @@ public interface LocaleMatcher {
 		if (acceptLanguage == null ||
 				acceptLanguage.length() > 4_096 ||
 				acceptLanguage.trim().isEmpty())
-			return bestMatchFor(List.of());
+			return bestMatchFor(ImmutableCollections.listOf());
 
 		String normalizedAcceptLanguage = normalizeAcceptLanguage(acceptLanguage);
 
 		if (normalizedAcceptLanguage.isEmpty())
-			return bestMatchFor(List.of());
+			return bestMatchFor(ImmutableCollections.listOf());
 
 		List<@NonNull LanguageRange> languageRanges;
 
 		try {
 			languageRanges = parseLanguageRanges(normalizedAcceptLanguage);
 		} catch (IllegalArgumentException | IndexOutOfBoundsException exception) {
-			return bestMatchFor(List.of());
+			return bestMatchFor(ImmutableCollections.listOf());
 		}
 
 		if (languageRanges.size() > MAXIMUM_LANGUAGE_RANGES)
-			return bestMatchFor(List.of());
+			return bestMatchFor(ImmutableCollections.listOf());
 
 		return bestMatchFor(languageRanges);
 	}

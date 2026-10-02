@@ -1,2 +1,5 @@
 target
 .idea/
+examples/android/.gradle/
+examples/android/**/build/
+examples/android/local.properties

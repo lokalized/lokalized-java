@@ -5,7 +5,7 @@
     </picture>
 </a>
 
-Lokalized facilitates natural-sounding software translations on the JVM.
+Lokalized facilitates natural-sounding software translations on the JVM and Android.
 
 It is both a file format...
 
@@ -76,13 +76,18 @@ Similarly-flavored commercially-friendly OSS libraries are available.
 <dependency>
   <groupId>com.lokalized</groupId>
   <artifactId>lokalized</artifactId>
-  <version>3.1.1</version>
+  <version>3.1.2</version>
 </dependency>
 ```
 
+## Android
+
+The same Java artifact supports Android 8.0 (API 26) and later. See the
+[Android integration example](#android-integration) and [runnable sample](examples/android).
+
 ## Direct Download
 
-If you don't use Maven or Gradle, you can drop [**lokalized-3.1.1.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.1.1/lokalized-3.1.1.jar) directly into your project. No other dependencies are required.
+If you don't use Maven or Gradle, you can drop [**lokalized-3.1.2.jar**](https://repo1.maven.org/maven2/com/lokalized/lokalized/3.1.2/lokalized-3.1.2.jar) directly into your project. No other dependencies are required.
 
 ## Getting Started
 
@@ -2605,3 +2610,61 @@ Common inherited tags without dedicated pages, including `en-AU`, `en-CA`, `ja-J
 ## About
 
 Lokalized was created by [Mark Allen](https://www.revetkn.com). Development is sponsored by [Transmogrify LLC](https://www.xmog.com) and [Revetware LLC](https://www.revetware.com).
+
+## Android Integration
+
+Use `com.lokalized:lokalized:3.1.2` in your Android application. Set `minSdk` to 26
+or higher. No additional runtime dependencies or core library desugaring configuration
+are required.
+
+```kotlin
+android {
+    defaultConfig { minSdk = 26 }
+}
+dependencies {
+    implementation("com.lokalized:lokalized:3.1.2")
+}
+```
+
+Put localized strings files in `src/main/assets/strings`. Load them with
+`context.getAssets().open(...)` and `LocalizedStringLoader.parse(stream, locale, source)`,
+closing the streams yourself. `context.getResources().openRawResource(...)` also supplies
+a compatible stream. Use explicit locale-to-resource mappings for raw resources.
+
+The [example AndroidStrings adapter](examples/android/app/src/main/java/com/lokalized/example/AndroidStrings.java)
+loads localized strings files once and uses
+[`localeSupplier(...)`](https://javadoc.lokalized.com/com/lokalized/Strings.Builder.html#localeSupplier(java.util.function.Function))
+to read a shared app-wide locale. The sample's
+[`ExampleApplication`](examples/android/app/src/main/java/com/lokalized/example/ExampleApplication.java)
+owns one adapter for all screens. Its activities call `updateLocale(context)` after creation
+and configuration changes, using the current UI context. Ordinary lookups then need no
+locale argument:
+
+```java
+// Initialize once for the app and share this adapter across screens.
+AndroidStrings androidStrings = new AndroidStrings(context.getApplicationContext());
+
+// Refresh from the current UI context when an activity is created or its locale changes.
+androidStrings.updateLocale(context);
+
+String message = androidStrings.get("books", Collections.singletonMap("count", 3));
+```
+
+For fine-grained control, `get(key, placeholders, locale)` selects a locale for one call,
+and `get(context, key, placeholders)` uses a particular UI context's locale. These
+alternatives use
+[`TranslationOptions.forLocale(...)`](https://javadoc.lokalized.com/com/lokalized/TranslationOptions.html#forLocale(java.util.Locale))
+without changing the shared locale.
+
+`AndroidStrings` is sample application code, not a new API in the Lokalized JAR.
+Use `Collections.singletonMap(...)` or a regular map for placeholders on API 26–29;
+the `Map.of(...)`, `List.of(...)`, and `Set.of(...)` calls in desktop Java examples
+require newer Android versions or the application's own core library desugaring.
+Load and validate large localized strings files off the UI thread. Formatting remains the app's
+responsibility; use Android/Java formatters for the app locale. Unicode identifier
+classification follows the device runtime's Unicode tables; ASCII placeholder names
+are portable across Android versions. Desktop classpath directory discovery and
+multi-release JAR scanning are not Android asset loaders.
+
+See [the sample's build and device-test instructions](examples/android/README.md).
+The core JAR keeps its Java 9 baseline and has no Android framework dependency.

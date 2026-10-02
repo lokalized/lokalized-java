@@ -1,0 +1,11 @@
+{
+  "books": {
+    "translation": "{{count}} {{noun}}",
+    "placeholders": { "noun": { "value": "count", "translations": {
+      "CARDINALITY_ONE": "book", "CARDINALITY_OTHER": "books"
+    }}},
+    "alternatives": [{ "count == 0": "No books" }]
+  },
+  "hello": "Hello, {{name}}!",
+  "englishOnly": "English fallback"
+}

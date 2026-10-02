@@ -1445,8 +1445,8 @@ public final class LocalizedStringLoader {
     Map<@NonNull String, @NonNull JarEntrySelection> selectionsByRelativeName = new TreeMap<>();
     Map<@NonNull String, @NonNull Set<@NonNull Integer>> versionsByRelativeName = new LinkedHashMap<>();
     Enumeration<@NonNull JarEntry> entries = jarFile.entries();
-    boolean multiRelease = jarFile.isMultiRelease();
-    int runtimeMajorVersion = JarFile.runtimeVersion().major();
+    boolean multiRelease = JarRuntimeView.isMultiRelease(jarFile);
+    int runtimeMajorVersion = multiRelease ? JarRuntimeView.majorVersion() : 8;
     String versionedPrefix = "META-INF/versions/";
     String discoverySource = format("JAR '%s'", jarFile.getName());
     boolean packagePresent = false;
@@ -2180,7 +2180,7 @@ public final class LocalizedStringLoader {
 
       JsonObject localizedStringObject = jsonValue.asObject();
       validateNoUnexpectedObjectMembers(canonicalPath, key, localizedStringObject, "localized string",
-          Set.of("translation", "commentary", "placeholders", "alternatives"));
+          ImmutableCollections.setOf("translation", "commentary", "placeholders", "alternatives"));
 
       String translation = null;
 
@@ -2359,7 +2359,7 @@ public final class LocalizedStringLoader {
 
     validateNoUnexpectedObjectMembers(canonicalPath, rootKey, placeholderJsonObject,
         format("placeholder '%s'", placeholderKey),
-        Set.of("value", "range", "translations", "translation", "alternatives"));
+        ImmutableCollections.setOf("value", "range", "translations", "translation", "alternatives"));
 
     JsonValue valueJsonValue = placeholderJsonObject.get("value");
     JsonValue rangeJsonValue = placeholderJsonObject.get("range");
@@ -2579,7 +2579,7 @@ public final class LocalizedStringLoader {
 
       JsonObject rangeJsonObject = rangeJsonValue.asObject();
       validateNoUnexpectedObjectMembers(canonicalPath, key, rangeJsonObject,
-          format("range for placeholder '%s'", placeholderKey), Set.of("start", "end"));
+          format("range for placeholder '%s'", placeholderKey), ImmutableCollections.setOf("start", "end"));
       JsonValue rangeValueStartJsonValue = rangeJsonObject.get("start");
       JsonValue rangeValueEndJsonValue = rangeJsonObject.get("end");
 

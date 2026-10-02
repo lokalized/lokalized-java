@@ -589,7 +589,7 @@ final class CldrLocaleData {
 
       if (normalizedLanguageTag.toLowerCase(Locale.ROOT).startsWith("x-"))
         return new TagParts("", "", "", Collections.emptyList(),
-            List.of(normalizedLanguageTag.toLowerCase(Locale.ROOT)), true);
+            ImmutableCollections.listOf(normalizedLanguageTag.toLowerCase(Locale.ROOT)), true);
 
       String[] subtags = normalizedLanguageTag.split("-");
       String language = "";

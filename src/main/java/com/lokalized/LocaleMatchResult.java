@@ -316,7 +316,7 @@ public final class LocaleMatchResult implements Serializable {
 					reconstructedLanguageRange = reconstructedLanguageRanges.get(languageRangeIndex);
 
 				return new LocaleMatchResult(reconstructedLanguageRanges, locale, reconstructedLanguageRange,
-						effectiveWeight, matchType, fallbackLocale, List.of(consideredLocales));
+						effectiveWeight, matchType, fallbackLocale, ImmutableCollections.listOf(consideredLocales));
 			} catch (RuntimeException exception) {
 				InvalidObjectException invalidObjectException =
 						new InvalidObjectException("Invalid serialized LocaleMatchResult");

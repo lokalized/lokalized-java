@@ -107,7 +107,7 @@ final class IanaLanguageEquivalents {
 	 * {@code HashMap} iterates that map in, computed by the generator rather than read from a JDK, and
 	 * it matters: it decides which substitution applies when a range contains two.
 	 */
-	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = List.of(
+	private static final List<String[]> REGION_VARIANT_EQUIVALENTS = ImmutableCollections.listOf(
 			new String[] { "-bu", "-mm" },
 			new String[] { "-tl", "-tp" },
 			new String[] { "-zr", "-cd" },
@@ -244,7 +244,7 @@ final class IanaLanguageEquivalents {
 			prefix = prefix.substring(0, index);
 		}
 
-		return List.of();
+		return ImmutableCollections.listOf();
 	}
 
 	/**
@@ -284,9 +284,9 @@ final class IanaLanguageEquivalents {
 		return Integer.MIN_VALUE;
 	}
 
-	/** One table row; {@code List.of} copies the array, so the stored list is immutable. */
+	/** One table row; {@code ImmutableCollections.listOf} copies the array, so the stored list is immutable. */
 	private static void put(Map<String, List<String>> map, String key, String... equivalents) {
-		map.put(key, List.of(equivalents));
+		map.put(key, ImmutableCollections.listOf(equivalents));
 	}
 
 	private static void putLanguageEquivalents0(Map<String, List<String>> map) {

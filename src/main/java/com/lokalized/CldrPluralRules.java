@@ -246,7 +246,7 @@ final class CldrPluralRules {
 
     if (!language.isPresent())
       return CldrLocaleData.hasUndeterminedLanguage(canonicalLocale.toLanguageTag())
-          ? List.of("root")
+          ? ImmutableCollections.listOf("root")
           : Collections.emptyList();
 
     @NonNull String script = canonicalLocale.getScript();
