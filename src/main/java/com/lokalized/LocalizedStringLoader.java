@@ -2845,7 +2845,7 @@ public final class LocalizedStringLoader {
     }
 
     if (remaining > 1)
-      path.append(part, 0, remaining - 1);
+      path.append(diagnosticPrefix(part, remaining - 1));
 
     path.append('\u2026');
   }
@@ -2857,7 +2857,17 @@ public final class LocalizedStringLoader {
     if (value.length() <= 256)
       return value;
 
-    return value.substring(0, 255) + '\u2026';
+    return diagnosticPrefix(value, 255) + '\u2026';
+  }
+
+  /** Shared diagnostic-text profile 1.1.0: repair a pair split by the UTF-16 cap. */
+  @NonNull
+  private static String diagnosticPrefix(@NonNull String value, int length) {
+    String prefix = value.substring(0, length);
+    if (length > 0 && length < value.length() && Character.isHighSurrogate(value.charAt(length - 1)) &&
+        Character.isLowSurrogate(value.charAt(length)))
+      return prefix.substring(0, length - 1) + '\uFFFD';
+    return prefix;
   }
 
   @NotThreadSafe

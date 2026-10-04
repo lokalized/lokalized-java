@@ -2,6 +2,15 @@
 
 All notable changes to Lokalized will be documented in this file.
 
+## Unreleased
+
+### Fixed
+
+- Repair a surrogate pair split by catalog diagnostic truncation with U+FFFD before
+  the ellipsis, preserving the existing UTF-16 caps. The shared diagnostic-text
+  profile 1.1.0 supplies 18 independently specified public-parser cases. No runtime
+  dependency, catalog syntax or public API changes.
+
 ## 3.1.2 - 2026-10-02
 
 ### Added
