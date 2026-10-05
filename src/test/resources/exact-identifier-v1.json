@@ -1,0 +1,214 @@
+{
+  "formatVersion": 1,
+  "profileID": "exact-identifier-v1",
+  "profileVersion": "1.0.0",
+  "fixture": {
+    "locale": "en-GB",
+    "catalogs": {
+      "paired": "{\"caf\\u00e9\":\"NFC key\",\"cafe\\u0301\":\"NFD key\",\"Slots\":\"{{\\u00e9}}|{{e\\u0301}}\"}",
+      "composedOnly": "{\"caf\\u00e9\":\"NFC key\"}",
+      "decomposedOnly": "{\"cafe\\u0301\":\"NFD key\"}",
+      "duplicateExact": "{\"caf\\u00e9\":\"first\",\"caf\u00e9\":\"second\"}",
+      "unicodeContinuations": "{\"Boundary\":{\"translation\":\"{{a\\u0301\\u093e\\u20dd\\u216b\\u00b22}}\",\"placeholders\":{\"a\\u0301\\u093e\\u20dd\\u216b\\u00b22\":{\"translation\":\"marks and numbers\"}}}}",
+      "supplementaryLetter": "{\"Boundary\":{\"translation\":\"{{\\ud801\\udc00}}\",\"placeholders\":{\"\\ud801\\udc00\":{\"translation\":\"supplementary letter\"}}}}",
+      "asciiPunctuation": "{\"Boundary\":{\"translation\":\"{{_a-1}}\",\"placeholders\":{\"_a-1\":{\"translation\":\"underscore and hyphen\"}}}}",
+      "leadingMark": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"\\u0301a\":{\"translation\":\"generated\"}}}}",
+      "leadingLetterNumber": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"\\u216ba\":{\"translation\":\"generated\"}}}}",
+      "leadingDigit": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"2a\":{\"translation\":\"generated\"}}}}",
+      "leadingHyphen": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"-a\":{\"translation\":\"generated\"}}}}",
+      "emojiContinuation": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"a\\ud83d\\ude00\":{\"translation\":\"generated\"}}}}",
+      "formatContinuation": "{\"Boundary\":{\"translation\":\"boundary\",\"placeholders\":{\"a\\u200d\":{\"translation\":\"generated\"}}}}"
+    }
+  },
+  "cases": [
+    {
+      "id": "exact-key.paired-composed",
+      "operation": "lookup",
+      "catalog": "paired",
+      "key": "caf\u00e9",
+      "expected": {
+        "status": "translated",
+        "key": "caf\u00e9",
+        "translation": "NFC key",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "exact-key.paired-decomposed",
+      "operation": "lookup",
+      "catalog": "paired",
+      "key": "cafe\u0301",
+      "expected": {
+        "status": "translated",
+        "key": "cafe\u0301",
+        "translation": "NFD key",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "exact-key.composed-only-misses-decomposed",
+      "operation": "lookup",
+      "catalog": "composedOnly",
+      "key": "cafe\u0301",
+      "expected": {
+        "status": "returned-key",
+        "key": "cafe\u0301",
+        "translation": "cafe\u0301",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ]
+      }
+    },
+    {
+      "id": "exact-key.decomposed-only-misses-composed",
+      "operation": "lookup",
+      "catalog": "decomposedOnly",
+      "key": "caf\u00e9",
+      "expected": {
+        "status": "returned-key",
+        "key": "caf\u00e9",
+        "translation": "caf\u00e9",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ]
+      }
+    },
+    {
+      "id": "exact-placeholder.paired",
+      "operation": "lookup",
+      "catalog": "paired",
+      "key": "Slots",
+      "values": [
+        {
+          "name": "\u00e9",
+          "text": "NFC"
+        },
+        {
+          "name": "e\u0301",
+          "text": "NFD"
+        }
+      ],
+      "expected": {
+        "status": "translated",
+        "key": "Slots",
+        "translation": "NFC|NFD",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "exact-key.escaped-literal-duplicate",
+      "operation": "parse",
+      "catalog": "duplicateExact",
+      "expected": {
+        "status": "refused",
+        "message": "exact-key.escaped-literal-duplicate: duplicate localized string key 'caf\u00e9' encountered"
+      }
+    },
+    {
+      "id": "identifier.unicode-continuations",
+      "operation": "lookup",
+      "catalog": "unicodeContinuations",
+      "key": "Boundary",
+      "expected": {
+        "status": "translated",
+        "key": "Boundary",
+        "translation": "marks and numbers",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "identifier.supplementary-letter",
+      "operation": "lookup",
+      "catalog": "supplementaryLetter",
+      "key": "Boundary",
+      "expected": {
+        "status": "translated",
+        "key": "Boundary",
+        "translation": "supplementary letter",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "identifier.ascii-punctuation",
+      "operation": "lookup",
+      "catalog": "asciiPunctuation",
+      "key": "Boundary",
+      "expected": {
+        "status": "translated",
+        "key": "Boundary",
+        "translation": "underscore and hyphen",
+        "attemptedLocales": [
+          "en-GB"
+        ]
+      }
+    },
+    {
+      "id": "identifier.leading-mark",
+      "operation": "parse",
+      "catalog": "leadingMark",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.leading-mark: invalid placeholder '\u0301a'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    },
+    {
+      "id": "identifier.leading-letter-number",
+      "operation": "parse",
+      "catalog": "leadingLetterNumber",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.leading-letter-number: invalid placeholder '\u216ba'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    },
+    {
+      "id": "identifier.leading-digit",
+      "operation": "parse",
+      "catalog": "leadingDigit",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.leading-digit: invalid placeholder '2a'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    },
+    {
+      "id": "identifier.leading-hyphen",
+      "operation": "parse",
+      "catalog": "leadingHyphen",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.leading-hyphen: invalid placeholder '-a'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    },
+    {
+      "id": "identifier.emoji-continuation",
+      "operation": "parse",
+      "catalog": "emojiContinuation",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.emoji-continuation: invalid placeholder 'a\ud83d\ude00'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    },
+    {
+      "id": "identifier.format-continuation",
+      "operation": "parse",
+      "catalog": "formatContinuation",
+      "expected": {
+        "status": "refused",
+        "message": "identifier.format-continuation: invalid placeholder 'a\u200d'. Placeholder names must start with a Unicode letter or underscore and contain only Unicode letters, Unicode numbers, Unicode combining marks, underscores, or hyphens. Key is 'Boundary'"
+      }
+    }
+  ]
+}

@@ -1,0 +1,477 @@
+{
+  "formatVersion": 1,
+  "profileID": "fallback-observer-v1",
+  "profileVersion": "1.0.0",
+  "fixture": {
+    "requestLocale": "en-GB",
+    "fallbackLocale": "fr",
+    "tiebreakerLocalesByLanguageCode": {
+      "en": [
+        "en-GB",
+        "en-001",
+        "en"
+      ]
+    },
+    "catalogs": {
+      "en-GB": {
+        "InEvery": "British"
+      },
+      "en-001": {
+        "InEvery": "World"
+      },
+      "en": {
+        "InEvery": "English",
+        "OnlyInEn": "English only"
+      },
+      "fr": {
+        "InEvery": "French",
+        "OnlyInFallback": "French only"
+      }
+    },
+    "negotiationRequestLocale": "en-AU",
+    "catalogVariants": {
+      "mixed": {
+        "en-GB": {
+          "Choice": {
+            "alternatives": [
+              {
+                "tier == 1": {
+                  "translation": "British tier one"
+                }
+              }
+            ]
+          }
+        },
+        "en-001": {},
+        "en": {
+          "Choice": "English choice"
+        },
+        "fr": {}
+      },
+      "causes": {
+        "en-GB": {
+          "Broken": "{{x}}"
+        },
+        "en-001": {
+          "Broken": "{{y}}"
+        },
+        "en": {
+          "Broken": "Recovered"
+        },
+        "fr": {}
+      }
+    }
+  },
+  "cases": [
+    {
+      "id": "observer.first-candidate",
+      "key": "InEvery",
+      "policy": "advance",
+      "observer": "record",
+      "expected": {
+        "outcome": "translated",
+        "translation": "British",
+        "attemptedLocales": [
+          "en-GB"
+        ],
+        "policyCalls": [],
+        "handlerCalls": 0,
+        "instanceEvents": [],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.third-candidate",
+      "key": "OnlyInEn",
+      "policy": "advance",
+      "observer": "record",
+      "expected": {
+        "outcome": "translated",
+        "translation": "English only",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "OnlyInEn",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.fourth-candidate",
+      "key": "OnlyInFallback",
+      "policy": "advance",
+      "observer": "record",
+      "expected": {
+        "outcome": "translated",
+        "translation": "French only",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en",
+          "fr"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation",
+          "en:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "OnlyInFallback",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "fr",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en",
+              "fr"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation",
+              "en:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.exhausted",
+      "key": "Nowhere",
+      "policy": "advance",
+      "observer": "record",
+      "expected": {
+        "outcome": "returned-key",
+        "translation": "Nowhere",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en",
+          "fr"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation",
+          "en:missing-translation"
+        ],
+        "handlerCalls": 1,
+        "instanceEvents": [],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.policy-stops",
+      "key": "OnlyInEn",
+      "policy": "stop",
+      "observer": "record",
+      "expected": {
+        "outcome": "returned-key",
+        "translation": "OnlyInEn",
+        "attemptedLocales": [
+          "en-GB"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation"
+        ],
+        "handlerCalls": 1,
+        "instanceEvents": [],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.throws",
+      "key": "OnlyInEn",
+      "policy": "advance",
+      "observer": "throw",
+      "expected": {
+        "outcome": "observer-threw",
+        "translation": null,
+        "attemptedLocales": null,
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "OnlyInEn",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.per-call-replaces",
+      "key": "OnlyInEn",
+      "policy": "advance",
+      "observer": "replace",
+      "expected": {
+        "outcome": "translated",
+        "translation": "English only",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [],
+        "perCallEvents": [
+          {
+            "key": "OnlyInEn",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "observer.negotiation-only",
+      "key": "InEvery",
+      "policy": "advance",
+      "observer": "record",
+      "requestMode": "negotiated",
+      "expected": {
+        "outcome": "translated",
+        "translation": "World",
+        "attemptedLocales": [
+          "en-001"
+        ],
+        "isFallback": true,
+        "policyCalls": [],
+        "handlerCalls": 0,
+        "instanceEvents": [],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.no-matching-alternative",
+      "key": "Choice",
+      "policy": "advance",
+      "observer": "record",
+      "catalogVariant": "mixed",
+      "placeholderMode": "tier-two",
+      "expected": {
+        "outcome": "translated",
+        "translation": "English choice",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:no-matching-alternative",
+          "en-001:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "Choice",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:no-matching-alternative",
+              "en-001:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.distinct-causes",
+      "key": "Broken",
+      "policy": "advance",
+      "observer": "record",
+      "catalogVariant": "causes",
+      "placeholderMode": "throwing-two",
+      "expected": {
+        "outcome": "translated",
+        "translation": "Recovered",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:resolution-failure",
+          "en-001:resolution-failure"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "Broken",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:resolution-failure",
+              "en-001:resolution-failure"
+            ]
+          }
+        ],
+        "perCallEvents": [],
+        "causeIdentity": "distinct-policy-matched"
+      }
+    },
+    {
+      "id": "observer.per-call-inherits",
+      "key": "OnlyInEn",
+      "policy": "advance",
+      "observer": "inherit",
+      "expected": {
+        "outcome": "translated",
+        "translation": "English only",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "OnlyInEn",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": []
+      }
+    },
+    {
+      "id": "observer.reentrant",
+      "key": "OnlyInEn",
+      "policy": "advance",
+      "observer": "reenter",
+      "nestedKey": "OnlyInFallback",
+      "expected": {
+        "outcome": "translated",
+        "translation": "English only",
+        "attemptedLocales": [
+          "en-GB",
+          "en-001",
+          "en"
+        ],
+        "policyCalls": [
+          "en-GB:missing-translation",
+          "en-001:missing-translation",
+          "en-GB:missing-translation",
+          "en-001:missing-translation",
+          "en:missing-translation"
+        ],
+        "handlerCalls": 0,
+        "instanceEvents": [
+          {
+            "key": "OnlyInEn",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "en",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation"
+            ]
+          },
+          {
+            "key": "OnlyInFallback",
+            "lookupLocale": "en-GB",
+            "resolvedLocale": "fr",
+            "attemptedLocales": [
+              "en-GB",
+              "en-001",
+              "en",
+              "fr"
+            ],
+            "precedingFailures": [
+              "en-GB:missing-translation",
+              "en-001:missing-translation",
+              "en:missing-translation"
+            ]
+          }
+        ],
+        "perCallEvents": [],
+        "nestedResult": {
+          "key": "OnlyInFallback",
+          "translation": "French only",
+          "attemptedLocales": [
+            "en-GB",
+            "en-001",
+            "en",
+            "fr"
+          ]
+        }
+      }
+    }
+  ]
+}
