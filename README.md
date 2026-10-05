@@ -82,7 +82,7 @@ Similarly-flavored commercially-friendly OSS libraries are available.
 
 ## Android
 
-The same Java artifact supports Android 8.0 (API 26) and later. See the
+The Lokalized Java artifact supports Android 8.0 (API 26) and later. See the
 [Android integration example](#android-integration) and [runnable sample](examples/android).
 
 ## Direct Download
