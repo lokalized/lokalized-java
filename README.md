@@ -38,10 +38,10 @@ String message = strings.get("I read {{bookCount}} books.", Map.of("bookCount", 
 assertEquals("I didn't read any books.", message);
 ```
 
-Lokalized has proudly powered production systems since 2017.
+Lokalized has proudly powered production systems since 2017. The Java, [JavaScript](https://github.com/lokalized/lokalized-js), and [Swift](https://github.com/lokalized/lokalized-swift) libraries share the same translation-file format; platform APIs adapt how applications supply values and load files.
 
 **Note: this README provides a high-level overview of Lokalized.**<br/>
-**For details, please refer to the official documentation at [https://www.lokalized.com](https://www.lokalized.com).**
+**For details, please refer to the official documentation at [lokalized.com](https://www.lokalized.com/?platform=java).**
 
 ## Why Lokalized?
 
